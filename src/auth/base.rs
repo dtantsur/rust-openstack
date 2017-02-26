@@ -12,17 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! OpenStack Client in Rust.
-//!
-//! The goal of this project is to provide a simple API for working with
-//! OpenStack clouds.
+//! Base code for authentication.
 
-#![crate_name = "openstack"]
-#![crate_type = "lib"]
+use hyper::{Result, Url};
+use hyper::client::{Client, RequestBuilder};
 
-extern crate hyper;
-#[macro_use]
-extern crate log;
-extern crate rustc_serialize;
 
-pub mod auth;
+/// Trait for any authentication method.
+pub trait AuthMethod {
+    /// Verify authentication.
+    fn authenticate(&mut self, client: &Client) -> Result<()>;
+    /// Add authentication to request.
+    fn add_auth(&self, request: &RequestBuilder);
+    /// Get a URL for the request service.
+    fn get_endpoint(&self, service_type: &String) -> Url;
+}

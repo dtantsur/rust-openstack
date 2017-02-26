@@ -12,17 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! OpenStack Client in Rust.
+//! Authentication modules.
 //!
-//! The goal of this project is to provide a simple API for working with
-//! OpenStack clouds.
+//! Usually, accessing OpenStack services requires authentication. This module
+//! provides a way to authenticate against an Identity service, as well as
+//! simple authentication implementations for standalone use.
 
-#![crate_name = "openstack"]
-#![crate_type = "lib"]
-
-extern crate hyper;
-#[macro_use]
-extern crate log;
-extern crate rustc_serialize;
-
-pub mod auth;
+pub mod base;
+pub mod identity;
