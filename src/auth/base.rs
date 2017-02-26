@@ -16,14 +16,24 @@
 
 use hyper::{Result, Url};
 use hyper::client::{Client, RequestBuilder};
+use time::PreciseTime;
+
+
+/// Authentication token.
+pub struct AuthToken {
+    /// Token contents.
+    pub token: String,
+    /// Expiration time (if any).
+    pub expires_at: Option<PreciseTime>
+}
 
 
 /// Trait for any authentication method.
 pub trait AuthMethod {
-    /// Verify authentication.
-    fn authenticate(&mut self, client: &Client) -> Result<()>;
-    /// Add authentication to request.
-    fn add_auth(&self, request: &RequestBuilder);
+    /// Verify authentication and generate an auth token.
+    ///
+    /// May cache a token while it is still valid.
+    fn authenticate(&mut self, client: &Client) -> Result<AuthToken>;
     /// Get a URL for the request service.
-    fn get_endpoint(&self, service_type: &String) -> Url;
+    fn get_endpoint(&mut self, service_type: &String) -> Url;
 }
