@@ -23,7 +23,7 @@ Demo
 There is an example retrieving a token from Keystone. Source your OpenStack
 credentials and run:
 
-   cargo run --example get-token
+    cargo run --example get-token
 
 Docs
 ----
@@ -32,4 +32,4 @@ Docs
 
     cargo doc
 
-and point your browser at "target/doc/openstack/index.html".
+and point your browser at `target/doc/openstack/index.html`.
