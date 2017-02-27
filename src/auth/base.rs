@@ -16,6 +16,7 @@
 
 use std::error::Error;
 use std::fmt;
+use std::io;
 
 use hyper::{Client, Url};
 use hyper::Error as HttpClientError;
@@ -35,6 +36,7 @@ pub struct AuthToken {
 }
 
 header! { (AuthTokenHeader, "X-Auth-Token") => [String] }
+header! { (SubjectTokenHeader, "X-Subject-Token") => [String] }
 
 /// Error from an authentication call.
 #[derive(Debug)]
@@ -46,7 +48,7 @@ pub enum AuthError {
     /// Authentication rejected (invalid credentials or token).
     Unauthorized,
     /// Generic HTTP error (not covered by EndpointNotFound and Unauthorized).
-    HttpError(StatusCode),
+    HttpError(StatusCode, Option<String>),
     /// Protocol-level error reported by underlying HTTP library.
     ProtocolError(HttpClientError)
 }
@@ -102,8 +104,13 @@ impl fmt::Display for AuthError {
                 write!(f, "Requested endpoint was not found"),
             AuthError::Unauthorized =>
                 write!(f, "Authentication failed"),
-            AuthError::HttpError(status) =>
-                write!(f, "HTTP error: {}", status),
+            AuthError::HttpError(status, ref maybe_msg) =>
+                match *maybe_msg {
+                    Some(ref msg) =>
+                        write!(f, "HTTP error {}: {}", status, msg),
+                    None =>
+                        write!(f, "HTTP error {}", status),
+                },
             AuthError::ProtocolError(ref e) => fmt::Display::fmt(e, f)
         }
     }
@@ -126,6 +133,18 @@ impl Error for AuthError {
             AuthError::ProtocolError(ref e) => Some(e),
             _ => None
         }
+    }
+}
+
+impl From<HttpClientError> for AuthError {
+    fn from(value: HttpClientError) -> AuthError {
+        AuthError::ProtocolError(value)
+    }
+}
+
+impl From<io::Error> for AuthError {
+    fn from(value: io::Error) -> AuthError {
+        AuthError::ProtocolError(HttpClientError::Io(value))
     }
 }
 
