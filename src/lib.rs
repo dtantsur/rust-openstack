@@ -22,7 +22,7 @@
 
 #[macro_use]
 extern crate hyper;
-extern crate hyper_openssl;
+extern crate hyper_rustls;
 #[macro_use]
 extern crate log;
 #[macro_use]

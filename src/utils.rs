@@ -16,12 +16,11 @@
 
 use hyper::Client;
 use hyper::net::HttpsConnector;
-use hyper_openssl::OpensslClient;
+use hyper_rustls::TlsClient;
 
 
 /// Create an HTTP(s) client.
 pub fn http_client() -> Client {
-    let ssl = OpensslClient::new().unwrap();
-    let connector = HttpsConnector::new(ssl);
+    let connector = HttpsConnector::new(TlsClient::new());
     Client::with_connector(connector)
 }
