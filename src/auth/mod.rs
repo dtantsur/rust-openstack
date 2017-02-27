@@ -20,3 +20,6 @@
 
 pub mod base;
 pub mod identity;
+
+pub use self::base::{AuthError, AuthMethod, NoAuth};
+pub use self::identity::Identity;

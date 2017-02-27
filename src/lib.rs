@@ -24,6 +24,8 @@
 extern crate hyper;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate mime;
 extern crate rustc_serialize;
 extern crate time;
 

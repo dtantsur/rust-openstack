@@ -12,6 +12,7 @@ license = "Apache-2.0"
 
 hyper = "^0.10"
 log = "^0.3"
+mime = "^0.2"
 rustc-serialize = "^0.3"
 time = "^0.1"
 
