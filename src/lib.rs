@@ -20,6 +20,7 @@
 #![crate_name = "openstack"]
 #![crate_type = "lib"]
 
+#[macro_use]
 extern crate hyper;
 #[macro_use]
 extern crate log;
