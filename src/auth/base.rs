@@ -54,7 +54,7 @@ pub enum AuthError {
 }
 
 /// Trait for any authentication method.
-pub trait AuthMethod {
+pub trait AuthMethod: Clone + Send {
     /// Verify authentication and generate an auth token.
     ///
     /// May cache a token while it is still valid.
@@ -65,6 +65,7 @@ pub trait AuthMethod {
 }
 
 /// Authentication method that provides no authentication (uses a fake token).
+#[derive(Clone)]
 pub struct NoAuth {
     endpoint: Url
 }
