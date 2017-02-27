@@ -69,6 +69,11 @@ struct ScopedAuth {
     scope: ProjectScope
 }
 
+#[derive(Clone, RustcDecodable, RustcEncodable)]
+struct AuthRoot {
+    auth: ScopedAuth
+}
+
 const PASSWORD_METHOD: &'static str = "password";
 const MISSING_USER: &'static str = "User information required";
 const MISSING_SCOPE: &'static str = "Unscoped tokens are not supported now";
@@ -90,7 +95,7 @@ pub struct Identity {
 #[derive(Clone)]
 pub struct IdentityAuthMethod {
     auth_url: Url,
-    body: ScopedAuth
+    body: AuthRoot
 }
 
 impl Identity{
@@ -156,12 +161,14 @@ impl Identity{
 
         Ok(IdentityAuthMethod {
             auth_url: self.auth_url,
-            body: ScopedAuth {
-                identity: PasswordIdentity {
-                    methods: vec![String::from(PASSWORD_METHOD)],
-                    password: password_auth
-                },
-                scope: project_scope
+            body: AuthRoot {
+                auth: ScopedAuth {
+                    identity: PasswordIdentity {
+                        methods: vec![String::from(PASSWORD_METHOD)],
+                        password: password_auth
+                    },
+                    scope: project_scope
+                }
             }
         })
     }
@@ -201,7 +208,7 @@ impl AuthMethod for IdentityAuthMethod {
         // TODO: allow /v3 postfix built into auth_url?
         let url = format!("{}/v3/auth/tokens", self.auth_url.to_string());
         debug!("Requesting a token for user {} from {}",
-               self.body.identity.password.user.name, url);
+               self.body.auth.identity.password.user.name, url);
         let body = json::encode(&self.body).unwrap();
         let json_type = ContentType(mime!(Application/Json));
 
@@ -222,18 +229,18 @@ impl AuthMethod for IdentityAuthMethod {
             },
             StatusCode::Unauthorized => {
                 warn!("Invalid credentials for user {}",
-                      self.body.identity.password.user.name);
+                      self.body.auth.identity.password.user.name);
                 return Err(AuthError::Unauthorized);
             },
             other => {
                 error!("Unexpected HTTP error {} when getting a token for {}",
-                       other, self.body.identity.password.user.name);
+                       other, self.body.auth.identity.password.user.name);
                 return Err(AuthError::HttpError(other, Some(resp_body)));
             }
         };
 
         debug!("Received a token for user {} from {}",
-               self.body.identity.password.user.name, url);
+               self.body.auth.identity.password.user.name, url);
 
         // TODO: detect expiration time
         // TODO: do something useful about the body
