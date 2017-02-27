@@ -19,6 +19,7 @@ use std::io::Read;
 use hyper::{Client, Url};
 use hyper::Error as HttpClientError;
 use hyper::client::IntoUrl;
+use hyper::error::ParseError;
 use hyper::header::ContentType;
 use hyper::status::StatusCode;
 use rustc_serialize::json;
@@ -74,8 +75,8 @@ const MISSING_SCOPE: &'static str = "Unscoped tokens are not supported now";
 
 /// Authentication method factory using Identity API V3.
 #[derive(Clone)]
-pub struct Identity<U: IntoUrl> {
-    auth_url: U,
+pub struct Identity {
+    auth_url: Url,
     password_auth: Option<PasswordAuth>,
     project_scope: Option<ProjectScope>
 }
@@ -89,19 +90,20 @@ pub struct IdentityAuthMethod {
     body: ScopedAuth
 }
 
-impl<U> Identity<U> where U: IntoUrl {
+impl Identity{
     /// Create a password authentication against the given Identity service.
-    pub fn new(auth_url: U) -> Identity<U> {
-        Identity {
-            auth_url: auth_url,
+    pub fn new<U>(auth_url: U) -> Result<Identity, ParseError> where U: IntoUrl  {
+        let real_url = try!(auth_url.into_url());
+        Ok(Identity {
+            auth_url: real_url,
             password_auth: None,
             project_scope: None
-        }
+        })
     }
 
     /// Add authentication based on user name and password.
     pub fn with_user<S1, S2, S3>(self, user_name: S1, password: S2,
-                                 domain_name: S3) -> Identity<U>
+                                 domain_name: S3) -> Identity
             where S1: Into<String>, S2: Into<String>, S3: Into<String> {
         Identity {
             password_auth: Some(PasswordAuth {
@@ -119,8 +121,7 @@ impl<U> Identity<U> where U: IntoUrl {
 
     /// Request a token scoped to the given project.
     pub fn with_project_scope<S1, S2>(self, project_name: S1, domain_name: S2)
-            -> Identity<U>
-            where S1: Into<String>, S2: Into<String> {
+            -> Identity where S1: Into<String>, S2: Into<String> {
         Identity {
             project_scope: Some(ProjectScope {
                 project: Project {
@@ -136,12 +137,6 @@ impl<U> Identity<U> where U: IntoUrl {
 
     /// Create an authentication method based on provided information.
     pub fn create(self) -> Result<IdentityAuthMethod, AuthError> {
-        let auth_url = match self.auth_url.into_url() {
-            Ok(u) => u,
-            Err(e) =>
-                return Err(AuthError::ProtocolError(HttpClientError::Uri(e)))
-        };
-
         /// TODO: support more authentication methods (at least a token)
         let password_auth = match self.password_auth {
             Some(p) => p,
@@ -157,7 +152,7 @@ impl<U> Identity<U> where U: IntoUrl {
         };
 
         Ok(IdentityAuthMethod {
-            auth_url: auth_url,
+            auth_url: self.auth_url,
             body: ScopedAuth {
                 identity: PasswordIdentity {
                     methods: vec![String::from(PASSWORD_METHOD)],
@@ -222,5 +217,25 @@ impl AuthMethod for IdentityAuthMethod {
             -> Result<Url, AuthError> {
         // TODO: implement
         Err(AuthError::EndpointNotFound)
+    }
+}
+
+#[cfg(test)]
+pub mod test {
+    use super::Identity;
+
+    #[test]
+    fn test_identity_new() {
+        let id = Identity::new("http://127.0.0.1:8080/").unwrap();
+        let e = id.auth_url;
+        assert_eq!(e.scheme(), "http");
+        assert_eq!(e.host_str().unwrap(), "127.0.0.1");
+        assert_eq!(e.port().unwrap(), 8080u16);
+        assert_eq!(e.path(), "/");
+    }
+
+    #[test]
+    fn test_identity_new_invalid() {
+        Identity::new("http://127.0.0.1 8080/").err().unwrap();
     }
 }
