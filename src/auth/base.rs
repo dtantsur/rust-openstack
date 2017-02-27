@@ -14,9 +14,14 @@
 
 //! Base code for authentication.
 
-use hyper::{Client, Error, Url};
+use std::error::Error;
+use std::fmt;
+
+use hyper::{Client, Url};
+use hyper::Error as HttpClientError;
 use hyper::client::IntoUrl;
 use hyper::error::ParseError;
+use hyper::status::StatusCode;
 use time::PreciseTime;
 
 
@@ -31,15 +36,30 @@ pub struct AuthToken {
 
 header! { (AuthTokenHeader, "X-Auth-Token") => [String] }
 
+/// Error from an authentication call.
+#[derive(Debug)]
+pub enum AuthError {
+    /// Insufficient credentials passed to make authentication request.
+    InsufficientCredentials(&'static str),
+    /// Requested service endpoint was not found.
+    EndpointNotFound,
+    /// Authentication rejected (invalid credentials or token).
+    Unauthorized,
+    /// Generic HTTP error (not covered by EndpointNotFound and Unauthorized).
+    HttpError(StatusCode),
+    /// Protocol-level error reported by underlying HTTP library.
+    ProtocolError(HttpClientError)
+}
+
 /// Trait for any authentication method.
 pub trait AuthMethod {
     /// Verify authentication and generate an auth token.
     ///
     /// May cache a token while it is still valid.
-    fn get_token(&mut self, client: &Client) -> Result<AuthToken, Error>;
+    fn get_token(&mut self, client: &Client) -> Result<AuthToken, AuthError>;
     /// Get a URL for the request service.
-    fn get_endpoint(&mut self, service_type: &str,
-                    client: &Client) -> Result<Url, Error>;
+    fn get_endpoint(&mut self, service_type: &str, client: &Client)
+        -> Result<Url, AuthError>;
 }
 
 /// Authentication method that provides no authentication (uses a fake token).
@@ -59,7 +79,7 @@ impl NoAuth {
 
 impl AuthMethod for NoAuth {
     /// Return a fake token for compliance with the protocol.
-    fn get_token(&mut self, _client: &Client) -> Result<AuthToken, Error> {
+    fn get_token(&mut self, _client: &Client) -> Result<AuthToken, AuthError> {
         Ok(AuthToken {
             token: String::from("no-auth"),
             expires_at: None
@@ -67,9 +87,45 @@ impl AuthMethod for NoAuth {
     }
 
     /// Get a predefined endpoint for all service types
-    fn get_endpoint(&mut self, _service_type: &str,
-                    _client: &Client) -> Result<Url, Error> {
+    fn get_endpoint(&mut self, _service_type: &str, _client: &Client)
+            -> Result<Url, AuthError> {
         Ok(self.endpoint.clone())
+    }
+}
+
+impl fmt::Display for AuthError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            AuthError::InsufficientCredentials(msg) =>
+                write!(f, "Insufficient credentials provided: {}", msg),
+            AuthError::EndpointNotFound =>
+                write!(f, "Requested endpoint was not found"),
+            AuthError::Unauthorized =>
+                write!(f, "Authentication failed"),
+            AuthError::HttpError(status) =>
+                write!(f, "HTTP error: {}", status),
+            AuthError::ProtocolError(ref e) => fmt::Display::fmt(e, f)
+        }
+    }
+}
+
+impl Error for AuthError {
+    fn description(&self) -> &str {
+        match *self {
+            AuthError::InsufficientCredentials(..) =>
+                "Insufficient credentials provided",
+            AuthError::EndpointNotFound => "Requested endpoint was not found",
+            AuthError::Unauthorized => "Authentication failed",
+            AuthError::HttpError(..) => "HTTP error",
+            AuthError::ProtocolError(ref e) => e.description()
+        }
+    }
+
+    fn cause(&self) -> Option<&Error> {
+        match *self {
+            AuthError::ProtocolError(ref e) => Some(e),
+            _ => None
+        }
     }
 }
 
