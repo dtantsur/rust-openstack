@@ -12,23 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! OpenStack Client in Rust.
-//!
-//! The goal of this project is to provide a simple API for working with
-//! OpenStack clouds.
+//! Various utilities.
 
-#![crate_name = "openstack"]
-#![crate_type = "lib"]
+use hyper::Client;
+use hyper::net::HttpsConnector;
+use hyper_openssl::OpensslClient;
 
-#[macro_use]
-extern crate hyper;
-extern crate hyper_openssl;
-#[macro_use]
-extern crate log;
-#[macro_use]
-extern crate mime;
-extern crate rustc_serialize;
-extern crate time;
 
-pub mod auth;
-pub mod utils;
+/// Create an HTTP(s) client.
+pub fn http_client() -> Client {
+    let ssl = OpensslClient::new().unwrap();
+    let connector = HttpsConnector::new(ssl);
+    Client::with_connector(connector)
+}

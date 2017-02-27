@@ -12,23 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! OpenStack Client in Rust.
-//!
-//! The goal of this project is to provide a simple API for working with
-//! OpenStack clouds.
-
-#![crate_name = "openstack"]
-#![crate_type = "lib"]
-
-#[macro_use]
 extern crate hyper;
-extern crate hyper_openssl;
-#[macro_use]
-extern crate log;
-#[macro_use]
-extern crate mime;
-extern crate rustc_serialize;
-extern crate time;
+extern crate openstack;
 
-pub mod auth;
-pub mod utils;
+use openstack::auth::{AuthMethod, self};
+use openstack::utils;
+
+
+fn main() {
+    let mut identity = auth::Identity::from_env()
+        .expect("Failed to create an identity provider from the environment");
+    let http_client = utils::http_client();
+    let token_info = identity.get_token(&http_client)
+        .expect("Failed to get a token");
+    println!("Received token: {}", token_info.token);
+}

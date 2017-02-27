@@ -14,6 +14,7 @@
 
 //! OpenStack Identity V3 API support for access tokens.
 
+use std::env;
 use std::io::Read;
 
 use hyper::{Client, Url};
@@ -71,6 +72,8 @@ struct ScopedAuth {
 const PASSWORD_METHOD: &'static str = "password";
 const MISSING_USER: &'static str = "User information required";
 const MISSING_SCOPE: &'static str = "Unscoped tokens are not supported now";
+const MISSING_ENV_VARS: &'static str =
+    "Not all required environment variables were provided";
 
 
 /// Authentication method factory using Identity API V3.
@@ -162,6 +165,34 @@ impl Identity{
             }
         })
     }
+
+    /// Create an authentication method from environment variables.
+    pub fn from_env() -> Result<IdentityAuthMethod, AuthError> {
+        let auth_url = try!(_get_env("OS_AUTH_URL"));
+        let id = match Identity::new(&auth_url) {
+            Ok(x) => x,
+            Err(e) =>
+                return Err(AuthError::ProtocolError(HttpClientError::Uri(e)))
+        };
+
+        let user_name = try!(_get_env("OS_USERNAME"));
+        let password = try!(_get_env("OS_PASSWORD"));
+        let project_name = try!(_get_env("OS_PROJECT_NAME"));
+
+        let user_domain = env::var("OS_USER_DOMAIN_NAME")
+            .unwrap_or(String::from("Default"));
+        let project_domain = env::var("OS_PROJECT_DOMAIN_NAME")
+            .unwrap_or(String::from("Default"));
+
+        id.with_user(user_name, password, user_domain)
+            .with_project_scope(project_name, project_domain)
+            .create()
+    }
+}
+
+fn _get_env(name: &str) -> Result<String, AuthError> {
+    env::var(name).or(
+        Err(AuthError::InsufficientCredentials(MISSING_ENV_VARS)))
 }
 
 impl AuthMethod for IdentityAuthMethod {
