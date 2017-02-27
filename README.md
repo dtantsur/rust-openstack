@@ -3,6 +3,9 @@ OpenStack client for Rust
 
 [![Build
 Status](https://travis-ci.org/dtantsur/rust-openstack.svg?branch=master)](https://travis-ci.org/dtantsur/rust-openstack)
+[![License](https://img.shields.io/crates/l/openstack.svg)](https://github.com/dtantsur/rust-openstack/blob/master/LICENSE)
+[![Latest
+Version](https://img.shields.io/crates/v/openstack.svg)](https://crates.io/crates/openstack)
 
 The goal of this project is to provide a simple API for working with OpenStack
 clouds. This is an early work-in-progress, don't expect too much of it.
