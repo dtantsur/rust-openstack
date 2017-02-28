@@ -56,11 +56,9 @@ pub enum AuthError {
 /// Trait for any authentication method.
 pub trait AuthMethod: Clone + Send {
     /// Verify authentication and generate an auth token.
-    ///
-    /// May cache a token while it is still valid.
-    fn get_token(&mut self, client: &Client) -> Result<AuthToken, AuthError>;
+    fn get_token(&self, client: &Client) -> Result<AuthToken, AuthError>;
     /// Get a URL for the request service.
-    fn get_endpoint(&mut self, service_type: &str, client: &Client)
+    fn get_endpoint(&self, service_type: &str, client: &Client)
         -> Result<Url, AuthError>;
 }
 
@@ -82,7 +80,7 @@ impl NoAuth {
 
 impl AuthMethod for NoAuth {
     /// Return a fake token for compliance with the protocol.
-    fn get_token(&mut self, _client: &Client) -> Result<AuthToken, AuthError> {
+    fn get_token(&self, _client: &Client) -> Result<AuthToken, AuthError> {
         Ok(AuthToken {
             token: String::from("no-auth"),
             expires_at: None
@@ -90,7 +88,7 @@ impl AuthMethod for NoAuth {
     }
 
     /// Get a predefined endpoint for all service types
-    fn get_endpoint(&mut self, _service_type: &str, _client: &Client)
+    fn get_endpoint(&self, _service_type: &str, _client: &Client)
             -> Result<Url, AuthError> {
         Ok(self.endpoint.clone())
     }
@@ -172,7 +170,7 @@ pub mod test {
 
     #[test]
     fn test_noauth_get_token() {
-        let mut a = NoAuth::new("http://127.0.0.1:8080/v1").unwrap();
+        let a = NoAuth::new("http://127.0.0.1:8080/v1").unwrap();
         let tok = a.get_token(&hyper::Client::new()).unwrap();
         assert_eq!(&tok.token, "no-auth");
         assert!(tok.expires_at.is_none());
@@ -180,7 +178,7 @@ pub mod test {
 
     #[test]
     fn test_noauth_get_endpoint() {
-        let mut a = NoAuth::new("http://127.0.0.1:8080/v1").unwrap();
+        let a = NoAuth::new("http://127.0.0.1:8080/v1").unwrap();
         let e = a.get_endpoint("foobar", &hyper::Client::new()).unwrap();
         assert_eq!(e.scheme(), "http");
         assert_eq!(e.host_str().unwrap(), "127.0.0.1");

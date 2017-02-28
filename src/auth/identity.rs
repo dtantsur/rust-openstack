@@ -204,7 +204,7 @@ fn _get_env(name: &str) -> Result<String, AuthError> {
 
 impl AuthMethod for IdentityAuthMethod {
     /// Verify authentication and generate an auth token.
-    fn get_token(&mut self, client: &Client) -> Result<AuthToken, AuthError> {
+    fn get_token(&self, client: &Client) -> Result<AuthToken, AuthError> {
         // TODO: allow /v3 postfix built into auth_url?
         let url = format!("{}/v3/auth/tokens", self.auth_url.to_string());
         debug!("Requesting a token for user {} from {}",
@@ -251,7 +251,7 @@ impl AuthMethod for IdentityAuthMethod {
     }
 
     /// Get a URL for the request service (NOT IMPLEMENTED).
-    fn get_endpoint(&mut self, _service_type: &str, _client: &Client)
+    fn get_endpoint(&self, _service_type: &str, _client: &Client)
             -> Result<Url, AuthError> {
         // TODO: implement
         Err(AuthError::EndpointNotFound)

@@ -20,7 +20,7 @@ use openstack::utils;
 
 
 fn main() {
-    let mut identity = auth::Identity::from_env()
+    let identity = auth::Identity::from_env()
         .expect("Failed to create an identity provider from the environment");
     let http_client = utils::http_client();
     let token_info = identity.get_token(&http_client)
