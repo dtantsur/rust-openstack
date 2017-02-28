@@ -2,7 +2,7 @@
 
 name = "openstack"
 description = "OpenStack Client"
-version = "0.0.2"
+version = "0.0.3"
 authors = ["Dmitry Tantsur <divius.inside@gmail.com>"]
 homepage = "https://github.com/dtantsur/rust-openstack"
 readme = "README.md"
