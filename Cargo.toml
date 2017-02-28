@@ -8,14 +8,20 @@ homepage = "https://github.com/dtantsur/rust-openstack"
 readme = "README.md"
 license = "Apache-2.0"
 
+[features]
+
+default = ["tls"]
+tls = ["hyper-rustls"]
+
 [dependencies]
 
 hyper = "^0.10"
-hyper-rustls = "^0.3"
 log = "^0.3"
 mime = "^0.2"
 rustc-serialize = "^0.3"
 time = "^0.1"
+
+hyper-rustls = { version = "^0.3", optional = true }
 
 [lib]
 

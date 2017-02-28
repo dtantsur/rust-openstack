@@ -22,6 +22,7 @@
 
 #[macro_use]
 extern crate hyper;
+#[cfg(feature = "tls")]
 extern crate hyper_rustls;
 #[macro_use]
 extern crate log;

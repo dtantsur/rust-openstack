@@ -15,12 +15,19 @@
 //! Various utilities.
 
 use hyper::Client;
+#[cfg(feature = "tls")]
 use hyper::net::HttpsConnector;
+#[cfg(feature = "tls")]
 use hyper_rustls::TlsClient;
 
 
 /// Create an HTTP(s) client.
+#[cfg(feature = "tls")]
 pub fn http_client() -> Client {
     let connector = HttpsConnector::new(TlsClient::new());
     Client::with_connector(connector)
+}
+#[cfg(not(feature = "tls"))]
+pub fn http_client() -> Client {
+    Client::new()
 }
