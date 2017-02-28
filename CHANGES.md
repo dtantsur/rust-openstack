@@ -5,6 +5,7 @@ ChangeLog
 -----
 
 * Added session::AuthenticatedClient.
+* Identity authentication: getting endpoint for service.
 
 0.0.1
 -----

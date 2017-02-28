@@ -39,8 +39,11 @@ header! { (SubjectTokenHeader, "X-Subject-Token") => [String] }
 pub trait AuthMethod: Clone + Send {
     /// Verify authentication and generate an auth token.
     fn get_token(&self, client: &Client) -> Result<AuthToken, ApiError>;
-    /// Get a URL for the request service.
-    fn get_endpoint(&self, service_type: &str, client: &AuthenticatedClient)
+    /// Get a URL for the requested service.
+    fn get_endpoint(&self, service_type: &str,
+                    endpoint_interface: Option<&str>,
+                    region: Option<&str>,
+                    client: &AuthenticatedClient)
         -> Result<Url, ApiError>;
 }
 
@@ -70,7 +73,10 @@ impl AuthMethod for NoAuth {
     }
 
     /// Get a predefined endpoint for all service types
-    fn get_endpoint(&self, _service_type: &str, _client: &AuthenticatedClient)
+    fn get_endpoint(&self, _service_type: &str,
+                    _endpoint_interface: Option<&str>,
+                    _region: Option<&str>,
+                    _client: &AuthenticatedClient)
             -> Result<Url, ApiError> {
         Ok(self.endpoint.clone())
     }
@@ -110,7 +116,8 @@ pub mod test {
     #[test]
     fn test_noauth_get_endpoint() {
         let a = NoAuth::new("http://127.0.0.1:8080/v1").unwrap();
-        let e = a.get_endpoint("foobar", &new_client("token")).unwrap();
+        let e = a.get_endpoint("foobar", None, None,
+                               &new_client("token")).unwrap();
         assert_eq!(e.scheme(), "http");
         assert_eq!(e.host_str().unwrap(), "127.0.0.1");
         assert_eq!(e.port().unwrap(), 8080u16);

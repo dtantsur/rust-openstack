@@ -25,6 +25,7 @@ use hyper::header::ContentType;
 use hyper::status::StatusCode;
 
 use super::super::ApiError;
+use super::super::identity::catalog;
 use super::super::identity::protocol;
 use super::super::session::AuthenticatedClient;
 use super::base::{AuthMethod, AuthToken, SubjectTokenHeader};
@@ -198,11 +199,16 @@ impl AuthMethod for IdentityAuthMethod {
         })
     }
 
-    /// Get a URL for the request service (NOT IMPLEMENTED).
-    fn get_endpoint(&self, _service_type: &str, _client: &AuthenticatedClient)
+    /// Get a URL for the requested service.
+    fn get_endpoint(&self, service_type: &str,
+                    endpoint_interface: Option<&str>,
+                    region: Option<&str>, client: &AuthenticatedClient)
             -> Result<Url, ApiError> {
-        // TODO: implement
-        Err(ApiError::EndpointNotFound)
+        let real_interface = endpoint_interface.unwrap_or("public");
+        let cat = try!(catalog::get_service_catalog(&self.auth_url, client));
+        let endp = try!(catalog::find_endpoint(&cat, service_type,
+                                               real_interface, region));
+        endp.url.into_url().map_err(From::from)
     }
 }
 
