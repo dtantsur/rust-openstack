@@ -20,13 +20,40 @@ use super::super::ApiError;
 use super::super::session::AuthenticatedClient;
 use super::protocol;
 
+/// Type alias for the catalog.
+pub type Catalog = Vec<protocol::CatalogRecord>;
+
 /// Fetch the service catalog from a given auth URL.
 pub fn get_service_catalog(auth_url: &Url, client: &AuthenticatedClient)
-        -> Result<Vec<protocol::CatalogRecord>, ApiError> {
+        -> Result<Catalog, ApiError> {
     let url = format!("{}/v3/auth/catalog", auth_url.to_string());
     debug!("Requesting a service catalog from {}", url);
 
     let resp = try!(client.request(Get, &url).send());
     let body = try!(protocol::CatalogRoot::from_reader(resp));
     Ok(body.catalog)
+}
+
+/// Find an endpoint in the service catalog.
+pub fn find_endpoint<'a>(catalog: &'a Catalog, service_type: &str,
+                         endpoint_interface: &str, region: Option<&str>)
+        -> Result<&'a protocol::Endpoint, ApiError> {
+    let svc = match catalog.iter().find(|x| &x.service_type == service_type) {
+        Some(s) => s,
+        None => return Err(ApiError::EndpointNotFound)
+    };
+
+    let maybe_endp: Option<&protocol::Endpoint>;
+    if let Some(rgn) = region {
+        maybe_endp = svc.endpoints.iter().find(
+            |x| &x.interface == endpoint_interface && &x.region == rgn);
+    } else {
+        maybe_endp = svc.endpoints.iter().find(
+            |x| &x.interface == endpoint_interface);
+    }
+
+    match maybe_endp {
+        Some(e) => Ok(e),
+        None => Err(ApiError::EndpointNotFound)
+    }
 }

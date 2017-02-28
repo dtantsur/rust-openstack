@@ -33,4 +33,7 @@ fn main() {
     let cat = catalog::get_service_catalog(identity.get_auth_url(),
                                            &auth_client).unwrap();
     println!("Got catalog with {} services", cat.len());
+
+    let id_svc = catalog::find_endpoint(&cat, "identity", "public", None).unwrap();
+    println!("Identity public URL is {}", id_svc.url);
 }
