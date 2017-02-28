@@ -32,4 +32,5 @@ extern crate rustc_serialize;
 extern crate time;
 
 pub mod auth;
+pub mod session;
 pub mod utils;

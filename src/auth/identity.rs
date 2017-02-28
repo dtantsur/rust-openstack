@@ -25,6 +25,7 @@ use hyper::header::ContentType;
 use hyper::status::StatusCode;
 use rustc_serialize::json;
 
+use super::super::session::AuthenticatedClient;
 use super::base::{AuthError, AuthMethod, AuthToken, SubjectTokenHeader};
 
 
@@ -251,7 +252,7 @@ impl AuthMethod for IdentityAuthMethod {
     }
 
     /// Get a URL for the request service (NOT IMPLEMENTED).
-    fn get_endpoint(&self, _service_type: &str, _client: &Client)
+    fn get_endpoint(&self, _service_type: &str, _client: &AuthenticatedClient)
             -> Result<Url, AuthError> {
         // TODO: implement
         Err(AuthError::EndpointNotFound)
