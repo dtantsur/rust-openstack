@@ -35,6 +35,9 @@ extern crate serde_json;
 extern crate time;
 
 pub mod auth;
+mod common;
 pub mod identity;
 pub mod session;
 pub mod utils;
+
+pub use common::ApiError;

@@ -14,18 +14,12 @@
 
 //! Base code for authentication.
 
-use std::error::Error;
-use std::fmt;
-use std::io;
-
 use hyper::{Client, Url};
-use hyper::Error as HttpClientError;
 use hyper::client::IntoUrl;
 use hyper::error::ParseError;
-use hyper::status::StatusCode;
-use serde_json::Error as JsonError;
 use time::PreciseTime;
 
+use super::super::ApiError;
 use super::super::session::AuthenticatedClient;
 
 
@@ -41,30 +35,13 @@ pub struct AuthToken {
 header! { (AuthTokenHeader, "X-Auth-Token") => [String] }
 header! { (SubjectTokenHeader, "X-Subject-Token") => [String] }
 
-/// Error from an authentication call.
-#[derive(Debug)]
-pub enum AuthError {
-    /// Insufficient credentials passed to make authentication request.
-    InsufficientCredentials(&'static str),
-    /// Requested service endpoint was not found.
-    EndpointNotFound,
-    /// Authentication rejected (invalid credentials or token).
-    Unauthorized,
-    /// Generic HTTP error (not covered by EndpointNotFound and Unauthorized).
-    HttpError(StatusCode, Option<String>),
-    /// Protocol-level error reported by underlying HTTP library.
-    ProtocolError(HttpClientError),
-    /// JSON parsing failed.
-    InvalidJson(JsonError)
-}
-
 /// Trait for any authentication method.
 pub trait AuthMethod: Clone + Send {
     /// Verify authentication and generate an auth token.
-    fn get_token(&self, client: &Client) -> Result<AuthToken, AuthError>;
+    fn get_token(&self, client: &Client) -> Result<AuthToken, ApiError>;
     /// Get a URL for the request service.
     fn get_endpoint(&self, service_type: &str, client: &AuthenticatedClient)
-        -> Result<Url, AuthError>;
+        -> Result<Url, ApiError>;
 }
 
 /// Authentication method that provides no authentication (uses a fake token).
@@ -85,7 +62,7 @@ impl NoAuth {
 
 impl AuthMethod for NoAuth {
     /// Return a fake token for compliance with the protocol.
-    fn get_token(&self, _client: &Client) -> Result<AuthToken, AuthError> {
+    fn get_token(&self, _client: &Client) -> Result<AuthToken, ApiError> {
         Ok(AuthToken {
             token: String::from("no-auth"),
             expires_at: None
@@ -94,70 +71,8 @@ impl AuthMethod for NoAuth {
 
     /// Get a predefined endpoint for all service types
     fn get_endpoint(&self, _service_type: &str, _client: &AuthenticatedClient)
-            -> Result<Url, AuthError> {
+            -> Result<Url, ApiError> {
         Ok(self.endpoint.clone())
-    }
-}
-
-impl fmt::Display for AuthError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            AuthError::InsufficientCredentials(msg) =>
-                write!(f, "Insufficient credentials provided: {}", msg),
-            AuthError::EndpointNotFound =>
-                write!(f, "Requested endpoint was not found"),
-            AuthError::Unauthorized =>
-                write!(f, "Authentication failed"),
-            AuthError::HttpError(status, ref maybe_msg) =>
-                match *maybe_msg {
-                    Some(ref msg) =>
-                        write!(f, "HTTP error {}: {}", status, msg),
-                    None =>
-                        write!(f, "HTTP error {}", status),
-                },
-            AuthError::ProtocolError(ref e) => fmt::Display::fmt(e, f),
-            AuthError::InvalidJson(ref e) => fmt::Display::fmt(e, f)
-        }
-    }
-}
-
-impl Error for AuthError {
-    fn description(&self) -> &str {
-        match *self {
-            AuthError::InsufficientCredentials(..) =>
-                "Insufficient credentials provided",
-            AuthError::EndpointNotFound => "Requested endpoint was not found",
-            AuthError::Unauthorized => "Authentication failed",
-            AuthError::HttpError(..) => "HTTP error",
-            AuthError::ProtocolError(ref e) => e.description(),
-            AuthError::InvalidJson(ref e) => e.description()
-        }
-    }
-
-    fn cause(&self) -> Option<&Error> {
-        match *self {
-            AuthError::ProtocolError(ref e) => Some(e),
-            AuthError::InvalidJson(ref e) => Some(e),
-            _ => None
-        }
-    }
-}
-
-impl From<HttpClientError> for AuthError {
-    fn from(value: HttpClientError) -> AuthError {
-        AuthError::ProtocolError(value)
-    }
-}
-
-impl From<io::Error> for AuthError {
-    fn from(value: io::Error) -> AuthError {
-        AuthError::ProtocolError(HttpClientError::Io(value))
-    }
-}
-
-impl From<JsonError> for AuthError {
-    fn from(value: JsonError) -> AuthError {
-        AuthError::InvalidJson(value)
     }
 }
 

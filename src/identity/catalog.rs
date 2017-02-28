@@ -16,13 +16,13 @@
 
 use hyper::{Get, Url};
 
-use super::super::auth::AuthError;
+use super::super::ApiError;
 use super::super::session::AuthenticatedClient;
 use super::protocol;
 
 /// Fetch the service catalog from a given auth URL.
 pub fn get_service_catalog(auth_url: &Url, client: &AuthenticatedClient)
-        -> Result<Vec<protocol::CatalogRecord>, AuthError> {
+        -> Result<Vec<protocol::CatalogRecord>, ApiError> {
     let url = format!("{}/v3/auth/catalog", auth_url.to_string());
     debug!("Requesting a service catalog from {}", url);
 

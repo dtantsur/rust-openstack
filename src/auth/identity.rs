@@ -24,9 +24,10 @@ use hyper::error::ParseError;
 use hyper::header::ContentType;
 use hyper::status::StatusCode;
 
+use super::super::ApiError;
 use super::super::identity::protocol;
 use super::super::session::AuthenticatedClient;
-use super::base::{AuthError, AuthMethod, AuthToken, SubjectTokenHeader};
+use super::base::{AuthMethod, AuthToken, SubjectTokenHeader};
 
 
 const MISSING_USER: &'static str = "User information required";
@@ -91,19 +92,19 @@ impl Identity {
     }
 
     /// Create an authentication method based on provided information.
-    pub fn create(self) -> Result<IdentityAuthMethod, AuthError> {
+    pub fn create(self) -> Result<IdentityAuthMethod, ApiError> {
         /// TODO: support more authentication methods (at least a token)
         let password_identity = match self.password_identity {
             Some(p) => p,
             None =>
-                return Err(AuthError::InsufficientCredentials(MISSING_USER))
+                return Err(ApiError::InsufficientCredentials(MISSING_USER))
         };
 
         /// TODO: support unscoped tokens
         let project_scope = match self.project_scope {
             Some(p) => p,
             None =>
-                return Err(AuthError::InsufficientCredentials(MISSING_SCOPE))
+                return Err(ApiError::InsufficientCredentials(MISSING_SCOPE))
         };
 
         Ok(IdentityAuthMethod {
@@ -114,12 +115,12 @@ impl Identity {
     }
 
     /// Create an authentication method from environment variables.
-    pub fn from_env() -> Result<IdentityAuthMethod, AuthError> {
+    pub fn from_env() -> Result<IdentityAuthMethod, ApiError> {
         let auth_url = try!(_get_env("OS_AUTH_URL"));
         let id = match Identity::new(&auth_url) {
             Ok(x) => x,
             Err(e) =>
-                return Err(AuthError::ProtocolError(HttpClientError::Uri(e)))
+                return Err(ApiError::ProtocolError(HttpClientError::Uri(e)))
         };
 
         let user_name = try!(_get_env("OS_USERNAME"));
@@ -137,9 +138,9 @@ impl Identity {
     }
 }
 
-fn _get_env(name: &str) -> Result<String, AuthError> {
+fn _get_env(name: &str) -> Result<String, ApiError> {
     env::var(name).or(
-        Err(AuthError::InsufficientCredentials(MISSING_ENV_VARS)))
+        Err(ApiError::InsufficientCredentials(MISSING_ENV_VARS)))
 }
 
 impl IdentityAuthMethod {
@@ -151,7 +152,7 @@ impl IdentityAuthMethod {
 
 impl AuthMethod for IdentityAuthMethod {
     /// Verify authentication and generate an auth token.
-    fn get_token(&self, client: &Client) -> Result<AuthToken, AuthError> {
+    fn get_token(&self, client: &Client) -> Result<AuthToken, ApiError> {
         // TODO: allow /v3 postfix built into auth_url?
         let url = format!("{}/v3/auth/tokens", self.auth_url.to_string());
         debug!("Requesting a token for user {} from {}",
@@ -170,19 +171,19 @@ impl AuthMethod for IdentityAuthMethod {
                 let header: Option<&SubjectTokenHeader> = resp.headers.get();
                 match header {
                     Some(ref value) => value.0.clone(),
-                    None => return Err(AuthError::ProtocolError(
+                    None => return Err(ApiError::ProtocolError(
                             HttpClientError::Header))
                 }
             },
             StatusCode::Unauthorized => {
                 warn!("Invalid credentials for user {}",
                       self.body.auth.identity.password.user.name);
-                return Err(AuthError::Unauthorized);
+                return Err(ApiError::Unauthorized);
             },
             other => {
                 error!("Unexpected HTTP error {} when getting a token for {}",
                        other, self.body.auth.identity.password.user.name);
-                return Err(AuthError::HttpError(other, Some(resp_body)));
+                return Err(ApiError::HttpError(other, Some(resp_body)));
             }
         };
 
@@ -199,9 +200,9 @@ impl AuthMethod for IdentityAuthMethod {
 
     /// Get a URL for the request service (NOT IMPLEMENTED).
     fn get_endpoint(&self, _service_type: &str, _client: &AuthenticatedClient)
-            -> Result<Url, AuthError> {
+            -> Result<Url, ApiError> {
         // TODO: implement
-        Err(AuthError::EndpointNotFound)
+        Err(ApiError::EndpointNotFound)
     }
 }
 
