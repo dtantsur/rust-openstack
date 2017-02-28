@@ -12,26 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! OpenStack Client in Rust.
-//!
-//! The goal of this project is to provide a simple API for working with
-//! OpenStack clouds.
+//! Identity API support.
 
-#![crate_name = "openstack"]
-#![crate_type = "lib"]
-
-#[macro_use]
-extern crate hyper;
-#[cfg(feature = "tls")]
-extern crate hyper_rustls;
-#[macro_use]
-extern crate log;
-#[macro_use]
-extern crate mime;
-extern crate rustc_serialize;
-extern crate time;
-
-pub mod auth;
-pub mod identity;
-pub mod session;
-pub mod utils;
+pub mod protocol;

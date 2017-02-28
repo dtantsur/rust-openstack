@@ -25,57 +25,11 @@ use hyper::header::ContentType;
 use hyper::status::StatusCode;
 use rustc_serialize::json;
 
+use super::super::identity::protocol;
 use super::super::session::AuthenticatedClient;
 use super::base::{AuthError, AuthMethod, AuthToken, SubjectTokenHeader};
 
 
-#[derive(Clone, RustcDecodable, RustcEncodable)]
-struct Domain {
-    name: String
-}
-
-#[derive(Clone, RustcDecodable, RustcEncodable)]
-struct User {
-    name: String,
-    password: String,
-    domain: Domain
-}
-
-#[derive(Clone, RustcDecodable, RustcEncodable)]
-struct PasswordAuth {
-    user: User
-}
-
-
-#[derive(Clone, RustcDecodable, RustcEncodable)]
-struct PasswordIdentity {
-    methods: Vec<String>,
-    password: PasswordAuth
-}
-
-#[derive(Clone, RustcDecodable, RustcEncodable)]
-struct Project {
-    name: String,
-    domain: Domain
-}
-
-#[derive(Clone, RustcDecodable, RustcEncodable)]
-struct ProjectScope {
-    project: Project
-}
-
-#[derive(Clone, RustcDecodable, RustcEncodable)]
-struct ScopedAuth {
-    identity: PasswordIdentity,
-    scope: ProjectScope
-}
-
-#[derive(Clone, RustcDecodable, RustcEncodable)]
-struct AuthRoot {
-    auth: ScopedAuth
-}
-
-const PASSWORD_METHOD: &'static str = "password";
 const MISSING_USER: &'static str = "User information required";
 const MISSING_SCOPE: &'static str = "Unscoped tokens are not supported now";
 const MISSING_ENV_VARS: &'static str =
@@ -86,8 +40,8 @@ const MISSING_ENV_VARS: &'static str =
 #[derive(Clone)]
 pub struct Identity {
     auth_url: Url,
-    password_auth: Option<PasswordAuth>,
-    project_scope: Option<ProjectScope>
+    password_identity: Option<protocol::PasswordIdentity>,
+    project_scope: Option<protocol::ProjectScope>
 }
 
 /// Authentication method using Identity API V3.
@@ -96,7 +50,7 @@ pub struct Identity {
 #[derive(Clone)]
 pub struct IdentityAuthMethod {
     auth_url: Url,
-    body: AuthRoot
+    body: protocol::ProjectScopedAuthRoot
 }
 
 impl Identity{
@@ -105,7 +59,7 @@ impl Identity{
         let real_url = try!(auth_url.into_url());
         Ok(Identity {
             auth_url: real_url,
-            password_auth: None,
+            password_identity: None,
             project_scope: None
         })
     }
@@ -115,15 +69,9 @@ impl Identity{
                                  domain_name: S3) -> Identity
             where S1: Into<String>, S2: Into<String>, S3: Into<String> {
         Identity {
-            password_auth: Some(PasswordAuth {
-                user: User {
-                    name: user_name.into(),
-                    password: password.into(),
-                    domain: Domain {
-                        name: domain_name.into()
-                    }
-                }
-            }),
+            password_identity: Some(protocol::PasswordIdentity::new(user_name,
+                                                                    password,
+                                                                    domain_name)),
             .. self
         }
     }
@@ -132,14 +80,8 @@ impl Identity{
     pub fn with_project_scope<S1, S2>(self, project_name: S1, domain_name: S2)
             -> Identity where S1: Into<String>, S2: Into<String> {
         Identity {
-            project_scope: Some(ProjectScope {
-                project: Project {
-                    name: project_name.into(),
-                    domain: Domain {
-                        name: domain_name.into()
-                    }
-                }
-            }),
+            project_scope: Some(protocol::ProjectScope::new(project_name,
+                                                            domain_name)),
             .. self
         }
     }
@@ -147,7 +89,7 @@ impl Identity{
     /// Create an authentication method based on provided information.
     pub fn create(self) -> Result<IdentityAuthMethod, AuthError> {
         /// TODO: support more authentication methods (at least a token)
-        let password_auth = match self.password_auth {
+        let password_identity = match self.password_identity {
             Some(p) => p,
             None =>
                 return Err(AuthError::InsufficientCredentials(MISSING_USER))
@@ -162,15 +104,8 @@ impl Identity{
 
         Ok(IdentityAuthMethod {
             auth_url: self.auth_url,
-            body: AuthRoot {
-                auth: ScopedAuth {
-                    identity: PasswordIdentity {
-                        methods: vec![String::from(PASSWORD_METHOD)],
-                        password: password_auth
-                    },
-                    scope: project_scope
-                }
-            }
+            body: protocol::ProjectScopedAuthRoot::new(password_identity,
+                                                       project_scope)
         })
     }
 
