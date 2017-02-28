@@ -14,48 +14,50 @@
 
 //! JSON structures and protocol bits for the Identity V3 API.
 
+use serde_json;
 
-#[derive(Clone, RustcDecodable, RustcEncodable)]
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Domain {
     pub name: String
 }
 
-#[derive(Clone, RustcDecodable, RustcEncodable)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct UserAndPassword {
     pub name: String,
     pub password: String,
     pub domain: Domain
 }
 
-#[derive(Clone, RustcDecodable, RustcEncodable)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PasswordAuth {
     pub user: UserAndPassword
 }
 
-#[derive(Clone, RustcDecodable, RustcEncodable)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PasswordIdentity {
     pub methods: Vec<String>,
     pub password: PasswordAuth
 }
 
-#[derive(Clone, RustcDecodable, RustcEncodable)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Project {
     pub name: String,
     pub domain: Domain
 }
 
-#[derive(Clone, RustcDecodable, RustcEncodable)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ProjectScope {
     pub project: Project
 }
 
-#[derive(Clone, RustcDecodable, RustcEncodable)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ProjectScopedAuth {
     pub identity: PasswordIdentity,
     pub scope: ProjectScope
 }
 
-#[derive(Clone, RustcDecodable, RustcEncodable)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ProjectScopedAuthRoot {
     pub auth: ProjectScopedAuth
 }
@@ -113,5 +115,9 @@ impl ProjectScopedAuthRoot {
                 scope: scope
             }
         }
+    }
+
+    pub fn to_string(&self) -> Result<String, serde_json::Error> {
+        serde_json::to_string(&self)
     }
 }

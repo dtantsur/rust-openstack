@@ -28,7 +28,10 @@ extern crate hyper_rustls;
 extern crate log;
 #[macro_use]
 extern crate mime;
-extern crate rustc_serialize;
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde_json;
 extern crate time;
 
 pub mod auth;

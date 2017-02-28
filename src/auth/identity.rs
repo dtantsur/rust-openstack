@@ -23,7 +23,6 @@ use hyper::client::IntoUrl;
 use hyper::error::ParseError;
 use hyper::header::ContentType;
 use hyper::status::StatusCode;
-use rustc_serialize::json;
 
 use super::super::identity::protocol;
 use super::super::session::AuthenticatedClient;
@@ -145,7 +144,7 @@ impl AuthMethod for IdentityAuthMethod {
         let url = format!("{}/v3/auth/tokens", self.auth_url.to_string());
         debug!("Requesting a token for user {} from {}",
                self.body.auth.identity.password.user.name, url);
-        let body = json::encode(&self.body).unwrap();
+        let body = self.body.to_string().unwrap();
         let json_type = ContentType(mime!(Application/Json));
 
         let mut resp = try!(client.post(&url).body(&body)
