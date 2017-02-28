@@ -23,6 +23,7 @@ use hyper::Error as HttpClientError;
 use hyper::client::IntoUrl;
 use hyper::error::ParseError;
 use hyper::status::StatusCode;
+use serde_json::Error as JsonError;
 use time::PreciseTime;
 
 use super::super::session::AuthenticatedClient;
@@ -52,7 +53,9 @@ pub enum AuthError {
     /// Generic HTTP error (not covered by EndpointNotFound and Unauthorized).
     HttpError(StatusCode, Option<String>),
     /// Protocol-level error reported by underlying HTTP library.
-    ProtocolError(HttpClientError)
+    ProtocolError(HttpClientError),
+    /// JSON parsing failed.
+    InvalidJson(JsonError)
 }
 
 /// Trait for any authentication method.
@@ -112,7 +115,8 @@ impl fmt::Display for AuthError {
                     None =>
                         write!(f, "HTTP error {}", status),
                 },
-            AuthError::ProtocolError(ref e) => fmt::Display::fmt(e, f)
+            AuthError::ProtocolError(ref e) => fmt::Display::fmt(e, f),
+            AuthError::InvalidJson(ref e) => fmt::Display::fmt(e, f)
         }
     }
 }
@@ -125,13 +129,15 @@ impl Error for AuthError {
             AuthError::EndpointNotFound => "Requested endpoint was not found",
             AuthError::Unauthorized => "Authentication failed",
             AuthError::HttpError(..) => "HTTP error",
-            AuthError::ProtocolError(ref e) => e.description()
+            AuthError::ProtocolError(ref e) => e.description(),
+            AuthError::InvalidJson(ref e) => e.description()
         }
     }
 
     fn cause(&self) -> Option<&Error> {
         match *self {
             AuthError::ProtocolError(ref e) => Some(e),
+            AuthError::InvalidJson(ref e) => Some(e),
             _ => None
         }
     }
@@ -146,6 +152,12 @@ impl From<HttpClientError> for AuthError {
 impl From<io::Error> for AuthError {
     fn from(value: io::Error) -> AuthError {
         AuthError::ProtocolError(HttpClientError::Io(value))
+    }
+}
+
+impl From<JsonError> for AuthError {
+    fn from(value: JsonError) -> AuthError {
+        AuthError::InvalidJson(value)
     }
 }
 

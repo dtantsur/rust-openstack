@@ -16,6 +16,8 @@ extern crate hyper;
 extern crate openstack;
 
 use openstack::auth::{AuthMethod, self};
+use openstack::identity::catalog;
+use openstack::session::AuthenticatedClient;
 use openstack::utils;
 
 
@@ -26,4 +28,9 @@ fn main() {
     let token_info = identity.get_token(&http_client)
         .expect("Failed to get a token");
     println!("Received token: {}", token_info.token);
+
+    let auth_client = AuthenticatedClient::new(http_client, token_info);
+    let cat = catalog::get_service_catalog(identity.get_auth_url(),
+                                           &auth_client).unwrap();
+    println!("Got catalog with {} services", cat.len());
 }

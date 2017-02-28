@@ -52,7 +52,12 @@ pub struct IdentityAuthMethod {
     body: protocol::ProjectScopedAuthRoot
 }
 
-impl Identity{
+impl Identity {
+    /// Get a reference to the auth URL.
+    pub fn get_auth_url(&self) -> &Url {
+        &self.auth_url
+    }
+
     /// Create a password authentication against the given Identity service.
     pub fn new<U>(auth_url: U) -> Result<Identity, ParseError> where U: IntoUrl  {
         let real_url = try!(auth_url.into_url());
@@ -135,6 +140,13 @@ impl Identity{
 fn _get_env(name: &str) -> Result<String, AuthError> {
     env::var(name).or(
         Err(AuthError::InsufficientCredentials(MISSING_ENV_VARS)))
+}
+
+impl IdentityAuthMethod {
+    /// Get a reference to the auth URL.
+    pub fn get_auth_url(&self) -> &Url {
+        &self.auth_url
+    }
 }
 
 impl AuthMethod for IdentityAuthMethod {

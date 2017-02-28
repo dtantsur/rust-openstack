@@ -14,6 +14,8 @@
 
 //! JSON structures and protocol bits for the Identity V3 API.
 
+use std::io::Read;
+
 use serde_json;
 
 
@@ -60,6 +62,28 @@ pub struct ProjectScopedAuth {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ProjectScopedAuthRoot {
     pub auth: ProjectScopedAuth
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Endpoint {
+    pub id: String,
+    pub interface: String,
+    pub region: String,
+    pub url: String
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct CatalogRecord {
+    pub id: String,
+    #[serde(rename = "type")]
+    pub service_type: String,
+    pub name: String,
+    pub endpoints: Vec<Endpoint>
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct CatalogRoot {
+    pub catalog: Vec<CatalogRecord>
 }
 
 const PASSWORD_METHOD: &'static str = "password";
@@ -119,5 +143,12 @@ impl ProjectScopedAuthRoot {
 
     pub fn to_string(&self) -> Result<String, serde_json::Error> {
         serde_json::to_string(&self)
+    }
+}
+
+impl CatalogRoot {
+    pub fn from_reader<R: Read>(reader: R)
+            -> Result<CatalogRoot, serde_json::Error> {
+        serde_json::from_reader(reader)
     }
 }
