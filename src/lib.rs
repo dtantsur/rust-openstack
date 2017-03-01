@@ -34,6 +34,9 @@ extern crate serde_derive;
 extern crate serde_json;
 extern crate time;
 
+#[cfg(test)] #[macro_use]
+extern crate yup_hyper_mock;
+
 pub mod auth;
 mod common;
 pub mod identity;

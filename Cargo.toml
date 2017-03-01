@@ -25,6 +25,9 @@ time = "^0.1"
 
 hyper-rustls = { version = "^0.3", optional = true }
 
+[dev-dependencies]
+yup-hyper-mock = "^2.0"
+
 [lib]
 
 name = "openstack"

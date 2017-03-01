@@ -19,7 +19,7 @@ use std::io::Read;
 
 use hyper::{Client, Url};
 use hyper::Error as HttpClientError;
-use hyper::client::IntoUrl;
+use hyper::client::{IntoUrl, Response};
 use hyper::error::ParseError;
 use hyper::header::ContentType;
 use hyper::status::StatusCode;
@@ -51,7 +51,8 @@ pub struct Identity {
 #[derive(Clone)]
 pub struct IdentityAuthMethod {
     auth_url: Url,
-    body: protocol::ProjectScopedAuthRoot
+    body: protocol::ProjectScopedAuthRoot,
+    token_endpoint: String
 }
 
 impl Identity {
@@ -108,11 +109,8 @@ impl Identity {
                 return Err(ApiError::InsufficientCredentials(MISSING_SCOPE))
         };
 
-        Ok(IdentityAuthMethod {
-            auth_url: self.auth_url,
-            body: protocol::ProjectScopedAuthRoot::new(password_identity,
-                                                       project_scope)
-        })
+        Ok(IdentityAuthMethod::new(self.auth_url, password_identity,
+                                   project_scope))
     }
 
     /// Create an authentication method from environment variables.
@@ -149,21 +147,23 @@ impl IdentityAuthMethod {
     pub fn get_auth_url(&self) -> &Url {
         &self.auth_url
     }
-}
 
-impl AuthMethod for IdentityAuthMethod {
-    /// Verify authentication and generate an auth token.
-    fn get_token(&self, client: &Client) -> Result<AuthToken, ApiError> {
+    fn new(auth_url: Url, password_identity: protocol::PasswordIdentity,
+           project_scope: protocol::ProjectScope) -> IdentityAuthMethod {
+        let body = protocol::ProjectScopedAuthRoot::new(password_identity,
+                                                        project_scope);
         // TODO: allow /v3 postfix built into auth_url?
-        let url = format!("{}/v3/auth/tokens", self.auth_url.to_string());
-        debug!("Requesting a token for user {} from {}",
-               self.body.auth.identity.password.user.name, url);
-        let body = self.body.to_string().unwrap();
-        let json_type = ContentType(mime!(Application/Json));
+        let token_endpoint = format!("{}/v3/auth/tokens",
+                                     auth_url.to_string());
+        IdentityAuthMethod {
+            auth_url: auth_url,
+            body: body,
+            token_endpoint: token_endpoint
+        }
+    }
 
-        let mut resp = try!(client.post(&url).body(&body)
-                            .header(json_type).send());
-
+    fn token_from_response(&self, resp: &mut Response)
+            -> Result<AuthToken, ApiError> {
         let mut resp_body = String::new();
         try!(resp.read_to_string(&mut resp_body));
 
@@ -172,8 +172,8 @@ impl AuthMethod for IdentityAuthMethod {
                 let header: Option<&SubjectTokenHeader> = resp.headers.get();
                 match header {
                     Some(ref value) => value.0.clone(),
-                    None => return Err(ApiError::ProtocolError(
-                            HttpClientError::Header))
+                    None => return Err(
+                        ApiError::ProtocolError(HttpClientError::Header))
                 }
             },
             StatusCode::Unauthorized => {
@@ -189,7 +189,8 @@ impl AuthMethod for IdentityAuthMethod {
         };
 
         debug!("Received a token for user {} from {}",
-               self.body.auth.identity.password.user.name, url);
+               self.body.auth.identity.password.user.name,
+               self.token_endpoint);
 
         // TODO: detect expiration time
         // TODO: do something useful about the body
@@ -197,6 +198,21 @@ impl AuthMethod for IdentityAuthMethod {
             token: token_value,
             expires_at: None
         })
+    }
+}
+
+impl AuthMethod for IdentityAuthMethod {
+    /// Verify authentication and generate an auth token.
+    fn get_token(&self, client: &Client) -> Result<AuthToken, ApiError> {
+        debug!("Requesting a token for user {} from {}",
+               self.body.auth.identity.password.user.name,
+               self.token_endpoint);
+
+        let body = self.body.to_string().unwrap();
+        let json_type = ContentType(mime!(Application/Json));
+        let mut resp = try!(client.post(&self.token_endpoint).body(&body)
+                            .header(json_type).send());
+        self.token_from_response(&mut resp)
     }
 
     /// Get a URL for the requested service.
@@ -214,7 +230,27 @@ impl AuthMethod for IdentityAuthMethod {
 
 #[cfg(test)]
 pub mod test {
+    use hyper;
+
+    use super::super::super::ApiError;
+    use super::super::base::AuthMethod;
     use super::Identity;
+
+    mock_connector!(MockToken {
+        "http://127.0.1.1" => "HTTP/1.1 200 OK\r\n\
+                               Server: Mock.Mock\r\n\
+                               X-Subject-Token: abcdef\r\n
+                               \r\n\
+                               "
+        "http://127.0.1.2" => "HTTP/1.1 401 Unauthorized\r\n\
+                               Server: Mock.Mock\r\n\
+                               \r\n\
+                               boom"
+        "http://127.0.1.3" => "HTTP/1.1 404 Not Found\r\n\
+                               Server: Mock.Mock\r\n\
+                               \r\n\
+                               nothing found"
+    });
 
     #[test]
     fn test_identity_new() {
@@ -229,5 +265,80 @@ pub mod test {
     #[test]
     fn test_identity_new_invalid() {
         Identity::new("http://127.0.0.1 8080/").err().unwrap();
+    }
+
+    #[test]
+    fn test_identity_create() {
+        let id = Identity::new("http://127.0.0.1:8080/identity").unwrap()
+            .with_user("user", "pa$$w0rd", "example.com")
+            .with_project_scope("cool project", "example.com")
+            .create().unwrap();
+        assert_eq!(&id.auth_url.to_string(), "http://127.0.0.1:8080/identity");
+        assert_eq!(id.get_auth_url().to_string(),
+                   "http://127.0.0.1:8080/identity");
+        assert_eq!(&id.body.auth.identity.password.user.name, "user");
+        assert_eq!(&id.body.auth.identity.password.user.password, "pa$$w0rd");
+        assert_eq!(&id.body.auth.identity.password.user.domain.name,
+                   "example.com");
+        assert_eq!(id.body.auth.identity.methods,
+                   vec![String::from("password")]);
+        assert_eq!(&id.body.auth.scope.project.name, "cool project");
+        assert_eq!(&id.body.auth.scope.project.domain.name, "example.com");
+        assert_eq!(&id.token_endpoint,
+                   "http://127.0.0.1:8080/identity/v3/auth/tokens");
+    }
+
+    #[test]
+    fn test_identity_create_no_scope() {
+        Identity::new("http://127.0.0.1:8080/identity").unwrap()
+            .with_user("user", "pa$$w0rd", "example.com")
+            .create().err().unwrap();
+    }
+
+    #[test]
+    fn test_identity_create_no_user() {
+        Identity::new("http://127.0.0.1:8080/identity").unwrap()
+            .with_project_scope("cool project", "example.com")
+            .create().err().unwrap();
+    }
+
+    #[test]
+    fn test_identity_get_token() {
+        let id = Identity::new("http://127.0.1.1").unwrap()
+            .with_user("user", "pa$$w0rd", "example.com")
+            .with_project_scope("cool project", "example.com")
+            .create().unwrap();
+        let cli = hyper::Client::with_connector(MockToken::default());
+        let token = id.get_token(&cli).unwrap();
+        assert_eq!(&token.token, "abcdef");
+    }
+
+    #[test]
+    fn test_identity_get_token_unauthorized() {
+        let id = Identity::new("http://127.0.1.2").unwrap()
+            .with_user("user", "pa$$w0rd", "example.com")
+            .with_project_scope("cool project", "example.com")
+            .create().unwrap();
+        let cli = hyper::Client::with_connector(MockToken::default());
+        match id.get_token(&cli).err().unwrap() {
+            ApiError::Unauthorized => (),
+            other => panic!("Unexpected {}", other)
+        };
+    }
+
+    #[test]
+    fn test_identity_get_token_fail() {
+        let id = Identity::new("http://127.0.1.3").unwrap()
+            .with_user("user", "pa$$w0rd", "example.com")
+            .with_project_scope("cool project", "example.com")
+            .create().unwrap();
+        let cli = hyper::Client::with_connector(MockToken::default());
+        match id.get_token(&cli).err().unwrap() {
+            ApiError::HttpError(code, ref s) => {
+                assert_eq!(code, hyper::NotFound);
+                assert_eq!(s.clone().unwrap(), "nothing found");
+            },
+            other => panic!("Unexpected {}", other)
+        };
     }
 }
