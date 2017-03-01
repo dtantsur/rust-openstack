@@ -14,6 +14,8 @@
 
 //! JSON structures and protocol bits for the Identity V3 API.
 
+#![allow(missing_docs)]
+
 use std::io::Read;
 
 use serde_json;

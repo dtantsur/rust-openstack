@@ -14,6 +14,10 @@
 
 //! Base code for authentication.
 
+#![allow(missing_docs)]
+
+use std::fmt;
+
 use hyper::{Client, Url};
 use hyper::client::IntoUrl;
 use hyper::error::ParseError;
@@ -48,9 +52,16 @@ pub trait AuthMethod: Clone + Send {
 }
 
 /// Authentication method that provides no authentication (uses a fake token).
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct NoAuth {
     endpoint: Url
+}
+
+impl fmt::Debug for AuthToken {
+    // FIXME: PreciseTime does not implement Debug
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "AuthToken( token: {} )", self.token)
+    }
 }
 
 impl NoAuth {

@@ -25,6 +25,7 @@ use super::auth::base::{AuthToken, AuthTokenHeader};
 
 
 /// An HTTP(s) client with authentication built-in.
+#[derive(Debug)]
 pub struct AuthenticatedClient {
     client: Client,
     token: AuthToken

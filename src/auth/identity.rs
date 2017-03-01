@@ -38,7 +38,7 @@ const MISSING_ENV_VARS: &'static str =
 
 
 /// Authentication method factory using Identity API V3.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Identity {
     auth_url: Url,
     password_identity: Option<protocol::PasswordIdentity>,
@@ -48,7 +48,7 @@ pub struct Identity {
 /// Authentication method using Identity API V3.
 ///
 /// Should be created via Identity struct methods.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct IdentityAuthMethod {
     auth_url: Url,
     body: protocol::ProjectScopedAuthRoot,
@@ -230,6 +230,8 @@ impl AuthMethod for IdentityAuthMethod {
 
 #[cfg(test)]
 pub mod test {
+    #![allow(missing_debug_implementations)]
+
     use hyper;
 
     use super::super::super::ApiError;
