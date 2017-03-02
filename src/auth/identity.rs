@@ -235,7 +235,8 @@ pub mod test {
     use hyper;
 
     use super::super::super::ApiError;
-    use super::super::base::AuthMethod;
+    use super::super::super::session::AuthenticatedClient;
+    use super::super::base::{AuthMethod, AuthToken};
     use super::Identity;
 
     mock_connector!(MockToken {
@@ -252,6 +253,50 @@ pub mod test {
                                Server: Mock.Mock\r\n\
                                \r\n\
                                nothing found"
+    });
+
+    // Copied from keystone API reference.
+    const EXAMPLE_CATALOG_RESPONSE: &'static str = r#"
+    {
+        "catalog": [
+            {
+                "endpoints": [
+                    {
+                        "id": "39dc322ce86c4111b4f06c2eeae0841b",
+                        "interface": "public",
+                        "region": "RegionOne",
+                        "url": "http://localhost:5000"
+                    },
+                    {
+                        "id": "ec642f27474842e78bf059f6c48f4e99",
+                        "interface": "internal",
+                        "region": "RegionOne",
+                        "url": "http://localhost:5000"
+                    },
+                    {
+                        "id": "c609fc430175452290b62a4242e8a7e8",
+                        "interface": "admin",
+                        "region": "RegionOne",
+                        "url": "http://localhost:35357"
+                    }
+                ],
+                "id": "4363ae44bdf34a3981fde3b823cb9aa2",
+                "type": "identity",
+                "name": "keystone"
+            }
+        ],
+        "links": {
+            "self": "https://example.com/identity/v3/catalog",
+            "previous": null,
+            "next": null
+        }
+    }"#;
+
+    mock_connector!(MockCatalog {
+        "http://127.0.2.1" => String::from("HTTP/1.1 200 OK\r\n\
+                                            Server: Mock.Mock\r\n\
+                                            X-Subject-Token: abcdef\r\n
+                                            \r\n") + EXAMPLE_CATALOG_RESPONSE
     });
 
     #[test]
@@ -340,6 +385,60 @@ pub mod test {
                 assert_eq!(code, hyper::NotFound);
                 assert_eq!(s.clone().unwrap(), "nothing found");
             },
+            other => panic!("Unexpected {}", other)
+        };
+    }
+
+    #[test]
+    fn test_identity_get_endpoint() {
+        let id = Identity::new("http://127.0.2.1").unwrap()
+            .with_user("user", "pa$$w0rd", "example.com")
+            .with_project_scope("cool project", "example.com")
+            .create().unwrap();
+        let cli = hyper::Client::with_connector(MockCatalog::default());
+        let token = AuthToken {
+            token: String::from("abcdef"),
+            expires_at: None
+        };
+        let auth_cli = AuthenticatedClient::new(cli, token);
+
+        let e1 = id.get_endpoint("identity", None, None, &auth_cli).unwrap();
+        assert_eq!(&e1.to_string(), "http://localhost:5000/");
+        let e2 = id.get_endpoint("identity", Some("admin"),
+                                 None, &auth_cli).unwrap();
+        assert_eq!(&e2.to_string(), "http://localhost:35357/");
+        let e3 = id.get_endpoint("identity", Some("admin"),
+                                 Some("RegionOne"), &auth_cli).unwrap();
+        assert_eq!(&e3.to_string(), "http://localhost:35357/");
+    }
+
+    #[test]
+    fn test_identity_get_endpoint_fail() {
+        let id = Identity::new("http://127.0.2.1").unwrap()
+            .with_user("user", "pa$$w0rd", "example.com")
+            .with_project_scope("cool project", "example.com")
+            .create().unwrap();
+        let cli = hyper::Client::with_connector(MockCatalog::default());
+        let token = AuthToken {
+            token: String::from("abcdef"),
+            expires_at: None
+        };
+        let auth_cli = AuthenticatedClient::new(cli, token);
+
+        match id.get_endpoint("foo", None, None, &auth_cli).err().unwrap() {
+            ApiError::EndpointNotFound => (),
+            other => panic!("Unexpected {}", other)
+        };
+
+        match id.get_endpoint("identity", Some("unknown"),
+                              None, &auth_cli).err().unwrap() {
+            ApiError::EndpointNotFound => (),
+            other => panic!("Unexpected {}", other)
+        };
+
+        match id.get_endpoint("identity", None, Some("unknown"),
+                              &auth_cli).err().unwrap() {
+            ApiError::EndpointNotFound => (),
             other => panic!("Unexpected {}", other)
         };
     }
