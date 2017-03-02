@@ -153,10 +153,17 @@ impl<'a, A: AuthMethod + 'a> Session<A> {
 
 #[cfg(test)]
 pub mod test {
-    use super::super::auth::base::{AuthToken, NoAuth};
-    use super::super::utils;
+    #![allow(missing_debug_implementations)]
+
+    use std::cell::RefCell;
+    use std::io::Read;
+
+    use hyper;
+    use hyper::header::ContentLength;
 
     use super::Session;
+    use super::super::auth::base::{AuthToken, NoAuth};
+    use super::super::utils;
 
     pub fn new_session(token: &str) -> Session<NoAuth> {
         let token = AuthToken {
@@ -168,10 +175,43 @@ pub mod test {
                                  utils::http_client(), token)
     }
 
+    mock_connector!(MockHttp {
+        "http://127.0.0.1" => "HTTP/1.1 200 OK\r\n\
+                               Server: Mock.Mock\r\n\
+                               \r\n\
+                               {}"
+    });
 
     #[test]
     fn test_session_new() {
         let s = new_session("foo");
         assert_eq!(&s.token_value().unwrap(), "foo");
+        let token = s.auth_token().unwrap();
+        assert_eq!(&token.token, "foo");
+        assert!(token.expires_at.is_none());
+    }
+
+    #[test]
+    fn test_session_get_endpoint() {
+        let s = new_session("foo");
+        let e = s.get_endpoint("foo", None, None).unwrap();
+        assert_eq!(&e.to_string(), "http://127.0.0.1/");
+    }
+
+    #[test]
+    fn test_session_request() {
+        let cli = hyper::Client::with_connector(MockHttp::default());
+        let s = Session {
+            auth_method: NoAuth::new("http://127.0.0.1/").unwrap(),
+            client: cli,
+            cached_token: RefCell::new(None)
+        };
+
+        let mut resp = s.request(hyper::Post, "http://127.0.0.1/")
+            .body("body").header(ContentLength(4u64)).send().unwrap();
+
+        let mut s = String::new();
+        resp.read_to_string(&mut s).unwrap();
+        assert_eq!(&s, "{}");
     }
 }
