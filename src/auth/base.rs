@@ -23,8 +23,7 @@ use hyper::client::IntoUrl;
 use hyper::error::ParseError;
 use time::PreciseTime;
 
-use super::super::ApiError;
-use super::super::session::AuthenticatedClient;
+use super::super::{ApiError, Session};
 
 
 /// Authentication token.
@@ -47,7 +46,7 @@ pub trait AuthMethod: Clone + Send {
     fn get_endpoint(&self, service_type: &str,
                     endpoint_interface: Option<&str>,
                     region: Option<&str>,
-                    client: &AuthenticatedClient)
+                    session: &Session<Self>)
         -> Result<Url, ApiError>;
 }
 
@@ -87,7 +86,7 @@ impl AuthMethod for NoAuth {
     fn get_endpoint(&self, _service_type: &str,
                     _endpoint_interface: Option<&str>,
                     _region: Option<&str>,
-                    _client: &AuthenticatedClient)
+                    _client: &Session<NoAuth>)
             -> Result<Url, ApiError> {
         Ok(self.endpoint.clone())
     }
@@ -97,7 +96,7 @@ impl AuthMethod for NoAuth {
 pub mod test {
     use hyper;
 
-    use super::super::super::session::test::new_client;
+    use super::super::super::session::test::new_session;
 
     use super::{AuthMethod, NoAuth};
 
@@ -128,7 +127,7 @@ pub mod test {
     fn test_noauth_get_endpoint() {
         let a = NoAuth::new("http://127.0.0.1:8080/v1").unwrap();
         let e = a.get_endpoint("foobar", None, None,
-                               &new_client("token")).unwrap();
+                               &new_session("token")).unwrap();
         assert_eq!(e.scheme(), "http");
         assert_eq!(e.host_str().unwrap(), "127.0.0.1");
         assert_eq!(e.port().unwrap(), 8080u16);

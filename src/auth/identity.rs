@@ -24,10 +24,9 @@ use hyper::error::ParseError;
 use hyper::header::ContentType;
 use hyper::status::StatusCode;
 
-use super::super::ApiError;
+use super::super::{ApiError, Session};
 use super::super::identity::catalog;
 use super::super::identity::protocol;
-use super::super::session::AuthenticatedClient;
 use super::base::{AuthMethod, AuthToken, SubjectTokenHeader};
 
 
@@ -218,7 +217,8 @@ impl AuthMethod for IdentityAuthMethod {
     /// Get a URL for the requested service.
     fn get_endpoint(&self, service_type: &str,
                     endpoint_interface: Option<&str>,
-                    region: Option<&str>, client: &AuthenticatedClient)
+                    region: Option<&str>,
+                    client: &Session<IdentityAuthMethod>)
             -> Result<Url, ApiError> {
         let real_interface = endpoint_interface.unwrap_or("public");
         let cat = try!(catalog::get_service_catalog(&self.auth_url, client));
@@ -234,8 +234,7 @@ pub mod test {
 
     use hyper;
 
-    use super::super::super::ApiError;
-    use super::super::super::session::AuthenticatedClient;
+    use super::super::super::{ApiError, Session};
     use super::super::base::{AuthMethod, AuthToken};
     use super::Identity;
 
@@ -400,15 +399,15 @@ pub mod test {
             token: String::from("abcdef"),
             expires_at: None
         };
-        let auth_cli = AuthenticatedClient::new(cli, token);
+        let session = Session::new_with_params(id, cli, token);
 
-        let e1 = id.get_endpoint("identity", None, None, &auth_cli).unwrap();
+        let e1 = session.get_endpoint("identity", None, None).unwrap();
         assert_eq!(&e1.to_string(), "http://localhost:5000/");
-        let e2 = id.get_endpoint("identity", Some("admin"),
-                                 None, &auth_cli).unwrap();
+        let e2 = session.get_endpoint("identity", Some("admin"), None)
+            .unwrap();
         assert_eq!(&e2.to_string(), "http://localhost:35357/");
-        let e3 = id.get_endpoint("identity", Some("admin"),
-                                 Some("RegionOne"), &auth_cli).unwrap();
+        let e3 = session.get_endpoint("identity", Some("admin"),
+                                      Some("RegionOne")).unwrap();
         assert_eq!(&e3.to_string(), "http://localhost:35357/");
     }
 
@@ -423,21 +422,21 @@ pub mod test {
             token: String::from("abcdef"),
             expires_at: None
         };
-        let auth_cli = AuthenticatedClient::new(cli, token);
+        let session = Session::new_with_params(id, cli, token);
 
-        match id.get_endpoint("foo", None, None, &auth_cli).err().unwrap() {
+        match session.get_endpoint("foo", None, None).err().unwrap() {
             ApiError::EndpointNotFound => (),
             other => panic!("Unexpected {}", other)
         };
 
-        match id.get_endpoint("identity", Some("unknown"),
-                              None, &auth_cli).err().unwrap() {
+        match session.get_endpoint("identity", Some("unknown"), None)
+                .err().unwrap() {
             ApiError::EndpointNotFound => (),
             other => panic!("Unexpected {}", other)
         };
 
-        match id.get_endpoint("identity", None, Some("unknown"),
-                              &auth_cli).err().unwrap() {
+        match session.get_endpoint("identity", None, Some("unknown"))
+                .err().unwrap() {
             ApiError::EndpointNotFound => (),
             other => panic!("Unexpected {}", other)
         };

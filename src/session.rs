@@ -17,66 +17,129 @@
 //! The Session object serves as a wrapper around an HTTP(s) client, handling
 //! authentication, accessing the service catalog and token refresh.
 
-use hyper::Client;
-use hyper::client::{IntoUrl, RequestBuilder};
+use std::cell::RefCell;
+
+use hyper::{Client, Url};
+use hyper::client::{IntoUrl, RequestBuilder, Response};
 use hyper::method::Method;
 
-use super::auth::base::{AuthToken, AuthTokenHeader};
+use super::ApiError;
+use super::auth::base::{AuthMethod, AuthToken, AuthTokenHeader};
+use super::utils;
 
 
-/// An HTTP(s) client with authentication built-in.
-#[derive(Debug)]
-pub struct AuthenticatedClient {
-    client: Client,
-    token: AuthToken
+/// Request builder with authentication.
+#[allow(missing_debug_implementations)]
+pub struct AuthenticatedRequestBuilder<'a, A: AuthMethod + 'a> {
+    parent: &'a Session<A>,
+    inner: RequestBuilder<'a>
 }
 
-impl AuthenticatedClient {
-    /// Create an authenticated client from an HTTP client and a token.
-    pub fn new(client: Client, token: AuthToken) -> AuthenticatedClient {
-        AuthenticatedClient {
-            client: client,
-            token: token
+/// An OpenStack API session.
+///
+/// Owns a token and an underlying client.
+#[derive(Debug)]
+pub struct Session<A: AuthMethod> {
+    auth_method: A,
+    client: Client,
+    cached_token: RefCell<Option<AuthToken>>
+}
+
+impl<'a, A: AuthMethod> AuthenticatedRequestBuilder<'a, A> {
+    /// Send this request.
+    pub fn send(self) -> Result<Response, ApiError> {
+        let token_value = try!(self.parent.token_value());
+        let hdr = AuthTokenHeader(token_value);
+        self.inner.header(hdr).send().map_err(From::from)
+    }
+}
+
+
+impl<'a, A: AuthMethod + 'a> Session<A> {
+    /// Create a new session with a given authentication plugin.
+    pub fn new(auth_method: A) -> Session<A> {
+        Session {
+            auth_method: auth_method,
+            client: utils::http_client(),
+            cached_token: RefCell::new(None)
         }
     }
 
-    /// Get a reference to the authentication token.
-    pub fn auth_token(&self) -> &AuthToken {
-        &self.token
+    /// Get a clone of the authentication token.
+    pub fn auth_token(&self) -> Result<AuthToken, ApiError> {
+        try!(self.refresh_token());
+        Ok(self.cached_token.borrow().clone().unwrap())
     }
 
-    /// Get a reference to the underlying client object.
-    pub fn raw_client(&self) -> &Client {
-        &self.client
+    /// Get an endpoint URL.
+    pub fn get_endpoint(&self, service_type: &str,
+                        endpoint_interface: Option<&str>,
+                        region: Option<&str>) -> Result<Url, ApiError> {
+        self.auth_method.get_endpoint(service_type, endpoint_interface,
+                                      region, &self)
     }
 
     /// A wrapper for HTTP request.
-    pub fn request<U: IntoUrl>(&self, method: Method, url: U) -> RequestBuilder {
-        let req = self.client.request(method, url);
-        req.header(AuthTokenHeader(self.token.token.clone()))
+    pub fn request<U: IntoUrl>(&'a self, method: Method, url: U)
+            -> AuthenticatedRequestBuilder<'a, A> {
+        AuthenticatedRequestBuilder {
+            parent: self,
+            inner: self.client.request(method, url)
+        }
+    }
+
+    // Private and test-only
+
+    #[cfg(test)]
+    pub fn new_with_params(auth_method: A, client: Client,
+                       token: AuthToken) -> Session<A> {
+        Session {
+            auth_method: auth_method,
+            client: client,
+            cached_token: RefCell::new(Some(token))
+        }
+    }
+
+    fn refresh_token(&self) -> Result<(), ApiError> {
+        let mut cached_token = self.cached_token.borrow_mut();
+        if cached_token.is_some() {
+            return Ok(())
+        }
+
+        // TODO: check expires_at
+
+        let new_token = try!(self.auth_method.get_token(&self.client));
+        *cached_token = Some(new_token);
+        Ok(())
+    }
+
+    fn token_value(&self) -> Result<String, ApiError> {
+        try!(self.refresh_token());
+        Ok(self.cached_token.borrow().clone().unwrap().token)
     }
 }
 
 #[cfg(test)]
 pub mod test {
-    use super::super::auth::base::AuthToken;
+    use super::super::auth::base::{AuthToken, NoAuth};
     use super::super::utils;
 
-    use super::AuthenticatedClient;
+    use super::Session;
 
-    pub fn new_client(token: &str) -> AuthenticatedClient {
+    pub fn new_session(token: &str) -> Session<NoAuth> {
         let token = AuthToken {
             token: String::from(token),
             expires_at: None
         };
 
-        AuthenticatedClient::new(utils::http_client(), token)
+        Session::new_with_params(NoAuth::new("http://127.0.0.1/").unwrap(),
+                                 utils::http_client(), token)
     }
 
 
     #[test]
-    fn test_authenticatedclient_new() {
-        let cli = new_client("foo");
-        assert_eq!(&cli.token.token, "foo");
+    fn test_session_new() {
+        let s = new_session("foo");
+        assert_eq!(&s.token_value().unwrap(), "foo");
     }
 }

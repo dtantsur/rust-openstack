@@ -4,6 +4,8 @@ ChangeLog
 next
 ----
 
+* Turned AuthenticatedClient into Session.
+
 0.0.3
 -----
 

@@ -15,23 +15,21 @@
 extern crate hyper;
 extern crate openstack;
 
-use openstack::auth::{AuthMethod, self};
-use openstack::session::AuthenticatedClient;
-use openstack::utils;
+use openstack::auth::Identity;
+use openstack::Session;
 
 
 fn main() {
-    let identity = auth::Identity::from_env()
+    let identity = Identity::from_env()
         .expect("Failed to create an identity provider from the environment");
-    let http_client = utils::http_client();
-    let token_info = identity.get_token(&http_client)
-        .expect("Failed to get a token");
+    let session = Session::new(identity);
+
+    let token_info = session.auth_token().expect("Failed to get a token");
     println!("Received token: {}", token_info.token);
 
-    let auth_client = AuthenticatedClient::new(http_client, token_info);
-    let identity_url = identity.get_endpoint("identity",
+    let identity_url = session.get_endpoint("identity",
                                              Some("public"),
-                                             None,
-                                             &auth_client).unwrap();
+                                             None)
+        .expect("Unable to get identity public URL");
     println!("Identity public URL is {}", identity_url);
 }
