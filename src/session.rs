@@ -20,7 +20,8 @@
 use std::cell::RefCell;
 
 use hyper::{Client, Url};
-use hyper::client::{IntoUrl, RequestBuilder, Response};
+use hyper::client::{Body, IntoUrl, RequestBuilder, Response};
+use hyper::header::{Header, Headers, HeaderFormat};
 use hyper::method::Method;
 
 use super::ApiError;
@@ -29,6 +30,8 @@ use super::utils;
 
 
 /// Request builder with authentication.
+///
+/// Essentially copies the interface of hyper::client::RequestBuilder.
 #[allow(missing_debug_implementations)]
 pub struct AuthenticatedRequestBuilder<'a, A: AuthMethod + 'a> {
     parent: &'a Session<A>,
@@ -51,6 +54,35 @@ impl<'a, A: AuthMethod> AuthenticatedRequestBuilder<'a, A> {
         let token_value = try!(self.parent.token_value());
         let hdr = AuthTokenHeader(token_value);
         self.inner.header(hdr).send().map_err(From::from)
+    }
+
+    /// Add body to the request.
+    pub fn body<B: Into<Body<'a>>>(self, body: B)
+            -> AuthenticatedRequestBuilder<'a, A> {
+        AuthenticatedRequestBuilder {
+            inner: self.inner.body(body),
+            .. self
+        }
+    }
+
+    /// Add additional headers to the request.
+    pub fn headers(self, headers: Headers)
+            -> AuthenticatedRequestBuilder<'a, A> {
+        AuthenticatedRequestBuilder {
+            inner: self.inner.headers(headers),
+            .. self
+        }
+    }
+
+    /// Add an individual header to the request.
+    ///
+    /// Note that X-Auth-Token is always overwritten with a token in use.
+    pub fn header<H: Header + HeaderFormat>(self, header: H)
+            -> AuthenticatedRequestBuilder<'a, A> {
+        AuthenticatedRequestBuilder {
+            inner: self.inner.header(header),
+            .. self
+        }
     }
 }
 
