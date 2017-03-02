@@ -51,8 +51,8 @@ pub struct Session<A: AuthMethod> {
 impl<'a, A: AuthMethod> AuthenticatedRequestBuilder<'a, A> {
     /// Send this request.
     pub fn send(self) -> Result<Response, ApiError> {
-        let token_value = try!(self.parent.token_value());
-        let hdr = AuthTokenHeader(token_value);
+        let token = try!(self.parent.auth_token());
+        let hdr = AuthTokenHeader(token.token);
         self.inner.header(hdr).send().map_err(From::from)
     }
 
@@ -144,11 +144,6 @@ impl<'a, A: AuthMethod + 'a> Session<A> {
         *cached_token = Some(new_token);
         Ok(())
     }
-
-    fn token_value(&self) -> Result<String, ApiError> {
-        try!(self.refresh_token());
-        Ok(self.cached_token.borrow().clone().unwrap().token)
-    }
 }
 
 #[cfg(test)]
@@ -185,7 +180,6 @@ pub mod test {
     #[test]
     fn test_session_new() {
         let s = new_session("foo");
-        assert_eq!(&s.token_value().unwrap(), "foo");
         let token = s.auth_token().unwrap();
         assert_eq!(&token.token, "foo");
         assert!(token.expires_at.is_none());
