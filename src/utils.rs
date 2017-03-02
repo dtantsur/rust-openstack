@@ -27,6 +27,8 @@ pub fn http_client() -> Client {
     let connector = HttpsConnector::new(TlsClient::new());
     Client::with_connector(connector)
 }
+
+/// Create an HTTP-only client.
 #[cfg(not(feature = "tls"))]
 pub fn http_client() -> Client {
     Client::new()
