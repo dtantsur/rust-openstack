@@ -4,6 +4,9 @@ ChangeLog
 next
 ----
 
+* auth::AuthToken is now a trait, with auth::base::SimpleAuthToken being
+  the first implementation.
+
 0.0.4
 -----
 

@@ -27,7 +27,7 @@ use hyper::status::StatusCode;
 use super::super::{ApiError, Session};
 use super::super::identity::catalog;
 use super::super::identity::protocol;
-use super::base::{AuthMethod, AuthToken, SubjectTokenHeader};
+use super::base::{AuthMethod, SimpleAuthToken, SubjectTokenHeader};
 
 
 const MISSING_USER: &'static str = "User information required";
@@ -162,7 +162,7 @@ impl IdentityAuthMethod {
     }
 
     fn token_from_response(&self, resp: &mut Response)
-            -> Result<AuthToken, ApiError> {
+            -> Result<SimpleAuthToken, ApiError> {
         let mut resp_body = String::new();
         try!(resp.read_to_string(&mut resp_body));
 
@@ -193,16 +193,16 @@ impl IdentityAuthMethod {
 
         // TODO: detect expiration time
         // TODO: do something useful about the body
-        Ok(AuthToken {
-            token: token_value,
-            expires_at: None
-        })
+        Ok(SimpleAuthToken(token_value))
     }
 }
 
 impl AuthMethod for IdentityAuthMethod {
+    // TODO: implement its own token type
+    type TokenType = SimpleAuthToken;
+
     /// Verify authentication and generate an auth token.
-    fn get_token(&self, client: &Client) -> Result<AuthToken, ApiError> {
+    fn get_token(&self, client: &Client) -> Result<SimpleAuthToken, ApiError> {
         debug!("Requesting a token for user {} from {}",
                self.body.auth.identity.password.user.name,
                self.token_endpoint);
@@ -235,7 +235,7 @@ pub mod test {
     use hyper;
 
     use super::super::super::{ApiError, Session};
-    use super::super::base::{AuthMethod, AuthToken};
+    use super::super::base::{AuthMethod, AuthToken, SimpleAuthToken};
     use super::Identity;
 
     mock_connector!(MockToken {
@@ -356,7 +356,7 @@ pub mod test {
             .create().unwrap();
         let cli = hyper::Client::with_connector(MockToken::default());
         let token = id.get_token(&cli).unwrap();
-        assert_eq!(&token.token, "abcdef");
+        assert_eq!(token.value(), "abcdef");
     }
 
     #[test]
@@ -395,10 +395,7 @@ pub mod test {
             .with_project_scope("cool project", "example.com")
             .create().unwrap();
         let cli = hyper::Client::with_connector(MockCatalog::default());
-        let token = AuthToken {
-            token: String::from("abcdef"),
-            expires_at: None
-        };
+        let token = SimpleAuthToken(String::from("abcdef"));
         let session = Session::new_with_params(id, cli, token);
 
         let e1 = session.get_endpoint("identity", None, None).unwrap();
@@ -418,10 +415,7 @@ pub mod test {
             .with_project_scope("cool project", "example.com")
             .create().unwrap();
         let cli = hyper::Client::with_connector(MockCatalog::default());
-        let token = AuthToken {
-            token: String::from("abcdef"),
-            expires_at: None
-        };
+        let token = SimpleAuthToken(String::from("abcdef"));
         let session = Session::new_with_params(id, cli, token);
 
         match session.get_endpoint("foo", None, None).err().unwrap() {

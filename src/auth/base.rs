@@ -25,23 +25,33 @@ use time::PreciseTime;
 
 use super::super::{ApiError, Session};
 
+header! { (AuthTokenHeader, "X-Auth-Token") => [String] }
 
-/// Authentication token.
-#[derive(Clone)]
-pub struct AuthToken {
-    /// Token contents.
-    pub token: String,
+header! { (SubjectTokenHeader, "X-Subject-Token") => [String] }
+
+
+/// Trait for authentication token implementations.
+pub trait AuthToken: Clone + fmt::Debug + Send + Into<String> {
+    /// A reference to token contents.
+    fn value(&self) -> &String;
     /// Expiration time (if any).
-    pub expires_at: Option<PreciseTime>
+    fn expires_at(&self) -> Option<&PreciseTime>;
 }
 
-header! { (AuthTokenHeader, "X-Auth-Token") => [String] }
-header! { (SubjectTokenHeader, "X-Subject-Token") => [String] }
+
+/// Simple authentication token.
+#[derive(Clone, Debug)]
+pub struct SimpleAuthToken(pub String);
 
 /// Trait for any authentication method.
 pub trait AuthMethod: Clone + Send {
+    /// A token type.
+    type TokenType: AuthToken;
+
     /// Verify authentication and generate an auth token.
-    fn get_token(&self, client: &Client) -> Result<AuthToken, ApiError>;
+    fn get_token(&self, client: &Client)
+        -> Result<Self::TokenType, ApiError>;
+
     /// Get a URL for the requested service.
     fn get_endpoint(&self, service_type: &str,
                     endpoint_interface: Option<&str>,
@@ -56,10 +66,19 @@ pub struct NoAuth {
     endpoint: Url
 }
 
-impl fmt::Debug for AuthToken {
-    // FIXME: PreciseTime does not implement Debug
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "AuthToken( token: {} )", self.token)
+impl Into<String> for SimpleAuthToken {
+    fn into(self) -> String {
+        self.0
+    }
+}
+
+impl AuthToken for SimpleAuthToken {
+    fn value(&self) -> &String {
+        &self.0
+    }
+
+    fn expires_at(&self) -> Option<&PreciseTime> {
+        None
     }
 }
 
@@ -74,12 +93,11 @@ impl NoAuth {
 }
 
 impl AuthMethod for NoAuth {
+    type TokenType = SimpleAuthToken;
+
     /// Return a fake token for compliance with the protocol.
-    fn get_token(&self, _client: &Client) -> Result<AuthToken, ApiError> {
-        Ok(AuthToken {
-            token: String::from("no-auth"),
-            expires_at: None
-        })
+    fn get_token(&self, _client: &Client) -> Result<SimpleAuthToken, ApiError> {
+        Ok(SimpleAuthToken(String::from("no-auth")))
     }
 
     /// Get a predefined endpoint for all service types
@@ -98,7 +116,7 @@ pub mod test {
 
     use super::super::super::session::test::new_session;
 
-    use super::{AuthMethod, NoAuth};
+    use super::{AuthMethod, AuthToken, NoAuth};
 
     #[test]
     fn test_noauth_new() {
@@ -119,8 +137,8 @@ pub mod test {
     fn test_noauth_get_token() {
         let a = NoAuth::new("http://127.0.0.1:8080/v1").unwrap();
         let tok = a.get_token(&hyper::Client::new()).unwrap();
-        assert_eq!(&tok.token, "no-auth");
-        assert!(tok.expires_at.is_none());
+        assert_eq!(tok.value(), "no-auth");
+        assert!(tok.expires_at().is_none());
     }
 
     #[test]

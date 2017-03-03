@@ -25,7 +25,7 @@ use hyper::header::{Header, Headers, HeaderFormat};
 use hyper::method::Method;
 
 use super::ApiError;
-use super::auth::base::{AuthMethod, AuthToken, AuthTokenHeader};
+use super::auth::base::{AuthMethod, AuthTokenHeader};
 use super::utils;
 
 
@@ -45,14 +45,14 @@ pub struct AuthenticatedRequestBuilder<'a, A: AuthMethod + 'a> {
 pub struct Session<A: AuthMethod> {
     auth_method: A,
     client: Client,
-    cached_token: RefCell<Option<AuthToken>>
+    cached_token: RefCell<Option<A::TokenType>>
 }
 
 impl<'a, A: AuthMethod> AuthenticatedRequestBuilder<'a, A> {
     /// Send this request.
     pub fn send(self) -> Result<Response, ApiError> {
         let token = try!(self.parent.auth_token());
-        let hdr = AuthTokenHeader(token.token);
+        let hdr = AuthTokenHeader(token.into());
         self.inner.header(hdr).send().map_err(From::from)
     }
 
@@ -98,7 +98,7 @@ impl<'a, A: AuthMethod + 'a> Session<A> {
     }
 
     /// Get a clone of the authentication token.
-    pub fn auth_token(&self) -> Result<AuthToken, ApiError> {
+    pub fn auth_token(&self) -> Result<A::TokenType, ApiError> {
         try!(self.refresh_token());
         Ok(self.cached_token.borrow().clone().unwrap())
     }
@@ -124,7 +124,7 @@ impl<'a, A: AuthMethod + 'a> Session<A> {
 
     #[cfg(test)]
     pub fn new_with_params(auth_method: A, client: Client,
-                       token: AuthToken) -> Session<A> {
+                           token: A::TokenType) -> Session<A> {
         Session {
             auth_method: auth_method,
             client: client,
@@ -157,15 +157,11 @@ pub mod test {
     use hyper::header::ContentLength;
 
     use super::Session;
-    use super::super::auth::base::{AuthToken, NoAuth};
+    use super::super::auth::base::{AuthToken, NoAuth, SimpleAuthToken};
     use super::super::utils;
 
     pub fn new_session(token: &str) -> Session<NoAuth> {
-        let token = AuthToken {
-            token: String::from(token),
-            expires_at: None
-        };
-
+        let token = SimpleAuthToken(String::from(token));
         Session::new_with_params(NoAuth::new("http://127.0.0.1/").unwrap(),
                                  utils::http_client(), token)
     }
@@ -181,8 +177,8 @@ pub mod test {
     fn test_session_new() {
         let s = new_session("foo");
         let token = s.auth_token().unwrap();
-        assert_eq!(&token.token, "foo");
-        assert!(token.expires_at.is_none());
+        assert_eq!(token.value(), "foo");
+        assert!(token.expires_at().is_none());
     }
 
     #[test]
