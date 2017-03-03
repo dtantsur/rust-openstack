@@ -4,6 +4,9 @@ ChangeLog
 next
 ----
 
+0.0.5
+-----
+
 * auth::AuthToken is now a trait, with auth::base::SimpleAuthToken being
   the first implementation.
 * ApiError::EndpointNotFound now contains the service type.
