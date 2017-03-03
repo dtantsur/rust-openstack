@@ -50,7 +50,7 @@ pub mod auth;
 mod common;
 pub mod identity;
 pub mod session;
-pub mod utils;
+mod utils;
 
 pub use common::ApiError;
 pub use session::Session;
