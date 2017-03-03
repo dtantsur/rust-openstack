@@ -3,3 +3,15 @@ script:
     - cargo test --verbose
     - cargo clean --verbose
     - cargo test --verbose --no-default-features
+after_success: |
+  if [ -n "$GITHUB_API_KEY" -a "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_EVENT_TYPE" = "push" ]; then
+    cd "$TRAVIS_BUILD_DIR"
+    cargo doc
+    cd target/doc
+    git init
+    git checkout -b gh-pages
+    git add .
+    git -c user.name='travis' -c user.email='travis' commit -m "Automatic update for $TRAVIS_COMMIT"
+    git push -f -q https://dtantsur:$GITHUB_API_KEY@github.com/dtantsur/rust-openstack gh-pages &2>/dev/null
+    cd "$TRAVIS_BUILD_DIR"
+  fi
