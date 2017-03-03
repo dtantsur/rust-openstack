@@ -161,7 +161,7 @@ impl IdentityAuthMethod {
         }
     }
 
-    fn token_from_response(&self, resp: &mut Response)
+    fn token_from_response(&self, mut resp: Response)
             -> Result<SimpleAuthToken, ApiError> {
         let mut resp_body = String::new();
         let _ignored = try!(resp.read_to_string(&mut resp_body));
@@ -183,7 +183,7 @@ impl IdentityAuthMethod {
             other => {
                 error!("Unexpected HTTP error {} when getting a token for {}",
                        other, self.body.auth.identity.password.user.name);
-                return Err(ApiError::HttpError(other, Some(resp_body)));
+                return Err(ApiError::HttpError(resp));
             }
         };
 
@@ -209,9 +209,9 @@ impl AuthMethod for IdentityAuthMethod {
 
         let body = self.body.to_string().unwrap();
         let json_type = ContentType(mime!(Application/Json));
-        let mut resp = try!(client.post(&self.token_endpoint).body(&body)
-                            .header(json_type).send());
-        self.token_from_response(&mut resp)
+        let resp = try!(client.post(&self.token_endpoint).body(&body)
+                        .header(json_type).send());
+        self.token_from_response(resp)
     }
 
     /// Get a URL for the requested service.
@@ -381,9 +381,8 @@ pub mod test {
             .create().unwrap();
         let cli = hyper::Client::with_connector(MockToken::default());
         match id.get_token(&cli).err().unwrap() {
-            ApiError::HttpError(code, ref s) => {
-                assert_eq!(code, hyper::NotFound);
-                assert_eq!(s.clone().unwrap(), "nothing found");
+            ApiError::HttpError(ref resp) => {
+                assert_eq!(resp.status, hyper::NotFound);
             },
             other => panic!("Unexpected {}", other)
         };

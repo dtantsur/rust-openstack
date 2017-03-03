@@ -51,6 +51,16 @@ pub struct Session<A: AuthMethod> {
 impl<'a, A: AuthMethod> AuthenticatedRequestBuilder<'a, A> {
     /// Send this request.
     pub fn send(self) -> Result<Response, ApiError> {
+        let resp = try!(self.send_unchecked());
+        if resp.status.is_success() {
+            Ok(resp)
+        } else {
+            Err(ApiError::HttpError(resp))
+        }
+    }
+
+    /// Send this request without checking on status code.
+    pub fn send_unchecked(self) -> Result<Response, ApiError> {
         let token = try!(self.parent.auth_token());
         let hdr = AuthTokenHeader(token.into());
         self.inner.header(hdr).send().map_err(From::from)
