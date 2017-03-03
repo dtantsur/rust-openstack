@@ -149,6 +149,7 @@ impl<'a, A: AuthMethod + 'a> Session<A> {
 #[cfg(test)]
 pub mod test {
     #![allow(missing_debug_implementations)]
+    #![allow(unused_results)]
 
     use std::cell::RefCell;
     use std::io::Read;

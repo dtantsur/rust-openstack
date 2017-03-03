@@ -19,15 +19,41 @@
 
 #![crate_name = "openstack"]
 #![crate_type = "lib"]
-#![warn(missing_docs,
-        missing_debug_implementations,
+// NOTE: we do not use generic deny(warnings) to avoid breakages with new
+// versions of the compiler. Add more warnings here as you discover them.
+// Taken from https://github.com/rust-unofficial/patterns/
+#![deny(const_err,
+        dead_code,
+        extra_requirement_in_impl,
+        improper_ctypes,
+        legacy_directory_ownership,
         missing_copy_implementations,
+        missing_debug_implementations,
+        missing_docs,
+        non_shorthand_field_patterns,
+        no_mangle_generic_items,
+        overflowing_literals,
+        path_statements ,
+        patterns_in_fns_without_body,
+        plugin_as_library,
+        private_in_public,
+        private_no_mangle_fns,
+        private_no_mangle_statics,
+        safe_extern_statics,
         trivial_casts,
         trivial_numeric_casts,
+        unconditional_recursion,
+        unions_with_drop_fields,
         unsafe_code,
-        unstable_features,
+        unused,
+        unused_allocation,
+        unused_comparisons,
+        unused_extern_crates,
         unused_import_braces,
-        unused_qualifications)]
+        unused_parens,
+        unused_qualifications,
+        unused_results,
+        while_true)]
 
 #[macro_use]
 extern crate hyper;

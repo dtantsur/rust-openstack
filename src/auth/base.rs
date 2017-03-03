@@ -112,6 +112,8 @@ impl AuthMethod for NoAuth {
 
 #[cfg(test)]
 pub mod test {
+    #![allow(unused_results)]
+
     use hyper;
 
     use super::super::super::session::test::new_session;

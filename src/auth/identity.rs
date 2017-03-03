@@ -164,7 +164,7 @@ impl IdentityAuthMethod {
     fn token_from_response(&self, resp: &mut Response)
             -> Result<SimpleAuthToken, ApiError> {
         let mut resp_body = String::new();
-        try!(resp.read_to_string(&mut resp_body));
+        let _ignored = try!(resp.read_to_string(&mut resp_body));
 
         let token_value = match resp.status {
             StatusCode::Ok | StatusCode::Created => {
@@ -231,6 +231,7 @@ impl AuthMethod for IdentityAuthMethod {
 #[cfg(test)]
 pub mod test {
     #![allow(missing_debug_implementations)]
+    #![allow(unused_results)]
 
     use hyper;
 
