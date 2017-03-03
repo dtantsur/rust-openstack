@@ -16,10 +16,12 @@ extern crate hyper;
 extern crate openstack;
 
 use openstack::auth::Identity;
+#[cfg(feature = "compute")]
 use openstack::compute::ComputeApi;
 use openstack::Session;
 
 
+#[cfg(feature = "compute")]
 fn main() {
     let identity = Identity::from_env()
         .expect("Failed to create an identity provider from the environment");
@@ -32,3 +34,7 @@ fn main() {
     }
 }
 
+#[cfg(not(feature = "compute"))]
+fn main() {
+    panic!("This example cannot run with 'compute' feature disabled");
+}
