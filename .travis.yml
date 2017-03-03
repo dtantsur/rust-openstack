@@ -4,8 +4,10 @@ script:
     - cargo clean --verbose
     - cargo test --verbose --no-default-features
 after_success: |
-  if [ -n "$GITHUB_API_KEY" -a "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_EVENT_TYPE" = "push" ]; then
+  echo "$TRAVIS_EVENT_TYPE -> $TRAVIS_BRANCH"
+  if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_EVENT_TYPE" = "push" ]; then
     cd "$TRAVIS_BUILD_DIR"
+    cargo clean
     cargo doc
     cd target/doc
     git init
