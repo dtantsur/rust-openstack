@@ -15,6 +15,8 @@
 //! Compute API support.
 
 mod api;
-pub mod protocol;
+mod protocol;
+pub mod servermanager;
 
-pub use self::api::ComputeApi;
+pub use self::api::ServerFilters;
+pub use self::servermanager::servers;

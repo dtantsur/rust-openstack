@@ -17,7 +17,7 @@ extern crate openstack;
 
 use openstack::auth::Identity;
 #[cfg(feature = "compute")]
-use openstack::compute::ComputeApi;
+use openstack::compute;
 use openstack::Session;
 
 
@@ -27,10 +27,10 @@ fn main() {
         .expect("Failed to create an identity provider from the environment");
     let session = Session::new(identity);
 
-    let compute = ComputeApi::new(&session);
-    let servers = compute.list_servers().expect("Cannot list servers");
+    let servers_api = compute::servers(&session);
+    let servers = servers_api.list().expect("Cannot list servers");
     for s in &servers {
-        println!("ID = {}, Name = {}", s.id, s.name);
+        println!("ID = {}, Name = {}", s.id(), s.name());
     }
 }
 

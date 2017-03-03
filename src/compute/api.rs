@@ -20,6 +20,24 @@ use super::super::auth::AuthMethod;
 use super::super::{ApiError, Session};
 use super::protocol;
 
+/// Structure represending filters for listing servers.
+#[allow(missing_copy_implementations)]
+#[derive(Debug, Clone)]
+pub struct ServerFilters {}
+
+impl ServerFilters {
+    /// Create empty server filters.
+    pub fn new() -> ServerFilters {
+        ServerFilters {}
+    }
+}
+
+impl Default for ServerFilters {
+    fn default() -> ServerFilters {
+        ServerFilters::new()
+    }
+}
+
 /// List of servers.
 pub type ServerList = Vec<protocol::Server>;
 
@@ -71,7 +89,9 @@ impl<'a, A: AuthMethod + 'a> ComputeApi<'a, A> {
     }
 
     /// List servers.
-    pub fn list_servers(&self) -> Result<ServerList, ApiError> {
+    #[allow(unused)]
+    pub fn list_servers(&self, filters: ServerFilters)
+            -> Result<ServerList, ApiError> {
         let url = try!(self.get_endpoint("servers"));
         debug!("Listing servers from {}", url);
         let resp = try!(self.session.request(hyper::Get, url).send());
@@ -89,7 +109,7 @@ pub mod test {
 
     use super::super::super::Session;
     use super::super::super::auth::base::{NoAuth, SimpleAuthToken};
-    use super::ComputeApi;
+    use super::{ComputeApi, ServerFilters};
 
     // Copied from compute API reference.
     const SERVERS_RESPONSE: &'static str = r#"
@@ -126,7 +146,7 @@ pub mod test {
         let session = Session::new_with_params(auth, cli, token);
 
         let api = ComputeApi::new(&session);
-        let srvs = api.list_servers().unwrap();
+        let srvs = api.list_servers(ServerFilters::new()).unwrap();
         assert_eq!(srvs.len(), 1);
         assert_eq!(&srvs[0].id, "22c91117-08de-4894-9aa9-6ef382400985");
         assert_eq!(&srvs[0].name, "new-server-test");

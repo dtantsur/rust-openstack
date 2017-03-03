@@ -4,7 +4,9 @@ ChangeLog
 next
 ----
 
-* Prototype for ComputeApi: added list_servers().
+* Started compute API: added compute::servers().
+* Added ServerManager::list() for listing without filtering.
+* Added compute::ServerFilters for future filtering.
 
 0.0.5
 -----
