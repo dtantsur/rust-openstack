@@ -419,19 +419,22 @@ pub mod test {
         let session = Session::new_with_params(id, cli, token);
 
         match session.get_endpoint("foo", None, None).err().unwrap() {
-            ApiError::EndpointNotFound => (),
+            ApiError::EndpointNotFound(ref endp) =>
+                assert_eq!(endp, "foo"),
             other => panic!("Unexpected {}", other)
         };
 
         match session.get_endpoint("identity", Some("unknown"), None)
                 .err().unwrap() {
-            ApiError::EndpointNotFound => (),
+            ApiError::EndpointNotFound(ref endp) =>
+                assert_eq!(endp, "identity"),
             other => panic!("Unexpected {}", other)
         };
 
         match session.get_endpoint("identity", None, Some("unknown"))
                 .err().unwrap() {
-            ApiError::EndpointNotFound => (),
+            ApiError::EndpointNotFound(ref endp) =>
+                assert_eq!(endp, "identity"),
             other => panic!("Unexpected {}", other)
         };
     }

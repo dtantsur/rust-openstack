@@ -30,7 +30,7 @@ pub enum ApiError {
     /// Insufficient credentials passed to make authentication request.
     InsufficientCredentials(&'static str),
     /// Requested service endpoint was not found.
-    EndpointNotFound,
+    EndpointNotFound(String),
     /// Authentication rejected (invalid credentials or token).
     Unauthorized,
     /// Generic HTTP error (not covered by EndpointNotFound and Unauthorized).
@@ -46,8 +46,8 @@ impl fmt::Display for ApiError {
         match *self {
             ApiError::InsufficientCredentials(msg) =>
                 write!(f, "Insufficient credentials provided: {}", msg),
-            ApiError::EndpointNotFound =>
-                write!(f, "Requested endpoint was not found"),
+            ApiError::EndpointNotFound(ref endp) =>
+                write!(f, "Requested endpoint {} was not found", endp),
             ApiError::Unauthorized =>
                 write!(f, "Authentication failed"),
             ApiError::HttpError(status, ref maybe_msg) =>
@@ -68,7 +68,7 @@ impl Error for ApiError {
         match *self {
             ApiError::InsufficientCredentials(..) =>
                 "Insufficient credentials provided",
-            ApiError::EndpointNotFound => "Requested endpoint was not found",
+            ApiError::EndpointNotFound(..) => "Requested endpoint was not found",
             ApiError::Unauthorized => "Authentication failed",
             ApiError::HttpError(..) => "HTTP error",
             ApiError::ProtocolError(ref e) => e.description(),

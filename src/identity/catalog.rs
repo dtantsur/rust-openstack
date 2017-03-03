@@ -41,7 +41,8 @@ pub fn find_endpoint<'a>(catalog: &'a Catalog, service_type: &str,
         -> Result<&'a protocol::Endpoint, ApiError> {
     let svc = match catalog.iter().find(|x| &x.service_type == service_type) {
         Some(s) => s,
-        None => return Err(ApiError::EndpointNotFound)
+        None =>
+            return Err(ApiError::EndpointNotFound(String::from(service_type)))
     };
 
     let maybe_endp: Option<&protocol::Endpoint>;
@@ -55,7 +56,7 @@ pub fn find_endpoint<'a>(catalog: &'a Catalog, service_type: &str,
 
     match maybe_endp {
         Some(e) => Ok(e),
-        None => Err(ApiError::EndpointNotFound)
+        None => Err(ApiError::EndpointNotFound(String::from(service_type)))
     }
 }
 
@@ -159,7 +160,7 @@ pub mod test {
 
     fn assert_not_found(result: Result<&Endpoint, ApiError>) {
         match result.err().unwrap() {
-            ApiError::EndpointNotFound => (),
+            ApiError::EndpointNotFound(..) => (),
             other => panic!("Unexpected error {}", other)
         }
     }
