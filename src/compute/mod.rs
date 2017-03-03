@@ -18,5 +18,5 @@ mod api;
 mod protocol;
 pub mod servermanager;
 
-pub use self::api::ServerFilters;
+pub use self::servermanager::ServerFilters;
 pub use self::servermanager::servers;

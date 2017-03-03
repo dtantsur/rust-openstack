@@ -16,8 +16,26 @@
 
 use super::super::{ApiError, Session};
 use super::super::auth::AuthMethod;
-use super::api::{ComputeApi, ServerFilters};
+use super::api::ComputeApi;
 use super::protocol;
+
+/// Structure represending filters for listing servers.
+#[allow(missing_copy_implementations)]
+#[derive(Debug, Clone)]
+pub struct ServerFilters {}
+
+impl ServerFilters {
+    /// Create empty server filters.
+    pub fn new() -> ServerFilters {
+        ServerFilters {}
+    }
+}
+
+impl Default for ServerFilters {
+    fn default() -> ServerFilters {
+        ServerFilters::new()
+    }
+}
 
 /// Server manager: working with virtual servers.
 #[derive(Debug)]
@@ -58,10 +76,64 @@ impl<'a, A: AuthMethod + 'a>Server<'a, A> {
 impl<'a, A: AuthMethod + 'a> ServerManager<'a, A> {
     /// List all servers without any filtering.
     pub fn list(&'a self) -> Result<ServerList<'a, A>, ApiError> {
-        let inner = try!(self.api.list_servers(ServerFilters::new()));
-        Ok(inner.iter().map(|x| Server {
+        let inner: protocol::ServersRoot = try!(self.api.list("servers"));
+        Ok(inner.servers.iter().map(|x| Server {
             manager: self,
             inner: x.clone()
         }).collect())
+    }
+}
+
+#[cfg(test)]
+pub mod test {
+    #![allow(missing_debug_implementations)]
+    #![allow(unused_results)]
+
+    use hyper;
+
+    use super::super::super::Session;
+    use super::super::super::auth::base::{NoAuth, SimpleAuthToken};
+    use super::servers;
+
+    // Copied from compute API reference.
+    const SERVERS_RESPONSE: &'static str = r#"
+    {
+        "servers": [
+            {
+                "id": "22c91117-08de-4894-9aa9-6ef382400985",
+                "links": [
+                    {
+                        "href": "http://openstack.example.com/v2/6f70656e737461636b20342065766572/servers/22c91117-08de-4894-9aa9-6ef382400985",
+                        "rel": "self"
+                    },
+                    {
+                        "href": "http://openstack.example.com/6f70656e737461636b20342065766572/servers/22c91117-08de-4894-9aa9-6ef382400985",
+                        "rel": "bookmark"
+                    }
+                ],
+                "name": "new-server-test"
+            }
+        ]
+    }"#;
+
+    mock_connector!(MockServers {
+        "http://127.0.2.1" => String::from("HTTP/1.1 200 OK\r\n\
+                                           Server: Mock.Mock\r\n\
+                                           \r\n") + SERVERS_RESPONSE
+    });
+
+    #[test]
+    fn test_servers_list() {
+        let auth = NoAuth::new("http://127.0.2.1/v2.1").unwrap();
+        let cli = hyper::Client::with_connector(MockServers::default());
+        let token = SimpleAuthToken(String::from("abcdef"));
+        let session = Session::new_with_params(auth, cli, token);
+
+        let api = servers(&session);
+        let srvs = api.list().unwrap();
+        assert_eq!(srvs.len(), 1);
+        assert_eq!(srvs[0].id(),
+                   "22c91117-08de-4894-9aa9-6ef382400985");
+        assert_eq!(srvs[0].name(), "new-server-test");
     }
 }

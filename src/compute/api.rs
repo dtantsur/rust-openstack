@@ -15,31 +15,11 @@
 //! Low-level Compute API implementation.
 
 use hyper;
+use serde;
+use serde_json;
 
 use super::super::auth::AuthMethod;
 use super::super::{ApiError, Session};
-use super::protocol;
-
-/// Structure represending filters for listing servers.
-#[allow(missing_copy_implementations)]
-#[derive(Debug, Clone)]
-pub struct ServerFilters {}
-
-impl ServerFilters {
-    /// Create empty server filters.
-    pub fn new() -> ServerFilters {
-        ServerFilters {}
-    }
-}
-
-impl Default for ServerFilters {
-    fn default() -> ServerFilters {
-        ServerFilters::new()
-    }
-}
-
-/// List of servers.
-pub type ServerList = Vec<protocol::Server>;
 
 /// Low-level Compute API calls.
 #[derive(Debug)]
@@ -89,66 +69,12 @@ impl<'a, A: AuthMethod + 'a> ComputeApi<'a, A> {
     }
 
     /// List servers.
-    #[allow(unused)]
-    pub fn list_servers(&self, filters: ServerFilters)
-            -> Result<ServerList, ApiError> {
-        let url = try!(self.get_endpoint("servers"));
-        debug!("Listing servers from {}", url);
+    pub fn list<R: serde::Deserialize>(&self, path: &str)
+            -> Result<R, ApiError> {
+        let url = try!(self.get_endpoint(path));
+        debug!("Listing entities from {}", url);
         let resp = try!(self.session.request(hyper::Get, url).send());
-        let root = try!(protocol::ServersRoot::from_reader(resp));
-        Ok(root.servers)
-    }
-}
-
-#[cfg(test)]
-pub mod test {
-    #![allow(missing_debug_implementations)]
-    #![allow(unused_results)]
-
-    use hyper;
-
-    use super::super::super::Session;
-    use super::super::super::auth::base::{NoAuth, SimpleAuthToken};
-    use super::{ComputeApi, ServerFilters};
-
-    // Copied from compute API reference.
-    const SERVERS_RESPONSE: &'static str = r#"
-    {
-        "servers": [
-            {
-                "id": "22c91117-08de-4894-9aa9-6ef382400985",
-                "links": [
-                    {
-                        "href": "http://openstack.example.com/v2/6f70656e737461636b20342065766572/servers/22c91117-08de-4894-9aa9-6ef382400985",
-                        "rel": "self"
-                    },
-                    {
-                        "href": "http://openstack.example.com/6f70656e737461636b20342065766572/servers/22c91117-08de-4894-9aa9-6ef382400985",
-                        "rel": "bookmark"
-                    }
-                ],
-                "name": "new-server-test"
-            }
-        ]
-    }"#;
-
-    mock_connector!(MockServers {
-        "http://127.0.2.1" => String::from("HTTP/1.1 200 OK\r\n\
-                                           Server: Mock.Mock\r\n\
-                                           \r\n") + SERVERS_RESPONSE
-    });
-
-    #[test]
-    fn test_servers_list() {
-        let auth = NoAuth::new("http://127.0.2.1/v2.1").unwrap();
-        let cli = hyper::Client::with_connector(MockServers::default());
-        let token = SimpleAuthToken(String::from("abcdef"));
-        let session = Session::new_with_params(auth, cli, token);
-
-        let api = ComputeApi::new(&session);
-        let srvs = api.list_servers(ServerFilters::new()).unwrap();
-        assert_eq!(srvs.len(), 1);
-        assert_eq!(&srvs[0].id, "22c91117-08de-4894-9aa9-6ef382400985");
-        assert_eq!(&srvs[0].name, "new-server-test");
+        let root = try!(serde_json::from_reader(resp));
+        Ok(root)
     }
 }

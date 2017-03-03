@@ -16,11 +16,6 @@
 
 #![allow(missing_docs)]
 
-use std::io::Read;
-
-use serde_json;
-
-
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Server {
     pub id: String,
@@ -30,12 +25,4 @@ pub struct Server {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ServersRoot {
     pub servers: Vec<Server>
-}
-
-
-impl ServersRoot {
-    pub fn from_reader<R: Read>(reader: R)
-            -> Result<ServersRoot, serde_json::Error> {
-        serde_json::from_reader(reader)
-    }
 }
