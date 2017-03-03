@@ -10,6 +10,8 @@ Version](https://img.shields.io/crates/v/openstack.svg)](https://crates.io/crate
 The goal of this project is to provide a simple API for working with OpenStack
 clouds. This is an early work-in-progress, don't expect too much of it.
 
+[Documentation](https://dtantsur.github.io/rust-openstack/openstack/)
+
 ## Features
 
 * Authentication against Identity service with user name, password and
@@ -30,12 +32,3 @@ There is an example retrieving a token from Keystone. Source your OpenStack
 credentials and run from the project root:
 
     cargo run --example get-token
-
-### Docs
-
-... are not hosted anywhere so far, so build them yourself by running the
-following command from the project root:
-
-    cargo doc
-
-and point your browser at `target/doc/openstack/index.html`.
