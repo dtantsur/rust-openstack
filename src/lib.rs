@@ -74,6 +74,8 @@ extern crate yup_hyper_mock;
 
 pub mod auth;
 mod common;
+#[cfg(feature = "compute")]
+pub mod compute;
 pub mod identity;
 pub mod session;
 mod utils;

@@ -4,6 +4,8 @@ ChangeLog
 next
 ----
 
+* Prototype for ComputeApi: added list_servers().
+
 0.0.5
 -----
 
