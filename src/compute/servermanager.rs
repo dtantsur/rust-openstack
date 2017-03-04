@@ -16,25 +16,8 @@
 
 use super::super::{ApiError, Session};
 use super::super::auth::AuthMethod;
-use super::super::session::{ServiceApi, ServiceType};
-use super::protocol;
-
-/// Marker for Compute API.
-#[derive(Copy, Clone, Debug)]
-pub struct ComputeApiV2;
-
-const SERVICE_TYPE: &'static str = "compute";
-const SUFFIX: &'static str = "v2.1";
-
-impl ServiceType for ComputeApiV2 {
-    fn catalog_type() -> &'static str {
-        SERVICE_TYPE
-    }
-
-    fn version_suffix() -> Option<&'static str> {
-        Some(SUFFIX)
-    }
-}
+use super::super::session::ServiceApi;
+use super::protocol::{self, ComputeApiV2};
 
 /// Structure represending filters for listing servers.
 #[allow(missing_copy_implementations)]
