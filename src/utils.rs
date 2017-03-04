@@ -19,6 +19,7 @@ use hyper::Client;
 use hyper::net::HttpsConnector;
 #[cfg(feature = "tls")]
 use hyper_rustls::TlsClient;
+use uuid::Uuid;
 
 
 /// Create an HTTP(s) client.
@@ -32,4 +33,28 @@ pub fn http_client() -> Client {
 #[cfg(not(feature = "tls"))]
 pub fn http_client() -> Client {
     Client::new()
+}
+
+/// Something that can be converted to an ID.
+pub trait IntoId {
+    /// Convert a value into an ID.
+    fn into_id(self) -> String;
+}
+
+impl IntoId for Uuid {
+    fn into_id(self) -> String {
+        self.to_string()
+    }
+}
+
+impl IntoId for String {
+    fn into_id(self) -> String {
+        self
+    }
+}
+
+impl<'a> IntoId for &'a str {
+    fn into_id(self) -> String {
+        String::from(self)
+    }
 }

@@ -4,6 +4,8 @@ ChangeLog
 next
 ----
 
+* Implement get(id) in the compute API.
+
 0.0.6
 -----
 

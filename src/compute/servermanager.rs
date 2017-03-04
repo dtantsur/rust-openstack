@@ -17,6 +17,7 @@
 use super::super::{ApiError, Session};
 use super::super::auth::AuthMethod;
 use super::super::session::ServiceApi;
+use super::super::utils::IntoId;
 use super::protocol::{self, ComputeApiV2};
 
 /// Structure represending filters for listing servers.
@@ -81,6 +82,16 @@ impl<'a, A: AuthMethod + 'a> ServerManager<'a, A> {
             manager: self,
             inner: x.clone()
         }).collect())
+    }
+
+    /// Get a server.
+    pub fn get<Id: IntoId>(&'a self, id: Id)
+            -> Result<Server<'a, A>, ApiError> {
+        let inner: protocol::ServerRoot = try!(self.api.get("servers", id));
+        Ok(Server {
+            manager: self,
+            inner: inner.server
+        })
     }
 }
 

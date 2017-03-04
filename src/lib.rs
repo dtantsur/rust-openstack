@@ -68,6 +68,7 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
 extern crate time;
+extern crate uuid;
 
 #[cfg(test)] #[macro_use]
 extern crate yup_hyper_mock;

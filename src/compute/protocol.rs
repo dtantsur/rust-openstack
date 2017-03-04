@@ -29,6 +29,11 @@ pub struct ServersRoot {
     pub servers: Vec<Server>
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct ServerRoot {
+    pub server: Server
+}
+
 /// Marker for Compute API.
 #[derive(Copy, Clone, Debug)]
 pub struct ComputeApiV2;

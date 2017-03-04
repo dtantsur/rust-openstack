@@ -236,9 +236,27 @@ impl<'a, A: AuthMethod + 'a, S: ServiceType> ServiceApi<'a, A, S> {
 
     /// List entities.
     pub fn list<R: Deserialize>(&self, path: &str) -> Result<R, ApiError> {
+        // TODO: filtering
         let url = try!(self.get_endpoint(path));
         debug!("Listing entities from {}", url);
         let resp = try!(self.session.request(Get, url).send());
+        let root = try!(serde_json::from_reader(resp));
+        Ok(root)
+    }
+
+    /// Get one entity.
+    pub fn get<R: Deserialize, Id: utils::IntoId>(&self, path: &str, id: Id)
+            -> Result<R, ApiError> {
+        // Url expects trailing /
+        let root_path = if path.ends_with("/") {
+            String::from(path)
+        } else {
+            format!("{}/", path)
+        };
+        let url = try!(self.get_endpoint(&root_path));
+        let url_with_id = try!(url.join(&id.into_id()));
+        debug!("Get one entity from {}", url);
+        let resp = try!(self.session.request(Get, url_with_id).send());
         let root = try!(serde_json::from_reader(resp));
         Ok(root)
     }
