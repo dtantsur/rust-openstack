@@ -18,11 +18,15 @@
 //! authentication, accessing the service catalog and token refresh.
 
 use std::cell::RefCell;
+use std::fmt;
+use std::marker::PhantomData;
 
-use hyper::{Client, Url};
+use hyper::{Client, Get, Url};
 use hyper::client::{Body, IntoUrl, RequestBuilder, Response};
 use hyper::header::{Header, Headers, HeaderFormat};
 use hyper::method::Method;
+use serde::Deserialize;
+use serde_json;
 
 use super::ApiError;
 use super::auth::base::{AuthMethod, AuthTokenHeader};
@@ -153,6 +157,90 @@ impl<'a, A: AuthMethod + 'a> Session<A> {
         let new_token = try!(self.auth_method.get_token(&self.client));
         *cached_token = Some(new_token);
         Ok(())
+    }
+}
+
+/// API version (major, minor).
+#[derive(Copy, Clone, Debug)]
+pub struct ApiVersion(pub u16, pub Option<u16>);
+
+impl fmt::Display for ApiVersion {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some(minor) = self.1 {
+            write!(f, "{}.{}", self.0, minor)
+        } else {
+            write!(f, "{}", self.0)
+        }
+    }
+}
+
+/// Trait representing a service type.
+pub trait ServiceType {
+    /// Service type to pass to the catalog.
+    fn catalog_type() -> &'static str;
+
+    /// Version suffix to append to the endpoint.
+    fn version_suffix() -> Option<&'static str>;
+}
+
+/// Low-level API calls.
+#[derive(Debug)]
+pub struct ServiceApi<'a, A: AuthMethod + 'a, S> {
+    session: &'a Session<A>,
+    service_type: PhantomData<S>,
+    endpoint_interface: Option<String>,
+    region: Option<String>
+}
+
+impl<'a, A: AuthMethod + 'a, S: ServiceType> ServiceApi<'a, A, S> {
+    /// Create a new API instance using the given session.
+    pub fn new(session: &'a Session<A>) -> ServiceApi<'a, A, S> {
+        ServiceApi::new_with_endpoint_params(session, None, None)
+    }
+
+    /// Create a new API instance using the given session.
+    ///
+    /// This variant allows passing an endpoint type (defaults to public),
+    /// and region (defaults to any).
+    pub fn new_with_endpoint_params(session: &'a Session<A>,
+                                    endpoint_interface: Option<&str>,
+                                    region: Option<&str>)
+            -> ServiceApi<'a, A, S> {
+        ServiceApi {
+            session: session,
+            service_type: PhantomData,
+            endpoint_interface: endpoint_interface.map(String::from),
+            region: region.map(String::from)
+        }
+    }
+
+    /// Get an endpoint with version suffix and given path appended.
+    pub fn get_endpoint(&self, path: &str) -> Result<Url, ApiError> {
+        let endpoint = try!(self.session.get_endpoint(
+                S::catalog_type(),
+                self.endpoint_interface.as_ref().map(String::as_str),
+                self.region.as_ref().map(String::as_str)));
+
+        let with_version = if let Some(suffix) = S::version_suffix() {
+            if endpoint.path().ends_with(suffix) {
+                endpoint
+            } else {
+                try!(endpoint.join(suffix))
+            }
+        } else {
+            endpoint
+        };
+
+        with_version.join(path).map_err(From::from)
+    }
+
+    /// List entities.
+    pub fn list<R: Deserialize>(&self, path: &str) -> Result<R, ApiError> {
+        let url = try!(self.get_endpoint(path));
+        debug!("Listing entities from {}", url);
+        let resp = try!(self.session.request(Get, url).send());
+        let root = try!(serde_json::from_reader(resp));
+        Ok(root)
     }
 }
 

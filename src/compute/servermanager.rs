@@ -16,8 +16,25 @@
 
 use super::super::{ApiError, Session};
 use super::super::auth::AuthMethod;
-use super::api::ComputeApi;
+use super::super::session::{ServiceApi, ServiceType};
 use super::protocol;
+
+/// Marker for Compute API.
+#[derive(Copy, Clone, Debug)]
+pub struct ComputeApiV2;
+
+const SERVICE_TYPE: &'static str = "compute";
+const SUFFIX: &'static str = "v2.1";
+
+impl ServiceType for ComputeApiV2 {
+    fn catalog_type() -> &'static str {
+        SERVICE_TYPE
+    }
+
+    fn version_suffix() -> Option<&'static str> {
+        Some(SUFFIX)
+    }
+}
 
 /// Structure represending filters for listing servers.
 #[allow(missing_copy_implementations)]
@@ -40,7 +57,7 @@ impl Default for ServerFilters {
 /// Server manager: working with virtual servers.
 #[derive(Debug)]
 pub struct ServerManager<'a, A: AuthMethod + 'a> {
-    api: ComputeApi<'a, A>
+    api: ServiceApi<'a, A, ComputeApiV2>
 }
 
 /// Structure representing a single server.
@@ -57,7 +74,7 @@ pub type ServerList<'a, A> = Vec<Server<'a, A>>;
 pub fn servers<'a, A: AuthMethod + 'a>(session: &'a Session<A>)
         -> ServerManager<'a, A> {
     ServerManager {
-        api: ComputeApi::new(session)
+        api: ServiceApi::new(session)
     }
 }
 

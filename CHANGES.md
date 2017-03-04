@@ -7,6 +7,8 @@ next
 * Started compute API: added compute::servers().
 * Added ServerManager::list() for listing without filtering.
 * Added compute::ServerFilters for future filtering.
+* Generic ServiceApi implementation.
+* Introduce ApiVersion structure.
 
 0.0.5
 -----

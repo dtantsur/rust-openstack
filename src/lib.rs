@@ -81,4 +81,4 @@ pub mod session;
 mod utils;
 
 pub use common::ApiError;
-pub use session::Session;
+pub use session::{ApiVersion, Session};
