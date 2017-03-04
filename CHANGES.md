@@ -4,6 +4,9 @@ ChangeLog
 next
 ----
 
+0.0.6
+-----
+
 * Started compute API: added compute::servers().
 * Added ServerManager::list() for listing without filtering.
 * Added compute::ServerFilters for future filtering.
