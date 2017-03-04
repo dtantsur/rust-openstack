@@ -33,7 +33,8 @@ fn main() {
     let server = servers_api.get(env::args().nth(1)
                                  .expect("Provide a server ID"))
         .expect("Cannot get a server");
-    println!("ID = {}, Name = {}", server.id(), server.name());
+    println!("ID = {}, Name = {}, Status = {}",
+             server.id(), server.name(), server.status());
 }
 
 #[cfg(not(feature = "compute"))]

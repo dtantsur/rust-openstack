@@ -53,6 +53,12 @@ impl IntoId for String {
     }
 }
 
+impl<'a> IntoId for &'a String {
+    fn into_id(self) -> String {
+        self.clone()
+    }
+}
+
 impl<'a> IntoId for &'a str {
     fn into_id(self) -> String {
         String::from(self)

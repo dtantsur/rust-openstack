@@ -44,15 +44,22 @@ pub struct ServerManager<'a, A: AuthMethod + 'a> {
     api: ServiceApi<'a, A, ComputeApiV2>
 }
 
-/// Structure representing a single server.
+/// Structure representing a summary of a single server.
 #[derive(Debug)]
 pub struct Server<'a, A: AuthMethod + 'a> {
     manager: &'a ServerManager<'a, A>,
     inner: protocol::Server
 }
 
+/// Structure representing a summary of a single server.
+#[derive(Debug)]
+pub struct ServerSummary<'a, A: AuthMethod + 'a> {
+    manager: &'a ServerManager<'a, A>,
+    inner: protocol::ServerSummary
+}
+
 /// List of servers.
-pub type ServerList<'a, A> = Vec<Server<'a, A>>;
+pub type ServerList<'a, A> = Vec<ServerSummary<'a, A>>;
 
 /// Constructor for server manager.
 pub fn servers<'a, A: AuthMethod + 'a>(session: &'a Session<A>)
@@ -62,7 +69,17 @@ pub fn servers<'a, A: AuthMethod + 'a>(session: &'a Session<A>)
     }
 }
 
-impl<'a, A: AuthMethod + 'a>Server<'a, A> {
+impl<'a, A: AuthMethod + 'a> Server<'a, A> {
+    /// Get a reference to IPv4 address.
+    pub fn access_ipv4(&self) -> &String {
+        &self.inner.accessIPv4
+    }
+
+    /// Get a reference to IPv6 address.
+    pub fn access_ipv6(&self) -> &String {
+        &self.inner.accessIPv6
+    }
+
     /// Get a reference to server unique ID.
     pub fn id(&self) -> &String {
         &self.inner.id
@@ -72,13 +89,35 @@ impl<'a, A: AuthMethod + 'a>Server<'a, A> {
     pub fn name(&self) -> &String {
         &self.inner.name
     }
+
+    /// Get server status.
+    pub fn status(&self) -> &String {
+        &self.inner.status
+    }
+}
+
+impl<'a, A: AuthMethod + 'a> ServerSummary<'a, A> {
+    /// Get a reference to server unique ID.
+    pub fn id(&self) -> &String {
+        &self.inner.id
+    }
+
+    /// Get a reference to server name.
+    pub fn name(&self) -> &String {
+        &self.inner.name
+    }
+
+    /// Get details.
+    pub fn details(self) -> Result<Server<'a, A>, ApiError> {
+        self.manager.get(self.id())
+    }
 }
 
 impl<'a, A: AuthMethod + 'a> ServerManager<'a, A> {
     /// List all servers without any filtering.
     pub fn list(&'a self) -> Result<ServerList<'a, A>, ApiError> {
         let inner: protocol::ServersRoot = try!(self.api.list("servers"));
-        Ok(inner.servers.iter().map(|x| Server {
+        Ok(inner.servers.iter().map(|x| ServerSummary {
             manager: self,
             inner: x.clone()
         }).collect())

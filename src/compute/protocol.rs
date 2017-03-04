@@ -14,19 +14,30 @@
 
 //! JSON structures and protocol bits for the Compute API.
 
+#![allow(non_snake_case)]
 #![allow(missing_docs)]
 
 use super::super::session::ServiceType;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Server {
+    pub accessIPv4: String,
+    pub accessIPv6: String,
     pub id: String,
-    pub name: String
+    pub name: String,
+    pub status: String,
+    pub tenant_id: String,
+    pub user_id: String
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct ServerSummary {
+    pub id: String,
+    pub name: String,
+}
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ServersRoot {
-    pub servers: Vec<Server>
+    pub servers: Vec<ServerSummary>
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
