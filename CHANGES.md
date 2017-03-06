@@ -4,6 +4,10 @@ ChangeLog
 next
 ----
 
+0.0.7
+-----
+
+* Major refactorings.
 * Implement get(id) in the compute API.
 
 0.0.6
