@@ -37,6 +37,8 @@ use super::super::{ApiError, ApiResult, Session};
 use super::super::identity::{catalog, protocol};
 use super::{Method, SimpleToken};
 
+use ApiError::InsufficientCredentials;
+
 
 const MISSING_USER: &'static str = "User information required";
 const MISSING_SCOPE: &'static str = "Unscoped tokens are not supported now";
@@ -106,14 +108,18 @@ impl Identity {
         let password_identity = match self.password_identity {
             Some(p) => p,
             None =>
-                return Err(ApiError::InsufficientCredentials(MISSING_USER))
+                return Err(
+                    InsufficientCredentials(String::from(MISSING_USER))
+                )
         };
 
         /// TODO: support unscoped tokens
         let project_scope = match self.project_scope {
             Some(p) => p,
             None =>
-                return Err(ApiError::InsufficientCredentials(MISSING_SCOPE))
+                return Err(
+                    InsufficientCredentials(String::from(MISSING_SCOPE))
+                )
         };
 
         Ok(IdentityAuthMethod::new(self.auth_url, password_identity,
@@ -144,10 +150,10 @@ impl Identity {
     }
 }
 
-#[inline]
 fn _get_env(name: &str) -> ApiResult<String> {
-    env::var(name).or(
-        Err(ApiError::InsufficientCredentials(MISSING_ENV_VARS)))
+    env::var(name).or(Err(
+            InsufficientCredentials(String::from(MISSING_ENV_VARS))
+    ))
 }
 
 impl IdentityAuthMethod {
@@ -188,7 +194,7 @@ impl IdentityAuthMethod {
             StatusCode::Unauthorized => {
                 warn!("Invalid credentials for user {}",
                       self.body.auth.identity.password.user.name);
-                return Err(ApiError::Unauthorized);
+                return Err(ApiError::HttpError(resp.status, resp));
             },
             other => {
                 error!("Unexpected HTTP error {} when getting a token for {}",
@@ -244,6 +250,7 @@ pub mod test {
     #![allow(unused_results)]
 
     use hyper;
+    use hyper::status::StatusCode;
 
     use super::super::super::{ApiError, Session};
     use super::super::{Method, Token, SimpleToken};
@@ -378,7 +385,7 @@ pub mod test {
             .create().unwrap();
         let cli = hyper::Client::with_connector(MockToken::default());
         match id.get_token(&cli).err().unwrap() {
-            ApiError::Unauthorized => (),
+            ApiError::HttpError(StatusCode::Unauthorized, ..) => (),
             other => panic!("Unexpected {}", other)
         };
     }

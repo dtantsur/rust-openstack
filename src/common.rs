@@ -39,15 +39,26 @@ pub trait ServiceType {
 #[derive(Debug)]
 pub enum ApiError {
     /// Insufficient credentials passed to make authentication request.
-    InsufficientCredentials(&'static str),
+    ///
+    /// Contains the error message.
+    InsufficientCredentials(String),
+
     /// Requested service endpoint was not found.
+    ///
+    /// Contains the failed endpoint name.
     EndpointNotFound(String),
-    /// Authentication rejected (invalid credentials or token).
-    Unauthorized,
-    /// Generic HTTP error (not covered by EndpointNotFound and Unauthorized).
+
+    /// Invalid value passed to one of paremeters.
+    ///
+    /// Contains the error message.
+    InvalidParameterValue(String),
+
+    /// Generic HTTP error.
     HttpError(StatusCode, Response),
+
     /// Protocol-level error reported by underlying HTTP library.
     ProtocolError(HttpClientError),
+
     /// JSON parsing failed.
     InvalidJson(JsonError)
 }
@@ -58,12 +69,12 @@ pub type ApiResult<T> = Result<T, ApiError>;
 impl fmt::Display for ApiError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ApiError::InsufficientCredentials(msg) =>
+            ApiError::InsufficientCredentials(ref msg) =>
                 write!(f, "Insufficient credentials provided: {}", msg),
             ApiError::EndpointNotFound(ref endp) =>
                 write!(f, "Requested endpoint {} was not found", endp),
-            ApiError::Unauthorized =>
-                write!(f, "Authentication failed"),
+            ApiError::InvalidParameterValue(ref msg) =>
+                write!(f, "Passed parameters are invalid: {}", msg),
             ApiError::HttpError(status, ..) =>
                 write!(f, "HTTP error {}", status),
             ApiError::ProtocolError(ref e) => fmt::Display::fmt(e, f),
@@ -79,7 +90,8 @@ impl Error for ApiError {
                 "Insufficient credentials provided",
             ApiError::EndpointNotFound(..) =>
                 "Requested endpoint was not found",
-            ApiError::Unauthorized => "Authentication failed",
+            ApiError::InvalidParameterValue(..) =>
+                "Invalid values passed for parameters",
             ApiError::HttpError(..) => "HTTP error",
             ApiError::ProtocolError(ref e) => e.description(),
             ApiError::InvalidJson(ref e) => e.description()
