@@ -51,4 +51,9 @@ pub trait Method: Clone + Send {
                     region: Option<&str>,
                     session: &Session<Self>)
         -> Result<Url, ApiError>;
+
+    /// Create a session with this authentication method.
+    fn session(self) -> Session<Self> {
+        Session::new(self)
+    }
 }

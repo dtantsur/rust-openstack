@@ -17,8 +17,15 @@
 //! Usually, accessing OpenStack services requires authentication. This module
 //! provides a way to authenticate against an Identity service, as well as
 //! simple authentication implementations for standalone use.
-//! The resulting objects can then be passed to the
-//! [Session constructor](../session/struct.Session.html#method.new).
+//!
+//! The usual workflow for connecting to OpenStack API is as follows:
+//!
+//! 1. Create a suitable authentication method.
+//! 2. Populate it with authentication data (credentials, etc).
+//! 3. Create a [Session](../session/struct.Session.html) by using the
+//!    [Session constructor](../session/struct.Session.html#method.new) or
+//!    the [session method](trait.Method.html#method.session).
+//! 4. Pass a reference to the resulting session to various API managers.
 //!
 //! See [identity module](identity/index.html) for more details on how to use
 //! authentication agaist an Identity service.
