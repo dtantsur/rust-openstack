@@ -15,7 +15,7 @@
 extern crate hyper;
 extern crate openstack;
 
-use openstack::auth::{AuthToken, Identity};
+use openstack::auth::{Token, Identity};
 use openstack::Session;
 
 

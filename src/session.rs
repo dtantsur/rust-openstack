@@ -29,7 +29,8 @@ use serde::Deserialize;
 use serde_json;
 
 use super::ApiError;
-use super::auth::base::{AuthMethod, AuthTokenHeader};
+use super::auth::Method as AuthMethod;
+use super::identity::protocol;
 use super::utils;
 
 
@@ -46,13 +47,13 @@ pub struct AuthenticatedRequestBuilder<'a, A: AuthMethod + 'a> {
 ///
 /// Owns a token and an underlying client.
 #[derive(Debug)]
-pub struct Session<A: AuthMethod> {
-    auth_method: A,
+pub struct Session<Auth: AuthMethod> {
+    auth_method: Auth,
     client: Client,
-    cached_token: RefCell<Option<A::TokenType>>
+    cached_token: RefCell<Option<Auth::TokenType>>
 }
 
-impl<'a, A: AuthMethod> AuthenticatedRequestBuilder<'a, A> {
+impl<'a, Auth: AuthMethod> AuthenticatedRequestBuilder<'a, Auth> {
     /// Send this request.
     pub fn send(self) -> Result<Response, ApiError> {
         let resp = try!(self.send_unchecked());
@@ -66,13 +67,13 @@ impl<'a, A: AuthMethod> AuthenticatedRequestBuilder<'a, A> {
     /// Send this request without checking on status code.
     pub fn send_unchecked(self) -> Result<Response, ApiError> {
         let token = try!(self.parent.auth_token());
-        let hdr = AuthTokenHeader(token.into());
+        let hdr = protocol::AuthTokenHeader(token.into());
         self.inner.header(hdr).send().map_err(From::from)
     }
 
     /// Add body to the request.
     pub fn body<B: Into<Body<'a>>>(self, body: B)
-            -> AuthenticatedRequestBuilder<'a, A> {
+            -> AuthenticatedRequestBuilder<'a, Auth> {
         AuthenticatedRequestBuilder {
             inner: self.inner.body(body),
             .. self
@@ -81,7 +82,7 @@ impl<'a, A: AuthMethod> AuthenticatedRequestBuilder<'a, A> {
 
     /// Add additional headers to the request.
     pub fn headers(self, headers: Headers)
-            -> AuthenticatedRequestBuilder<'a, A> {
+            -> AuthenticatedRequestBuilder<'a, Auth> {
         AuthenticatedRequestBuilder {
             inner: self.inner.headers(headers),
             .. self
@@ -92,7 +93,7 @@ impl<'a, A: AuthMethod> AuthenticatedRequestBuilder<'a, A> {
     ///
     /// Note that X-Auth-Token is always overwritten with a token in use.
     pub fn header<H: Header + HeaderFormat>(self, header: H)
-            -> AuthenticatedRequestBuilder<'a, A> {
+            -> AuthenticatedRequestBuilder<'a, Auth> {
         AuthenticatedRequestBuilder {
             inner: self.inner.header(header),
             .. self
@@ -101,9 +102,9 @@ impl<'a, A: AuthMethod> AuthenticatedRequestBuilder<'a, A> {
 }
 
 
-impl<'a, A: AuthMethod + 'a> Session<A> {
+impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
     /// Create a new session with a given authentication plugin.
-    pub fn new(auth_method: A) -> Session<A> {
+    pub fn new(auth_method: Auth) -> Session<Auth> {
         Session {
             auth_method: auth_method,
             client: utils::http_client(),
@@ -112,7 +113,7 @@ impl<'a, A: AuthMethod + 'a> Session<A> {
     }
 
     /// Get a clone of the authentication token.
-    pub fn auth_token(&self) -> Result<A::TokenType, ApiError> {
+    pub fn auth_token(&self) -> Result<Auth::TokenType, ApiError> {
         try!(self.refresh_token());
         Ok(self.cached_token.borrow().clone().unwrap())
     }
@@ -127,7 +128,7 @@ impl<'a, A: AuthMethod + 'a> Session<A> {
 
     /// A wrapper for HTTP request.
     pub fn request<U: IntoUrl>(&'a self, method: Method, url: U)
-            -> AuthenticatedRequestBuilder<'a, A> {
+            -> AuthenticatedRequestBuilder<'a, Auth> {
         AuthenticatedRequestBuilder {
             parent: self,
             inner: self.client.request(method, url)
@@ -137,8 +138,8 @@ impl<'a, A: AuthMethod + 'a> Session<A> {
     // Private and test-only
 
     #[cfg(test)]
-    pub fn new_with_params(auth_method: A, client: Client,
-                           token: A::TokenType) -> Session<A> {
+    pub fn new_with_params(auth_method: Auth, client: Client,
+                           token: Auth::TokenType) -> Session<Auth> {
         Session {
             auth_method: auth_method,
             client: client,
@@ -185,16 +186,16 @@ pub trait ServiceType {
 
 /// Low-level API calls.
 #[derive(Debug)]
-pub struct ServiceApi<'a, A: AuthMethod + 'a, S> {
-    session: &'a Session<A>,
+pub struct ServiceApi<'a, Auth: AuthMethod + 'a, S> {
+    session: &'a Session<Auth>,
     service_type: PhantomData<S>,
     endpoint_interface: Option<String>,
     region: Option<String>
 }
 
-impl<'a, A: AuthMethod + 'a, S: ServiceType> ServiceApi<'a, A, S> {
+impl<'a, Auth: AuthMethod + 'a, S: ServiceType> ServiceApi<'a, Auth, S> {
     /// Create a new API instance using the given session.
-    pub fn new(session: &'a Session<A>) -> ServiceApi<'a, A, S> {
+    pub fn new(session: &'a Session<Auth>) -> ServiceApi<'a, Auth, S> {
         ServiceApi::new_with_endpoint_params(session, None, None)
     }
 
@@ -202,10 +203,10 @@ impl<'a, A: AuthMethod + 'a, S: ServiceType> ServiceApi<'a, A, S> {
     ///
     /// This variant allows passing an endpoint type (defaults to public),
     /// and region (defaults to any).
-    pub fn new_with_endpoint_params(session: &'a Session<A>,
+    pub fn new_with_endpoint_params(session: &'a Session<Auth>,
                                     endpoint_interface: Option<&str>,
                                     region: Option<&str>)
-            -> ServiceApi<'a, A, S> {
+            -> ServiceApi<'a, Auth, S> {
         ServiceApi {
             session: session,
             service_type: PhantomData,
@@ -274,11 +275,11 @@ pub mod test {
     use hyper::header::ContentLength;
 
     use super::Session;
-    use super::super::auth::base::{AuthToken, NoAuth, SimpleAuthToken};
+    use super::super::auth::{Token, NoAuth, SimpleToken};
     use super::super::utils;
 
     pub fn new_session(token: &str) -> Session<NoAuth> {
-        let token = SimpleAuthToken(String::from(token));
+        let token = SimpleToken(String::from(token));
         Session::new_with_params(NoAuth::new("http://127.0.0.1/").unwrap(),
                                  utils::http_client(), token)
     }

@@ -14,39 +14,32 @@
 
 //! Base code for authentication.
 
-#![allow(missing_docs)]
-
 use std::fmt;
 
 use hyper::{Client, Url};
-use hyper::client::IntoUrl;
-use hyper::error::ParseError;
 use time::PreciseTime;
 
 use super::super::{ApiError, Session};
 
-header! { (AuthTokenHeader, "X-Auth-Token") => [String] }
-
-header! { (SubjectTokenHeader, "X-Subject-Token") => [String] }
-
 
 /// Trait for authentication token implementations.
-pub trait AuthToken: Clone + fmt::Debug + Send + Into<String> {
+pub trait Token: Clone + fmt::Debug + Send + fmt::Display + Into<String> {
     /// A reference to token contents.
     fn value(&self) -> &String;
+
     /// Expiration time (if any).
     fn expires_at(&self) -> Option<&PreciseTime>;
 }
 
-
-/// Simple authentication token.
-#[derive(Clone, Debug)]
-pub struct SimpleAuthToken(pub String);
-
-/// Trait for any authentication method.
-pub trait AuthMethod: Clone + Send {
+/// Trait for an authentication method.
+///
+/// An OpenStack authentication method is expected to be able to:
+///
+/// 1. get an authentication token to use when accessing services,
+/// 2. get an endpoint URL for the given service type.
+pub trait Method: Clone + Send {
     /// A token type.
-    type TokenType: AuthToken;
+    type TokenType: Token;
 
     /// Verify authentication and generate an auth token.
     fn get_token(&self, client: &Client)
@@ -58,99 +51,4 @@ pub trait AuthMethod: Clone + Send {
                     region: Option<&str>,
                     session: &Session<Self>)
         -> Result<Url, ApiError>;
-}
-
-/// Authentication method that provides no authentication (uses a fake token).
-#[derive(Clone, Debug)]
-pub struct NoAuth {
-    endpoint: Url
-}
-
-impl Into<String> for SimpleAuthToken {
-    fn into(self) -> String {
-        self.0
-    }
-}
-
-impl AuthToken for SimpleAuthToken {
-    fn value(&self) -> &String {
-        &self.0
-    }
-
-    fn expires_at(&self) -> Option<&PreciseTime> {
-        None
-    }
-}
-
-impl NoAuth {
-    /// Create a new fake authentication method using a fixed endpoint.
-    pub fn new<U>(endpoint: U) -> Result<NoAuth, ParseError> where U: IntoUrl {
-        let url = try!(endpoint.into_url());
-        Ok(NoAuth {
-            endpoint: url
-        })
-    }
-}
-
-impl AuthMethod for NoAuth {
-    type TokenType = SimpleAuthToken;
-
-    /// Return a fake token for compliance with the protocol.
-    fn get_token(&self, _client: &Client) -> Result<SimpleAuthToken, ApiError> {
-        Ok(SimpleAuthToken(String::from("no-auth")))
-    }
-
-    /// Get a predefined endpoint for all service types
-    fn get_endpoint(&self, _service_type: &str,
-                    _endpoint_interface: Option<&str>,
-                    _region: Option<&str>,
-                    _client: &Session<NoAuth>)
-            -> Result<Url, ApiError> {
-        Ok(self.endpoint.clone())
-    }
-}
-
-#[cfg(test)]
-pub mod test {
-    #![allow(unused_results)]
-
-    use hyper;
-
-    use super::super::super::session::test::new_session;
-
-    use super::{AuthMethod, AuthToken, NoAuth};
-
-    #[test]
-    fn test_noauth_new() {
-        let a = NoAuth::new("http://127.0.0.1:8080/v1").unwrap();
-        let e = a.endpoint;
-        assert_eq!(e.scheme(), "http");
-        assert_eq!(e.host_str().unwrap(), "127.0.0.1");
-        assert_eq!(e.port().unwrap(), 8080u16);
-        assert_eq!(e.path(), "/v1");
-    }
-
-    #[test]
-    fn test_noauth_new_fail() {
-        NoAuth::new("foo bar").err().unwrap();
-    }
-
-    #[test]
-    fn test_noauth_get_token() {
-        let a = NoAuth::new("http://127.0.0.1:8080/v1").unwrap();
-        let tok = a.get_token(&hyper::Client::new()).unwrap();
-        assert_eq!(tok.value(), "no-auth");
-        assert!(tok.expires_at().is_none());
-    }
-
-    #[test]
-    fn test_noauth_get_endpoint() {
-        let a = NoAuth::new("http://127.0.0.1:8080/v1").unwrap();
-        let e = a.get_endpoint("foobar", None, None,
-                               &new_session("token")).unwrap();
-        assert_eq!(e.scheme(), "http");
-        assert_eq!(e.host_str().unwrap(), "127.0.0.1");
-        assert_eq!(e.port().unwrap(), 8080u16);
-        assert_eq!(e.path(), "/v1");
-    }
 }

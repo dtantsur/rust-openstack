@@ -21,6 +21,11 @@ use std::io::Read;
 use serde_json;
 
 
+header! { (AuthTokenHeader, "X-Auth-Token") => [String] }
+
+header! { (SubjectTokenHeader, "X-Subject-Token") => [String] }
+
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Domain {
     pub name: String

@@ -13,6 +13,15 @@
 // limitations under the License.
 
 //! OpenStack Identity V3 API support for access tokens.
+//!
+//! Start with creating an [Identity](struct.Identity.html) object which will
+//! guide you through setting all necessary values.
+//! [IdentityAuthMethod](struct.IdentityAuthMethod.html) is the actual
+//! implementation of the authentication [method](../trait.Method.html) trait.
+//!
+//! Note that as of now, only project-scoped tokens are supported.
+//! An attempt to create unscoped tokens always fails. This restriction may
+//! be lifted in the future.
 
 use std::env;
 use std::io::Read;
@@ -25,9 +34,8 @@ use hyper::header::ContentType;
 use hyper::status::StatusCode;
 
 use super::super::{ApiError, Session};
-use super::super::identity::catalog;
-use super::super::identity::protocol;
-use super::base::{AuthMethod, SimpleAuthToken, SubjectTokenHeader};
+use super::super::identity::{catalog, protocol};
+use super::{Method, SimpleToken};
 
 
 const MISSING_USER: &'static str = "User information required";
@@ -44,9 +52,9 @@ pub struct Identity {
     project_scope: Option<protocol::ProjectScope>
 }
 
-/// Authentication method using Identity API V3.
+/// Authentication method implementation using Identity API V3.
 ///
-/// Should be created via Identity struct methods.
+/// Has to be created via [Identity object](struct.Identity.html) methods.
 #[derive(Clone, Debug)]
 pub struct IdentityAuthMethod {
     auth_url: Url,
@@ -162,13 +170,14 @@ impl IdentityAuthMethod {
     }
 
     fn token_from_response(&self, mut resp: Response)
-            -> Result<SimpleAuthToken, ApiError> {
+            -> Result<SimpleToken, ApiError> {
         let mut resp_body = String::new();
         let _ignored = try!(resp.read_to_string(&mut resp_body));
 
         let token_value = match resp.status {
             StatusCode::Ok | StatusCode::Created => {
-                let header: Option<&SubjectTokenHeader> = resp.headers.get();
+                let header: Option<&protocol::SubjectTokenHeader> =
+                    resp.headers.get();
                 match header {
                     Some(ref value) => value.0.clone(),
                     None => return Err(
@@ -193,16 +202,16 @@ impl IdentityAuthMethod {
 
         // TODO: detect expiration time
         // TODO: do something useful about the body
-        Ok(SimpleAuthToken(token_value))
+        Ok(SimpleToken(token_value))
     }
 }
 
-impl AuthMethod for IdentityAuthMethod {
+impl Method for IdentityAuthMethod {
     // TODO: implement its own token type
-    type TokenType = SimpleAuthToken;
+    type TokenType = SimpleToken;
 
     /// Verify authentication and generate an auth token.
-    fn get_token(&self, client: &Client) -> Result<SimpleAuthToken, ApiError> {
+    fn get_token(&self, client: &Client) -> Result<SimpleToken, ApiError> {
         debug!("Requesting a token for user {} from {}",
                self.body.auth.identity.password.user.name,
                self.token_endpoint);
@@ -236,7 +245,7 @@ pub mod test {
     use hyper;
 
     use super::super::super::{ApiError, Session};
-    use super::super::base::{AuthMethod, AuthToken, SimpleAuthToken};
+    use super::super::{Method, Token, SimpleToken};
     use super::Identity;
 
     mock_connector!(MockToken {
@@ -395,7 +404,7 @@ pub mod test {
             .with_project_scope("cool project", "example.com")
             .create().unwrap();
         let cli = hyper::Client::with_connector(MockCatalog::default());
-        let token = SimpleAuthToken(String::from("abcdef"));
+        let token = SimpleToken(String::from("abcdef"));
         let session = Session::new_with_params(id, cli, token);
 
         let e1 = session.get_endpoint("identity", None, None).unwrap();
@@ -415,7 +424,7 @@ pub mod test {
             .with_project_scope("cool project", "example.com")
             .create().unwrap();
         let cli = hyper::Client::with_connector(MockCatalog::default());
-        let token = SimpleAuthToken(String::from("abcdef"));
+        let token = SimpleToken(String::from("abcdef"));
         let session = Session::new_with_params(id, cli, token);
 
         match session.get_endpoint("foo", None, None).err().unwrap() {

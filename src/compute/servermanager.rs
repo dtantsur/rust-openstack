@@ -15,7 +15,7 @@
 //! Server management via Compute API.
 
 use super::super::{ApiError, Session};
-use super::super::auth::AuthMethod;
+use super::super::auth::Method as AuthMethod;
 use super::super::session::ServiceApi;
 use super::super::utils::IntoId;
 use super::protocol::{self, ComputeApiV2};
@@ -40,36 +40,36 @@ impl Default for ServerFilters {
 
 /// Server manager: working with virtual servers.
 #[derive(Debug)]
-pub struct ServerManager<'a, A: AuthMethod + 'a> {
-    api: ServiceApi<'a, A, ComputeApiV2>
+pub struct ServerManager<'a, Auth: AuthMethod + 'a> {
+    api: ServiceApi<'a, Auth, ComputeApiV2>
 }
 
 /// Structure representing a summary of a single server.
 #[derive(Debug)]
-pub struct Server<'a, A: AuthMethod + 'a> {
-    manager: &'a ServerManager<'a, A>,
+pub struct Server<'a, Auth: AuthMethod + 'a> {
+    manager: &'a ServerManager<'a, Auth>,
     inner: protocol::Server
 }
 
 /// Structure representing a summary of a single server.
 #[derive(Debug)]
-pub struct ServerSummary<'a, A: AuthMethod + 'a> {
-    manager: &'a ServerManager<'a, A>,
+pub struct ServerSummary<'a, Auth: AuthMethod + 'a> {
+    manager: &'a ServerManager<'a, Auth>,
     inner: protocol::ServerSummary
 }
 
 /// List of servers.
-pub type ServerList<'a, A> = Vec<ServerSummary<'a, A>>;
+pub type ServerList<'a, Auth> = Vec<ServerSummary<'a, Auth>>;
 
 /// Constructor for server manager.
-pub fn servers<'a, A: AuthMethod + 'a>(session: &'a Session<A>)
-        -> ServerManager<'a, A> {
+pub fn servers<'a, Auth: AuthMethod + 'a>(session: &'a Session<Auth>)
+        -> ServerManager<'a, Auth> {
     ServerManager {
         api: ServiceApi::new(session)
     }
 }
 
-impl<'a, A: AuthMethod + 'a> Server<'a, A> {
+impl<'a, Auth: AuthMethod + 'a> Server<'a, Auth> {
     /// Get a reference to IPv4 address.
     pub fn access_ipv4(&self) -> &String {
         &self.inner.accessIPv4
@@ -96,7 +96,7 @@ impl<'a, A: AuthMethod + 'a> Server<'a, A> {
     }
 }
 
-impl<'a, A: AuthMethod + 'a> ServerSummary<'a, A> {
+impl<'a, Auth: AuthMethod + 'a> ServerSummary<'a, Auth> {
     /// Get a reference to server unique ID.
     pub fn id(&self) -> &String {
         &self.inner.id
@@ -108,14 +108,14 @@ impl<'a, A: AuthMethod + 'a> ServerSummary<'a, A> {
     }
 
     /// Get details.
-    pub fn details(self) -> Result<Server<'a, A>, ApiError> {
+    pub fn details(self) -> Result<Server<'a, Auth>, ApiError> {
         self.manager.get(self.id())
     }
 }
 
-impl<'a, A: AuthMethod + 'a> ServerManager<'a, A> {
+impl<'a, Auth: AuthMethod + 'a> ServerManager<'a, Auth> {
     /// List all servers without any filtering.
-    pub fn list(&'a self) -> Result<ServerList<'a, A>, ApiError> {
+    pub fn list(&'a self) -> Result<ServerList<'a, Auth>, ApiError> {
         let inner: protocol::ServersRoot = try!(self.api.list("servers"));
         Ok(inner.servers.iter().map(|x| ServerSummary {
             manager: self,
@@ -125,7 +125,7 @@ impl<'a, A: AuthMethod + 'a> ServerManager<'a, A> {
 
     /// Get a server.
     pub fn get<Id: IntoId>(&'a self, id: Id)
-            -> Result<Server<'a, A>, ApiError> {
+            -> Result<Server<'a, Auth>, ApiError> {
         let inner: protocol::ServerRoot = try!(self.api.get("servers", id));
         Ok(Server {
             manager: self,
@@ -142,7 +142,7 @@ pub mod test {
     use hyper;
 
     use super::super::super::Session;
-    use super::super::super::auth::base::{NoAuth, SimpleAuthToken};
+    use super::super::super::auth::{NoAuth, SimpleToken};
     use super::servers;
 
     // Copied from compute API reference.
@@ -176,7 +176,7 @@ pub mod test {
     fn test_servers_list() {
         let auth = NoAuth::new("http://127.0.2.1/v2.1").unwrap();
         let cli = hyper::Client::with_connector(MockServers::default());
-        let token = SimpleAuthToken(String::from("abcdef"));
+        let token = SimpleToken(String::from("abcdef"));
         let session = Session::new_with_params(auth, cli, token);
 
         let api = servers(&session);
