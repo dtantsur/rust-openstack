@@ -21,6 +21,7 @@ use std::io;
 use hyper::Error as HttpClientError;
 use hyper::client::Response;
 use hyper::error::ParseError;
+use hyper::status::StatusCode;
 use serde_json::Error as JsonError;
 
 
@@ -44,7 +45,7 @@ pub enum ApiError {
     /// Authentication rejected (invalid credentials or token).
     Unauthorized,
     /// Generic HTTP error (not covered by EndpointNotFound and Unauthorized).
-    HttpError(Response),
+    HttpError(StatusCode, Response),
     /// Protocol-level error reported by underlying HTTP library.
     ProtocolError(HttpClientError),
     /// JSON parsing failed.
@@ -63,8 +64,8 @@ impl fmt::Display for ApiError {
                 write!(f, "Requested endpoint {} was not found", endp),
             ApiError::Unauthorized =>
                 write!(f, "Authentication failed"),
-            ApiError::HttpError(ref resp) =>
-                write!(f, "HTTP error {}", resp.status),
+            ApiError::HttpError(status, ..) =>
+                write!(f, "HTTP error {}", status),
             ApiError::ProtocolError(ref e) => fmt::Display::fmt(e, f),
             ApiError::InvalidJson(ref e) => fmt::Display::fmt(e, f)
         }
@@ -76,7 +77,8 @@ impl Error for ApiError {
         match *self {
             ApiError::InsufficientCredentials(..) =>
                 "Insufficient credentials provided",
-            ApiError::EndpointNotFound(..) => "Requested endpoint was not found",
+            ApiError::EndpointNotFound(..) =>
+                "Requested endpoint was not found",
             ApiError::Unauthorized => "Authentication failed",
             ApiError::HttpError(..) => "HTTP error",
             ApiError::ProtocolError(ref e) => e.description(),

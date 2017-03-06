@@ -193,7 +193,7 @@ impl IdentityAuthMethod {
             other => {
                 error!("Unexpected HTTP error {} when getting a token for {}",
                        other, self.body.auth.identity.password.user.name);
-                return Err(ApiError::HttpError(resp));
+                return Err(ApiError::HttpError(resp.status, resp));
             }
         };
 
@@ -391,9 +391,7 @@ pub mod test {
             .create().unwrap();
         let cli = hyper::Client::with_connector(MockToken::default());
         match id.get_token(&cli).err().unwrap() {
-            ApiError::HttpError(ref resp) => {
-                assert_eq!(resp.status, hyper::NotFound);
-            },
+            ApiError::HttpError(hyper::NotFound, ..) => (),
             other => panic!("Unexpected {}", other)
         };
     }

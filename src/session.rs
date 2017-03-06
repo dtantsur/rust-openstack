@@ -59,7 +59,7 @@ impl<'a, Auth: AuthMethod> AuthenticatedRequestBuilder<'a, Auth> {
         if resp.status.is_success() {
             Ok(resp)
         } else {
-            Err(ApiError::HttpError(resp))
+            Err(ApiError::HttpError(resp.status, resp))
         }
     }
 
@@ -255,8 +255,9 @@ pub mod test {
 
     use hyper;
     use hyper::header::ContentLength;
+    use hyper::status::StatusCode;
 
-    use super::Session;
+    use super::{ApiError, Session};
     use super::super::auth::{Token, NoAuth, SimpleToken};
     use super::super::utils;
 
@@ -268,6 +269,10 @@ pub mod test {
 
     mock_connector!(MockHttp {
         "http://127.0.0.1" => "HTTP/1.1 200 OK\r\n\
+                               Server: Mock.Mock\r\n\
+                               \r\n\
+                               {}"
+        "http://127.0.0.2" => "HTTP/1.1 404 NOT FOUND\r\n\
                                Server: Mock.Mock\r\n\
                                \r\n\
                                {}"
@@ -299,6 +304,44 @@ pub mod test {
 
         let mut resp = s.request(hyper::Post, "http://127.0.0.1/")
             .body("body").header(ContentLength(4u64)).send().unwrap();
+
+        let mut s = String::new();
+        resp.read_to_string(&mut s).unwrap();
+        assert_eq!(&s, "{}");
+    }
+
+    #[test]
+    fn test_session_request_error() {
+        let cli = hyper::Client::with_connector(MockHttp::default());
+        let s = Session {
+            auth_method: NoAuth::new("http://127.0.0.2/").unwrap(),
+            client: cli,
+            cached_token: utils::ValueCache::new(None)
+        };
+
+        let err = s.request(hyper::Post, "http://127.0.0.2/")
+            .body("body").header(ContentLength(4u64)).send().err().unwrap();
+
+        match err {
+            ApiError::HttpError(StatusCode::NotFound, ..) => (),
+            other => panic!("Unexpected {}", other)
+        }
+    }
+
+    #[test]
+    fn test_session_request_unchecked_error() {
+        let cli = hyper::Client::with_connector(MockHttp::default());
+        let s = Session {
+            auth_method: NoAuth::new("http://127.0.0.2/").unwrap(),
+            client: cli,
+            cached_token: utils::ValueCache::new(None)
+        };
+
+        let mut resp = s.request(hyper::Post, "http://127.0.0.2/")
+            .body("body").header(ContentLength(4u64)).send_unchecked()
+            .unwrap();
+
+        assert_eq!(resp.status, StatusCode::NotFound);
 
         let mut s = String::new();
         resp.read_to_string(&mut s).unwrap();
