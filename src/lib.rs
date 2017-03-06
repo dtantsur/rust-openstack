@@ -77,9 +77,9 @@ pub mod auth;
 mod common;
 #[cfg(feature = "compute")]
 pub mod compute;
-pub mod identity;
+mod identity;
 pub mod session;
 mod utils;
 
 pub use common::ApiError;
-pub use session::{ApiVersion, Session};
+pub use session::Session;
