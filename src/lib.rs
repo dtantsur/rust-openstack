@@ -16,6 +16,11 @@
 //!
 //! The goal of this project is to provide a simple API for working with
 //! OpenStack clouds.
+//!
+//! # Features
+//!
+//! * [Authentication](auth/index.html)
+//! * Basic [compute API support](compute/index.html)
 
 #![crate_name = "openstack"]
 #![crate_type = "lib"]

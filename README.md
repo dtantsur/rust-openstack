@@ -12,21 +12,12 @@ clouds. This is an early work-in-progress, don't expect too much of it.
 
 [Documentation](https://dtantsur.github.io/rust-openstack/openstack/)
 
-## Features
-
-* Authentication against Identity service with user name, password and
-  project scope.
-
-### Limitations
-
-* Only Identity API v3 is supported and planned for support.
-
 ## Usage
 
 Use standard [cargo](http://crates.io) tool to build and test. Add a dependency
 on `openstack` crate to your software to use this library.
 
-### Demo
+### Examples
 
 There is an example retrieving a token from Keystone. Source your OpenStack
 credentials and run from the project root:

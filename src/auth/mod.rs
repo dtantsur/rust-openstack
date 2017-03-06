@@ -65,6 +65,10 @@
 //! let auth = NoAuth::new("https://my.cloud.com/some-service").unwrap();
 //! let session = Session::new(auth);
 //! ```
+//!
+//! # Limitations
+//!
+//! * Only Identity API v3 is supported and planned for support.
 
 mod base;
 pub mod identity;
