@@ -27,7 +27,7 @@ use hyper::method::Method;
 use serde::Deserialize;
 use serde_json;
 
-use super::ApiError;
+use super::{ApiError, ServiceType};
 use super::auth::Method as AuthMethod;
 use super::identity::protocol;
 use super::utils;
@@ -165,15 +165,6 @@ impl fmt::Display for ApiVersion {
             write!(f, "{}", self.0)
         }
     }
-}
-
-/// Trait representing a service type.
-pub trait ServiceType {
-    /// Service type to pass to the catalog.
-    fn catalog_type() -> &'static str;
-
-    /// Version suffix to append to the endpoint.
-    fn version_suffix() -> Option<&'static str>;
 }
 
 /// Low-level API calls.

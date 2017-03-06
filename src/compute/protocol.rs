@@ -17,8 +17,6 @@
 #![allow(non_snake_case)]
 #![allow(missing_docs)]
 
-use super::super::session::ServiceType;
-
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Server {
     pub accessIPv4: String,
@@ -43,21 +41,4 @@ pub struct ServersRoot {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ServerRoot {
     pub server: Server
-}
-
-/// Marker for Compute API.
-#[derive(Copy, Clone, Debug)]
-pub struct ComputeApiV2;
-
-const SERVICE_TYPE: &'static str = "compute";
-const SUFFIX: &'static str = "v2.1";
-
-impl ServiceType for ComputeApiV2 {
-    fn catalog_type() -> &'static str {
-        SERVICE_TYPE
-    }
-
-    fn version_suffix() -> Option<&'static str> {
-        Some(SUFFIX)
-    }
 }

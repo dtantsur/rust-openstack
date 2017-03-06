@@ -14,6 +14,7 @@
 
 //! Compute API support.
 
+pub mod api;
 mod protocol;
 pub mod servermanager;
 

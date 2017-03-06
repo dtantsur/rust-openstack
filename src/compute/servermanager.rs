@@ -18,7 +18,8 @@ use super::super::{ApiError, Session};
 use super::super::auth::Method as AuthMethod;
 use super::super::session::ServiceApi;
 use super::super::utils::IntoId;
-use super::protocol::{self, ComputeApiV2};
+use super::api::ComputeV2;
+use super::protocol;
 
 /// Structure represending filters for listing servers.
 #[allow(missing_copy_implementations)]
@@ -41,7 +42,7 @@ impl Default for ServerFilters {
 /// Server manager: working with virtual servers.
 #[derive(Debug)]
 pub struct ServerManager<'a, Auth: AuthMethod + 'a> {
-    api: ServiceApi<'a, Auth, ComputeApiV2>
+    api: ComputeV2<'a, Auth>
 }
 
 /// Structure representing a summary of a single server.
