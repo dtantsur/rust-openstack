@@ -33,7 +33,7 @@ use hyper::error::ParseError;
 use hyper::header::ContentType;
 use hyper::status::StatusCode;
 
-use super::super::{ApiError, Session};
+use super::super::{ApiError, ApiResult, Session};
 use super::super::identity::{catalog, protocol};
 use super::{Method, SimpleToken};
 
@@ -101,7 +101,7 @@ impl Identity {
     }
 
     /// Create an authentication method based on provided information.
-    pub fn create(self) -> Result<IdentityAuthMethod, ApiError> {
+    pub fn create(self) -> ApiResult<IdentityAuthMethod> {
         /// TODO: support more authentication methods (at least a token)
         let password_identity = match self.password_identity {
             Some(p) => p,
@@ -121,7 +121,7 @@ impl Identity {
     }
 
     /// Create an authentication method from environment variables.
-    pub fn from_env() -> Result<IdentityAuthMethod, ApiError> {
+    pub fn from_env() -> ApiResult<IdentityAuthMethod> {
         let auth_url = try!(_get_env("OS_AUTH_URL"));
         let id = match Identity::new(&auth_url) {
             Ok(x) => x,
@@ -144,7 +144,8 @@ impl Identity {
     }
 }
 
-fn _get_env(name: &str) -> Result<String, ApiError> {
+#[inline]
+fn _get_env(name: &str) -> ApiResult<String> {
     env::var(name).or(
         Err(ApiError::InsufficientCredentials(MISSING_ENV_VARS)))
 }
@@ -170,7 +171,7 @@ impl IdentityAuthMethod {
     }
 
     fn token_from_response(&self, mut resp: Response)
-            -> Result<SimpleToken, ApiError> {
+            -> ApiResult<SimpleToken> {
         let mut resp_body = String::new();
         let _ignored = try!(resp.read_to_string(&mut resp_body));
 
@@ -211,7 +212,7 @@ impl Method for IdentityAuthMethod {
     type TokenType = SimpleToken;
 
     /// Verify authentication and generate an auth token.
-    fn get_token(&self, client: &Client) -> Result<SimpleToken, ApiError> {
+    fn get_token(&self, client: &Client) -> ApiResult<SimpleToken> {
         debug!("Requesting a token for user {} from {}",
                self.body.auth.identity.password.user.name,
                self.token_endpoint);
@@ -228,7 +229,7 @@ impl Method for IdentityAuthMethod {
                     endpoint_interface: Option<&str>,
                     region: Option<&str>,
                     client: &Session<IdentityAuthMethod>)
-            -> Result<Url, ApiError> {
+            -> ApiResult<Url> {
         let real_interface = endpoint_interface.unwrap_or("public");
         let cat = try!(catalog::get_service_catalog(&self.auth_url, client));
         let endp = try!(catalog::find_endpoint(&cat, service_type,

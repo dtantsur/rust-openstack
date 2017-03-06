@@ -21,7 +21,7 @@ use hyper::client::IntoUrl;
 use hyper::error::ParseError;
 use time::PreciseTime;
 
-use super::super::{ApiError, Session};
+use super::super::{ApiResult, Session};
 use super::{Method, Token};
 
 /// Plain authentication token without additional details.
@@ -76,7 +76,7 @@ impl Method for NoAuth {
     type TokenType = SimpleToken;
 
     /// Return a fake token for compliance with the protocol.
-    fn get_token(&self, _client: &Client) -> Result<SimpleToken, ApiError> {
+    fn get_token(&self, _client: &Client) -> ApiResult<SimpleToken> {
         Ok(SimpleToken(String::from("no-auth")))
     }
 
@@ -84,8 +84,7 @@ impl Method for NoAuth {
     fn get_endpoint(&self, _service_type: &str,
                     _endpoint_interface: Option<&str>,
                     _region: Option<&str>,
-                    _client: &Session<NoAuth>)
-            -> Result<Url, ApiError> {
+                    _client: &Session<NoAuth>) -> ApiResult<Url> {
         Ok(self.endpoint.clone())
     }
 }

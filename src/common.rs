@@ -51,6 +51,9 @@ pub enum ApiError {
     InvalidJson(JsonError)
 }
 
+/// Result of an API call.
+pub type ApiResult<T> = Result<T, ApiError>;
+
 impl fmt::Display for ApiError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {

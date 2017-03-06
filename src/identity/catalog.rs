@@ -16,7 +16,7 @@
 
 use hyper::{Get, Url};
 
-use super::super::{ApiError, Session};
+use super::super::{ApiError, ApiResult, Session};
 use super::super::auth::Method as AuthMethod;
 use super::protocol;
 
@@ -26,7 +26,7 @@ pub type Catalog = Vec<protocol::CatalogRecord>;
 /// Fetch the service catalog from a given auth URL.
 pub fn get_service_catalog<Auth: AuthMethod>(auth_url: &Url,
                                              session: &Session<Auth>)
-        -> Result<Catalog, ApiError> {
+        -> ApiResult<Catalog> {
     let url = format!("{}/v3/auth/catalog", auth_url.to_string());
     debug!("Requesting a service catalog from {}", url);
 
@@ -38,7 +38,7 @@ pub fn get_service_catalog<Auth: AuthMethod>(auth_url: &Url,
 /// Find an endpoint in the service catalog.
 pub fn find_endpoint<'a>(catalog: &'a Catalog, service_type: &str,
                          endpoint_interface: &str, region: Option<&str>)
-        -> Result<&'a protocol::Endpoint, ApiError> {
+        -> ApiResult<&'a protocol::Endpoint> {
     let svc = match catalog.iter().find(|x| &x.service_type == service_type) {
         Some(s) => s,
         None =>
@@ -63,7 +63,7 @@ pub fn find_endpoint<'a>(catalog: &'a Catalog, service_type: &str,
 
 #[cfg(test)]
 pub mod test {
-    use super::super::super::ApiError;
+    use super::super::super::{ApiError, ApiResult};
     use super::super::protocol::{CatalogRecord, Endpoint};
     use super::{Catalog, find_endpoint};
 
@@ -158,7 +158,7 @@ pub mod test {
         assert_eq!(&e3.url, "https://host.two:6385");
     }
 
-    fn assert_not_found(result: Result<&Endpoint, ApiError>) {
+    fn assert_not_found(result: ApiResult<&Endpoint>) {
         match result.err().unwrap() {
             ApiError::EndpointNotFound(..) => (),
             other => panic!("Unexpected error {}", other)

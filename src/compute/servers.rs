@@ -28,7 +28,7 @@
 //! let server_list = server_manager.list().expect("Unable to fetch servers");
 //! ```
 
-use super::super::{ApiError, Session};
+use super::super::{ApiResult, Session};
 use super::super::auth::Method as AuthMethod;
 use super::super::session::ServiceApi;
 use super::super::utils::IntoId;
@@ -123,14 +123,14 @@ impl<'a, Auth: AuthMethod + 'a> ServerSummary<'a, Auth> {
     }
 
     /// Get details.
-    pub fn details(self) -> Result<Server<'a, Auth>, ApiError> {
+    pub fn details(self) -> ApiResult<Server<'a, Auth>> {
         self.manager.get(self.id())
     }
 }
 
 impl<'a, Auth: AuthMethod + 'a> ServerManager<'a, Auth> {
     /// List all servers without any filtering.
-    pub fn list(&'a self) -> Result<ServerList<'a, Auth>, ApiError> {
+    pub fn list(&'a self) -> ApiResult<ServerList<'a, Auth>> {
         let inner: protocol::ServersRoot = try!(self.api.list("servers"));
         Ok(inner.servers.iter().map(|x| ServerSummary {
             manager: self,
@@ -139,8 +139,7 @@ impl<'a, Auth: AuthMethod + 'a> ServerManager<'a, Auth> {
     }
 
     /// Get a server.
-    pub fn get<Id: IntoId>(&'a self, id: Id)
-            -> Result<Server<'a, Auth>, ApiError> {
+    pub fn get<Id: IntoId>(&'a self, id: Id) -> ApiResult<Server<'a, Auth>> {
         let inner: protocol::ServerRoot = try!(self.api.get("servers", id));
         Ok(Server {
             manager: self,

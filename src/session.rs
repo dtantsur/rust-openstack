@@ -27,7 +27,7 @@ use hyper::method::Method;
 use serde::Deserialize;
 use serde_json;
 
-use super::{ApiError, ServiceType};
+use super::{ApiError, ApiResult, ServiceType};
 use super::auth::Method as AuthMethod;
 use super::identity::protocol;
 use super::utils;
@@ -54,7 +54,7 @@ pub struct Session<Auth: AuthMethod> {
 
 impl<'a, Auth: AuthMethod> AuthenticatedRequestBuilder<'a, Auth> {
     /// Send this request.
-    pub fn send(self) -> Result<Response, ApiError> {
+    pub fn send(self) -> ApiResult<Response> {
         let resp = try!(self.send_unchecked());
         if resp.status.is_success() {
             Ok(resp)
@@ -64,7 +64,7 @@ impl<'a, Auth: AuthMethod> AuthenticatedRequestBuilder<'a, Auth> {
     }
 
     /// Send this request without checking on status code.
-    pub fn send_unchecked(self) -> Result<Response, ApiError> {
+    pub fn send_unchecked(self) -> ApiResult<Response> {
         let token = try!(self.parent.auth_token());
         let hdr = protocol::AuthTokenHeader(token.into());
         self.inner.header(hdr).send().map_err(From::from)
@@ -112,7 +112,7 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
     }
 
     /// Get a clone of the authentication token.
-    pub fn auth_token(&self) -> Result<Auth::TokenType, ApiError> {
+    pub fn auth_token(&self) -> ApiResult<Auth::TokenType> {
         try!(self.refresh_token());
         Ok(self.cached_token.get().unwrap())
     }
@@ -120,7 +120,7 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
     /// Get an endpoint URL.
     pub fn get_endpoint(&self, service_type: &str,
                         endpoint_interface: Option<&str>,
-                        region: Option<&str>) -> Result<Url, ApiError> {
+                        region: Option<&str>) -> ApiResult<Url> {
         self.auth_method.get_endpoint(service_type, endpoint_interface,
                                       region, &self)
     }
@@ -146,7 +146,7 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
         }
     }
 
-    fn refresh_token(&self) -> Result<(), ApiError> {
+    fn refresh_token(&self) -> ApiResult<()> {
         self.cached_token.ensure_value(|| {
             self.auth_method.get_token(&self.client)
         })
@@ -199,7 +199,7 @@ impl<'a, Auth: AuthMethod + 'a, S: ServiceType> ServiceApi<'a, Auth, S> {
     }
 
     /// Get an endpoint with version suffix and given path appended.
-    pub fn get_endpoint(&self, path: &str) -> Result<Url, ApiError> {
+    pub fn get_endpoint(&self, path: &str) -> ApiResult<Url> {
         let endpoint = try!(self.session.get_endpoint(
                 S::catalog_type(),
                 self.endpoint_interface.as_ref().map(String::as_str),
@@ -219,7 +219,7 @@ impl<'a, Auth: AuthMethod + 'a, S: ServiceType> ServiceApi<'a, Auth, S> {
     }
 
     /// List entities.
-    pub fn list<R: Deserialize>(&self, path: &str) -> Result<R, ApiError> {
+    pub fn list<R: Deserialize>(&self, path: &str) -> ApiResult<R> {
         // TODO: filtering
         let url = try!(self.get_endpoint(path));
         debug!("Listing entities from {}", url);
@@ -230,7 +230,7 @@ impl<'a, Auth: AuthMethod + 'a, S: ServiceType> ServiceApi<'a, Auth, S> {
 
     /// Get one entity.
     pub fn get<R: Deserialize, Id: utils::IntoId>(&self, path: &str, id: Id)
-            -> Result<R, ApiError> {
+            -> ApiResult<R> {
         // Url expects trailing /
         let root_path = if path.ends_with("/") {
             String::from(path)

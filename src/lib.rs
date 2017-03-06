@@ -87,5 +87,6 @@ pub mod session;
 mod utils;
 
 pub use common::ApiError;
+pub use common::ApiResult;
 pub use common::ServiceType;
 pub use session::Session;

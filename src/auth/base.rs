@@ -19,7 +19,7 @@ use std::fmt;
 use hyper::{Client, Url};
 use time::PreciseTime;
 
-use super::super::{ApiError, Session};
+use super::super::{ApiResult, Session};
 
 
 /// Trait for authentication token implementations.
@@ -42,15 +42,13 @@ pub trait Method: Clone + Send {
     type TokenType: Token;
 
     /// Verify authentication and generate an auth token.
-    fn get_token(&self, client: &Client)
-        -> Result<Self::TokenType, ApiError>;
+    fn get_token(&self, client: &Client) -> ApiResult<Self::TokenType>;
 
     /// Get a URL for the requested service.
     fn get_endpoint(&self, service_type: &str,
                     endpoint_interface: Option<&str>,
                     region: Option<&str>,
-                    session: &Session<Self>)
-        -> Result<Url, ApiError>;
+                    session: &Session<Self>) -> ApiResult<Url>;
 
     /// Create a session with this authentication method.
     fn session(self) -> Session<Self> {

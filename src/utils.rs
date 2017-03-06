@@ -23,7 +23,7 @@ use hyper::net::HttpsConnector;
 use hyper_rustls::TlsClient;
 use uuid::Uuid;
 
-use super::ApiError;
+use super::ApiResult;
 
 
 /// Create an HTTP(s) client.
@@ -50,8 +50,8 @@ impl<T: Clone> ValueCache<T> {
     }
 
     /// Ensure the value is cached.
-    pub fn ensure_value<F>(&self, default: F) -> Result<(), ApiError>
-            where F: FnOnce() -> Result<T, ApiError> {
+    pub fn ensure_value<F>(&self, default: F) -> ApiResult<()>
+            where F: FnOnce() -> ApiResult<T> {
         if self.0.borrow().is_some() {
             return Ok(());
         };
