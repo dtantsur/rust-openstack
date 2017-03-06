@@ -27,8 +27,8 @@ fn main() {
         .expect("Failed to create an identity provider from the environment");
     let session = Session::new(identity);
 
-    let servers_api = compute::servers(&session);
-    let servers = servers_api.list().expect("Cannot list servers");
+    let manager = compute::servers::manager(&session);
+    let servers = manager.list().expect("Cannot list servers");
     for s in &servers {
         println!("ID = {}, Name = {}", s.id(), s.name());
     }

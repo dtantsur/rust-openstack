@@ -13,6 +13,20 @@
 // limitations under the License.
 
 //! Server management via Compute API.
+//!
+//! # Examples
+//!
+//! ```rust,no_run
+//! use openstack;
+//! use openstack::compute;
+//!
+//! let auth = openstack::auth::Identity::from_env()
+//!     .expect("Unable to authenticate");
+//! let session = openstack::Session::new(auth);
+//! let server_manager = compute::servers::manager(&session);
+//!
+//! let server_list = server_manager.list().expect("Unable to fetch servers");
+//! ```
 
 use super::super::{ApiError, Session};
 use super::super::auth::Method as AuthMethod;
@@ -25,19 +39,6 @@ use super::protocol;
 #[allow(missing_copy_implementations)]
 #[derive(Debug, Clone)]
 pub struct ServerFilters {}
-
-impl ServerFilters {
-    /// Create empty server filters.
-    pub fn new() -> ServerFilters {
-        ServerFilters {}
-    }
-}
-
-impl Default for ServerFilters {
-    fn default() -> ServerFilters {
-        ServerFilters::new()
-    }
-}
 
 /// Server manager: working with virtual servers.
 #[derive(Debug)]
@@ -63,10 +64,23 @@ pub struct ServerSummary<'a, Auth: AuthMethod + 'a> {
 pub type ServerList<'a, Auth> = Vec<ServerSummary<'a, Auth>>;
 
 /// Constructor for server manager.
-pub fn servers<'a, Auth: AuthMethod + 'a>(session: &'a Session<Auth>)
+pub fn manager<'a, Auth: AuthMethod + 'a>(session: &'a Session<Auth>)
         -> ServerManager<'a, Auth> {
     ServerManager {
         api: ServiceApi::new(session)
+    }
+}
+
+impl ServerFilters {
+    /// Create empty server filters.
+    pub fn new() -> ServerFilters {
+        ServerFilters {}
+    }
+}
+
+impl Default for ServerFilters {
+    fn default() -> ServerFilters {
+        ServerFilters::new()
     }
 }
 
@@ -144,7 +158,7 @@ pub mod test {
 
     use super::super::super::Session;
     use super::super::super::auth::{NoAuth, SimpleToken};
-    use super::servers;
+    use super::manager;
 
     // Copied from compute API reference.
     const SERVERS_RESPONSE: &'static str = r#"
@@ -180,8 +194,8 @@ pub mod test {
         let token = SimpleToken(String::from("abcdef"));
         let session = Session::new_with_params(auth, cli, token);
 
-        let api = servers(&session);
-        let srvs = api.list().unwrap();
+        let mgr = manager(&session);
+        let srvs = mgr.list().unwrap();
         assert_eq!(srvs.len(), 1);
         assert_eq!(srvs[0].id(),
                    "22c91117-08de-4894-9aa9-6ef382400985");

@@ -12,14 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Compute API.
-//!
-//! Supported API groups:
-//!
-//! * [server management](servers/index.html)
-//!
-//! See the [api module](api/index.html) for low-level API access.
+//! Low-level bits exposing the Compute API.
 
-pub mod api;
-mod protocol;
-pub mod servers;
+use super::super::ServiceType;
+use super::super::session::ServiceApi;
+
+/// Service type of Compute API V2.
+#[derive(Copy, Clone, Debug)]
+pub struct ComputeV2Type;
+
+/// Low-level service API implementation.
+pub type ComputeV2<'session, Auth> = ServiceApi<'session, Auth, ComputeV2Type>;
+
+const SERVICE_TYPE: &'static str = "compute";
+const SUFFIX: &'static str = "v2.1";
+
+impl ServiceType for ComputeV2Type {
+    fn catalog_type() -> &'static str {
+        SERVICE_TYPE
+    }
+
+    fn version_suffix() -> Option<&'static str> {
+        Some(SUFFIX)
+    }
+}

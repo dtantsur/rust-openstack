@@ -29,9 +29,8 @@ fn main() {
         .expect("Failed to create an identity provider from the environment");
     let session = Session::new(identity);
 
-    let servers_api = compute::servers(&session);
-    let server = servers_api.get(env::args().nth(1)
-                                 .expect("Provide a server ID"))
+    let manager = compute::servers::manager(&session);
+    let server = manager.get(env::args().nth(1).expect("Provide a server ID"))
         .expect("Cannot get a server");
     println!("ID = {}, Name = {}, Status = {}",
              server.id(), server.name(), server.status());
