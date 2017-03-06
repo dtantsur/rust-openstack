@@ -17,7 +17,6 @@
 //! The Session object serves as a wrapper around an HTTP(s) client, handling
 //! authentication, accessing the service catalog and token refresh.
 
-use std::cell::RefCell;
 use std::fmt;
 use std::marker::PhantomData;
 
@@ -50,7 +49,7 @@ pub struct AuthenticatedRequestBuilder<'a, A: AuthMethod + 'a> {
 pub struct Session<Auth: AuthMethod> {
     auth_method: Auth,
     client: Client,
-    cached_token: RefCell<Option<Auth::TokenType>>
+    cached_token: utils::ValueCache<Auth::TokenType>
 }
 
 impl<'a, Auth: AuthMethod> AuthenticatedRequestBuilder<'a, Auth> {
@@ -108,14 +107,14 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
         Session {
             auth_method: auth_method,
             client: utils::http_client(),
-            cached_token: RefCell::new(None)
+            cached_token: utils::ValueCache::new(None)
         }
     }
 
     /// Get a clone of the authentication token.
     pub fn auth_token(&self) -> Result<Auth::TokenType, ApiError> {
         try!(self.refresh_token());
-        Ok(self.cached_token.borrow().clone().unwrap())
+        Ok(self.cached_token.get().unwrap())
     }
 
     /// Get an endpoint URL.
@@ -143,21 +142,14 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
         Session {
             auth_method: auth_method,
             client: client,
-            cached_token: RefCell::new(Some(token))
+            cached_token: utils::ValueCache::new(Some(token))
         }
     }
 
     fn refresh_token(&self) -> Result<(), ApiError> {
-        let mut cached_token = self.cached_token.borrow_mut();
-        if cached_token.is_some() {
-            return Ok(())
-        }
-
-        // TODO: check expires_at
-
-        let new_token = try!(self.auth_method.get_token(&self.client));
-        *cached_token = Some(new_token);
-        Ok(())
+        self.cached_token.ensure_value(|| {
+            self.auth_method.get_token(&self.client)
+        })
     }
 }
 
@@ -268,7 +260,6 @@ pub mod test {
     #![allow(missing_debug_implementations)]
     #![allow(unused_results)]
 
-    use std::cell::RefCell;
     use std::io::Read;
 
     use hyper;
@@ -312,7 +303,7 @@ pub mod test {
         let s = Session {
             auth_method: NoAuth::new("http://127.0.0.1/").unwrap(),
             client: cli,
-            cached_token: RefCell::new(None)
+            cached_token: utils::ValueCache::new(None)
         };
 
         let mut resp = s.request(hyper::Post, "http://127.0.0.1/")

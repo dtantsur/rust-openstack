@@ -14,12 +14,16 @@
 
 //! Various utilities.
 
+use std::cell::RefCell;
+
 use hyper::Client;
 #[cfg(feature = "tls")]
 use hyper::net::HttpsConnector;
 #[cfg(feature = "tls")]
 use hyper_rustls::TlsClient;
 use uuid::Uuid;
+
+use super::ApiError;
 
 
 /// Create an HTTP(s) client.
@@ -34,6 +38,37 @@ pub fn http_client() -> Client {
 pub fn http_client() -> Client {
     Client::new()
 }
+
+/// Cached clone-able value.
+#[derive(Debug, Clone)]
+pub struct ValueCache<T: Clone>(RefCell<Option<T>>);
+
+impl<T: Clone> ValueCache<T> {
+    /// Create a cache.
+    pub fn new(value: Option<T>) -> ValueCache<T> {
+        ValueCache(RefCell::new(value))
+    }
+
+    /// Ensure the value is cached.
+    pub fn ensure_value<F>(&self, default: F) -> Result<(), ApiError>
+            where F: FnOnce() -> Result<T, ApiError> {
+        if self.0.borrow().is_some() {
+            return Ok(());
+        };
+
+        let new = try!(default());
+
+        *self.0.borrow_mut() = Some(new);
+        Ok(())
+    }
+
+    /// Get the cached value.
+    #[inline]
+    pub fn get(&self) -> Option<T> {
+        self.0.borrow().clone()
+    }
+}
+
 
 /// Something that can be converted to an ID.
 pub trait IntoId {
