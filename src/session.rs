@@ -173,7 +173,8 @@ pub struct ServiceApi<'a, Auth: AuthMethod + 'a, S> {
     session: &'a Session<Auth>,
     service_type: PhantomData<S>,
     endpoint_interface: Option<String>,
-    region: Option<String>
+    region: Option<String>,
+    cached_endpoint: utils::ValueCache<Url>
 }
 
 impl<'a, Auth: AuthMethod + 'a, S: ServiceType> ServiceApi<'a, Auth, S> {
@@ -194,28 +195,38 @@ impl<'a, Auth: AuthMethod + 'a, S: ServiceType> ServiceApi<'a, Auth, S> {
             session: session,
             service_type: PhantomData,
             endpoint_interface: endpoint_interface.map(String::from),
-            region: region.map(String::from)
+            region: region.map(String::from),
+            cached_endpoint: utils::ValueCache::new(None)
         }
+    }
+
+    /// Get the root endpoint with or without the major version.
+    ///
+    /// The resulting endpoint is cached on the current ServiceApi object.
+    pub fn get_root_endpoint(&self, include_version: bool) -> ApiResult<Url> {
+        try!(self.cached_endpoint.ensure_value(|| {
+            self.session.get_endpoint(
+                S::catalog_type(),
+                self.endpoint_interface.as_ref().map(String::as_str),
+                self.region.as_ref().map(String::as_str))
+        }));
+
+        let endpoint = self.cached_endpoint.get().unwrap();
+        if include_version {
+            if let Some(suffix) = S::version_suffix() {
+                if !endpoint.path().ends_with(suffix) {
+                    return endpoint.join(suffix).map_err(From::from);
+                }
+            }
+        }
+
+        Ok(endpoint)
     }
 
     /// Get an endpoint with version suffix and given path appended.
     pub fn get_endpoint(&self, path: &str) -> ApiResult<Url> {
-        let endpoint = try!(self.session.get_endpoint(
-                S::catalog_type(),
-                self.endpoint_interface.as_ref().map(String::as_str),
-                self.region.as_ref().map(String::as_str)));
-
-        let with_version = if let Some(suffix) = S::version_suffix() {
-            if endpoint.path().ends_with(suffix) {
-                endpoint
-            } else {
-                try!(endpoint.join(suffix))
-            }
-        } else {
-            endpoint
-        };
-
-        with_version.join(path).map_err(From::from)
+        let endpoint = try!(self.get_root_endpoint(true));
+        endpoint.join(path).map_err(From::from)
     }
 
     /// List entities.
