@@ -36,27 +36,27 @@ pub fn get_service_catalog<Auth: AuthMethod>(auth_url: &Url,
 }
 
 /// Find an endpoint in the service catalog.
-pub fn find_endpoint<'a>(catalog: &'a Catalog, service_type: &str,
-                         endpoint_interface: &str, region: Option<&str>)
-        -> ApiResult<&'a protocol::Endpoint> {
-    let svc = match catalog.iter().find(|x| &x.service_type == service_type) {
+pub fn find_endpoint(catalog: &Catalog, service_type: String,
+                     endpoint_interface: String, region: Option<String>)
+        -> ApiResult<&protocol::Endpoint> {
+    let svc = match catalog.iter().find(|x| x.service_type == service_type) {
         Some(s) => s,
         None =>
-            return Err(ApiError::EndpointNotFound(String::from(service_type)))
+            return Err(ApiError::EndpointNotFound(service_type))
     };
 
     let maybe_endp: Option<&protocol::Endpoint>;
     if let Some(rgn) = region {
         maybe_endp = svc.endpoints.iter().find(
-            |x| &x.interface == endpoint_interface && &x.region == rgn);
+            |x| x.interface == endpoint_interface && x.region == rgn);
     } else {
         maybe_endp = svc.endpoints.iter().find(
-            |x| &x.interface == endpoint_interface);
+            |x| x.interface == endpoint_interface);
     }
 
     match maybe_endp {
         Some(e) => Ok(e),
-        None => Err(ApiError::EndpointNotFound(String::from(service_type)))
+        None => Err(ApiError::EndpointNotFound(service_type))
     }
 }
 
@@ -65,7 +65,7 @@ pub fn find_endpoint<'a>(catalog: &'a Catalog, service_type: &str,
 pub mod test {
     use super::super::super::{ApiError, ApiResult};
     use super::super::protocol::{CatalogRecord, Endpoint};
-    use super::{Catalog, find_endpoint};
+    use super::Catalog;
 
     fn demo_service1() -> CatalogRecord {
         CatalogRecord {
@@ -119,6 +119,14 @@ pub mod test {
 
     pub fn demo_catalog() -> Catalog {
         vec![demo_service1(), demo_service2()]
+    }
+
+    fn find_endpoint<'a>(cat: &'a Catalog,
+                         service_type: &str, interface_type: &str,
+                         region: Option<&str>) -> ApiResult<&'a Endpoint> {
+        super::find_endpoint(cat, String::from(service_type),
+                             String::from(interface_type),
+                             region.map(String::from))
     }
 
     #[test]

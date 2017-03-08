@@ -81,9 +81,9 @@ impl Method for NoAuth {
     }
 
     /// Get a predefined endpoint for all service types
-    fn get_endpoint(&self, _service_type: &str,
-                    _endpoint_interface: Option<&str>,
-                    _region: Option<&str>,
+    fn get_endpoint(&self, _service_type: String,
+                    _endpoint_interface: Option<String>,
+                    _region: Option<String>,
                     _client: &Session<NoAuth>) -> ApiResult<Url> {
         Ok(self.endpoint.clone())
     }
@@ -125,7 +125,7 @@ pub mod test {
     #[test]
     fn test_noauth_get_endpoint() {
         let a = NoAuth::new("http://127.0.0.1:8080/v1").unwrap();
-        let e = a.get_endpoint("foobar", None, None,
+        let e = a.get_endpoint(String::from("foobar"), None, None,
                                &new_session("token")).unwrap();
         assert_eq!(e.scheme(), "http");
         assert_eq!(e.host_str().unwrap(), "127.0.0.1");

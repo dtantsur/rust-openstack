@@ -27,9 +27,7 @@ fn main() {
     let token = session.auth_token().expect("Failed to get a token");
     println!("Received token: {}", token.value());
 
-    let identity_url = session.get_endpoint("identity",
-                                             Some("public"),
-                                             None)
+    let identity_url = session.get_endpoint("identity", "public")
         .expect("Unable to get identity public URL");
     println!("Identity public URL is {}", identity_url);
 }

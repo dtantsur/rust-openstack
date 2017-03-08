@@ -155,8 +155,8 @@ pub mod test {
 
     use hyper;
 
-    use super::super::super::Session;
     use super::super::super::auth::{NoAuth, SimpleToken};
+    use super::super::super::session::test;
     use super::manager;
 
     // Copied from compute API reference.
@@ -191,7 +191,7 @@ pub mod test {
         let auth = NoAuth::new("http://127.0.2.1/v2.1").unwrap();
         let cli = hyper::Client::with_connector(MockServers::default());
         let token = SimpleToken(String::from("abcdef"));
-        let session = Session::new_with_params(auth, cli, token);
+        let session = test::new_with_params(auth, cli, token, None);
 
         let mgr = manager(&session);
         let srvs = mgr.list().unwrap();

@@ -45,9 +45,9 @@ pub trait Method: Clone + Send {
     fn get_token(&self, client: &Client) -> ApiResult<Self::TokenType>;
 
     /// Get a URL for the requested service.
-    fn get_endpoint(&self, service_type: &str,
-                    endpoint_interface: Option<&str>,
-                    region: Option<&str>,
+    fn get_endpoint(&self, service_type: String,
+                    endpoint_interface: Option<String>,
+                    region: Option<String>,
                     session: &Session<Self>) -> ApiResult<Url>;
 
     /// Create a session with this authentication method.

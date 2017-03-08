@@ -231,12 +231,13 @@ impl Method for IdentityAuthMethod {
     }
 
     /// Get a URL for the requested service.
-    fn get_endpoint(&self, service_type: &str,
-                    endpoint_interface: Option<&str>,
-                    region: Option<&str>,
+    fn get_endpoint(&self, service_type: String,
+                    endpoint_interface: Option<String>,
+                    region: Option<String>,
                     client: &Session<IdentityAuthMethod>)
             -> ApiResult<Url> {
-        let real_interface = endpoint_interface.unwrap_or("public");
+        let real_interface = endpoint_interface.unwrap_or(
+            String::from("public"));
         let cat = try!(catalog::get_service_catalog(&self.auth_url, client));
         let endp = try!(catalog::find_endpoint(&cat, service_type,
                                                real_interface, region));
@@ -249,12 +250,13 @@ pub mod test {
     #![allow(missing_debug_implementations)]
     #![allow(unused_results)]
 
-    use hyper;
+    use hyper::{self, Url};
     use hyper::status::StatusCode;
 
-    use super::super::super::{ApiError, Session};
+    use super::super::super::{ApiError, ApiResult, Session};
     use super::super::{Method, Token, SimpleToken};
-    use super::Identity;
+    use super::{Identity, IdentityAuthMethod};
+    use super::super::super::session::test;
 
     mock_connector!(MockToken {
         "http://127.0.1.1" => "HTTP/1.1 200 OK\r\n\
@@ -403,51 +405,60 @@ pub mod test {
         };
     }
 
-    #[test]
-    fn test_identity_get_endpoint() {
+    fn new_session() -> Session<IdentityAuthMethod> {
         let id = Identity::new("http://127.0.2.1").unwrap()
             .with_user("user", "pa$$w0rd", "example.com")
             .with_project_scope("cool project", "example.com")
             .create().unwrap();
         let cli = hyper::Client::with_connector(MockCatalog::default());
         let token = SimpleToken(String::from("abcdef"));
-        let session = Session::new_with_params(id, cli, token);
+        test::new_with_params(id, cli, token, None)
+    }
 
-        let e1 = session.get_endpoint("identity", None, None).unwrap();
-        assert_eq!(&e1.to_string(), "http://localhost:5000/");
-        let e2 = session.get_endpoint("identity", Some("admin"), None)
-            .unwrap();
-        assert_eq!(&e2.to_string(), "http://localhost:35357/");
-        let e3 = session.get_endpoint("identity", Some("admin"),
-                                      Some("RegionOne")).unwrap();
-        assert_eq!(&e3.to_string(), "http://localhost:35357/");
+    fn get_endpoint(session: &Session<IdentityAuthMethod>, service_type: &str,
+                    interface_endpoint: Option<&str>, region: Option<&str>)
+            -> ApiResult<Url> {
+        session.auth_method().get_endpoint(
+            String::from(service_type),
+            interface_endpoint.map(String::from),
+            region.map(String::from),
+            session)
     }
 
     #[test]
-    fn test_identity_get_endpoint_fail() {
-        let id = Identity::new("http://127.0.2.1").unwrap()
-            .with_user("user", "pa$$w0rd", "example.com")
-            .with_project_scope("cool project", "example.com")
-            .create().unwrap();
-        let cli = hyper::Client::with_connector(MockCatalog::default());
-        let token = SimpleToken(String::from("abcdef"));
-        let session = Session::new_with_params(id, cli, token);
+    fn test_identity_get_endpoint() {
+        let session = new_session();
 
-        match session.get_endpoint("foo", None, None).err().unwrap() {
+        let e1 = get_endpoint(&session, "identity", None, None).unwrap();
+        assert_eq!(&e1.to_string(), "http://localhost:5000/");
+        let e2 = get_endpoint(&session, "identity", Some("admin"), None)
+            .unwrap();
+        assert_eq!(&e2.to_string(), "http://localhost:35357/");
+
+        match get_endpoint(&session, "foo", None, None).err().unwrap() {
             ApiError::EndpointNotFound(ref endp) =>
                 assert_eq!(endp, "foo"),
             other => panic!("Unexpected {}", other)
         };
 
-        match session.get_endpoint("identity", Some("unknown"), None)
+        match get_endpoint(&session, "identity", Some("unknown"), None)
                 .err().unwrap() {
             ApiError::EndpointNotFound(ref endp) =>
                 assert_eq!(endp, "identity"),
             other => panic!("Unexpected {}", other)
         };
+    }
 
-        match session.get_endpoint("identity", None, Some("unknown"))
-                .err().unwrap() {
+    #[test]
+    fn test_identity_get_endpoint_with_region() {
+        let session = new_session();
+
+        let e1 = get_endpoint(&session, "identity", Some("admin"),
+                              Some("RegionOne")).unwrap();
+        assert_eq!(&e1.to_string(), "http://localhost:35357/");
+
+        match get_endpoint(&session, "identity", None,
+                           Some("unknown")).err().unwrap() {
             ApiError::EndpointNotFound(ref endp) =>
                 assert_eq!(endp, "identity"),
             other => panic!("Unexpected {}", other)

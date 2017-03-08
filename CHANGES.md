@@ -4,6 +4,10 @@ ChangeLog
 next
 ----
 
+* Authentication method is using String class instead of string slices.
+* Split Session::get_endpoint into get_default_endpoint and get_endpoint.
+* Move region setting into Session from its endpoint calls.
+
 0.0.7
 -----
 
