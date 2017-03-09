@@ -14,8 +14,7 @@
 
 //! Low-level bits exposing the Compute API.
 
-use super::super::ServiceType;
-use super::super::session::ServiceApi;
+use super::super::service::{ServiceApi, ServiceType};
 
 /// Service type of Compute API V2.
 #[derive(Copy, Clone, Debug)]

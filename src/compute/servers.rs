@@ -30,8 +30,7 @@
 
 use super::super::{ApiResult, Session};
 use super::super::auth::Method as AuthMethod;
-use super::super::session::ServiceApi;
-use super::super::utils::IntoId;
+use super::super::service::{IntoId, ServiceApi};
 use super::api::ComputeV2;
 use super::protocol;
 

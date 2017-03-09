@@ -17,15 +17,11 @@
 //! The Session object serves as a wrapper around an HTTP(s) client, handling
 //! authentication, accessing the service catalog and token refresh.
 
-use std::marker::PhantomData;
-
-use hyper::{Client, Get, Url};
+use hyper::{Client, Url};
 use hyper::client::IntoUrl;
 use hyper::method::Method;
-use serde::Deserialize;
-use serde_json;
 
-use super::{ApiResult, ServiceType};
+use super::ApiResult;
 use super::auth::Method as AuthMethod;
 use super::http::AuthenticatedRequestBuilder;
 use super::utils;
@@ -40,15 +36,6 @@ pub struct Session<Auth: AuthMethod> {
     client: Client,
     cached_token: utils::ValueCache<Auth::TokenType>,
     default_region: Option<String>
-}
-
-/// Low-level API calls.
-#[derive(Debug)]
-pub struct ServiceApi<'a, Auth: AuthMethod + 'a, S> {
-    session: &'a Session<Auth>,
-    service_type: PhantomData<S>,
-    endpoint_interface: Option<String>,
-    cached_endpoint: utils::ValueCache<Url>
 }
 
 
@@ -115,87 +102,6 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
         self.cached_token.ensure_value(|| {
             self.auth.get_token(&self.client)
         })
-    }
-}
-
-impl<'a, Auth: AuthMethod + 'a, S: ServiceType> ServiceApi<'a, Auth, S> {
-    /// Create a new API instance using the given session.
-    pub fn new(session: &'a Session<Auth>) -> ServiceApi<'a, Auth, S> {
-        ServiceApi {
-            session: session,
-            service_type: PhantomData,
-            endpoint_interface: None,
-            cached_endpoint: utils::ValueCache::new(None)
-        }
-    }
-
-    /// Create a new API instance using the given session.
-    pub fn new_with_endpoint<S1>(session: &'a Session<Auth>,
-                                 endpoint_interface: S1)
-            -> ServiceApi<'a, Auth, S> where S1: Into<String> {
-        ServiceApi {
-            session: session,
-            service_type: PhantomData,
-            endpoint_interface: Some(endpoint_interface.into()),
-            cached_endpoint: utils::ValueCache::new(None)
-        }
-    }
-
-    /// Get the root endpoint with or without the major version.
-    ///
-    /// The resulting endpoint is cached on the current ServiceApi object.
-    pub fn get_root_endpoint(&self, include_version: bool) -> ApiResult<Url> {
-        try!(self.cached_endpoint.ensure_value(|| {
-            match self.endpoint_interface {
-                Some(ref s) => self.session.get_endpoint(S::catalog_type(),
-                                                         s.clone()),
-                None => self.session.get_default_endpoint(S::catalog_type())
-            }
-        }));
-
-        let endpoint = self.cached_endpoint.get().unwrap();
-        if include_version {
-            if let Some(suffix) = S::version_suffix() {
-                if !endpoint.path().ends_with(suffix) {
-                    return endpoint.join(suffix).map_err(From::from);
-                }
-            }
-        }
-
-        Ok(endpoint)
-    }
-
-    /// Get an endpoint with version suffix and given path appended.
-    pub fn get_endpoint(&self, path: &str) -> ApiResult<Url> {
-        let endpoint = try!(self.get_root_endpoint(true));
-        endpoint.join(path).map_err(From::from)
-    }
-
-    /// List entities.
-    pub fn list<R: Deserialize>(&self, path: &str) -> ApiResult<R> {
-        // TODO: filtering
-        let url = try!(self.get_endpoint(path));
-        debug!("Listing entities from {}", url);
-        let resp = try!(self.session.request(Get, url).send());
-        let root = try!(serde_json::from_reader(resp));
-        Ok(root)
-    }
-
-    /// Get one entity.
-    pub fn get<R: Deserialize, Id: utils::IntoId>(&self, path: &str, id: Id)
-            -> ApiResult<R> {
-        // Url expects trailing /
-        let root_path = if path.ends_with("/") {
-            String::from(path)
-        } else {
-            format!("{}/", path)
-        };
-        let url = try!(self.get_endpoint(&root_path));
-        let url_with_id = try!(url.join(&id.into_id()));
-        debug!("Get one entity from {}", url);
-        let resp = try!(self.session.request(Get, url_with_id).send());
-        let root = try!(serde_json::from_reader(resp));
-        Ok(root)
     }
 }
 

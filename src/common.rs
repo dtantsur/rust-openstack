@@ -25,16 +25,6 @@ use hyper::status::StatusCode;
 use serde_json::Error as JsonError;
 
 
-/// Trait representing a service type.
-pub trait ServiceType {
-    /// Service type to pass to the catalog.
-    fn catalog_type() -> &'static str;
-
-    /// Version suffix to append to the endpoint.
-    fn version_suffix() -> Option<&'static str>;
-}
-
-
 /// Error from an OpenStack API call.
 #[derive(Debug)]
 pub enum ApiError {

@@ -84,10 +84,10 @@ mod common;
 pub mod compute;
 pub mod http;
 mod identity;
-pub mod session;
+pub mod service;
+mod session;
 mod utils;
 
 pub use common::ApiError;
 pub use common::ApiResult;
-pub use common::ServiceType;
 pub use session::Session;
