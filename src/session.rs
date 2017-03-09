@@ -20,26 +20,16 @@
 use std::marker::PhantomData;
 
 use hyper::{Client, Get, Url};
-use hyper::client::{Body, IntoUrl, RequestBuilder, Response};
-use hyper::header::{Header, Headers, HeaderFormat};
+use hyper::client::IntoUrl;
 use hyper::method::Method;
 use serde::Deserialize;
 use serde_json;
 
-use super::{ApiError, ApiResult, ServiceType};
+use super::{ApiResult, ServiceType};
 use super::auth::Method as AuthMethod;
-use super::identity::protocol;
+use super::http::AuthenticatedRequestBuilder;
 use super::utils;
 
-
-/// Request builder with authentication.
-///
-/// Essentially copies the interface of hyper::client::RequestBuilder.
-#[allow(missing_debug_implementations)]
-pub struct AuthenticatedRequestBuilder<'a, A: AuthMethod + 'a> {
-    parent: &'a Session<A>,
-    inner: RequestBuilder<'a>
-}
 
 /// An OpenStack API session.
 ///
@@ -52,52 +42,13 @@ pub struct Session<Auth: AuthMethod> {
     default_region: Option<String>
 }
 
-impl<'a, Auth: AuthMethod> AuthenticatedRequestBuilder<'a, Auth> {
-    /// Send this request.
-    pub fn send(self) -> ApiResult<Response> {
-        let resp = try!(self.send_unchecked());
-        if resp.status.is_success() {
-            Ok(resp)
-        } else {
-            Err(ApiError::HttpError(resp.status, resp))
-        }
-    }
-
-    /// Send this request without checking on status code.
-    pub fn send_unchecked(self) -> ApiResult<Response> {
-        let token = try!(self.parent.auth_token());
-        let hdr = protocol::AuthTokenHeader(token.into());
-        self.inner.header(hdr).send().map_err(From::from)
-    }
-
-    /// Add body to the request.
-    pub fn body<B: Into<Body<'a>>>(self, body: B)
-            -> AuthenticatedRequestBuilder<'a, Auth> {
-        AuthenticatedRequestBuilder {
-            inner: self.inner.body(body),
-            .. self
-        }
-    }
-
-    /// Add additional headers to the request.
-    pub fn headers(self, headers: Headers)
-            -> AuthenticatedRequestBuilder<'a, Auth> {
-        AuthenticatedRequestBuilder {
-            inner: self.inner.headers(headers),
-            .. self
-        }
-    }
-
-    /// Add an individual header to the request.
-    ///
-    /// Note that X-Auth-Token is always overwritten with a token in use.
-    pub fn header<H: Header + HeaderFormat>(self, header: H)
-            -> AuthenticatedRequestBuilder<'a, Auth> {
-        AuthenticatedRequestBuilder {
-            inner: self.inner.header(header),
-            .. self
-        }
-    }
+/// Low-level API calls.
+#[derive(Debug)]
+pub struct ServiceApi<'a, Auth: AuthMethod + 'a, S> {
+    session: &'a Session<Auth>,
+    service_type: PhantomData<S>,
+    endpoint_interface: Option<String>,
+    cached_endpoint: utils::ValueCache<Url>
 }
 
 
@@ -156,10 +107,8 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
     /// A wrapper for HTTP request.
     pub fn request<U: IntoUrl>(&'a self, method: Method, url: U)
             -> AuthenticatedRequestBuilder<'a, Auth> {
-        AuthenticatedRequestBuilder {
-            parent: self,
-            inner: self.client.request(method, url)
-        }
+        AuthenticatedRequestBuilder::new(self.client.request(method, url),
+                                         self)
     }
 
     fn refresh_token(&self) -> ApiResult<()> {
@@ -167,15 +116,6 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
             self.auth.get_token(&self.client)
         })
     }
-}
-
-/// Low-level API calls.
-#[derive(Debug)]
-pub struct ServiceApi<'a, Auth: AuthMethod + 'a, S> {
-    session: &'a Session<Auth>,
-    service_type: PhantomData<S>,
-    endpoint_interface: Option<String>,
-    cached_endpoint: utils::ValueCache<Url>
 }
 
 impl<'a, Auth: AuthMethod + 'a, S: ServiceType> ServiceApi<'a, Auth, S> {
@@ -270,10 +210,11 @@ pub mod test {
     use hyper::header::ContentLength;
     use hyper::status::StatusCode;
 
-    use super::{ApiError, Session};
+    use super::super::ApiError;
     use super::super::auth::{Identity, Method, Token, NoAuth, SimpleToken};
     use super::super::auth::identity::IdentityAuthMethod;
     use super::super::utils;
+    use super::Session;
 
     pub fn new_with_params<Auth: Method>(auth: Auth, cli: hyper::Client,
                                          token: Auth::TokenType,

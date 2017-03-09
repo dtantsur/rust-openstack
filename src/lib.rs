@@ -82,6 +82,7 @@ pub mod auth;
 mod common;
 #[cfg(feature = "compute")]
 pub mod compute;
+pub mod http;
 mod identity;
 pub mod session;
 mod utils;
