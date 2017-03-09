@@ -66,6 +66,11 @@ pub enum ApiError {
 /// Result of an API call.
 pub type ApiResult<T> = Result<T, ApiError>;
 
+/// API version (major, minor).
+#[derive(Copy, Clone, Debug)]
+pub struct ApiVersion(pub u16, pub u16);
+
+
 impl fmt::Display for ApiError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -128,5 +133,22 @@ impl From<JsonError> for ApiError {
 impl From<ParseError> for ApiError {
     fn from(value: ParseError) -> ApiError {
         ApiError::ProtocolError(HttpClientError::Uri(value))
+    }
+}
+
+impl fmt::Display for ApiVersion {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}.{}", self.0, self.1)
+    }
+}
+
+#[cfg(test)]
+pub mod test {
+    use super::ApiVersion;
+
+    #[test]
+    fn test_apiversion() {
+        let ver = ApiVersion(2, 27);
+        assert_eq!(&ver.to_string(), "2.27");
     }
 }

@@ -17,7 +17,6 @@
 //! The Session object serves as a wrapper around an HTTP(s) client, handling
 //! authentication, accessing the service catalog and token refresh.
 
-use std::fmt;
 use std::marker::PhantomData;
 
 use hyper::{Client, Get, Url};
@@ -167,20 +166,6 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
         self.cached_token.ensure_value(|| {
             self.auth.get_token(&self.client)
         })
-    }
-}
-
-/// API version (major, minor).
-#[derive(Copy, Clone, Debug)]
-pub struct ApiVersion(pub u16, pub Option<u16>);
-
-impl fmt::Display for ApiVersion {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Some(minor) = self.1 {
-            write!(f, "{}.{}", self.0, minor)
-        } else {
-            write!(f, "{}", self.0)
-        }
     }
 }
 
