@@ -7,6 +7,8 @@ next
 * Authentication method is using String class instead of string slices.
 * Split Session::get_endpoint into get_default_endpoint and get_endpoint.
 * Move region setting into Session from its endpoint calls.
+* ServiceType now has a method to get root URL instead of relying on a suffix.
+* Base support for getting API versions.
 
 0.0.7
 -----

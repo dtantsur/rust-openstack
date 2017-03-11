@@ -50,14 +50,21 @@ pub enum ApiError {
     ProtocolError(HttpClientError),
 
     /// JSON parsing failed.
-    InvalidJson(JsonError)
+    InvalidJson(JsonError),
+
+    /// Malformed response.
+    MalformedResponse(String),
+
+    /// Malformed API version.
+    #[allow(missing_docs)]
+    InvalidApiVersion { value: String, message: String }
 }
 
 /// Result of an API call.
 pub type ApiResult<T> = Result<T, ApiError>;
 
 /// API version (major, minor).
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub struct ApiVersion(pub u16, pub u16);
 
 
@@ -73,7 +80,11 @@ impl fmt::Display for ApiError {
             ApiError::HttpError(status, ..) =>
                 write!(f, "HTTP error {}", status),
             ApiError::ProtocolError(ref e) => fmt::Display::fmt(e, f),
-            ApiError::InvalidJson(ref e) => fmt::Display::fmt(e, f)
+            ApiError::InvalidJson(ref e) => fmt::Display::fmt(e, f),
+            ApiError::MalformedResponse(ref msg) =>
+                write!(f, "Malformed response received: {}", msg),
+            ApiError::InvalidApiVersion { value: ref val, message: ref msg } =>
+                write!(f, "{} is not a valid API version: {}", val, msg)
         }
     }
 }
@@ -89,7 +100,11 @@ impl Error for ApiError {
                 "Invalid values passed for parameters",
             ApiError::HttpError(..) => "HTTP error",
             ApiError::ProtocolError(ref e) => e.description(),
-            ApiError::InvalidJson(ref e) => e.description()
+            ApiError::InvalidJson(ref e) => e.description(),
+            ApiError::MalformedResponse(..) =>
+                "Malformed response received",
+            ApiError::InvalidApiVersion { .. } =>
+                "Invalid API version"
         }
     }
 
@@ -129,6 +144,40 @@ impl From<ParseError> for ApiError {
 impl fmt::Display for ApiVersion {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}.{}", self.0, self.1)
+    }
+}
+
+fn parse_component(component: &str, value: &String, message: &str)
+        -> ApiResult<u16> {
+    match component.parse() {
+        Ok(val) => Ok(val),
+        Err(..) => Err(ApiError::InvalidApiVersion {
+            value: value.clone(),
+            message: String::from(message)
+        })
+    }
+}
+
+impl ApiVersion {
+    /// Parse string, yielding an API version.
+    pub fn parse<S: Into<String>>(value: S) -> ApiResult<ApiVersion> {
+        let s = value.into();
+        let parts: Vec<&str> = s.split('.').collect();
+
+        if parts.len() != 2 {
+            return Err(ApiError::InvalidApiVersion {
+                value: s.clone(),
+                message: String::from("Expected format X.Y")
+            });
+        }
+
+        let major = try!(parse_component(parts[0], &s,
+                                         "First component is not a number"));
+
+        let minor = try!(parse_component(parts[1], &s,
+                                         "Second component is not a number"));
+
+        Ok(ApiVersion(major, minor))
     }
 }
 

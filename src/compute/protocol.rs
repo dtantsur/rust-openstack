@@ -17,6 +17,12 @@
 #![allow(non_snake_case)]
 #![allow(missing_docs)]
 
+use hyper::Url;
+
+use super::super::{ApiResult, ApiVersion};
+use super::super::ApiError::MalformedResponse;
+use super::super::service::ServiceInfo;
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Server {
     pub accessIPv4: String,
@@ -41,4 +47,61 @@ pub struct ServersRoot {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ServerRoot {
     pub server: Server
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Link {
+    pub href: String,
+    pub rel: String
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Version {
+    pub id: String,
+    pub links: Vec<Link>,
+    pub status: String,
+    pub version: String,
+    pub min_version: String
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct VersionsRoot {
+    pub versions: Vec<Version>
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct VersionRoot {
+    pub version: Version
+}
+
+
+impl Version {
+    pub fn into_service_info(self) -> ApiResult<ServiceInfo> {
+        let current_version = if self.version.is_empty() {
+            None
+        } else {
+            Some(try!(ApiVersion::parse(self.version)))
+        };
+
+        let minimum_version = if self.min_version.is_empty() {
+            None
+        } else {
+            Some(try!(ApiVersion::parse(self.min_version)))
+        };
+
+        let endpoint = match self.links.iter().find(|x| &x.rel == "self") {
+            Some(link) => try!(Url::parse(&link.href)),
+            None => {
+                let msg = format!("No link to self in version, only {:?}",
+                                  self.links);
+                return Err(MalformedResponse(msg))
+            }
+        };
+
+        Ok(ServiceInfo {
+            root_url: endpoint,
+            current_version: current_version,
+            minimum_version: minimum_version
+        })
+    }
 }

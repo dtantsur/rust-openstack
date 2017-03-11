@@ -43,6 +43,7 @@ pub fn http_client() -> Client {
 #[derive(Debug, Clone)]
 pub struct ValueCache<T: Clone>(RefCell<Option<T>>);
 
+
 impl<T: Clone> ValueCache<T> {
     /// Create a cache.
     pub fn new(value: Option<T>) -> ValueCache<T> {
@@ -97,5 +98,41 @@ impl<'a> IntoId for &'a String {
 impl<'a> IntoId for &'a str {
     fn into_id(self) -> String {
         String::from(self)
+    }
+}
+
+pub mod url {
+    //! Handy primitives for working with URLs.
+
+    use hyper::Url;
+
+    #[inline]
+    #[allow(unused_results)]
+    pub fn is_root(url: &Url) -> bool {
+        url.path_segments().unwrap().filter(|x| !x.is_empty()).next().is_none()
+    }
+
+    #[inline]
+    #[allow(unused_results)]
+    pub fn join(mut url: Url, other: &str) -> Url {
+        url.path_segments_mut().unwrap().pop_if_empty().push(other);
+        url
+    }
+
+    #[inline]
+    #[allow(dead_code, unused_results)]
+    pub fn extend(mut url: Url, segments: &[&str]) -> Url {
+        url.path_segments_mut().unwrap().pop_if_empty().extend(segments);
+        url
+    }
+
+    #[inline]
+    #[allow(unused_results)]
+    pub fn pop(mut url: Url, keep_slash: bool) -> Url {
+        url.path_segments_mut().unwrap().pop_if_empty().pop();
+        if keep_slash {
+            url.path_segments_mut().unwrap().pop_if_empty().push("");
+        }
+        url
     }
 }

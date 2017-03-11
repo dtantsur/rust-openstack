@@ -14,7 +14,18 @@
 
 //! Low-level bits exposing the Compute API.
 
-use super::super::service::{ServiceApi, ServiceType};
+use std::io::Read;
+
+use hyper::{Get, NotFound, Url};
+use hyper::client::Response;
+use serde_json;
+
+use super::super::{ApiResult, Session};
+use super::super::ApiError::{HttpError, EndpointNotFound};
+use super::super::auth::Method as AuthMethod;
+use super::super::service::{ServiceApi, ServiceInfo, ServiceType};
+use super::super::utils;
+use super::protocol::{VersionRoot, VersionsRoot};
 
 /// Service type of Compute API V2.
 #[derive(Copy, Clone, Debug)]
@@ -23,15 +34,209 @@ pub struct ComputeV2Type;
 /// Low-level service API implementation.
 pub type ComputeV2<'session, Auth> = ServiceApi<'session, Auth, ComputeV2Type>;
 
+
 const SERVICE_TYPE: &'static str = "compute";
 const SUFFIX: &'static str = "v2.1";
+
+fn extract_info(mut resp: Response, secure: bool) -> ApiResult<ServiceInfo> {
+    let mut body = String::new();
+    let _ = try!(resp.read_to_string(&mut body));
+
+    // First, assume it's a versioned URL.
+    let mut info = try!(match serde_json::from_str::<VersionRoot>(&body) {
+        Ok(ver) => ver.version.into_service_info(),
+        Err(..) => {
+            // Second, assume it's a root URL.
+            let vers: VersionsRoot = try!(serde_json::from_str(&body));
+            match vers.versions.iter().find(|x| &x.id == SUFFIX) {
+                Some(ver) => ver.clone().into_service_info(),
+                None => Err(EndpointNotFound(String::from(SERVICE_TYPE)))
+            }
+        }
+    });
+
+    // Nova returns insecure URLs even for secure protocol. WHY??
+    if secure {
+        let _ = info.root_url.set_scheme("https").unwrap();
+    }
+
+    Ok(info)
+}
 
 impl ServiceType for ComputeV2Type {
     fn catalog_type() -> &'static str {
         SERVICE_TYPE
     }
 
-    fn version_suffix() -> Option<&'static str> {
-        Some(SUFFIX)
+    fn service_info<Auth: AuthMethod>(endpoint: Url,
+                                      session: &Session<Auth>)
+            -> ApiResult<ServiceInfo> {
+        debug!("Fetching service info from {}", endpoint);
+        let secure = endpoint.scheme() == "https";
+        let result = session.request(Get, endpoint.clone()).send();
+        match result {
+            Ok(resp) => {
+                let result = try!(extract_info(resp, secure));
+                info!("Got service info {:?} from {}", result, endpoint);
+                Ok(result)
+            },
+            Err(HttpError(NotFound, ..)) => {
+                if utils::url::is_root(&endpoint) {
+                    Err(EndpointNotFound(String::from(SERVICE_TYPE)))
+                } else {
+                    debug!("Got HTTP 404 from {}, trying parent endpoint",
+                           endpoint);
+                    ComputeV2Type::service_info(
+                        utils::url::pop(endpoint, true),
+                        session)
+                }
+            },
+            Err(other) => Err(other)
+        }
+    }
+}
+
+#[cfg(test)]
+pub mod test {
+    #![allow(missing_debug_implementations)]
+
+    use hyper;
+    use hyper::Url;
+
+    use super::super::super::{ApiVersion, Session};
+    use super::super::super::auth::{NoAuth, SimpleToken};
+    use super::super::super::service::ServiceType;
+    use super::super::super::session::test;
+    use super::ComputeV2Type;
+
+    // Copied from compute API reference.
+    pub const ONE_VERSION_RESPONSE: &'static str = r#"
+    {
+        "version": {
+            "id": "v2.1",
+            "links": [
+                {
+                    "href": "http://openstack.example.com/v2.1/",
+                    "rel": "self"
+                },
+                {
+                    "href": "http://docs.openstack.org/",
+                    "rel": "describedby",
+                    "type": "text/html"
+                }
+            ],
+            "media-types": [
+                {
+                    "base": "application/json",
+                    "type": "application/vnd.openstack.compute+json;version=2.1"
+                }
+            ],
+            "status": "CURRENT",
+            "version": "2.42",
+            "min_version": "2.1",
+            "updated": "2013-07-23T11:33:21Z"
+        }
+    }"#;
+
+    pub const SEVERAL_VERSIONS_RESPONSE: &'static str = r#"
+    {
+        "versions": [
+            {
+                "id": "v2.0",
+                "links": [
+                    {
+                        "href": "http://openstack.example.com/v2/",
+                        "rel": "self"
+                    }
+                ],
+                "status": "SUPPORTED",
+                "version": "",
+                "min_version": "",
+                "updated": "2011-01-21T11:33:21Z"
+            },
+            {
+                "id": "v2.1",
+                "links": [
+                    {
+                        "href": "http://openstack.example.com/v2.1/",
+                        "rel": "self"
+                    }
+                ],
+                "status": "CURRENT",
+                "version": "2.42",
+                "min_version": "2.1",
+                "updated": "2013-07-23T11:33:21Z"
+            }
+        ]
+    }"#;
+
+    mock_connector_in_order!(MockOneVersion {
+        String::from("HTTP/1.1 200 OK\r\nServer: Mock.Mock\r\n\
+                     \r\n") + ONE_VERSION_RESPONSE
+    });
+
+    mock_connector_in_order!(MockSeveralVersions {
+        String::from("HTTP/1.1 200 OK\r\nServer: Mock.Mock\r\n\
+                     \r\n") + SEVERAL_VERSIONS_RESPONSE
+    });
+
+    mock_connector_in_order!(MockOneVersionWithTenant {
+        String::from("HTTP/1.1 404 NOT FOUND\r\nServer: Mock.Mock\r\n\r\n{}")
+        String::from("HTTP/1.1 200 OK\r\nServer: Mock.Mock\r\n\
+                     \r\n") + ONE_VERSION_RESPONSE
+    });
+
+    mock_connector_in_order!(MockSeveralVersionsWithTenant {
+        String::from("HTTP/1.1 404 NOT FOUND\r\nServer: Mock.Mock\r\n\r\n{}")
+        String::from("HTTP/1.1 200 OK\r\nServer: Mock.Mock\r\n\
+                     \r\n") + SEVERAL_VERSIONS_RESPONSE
+    });
+
+    mock_connector_in_order!(MockNotFound {
+        String::from("HTTP/1.1 404 NOT FOUND\r\nServer: Mock.Mock\r\n\r\n{}")
+        String::from("HTTP/1.1 404 NOT FOUND\r\nServer: Mock.Mock\r\n\r\n{}")
+    });
+
+    fn prepare_session(cli: hyper::Client) -> Session<NoAuth> {
+        let auth = NoAuth::new("http://127.0.2.1/v2.1").unwrap();
+        let token = SimpleToken(String::from("abcdef"));
+        test::new_with_params(auth, cli, token, None)
+    }
+
+    fn check_success(cli: hyper::Client, endpoint: &str) {
+        let session = prepare_session(cli);
+        let url = Url::parse(endpoint).unwrap();
+        let info = ComputeV2Type::service_info(url, &session).unwrap();
+        assert_eq!(info.root_url.as_str(),
+                   "http://openstack.example.com/v2.1/");
+        assert_eq!(info.current_version.unwrap(), ApiVersion(2, 42));
+        assert_eq!(info.minimum_version.unwrap(), ApiVersion(2, 1));
+    }
+
+    #[test]
+    fn test_one_version() {
+        let cli = hyper::Client::with_connector(MockOneVersion::default());
+        check_success(cli, "http://127.0.2.1/compute/v2.1");
+    }
+
+    #[test]
+    fn test_one_version_with_tenant() {
+        let cli = hyper::Client::with_connector(
+            MockOneVersionWithTenant::default());
+        check_success(cli, "http://127.0.2.1/compute/v2.1/tenant");
+    }
+
+    #[test]
+    fn test_several_version() {
+        let cli = hyper::Client::with_connector(
+            MockSeveralVersions::default());
+        check_success(cli, "http://127.0.2.1/");
+    }
+
+    #[test]
+    fn test_several_version_with_tenant() {
+        let cli = hyper::Client::with_connector(
+            MockSeveralVersionsWithTenant::default());
+        check_success(cli, "http://127.0.2.1/tenant");
     }
 }

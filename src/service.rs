@@ -20,19 +20,31 @@ use hyper::{Get, Url};
 use serde::Deserialize;
 use serde_json;
 
-use super::{ApiResult, Session};
+use super::{ApiResult, ApiVersion, Session};
 use super::auth::Method as AuthMethod;
 use super::utils;
 pub use super::utils::IntoId;
 
+
+/// Information about API endpoint.
+#[derive(Clone, Debug)]
+pub struct ServiceInfo {
+    /// Root endpoint.
+    pub root_url: Url,
+    /// Current API version (if supported).
+    pub current_version: Option<ApiVersion>,
+    /// Minimum API version (if supported).
+    pub minimum_version: Option<ApiVersion>
+}
 
 /// Trait representing a service type.
 pub trait ServiceType {
     /// Service type to pass to the catalog.
     fn catalog_type() -> &'static str;
 
-    /// Version suffix to append to the endpoint.
-    fn version_suffix() -> Option<&'static str>;
+    /// Get basic service information.
+    fn service_info<Auth: AuthMethod>(endpoint: Url, session: &Session<Auth>)
+        -> ApiResult<ServiceInfo>;
 }
 
 /// Low-level API calls.
@@ -41,7 +53,7 @@ pub struct ServiceApi<'a, Auth: AuthMethod + 'a, Service> {
     session: &'a Session<Auth>,
     service_type: PhantomData<Service>,
     endpoint_interface: Option<String>,
-    cached_endpoint: utils::ValueCache<Url>
+    cached_info: utils::ValueCache<ServiceInfo>
 }
 
 
@@ -52,7 +64,7 @@ impl<'a, Auth: AuthMethod + 'a, S: ServiceType> ServiceApi<'a, Auth, S> {
             session: session,
             service_type: PhantomData,
             endpoint_interface: None,
-            cached_endpoint: utils::ValueCache::new(None)
+            cached_info: utils::ValueCache::new(None)
         }
     }
 
@@ -64,38 +76,32 @@ impl<'a, Auth: AuthMethod + 'a, S: ServiceType> ServiceApi<'a, Auth, S> {
             session: session,
             service_type: PhantomData,
             endpoint_interface: Some(endpoint_interface.into()),
-            cached_endpoint: utils::ValueCache::new(None)
+            cached_info: utils::ValueCache::new(None)
         }
     }
 
-    /// Get the root endpoint with or without the major version.
+    /// Get the root endpoint of the service.
     ///
     /// The resulting endpoint is cached on the current ServiceApi object.
-    pub fn get_root_endpoint(&self, include_version: bool) -> ApiResult<Url> {
-        try!(self.cached_endpoint.ensure_value(|| {
-            match self.endpoint_interface {
+    pub fn get_root_endpoint(&self) -> ApiResult<Url> {
+        try!(self.cached_info.ensure_value(|| {
+            let ep = try!(match self.endpoint_interface {
                 Some(ref s) => self.session.get_endpoint(S::catalog_type(),
                                                          s.clone()),
                 None => self.session.get_default_endpoint(S::catalog_type())
-            }
+            });
+
+            S::service_info(ep, &self.session)
         }));
 
-        let endpoint = self.cached_endpoint.get().unwrap();
-        if include_version {
-            if let Some(suffix) = S::version_suffix() {
-                if !endpoint.path().ends_with(suffix) {
-                    return endpoint.join(suffix).map_err(From::from);
-                }
-            }
-        }
-
-        Ok(endpoint)
+        let info = self.cached_info.get().unwrap();
+        Ok(info.root_url.clone())
     }
 
     /// Get an endpoint with version suffix and given path appended.
     pub fn get_endpoint(&self, path: &str) -> ApiResult<Url> {
-        let endpoint = try!(self.get_root_endpoint(true));
-        endpoint.join(path).map_err(From::from)
+        let endpoint = try!(self.get_root_endpoint());
+        Ok(utils::url::join(endpoint, path))
     }
 
     /// List entities.
@@ -111,15 +117,9 @@ impl<'a, Auth: AuthMethod + 'a, S: ServiceType> ServiceApi<'a, Auth, S> {
     /// Get one entity.
     pub fn get<R: Deserialize, Id: IntoId>(&self, path: &str, id: Id)
             -> ApiResult<R> {
-        // Url expects trailing /
-        let root_path = if path.ends_with("/") {
-            String::from(path)
-        } else {
-            format!("{}/", path)
-        };
-        let url = try!(self.get_endpoint(&root_path));
-        let url_with_id = try!(url.join(&id.into_id()));
-        debug!("Get one entity from {}", url);
+        let url = try!(self.get_endpoint(&path));
+        let url_with_id = utils::url::join(url, &id.into_id());
+        debug!("Get one entity from {}", url_with_id);
         let resp = try!(self.session.request(Get, url_with_id).send());
         let root = try!(serde_json::from_reader(resp));
         Ok(root)

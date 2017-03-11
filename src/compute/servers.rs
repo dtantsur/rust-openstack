@@ -156,9 +156,9 @@ pub mod test {
 
     use super::super::super::auth::{NoAuth, SimpleToken};
     use super::super::super::session::test;
+    use super::super::api::test as api_test;
     use super::manager;
 
-    // Copied from compute API reference.
     const SERVERS_RESPONSE: &'static str = r#"
     {
         "servers": [
@@ -179,10 +179,11 @@ pub mod test {
         ]
     }"#;
 
-    mock_connector!(MockServers {
-        "http://127.0.2.1" => String::from("HTTP/1.1 200 OK\r\n\
-                                           Server: Mock.Mock\r\n\
-                                           \r\n") + SERVERS_RESPONSE
+    mock_connector_in_order!(MockServers {
+        String::from("HTTP/1.1 200 OK\r\nServer: Mock.Mock\r\n\
+                     \r\n") + api_test::ONE_VERSION_RESPONSE
+        String::from("HTTP/1.1 200 OK\r\nServer: Mock.Mock\r\n\
+                     \r\n") + SERVERS_RESPONSE
     });
 
     #[test]
