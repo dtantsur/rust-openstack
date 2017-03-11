@@ -104,6 +104,8 @@ impl<'a> IntoId for &'a str {
 pub mod url {
     //! Handy primitives for working with URLs.
 
+    #![allow(dead_code)] // unused with --no-default-features
+
     use hyper::Url;
 
     #[inline]
@@ -120,7 +122,7 @@ pub mod url {
     }
 
     #[inline]
-    #[allow(dead_code, unused_results)]
+    #[allow(unused_results)]
     pub fn extend(mut url: Url, segments: &[&str]) -> Url {
         url.path_segments_mut().unwrap().pop_if_empty().extend(segments);
         url
