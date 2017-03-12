@@ -237,7 +237,7 @@ impl Method for IdentityAuthMethod {
                     client: &Session<IdentityAuthMethod>)
             -> ApiResult<Url> {
         let real_interface = endpoint_interface.unwrap_or(
-            String::from("public"));
+            self.default_endpoint_interface());
         let cat = try!(catalog::get_service_catalog(&self.auth_url, client));
         let endp = try!(catalog::find_endpoint(&cat, service_type,
                                                real_interface, region));

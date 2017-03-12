@@ -41,6 +41,11 @@ pub trait Method: Clone + Send {
     /// A token type.
     type TokenType: Token;
 
+    /// Default endpoint interface that is used when none is provided.
+    fn default_endpoint_interface(&self) -> String {
+        String::from("public")
+    }
+
     /// Verify authentication and generate an auth token.
     fn get_token(&self, client: &Client) -> ApiResult<Self::TokenType>;
 

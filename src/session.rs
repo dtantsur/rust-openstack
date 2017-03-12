@@ -71,16 +71,6 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
         &self.auth
     }
 
-    /// Get a default (usually public) endpoint URL.
-    #[inline]
-    pub fn get_default_endpoint<S1: Into<String>>(&self, service_type: S1)
-            -> ApiResult<Url> {
-        self.auth.get_endpoint(service_type.into(),
-                                      None,
-                                      self.default_region.clone(),
-                                      &self)
-    }
-
     /// Get an endpoint URL.
     pub fn get_endpoint<S1, S2>(&self, service_type: S1,
                                 endpoint_interface: S2) -> ApiResult<Url>
@@ -281,12 +271,12 @@ pub mod test {
     fn test_session_get_endpoint_no_region() {
         let session = session_with_identity(None);
 
-        let e1 = session.get_default_endpoint("identity").unwrap();
+        let e1 = session.get_endpoint("identity", "public").unwrap();
         assert_eq!(&e1.to_string(), "http://localhost:5000/");
         let e2 = session.get_endpoint("identity", "admin").unwrap();
         assert_eq!(&e2.to_string(), "http://localhost:35357/");
 
-        match session.get_default_endpoint("foo").err().unwrap() {
+        match session.get_endpoint("foo", "public").err().unwrap() {
             ApiError::EndpointNotFound(ref endp) =>
                 assert_eq!(endp, "foo"),
             other => panic!("Unexpected {}", other)
@@ -310,12 +300,6 @@ pub mod test {
     #[test]
     fn test_session_get_endpoint_with_region_fail() {
         let session = session_with_identity(Some("unknown"));
-
-        match session.get_default_endpoint("identity").err().unwrap() {
-            ApiError::EndpointNotFound(ref endp) =>
-                assert_eq!(endp, "identity"),
-            other => panic!("Unexpected {}", other)
-        };
 
         match session.get_endpoint("identity", "public").err().unwrap() {
             ApiError::EndpointNotFound(ref endp) =>
