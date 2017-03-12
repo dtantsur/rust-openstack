@@ -187,13 +187,17 @@ impl IdentityAuthMethod {
                     resp.headers.get();
                 match header {
                     Some(ref value) => value.0.clone(),
-                    None => return Err(
-                        ApiError::ProtocolError(HttpClientError::Header))
+                    None => {
+                        error!("No X-Subject-Token header received from {}",
+                               self.token_endpoint);
+                        return Err(
+                            ApiError::ProtocolError(HttpClientError::Header))
+                    }
                 }
             },
             StatusCode::Unauthorized => {
-                warn!("Invalid credentials for user {}",
-                      self.body.auth.identity.password.user.name);
+                error!("Invalid credentials for user {}",
+                       self.body.auth.identity.password.user.name);
                 return Err(ApiError::HttpError(resp.status, resp));
             },
             other => {
@@ -203,7 +207,7 @@ impl IdentityAuthMethod {
             }
         };
 
-        debug!("Received a token for user {} from {}",
+        info!("Received a token for user {} from {}",
                self.body.auth.identity.password.user.name,
                self.token_endpoint);
 
@@ -238,9 +242,12 @@ impl Method for IdentityAuthMethod {
             -> ApiResult<Url> {
         let real_interface = endpoint_interface.unwrap_or(
             self.default_endpoint_interface());
+        debug!("Requesting a catalog endpoint for service '{}', interface \
+               '{}' from region {:?}", service_type, real_interface, region);
         let cat = try!(catalog::get_service_catalog(&self.auth_url, client));
         let endp = try!(catalog::find_endpoint(&cat, service_type,
                                                real_interface, region));
+        info!("Received {:?}", endp);
         endp.url.into_url().map_err(From::from)
     }
 }

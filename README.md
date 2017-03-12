@@ -27,3 +27,7 @@ credentials and run from the project root:
 Another example lists all running servers (their ID and name):
 
     cargo run --example list-servers
+
+Enable verbose logging by using standard `RUST_LOG` variable:
+
+    RUST_LOG=openstack cargo run --example list-servers

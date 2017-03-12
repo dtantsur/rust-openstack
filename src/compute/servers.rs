@@ -128,10 +128,13 @@ impl<'a, Auth: AuthMethod + 'a> ServerSummary<'a, Auth> {
 impl<'a, Auth: AuthMethod + 'a> ServerManager<'a, Auth> {
     /// List all servers without any filtering.
     pub fn list(&self) -> ApiResult<ServerList<'a, Auth>> {
+        trace!("Listing all compute servers");
         let inner = try!(
             self.session.http_get::<V2Type, protocol::ServersRoot>(
                 None, &["servers"])
         );
+        debug!("Received {} compute servers", inner.servers.len());
+        trace!("Received servers: {:?}", inner.servers);
         Ok(inner.servers.iter().map(|x| ServerSummary {
             session: self.session,
             inner: x.clone()
@@ -145,10 +148,12 @@ impl<'a, Auth: AuthMethod + 'a> ServerManager<'a, Auth> {
 
     fn get_server(session: &'a Session<Auth>, id: &str)
             -> ApiResult<Server<'a, Auth>> {
+        trace!("Get compute server {}", id);
         let inner = try!(
             session.http_get::<V2Type, protocol::ServerRoot>(None,
                                                              &["servers", id])
         );
+        trace!("Received {:?}", inner.server);
         Ok(Server {
             session: session,
             inner: inner.server

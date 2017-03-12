@@ -68,13 +68,13 @@ impl ServiceType for V2Type {
     fn service_info<Auth: AuthMethod>(endpoint: Url,
                                       session: &Session<Auth>)
             -> ApiResult<ServiceInfo> {
-        debug!("Fetching service info from {}", endpoint);
+        debug!("Fetching compute service info from {}", endpoint);
         let secure = endpoint.scheme() == "https";
         let result = session.raw_request(Get, endpoint.clone()).send();
         match result {
             Ok(resp) => {
                 let result = try!(extract_info(resp, secure));
-                info!("Got service info {:?} from {}", result, endpoint);
+                info!("Received {:?} from {}", result, endpoint);
                 Ok(result)
             },
             Err(HttpError(NotFound, ..)) => {

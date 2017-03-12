@@ -12,12 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+extern crate env_logger;
 extern crate hyper;
 extern crate openstack;
 
 
 #[cfg(feature = "compute")]
 fn main() {
+    env_logger::init().unwrap();
+
     let identity = openstack::auth::Identity::from_env()
         .expect("Failed to create an identity provider from the environment");
     let session = openstack::Session::new(identity);
