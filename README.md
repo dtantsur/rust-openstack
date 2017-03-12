@@ -10,7 +10,8 @@ Version](https://img.shields.io/crates/v/openstack.svg)](https://crates.io/crate
 The goal of this project is to provide a simple API for working with OpenStack
 clouds. This is an early work-in-progress, don't expect too much of it.
 
-[Documentation](https://dtantsur.github.io/rust-openstack/openstack/)
+Documentation: [master](https://dtantsur.github.io/rust-openstack/openstack/),
+[latest release](https://docs.rs/openstack/).
 
 ## Usage
 
