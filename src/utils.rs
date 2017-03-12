@@ -15,6 +15,8 @@
 //! Various utilities.
 
 use std::cell::RefCell;
+use std::collections::HashMap;
+use std::hash::Hash;
 
 use hyper::Client;
 #[cfg(feature = "tls")]
@@ -43,6 +45,10 @@ pub fn http_client() -> Client {
 #[derive(Debug, Clone)]
 pub struct ValueCache<T: Clone>(RefCell<Option<T>>);
 
+/// Cached map of values.
+#[derive(Debug)]
+pub struct MapCache<K: Hash + Eq, V: Clone>(RefCell<HashMap<K, V>>);
+
 
 impl<T: Clone> ValueCache<T> {
     /// Create a cache.
@@ -67,6 +73,32 @@ impl<T: Clone> ValueCache<T> {
     #[inline]
     pub fn get(&self) -> Option<T> {
         self.0.borrow().clone()
+    }
+}
+
+impl<K: Hash + Eq, V: Clone> MapCache<K, V> {
+    /// Create a cache.
+    pub fn new() -> MapCache<K, V> {
+        MapCache(RefCell::new(HashMap::new()))
+    }
+
+    /// Ensure the value is present in the cache.
+    pub fn ensure_value<F>(&self, key: K, default: F) -> ApiResult<()>
+            where F: FnOnce(&K) -> ApiResult<V> {
+        if self.0.borrow().contains_key(&key) {
+            return Ok(());
+        }
+
+        let new = try!(default(&key));
+
+        let _ = self.0.borrow_mut().insert(key, new);
+        Ok(())
+    }
+
+    /// Get the cached value.
+    #[inline]
+    pub fn get(&self, key: &K) -> Option<V> {
+        self.0.borrow().get(key).cloned()
     }
 }
 

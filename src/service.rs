@@ -52,8 +52,7 @@ pub trait ServiceType {
 pub struct ServiceApi<'a, Auth: AuthMethod + 'a, Service> {
     session: &'a Session<Auth>,
     service_type: PhantomData<Service>,
-    endpoint_interface: String,
-    cached_info: utils::ValueCache<ServiceInfo>
+    endpoint_interface: String
 }
 
 
@@ -64,8 +63,7 @@ impl<'a, Auth: AuthMethod + 'a, S: ServiceType> ServiceApi<'a, Auth, S> {
             session: session,
             service_type: PhantomData,
             endpoint_interface:
-                session.auth_method().default_endpoint_interface(),
-            cached_info: utils::ValueCache::new(None)
+                session.auth_method().default_endpoint_interface()
         }
     }
 
@@ -76,8 +74,7 @@ impl<'a, Auth: AuthMethod + 'a, S: ServiceType> ServiceApi<'a, Auth, S> {
         ServiceApi {
             session: session,
             service_type: PhantomData,
-            endpoint_interface: endpoint_interface.into(),
-            cached_info: utils::ValueCache::new(None)
+            endpoint_interface: endpoint_interface.into()
         }
     }
 
@@ -85,14 +82,9 @@ impl<'a, Auth: AuthMethod + 'a, S: ServiceType> ServiceApi<'a, Auth, S> {
     ///
     /// The resulting endpoint is cached on the current ServiceApi object.
     pub fn get_root_endpoint(&self) -> ApiResult<Url> {
-        try!(self.cached_info.ensure_value(|| {
-            self.session.get_endpoint(S::catalog_type(),
-                                      self.endpoint_interface.as_str())
-                .and_then(|ep| S::service_info(ep, &self.session))
-        }));
-
-        let info = self.cached_info.get().unwrap();
-        Ok(info.root_url.clone())
+        let info = try!(self.session.get_service_info::<S>(
+            Some(self.endpoint_interface.clone())));
+        Ok(info.root_url)
     }
 
     /// Get an endpoint with version suffix and given path appended.

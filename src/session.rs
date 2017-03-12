@@ -24,8 +24,11 @@ use hyper::method::Method;
 use super::ApiResult;
 use super::auth::Method as AuthMethod;
 use super::http::AuthenticatedRequestBuilder;
+use super::service::{ServiceInfo, ServiceType};
 use super::utils;
 
+
+type InfoKey = (&'static str, String);
 
 /// An OpenStack API session.
 ///
@@ -35,6 +38,7 @@ pub struct Session<Auth: AuthMethod> {
     auth: Auth,
     client: Client,
     cached_token: utils::ValueCache<Auth::TokenType>,
+    cached_info: utils::MapCache<InfoKey, ServiceInfo>,
     default_region: Option<String>
 }
 
@@ -46,6 +50,7 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
             auth: auth_method,
             client: utils::http_client(),
             cached_token: utils::ValueCache::new(None),
+            cached_info: utils::MapCache::new(),
             default_region: None
         }
     }
@@ -56,6 +61,7 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
             auth: auth_method,
             client: utils::http_client(),
             cached_token: utils::ValueCache::new(None),
+            cached_info: utils::MapCache::new(),
             default_region: Some(region)
         }
     }
@@ -69,6 +75,22 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
     /// Get a reference to the authentication method in use.
     pub fn auth_method(&self) -> &Auth {
         &self.auth
+    }
+
+    /// Get service info for the given service.
+    pub fn get_service_info<Srv: ServiceType>(
+            &self, endpoint_interface: Option<String>)
+            -> ApiResult<ServiceInfo> {
+        let iface = endpoint_interface.unwrap_or(
+            self.auth.default_endpoint_interface());
+        let key = (Srv::catalog_type(), iface);
+
+        try!(self.cached_info.ensure_value(key.clone(), |k| {
+            self.get_endpoint(Srv::catalog_type(), k.1.clone())
+                .and_then(|ep| Srv::service_info(ep, self))
+        }));
+
+        Ok(self.cached_info.get(&key).unwrap())
     }
 
     /// Get an endpoint URL.
@@ -120,6 +142,7 @@ pub mod test {
             auth: auth,
             client: cli,
             cached_token: utils::ValueCache::new(Some(token)),
+            cached_info: utils::MapCache::new(),
             default_region: region.map(From::from)
         }
     }
@@ -142,6 +165,7 @@ pub mod test {
             auth: id,
             client: cli,
             cached_token: utils::ValueCache::new(Some(token)),
+            cached_info: utils::MapCache::new(),
             default_region: region.map(From::from)
         }
     }
@@ -216,6 +240,7 @@ pub mod test {
             auth: NoAuth::new("http://127.0.0.1/").unwrap(),
             client: cli,
             cached_token: utils::ValueCache::new(None),
+            cached_info: utils::MapCache::new(),
             default_region: None
         };
 
@@ -234,6 +259,7 @@ pub mod test {
             auth: NoAuth::new("http://127.0.0.2/").unwrap(),
             client: cli,
             cached_token: utils::ValueCache::new(None),
+            cached_info: utils::MapCache::new(),
             default_region: None
         };
 
@@ -253,6 +279,7 @@ pub mod test {
             auth: NoAuth::new("http://127.0.0.2/").unwrap(),
             client: cli,
             cached_token: utils::ValueCache::new(None),
+            cached_info: utils::MapCache::new(),
             default_region: None
         };
 
