@@ -17,9 +17,11 @@
 //! The Session object serves as a wrapper around an HTTP(s) client, handling
 //! authentication, accessing the service catalog and token refresh.
 
-use hyper::{Client, Url};
+use hyper::{Client, Get, Url};
 use hyper::client::IntoUrl;
 use hyper::method::Method;
+use serde::Deserialize;
+use serde_json;
 
 use super::ApiResult;
 use super::auth::Method as AuthMethod;
@@ -78,9 +80,8 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
     }
 
     /// Get service info for the given service.
-    pub fn get_service_info<Srv: ServiceType>(
-            &self, endpoint_interface: Option<String>)
-            -> ApiResult<ServiceInfo> {
+    pub fn get_service_info<Srv>(&self, endpoint_interface: Option<String>)
+            -> ApiResult<ServiceInfo> where Srv: ServiceType {
         let iface = endpoint_interface.unwrap_or(
             self.auth.default_endpoint_interface());
         let key = (Srv::catalog_type(), iface);
@@ -93,6 +94,14 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
         Ok(self.cached_info.get(&key).unwrap())
     }
 
+    /// Construct and endpoint for the given service.
+    pub fn get_endpoint<Srv>(&self, endpoint_interface: Option<String>,
+                             path: &[&str]) -> ApiResult<Url>
+            where Srv: ServiceType {
+        let info = try!(self.get_service_info::<Srv>(endpoint_interface));
+        Ok(utils::url::extend(info.root_url, path))
+    }
+
     /// Get an endpoint URL from the catalog.
     pub fn get_catalog_endpoint<S1, S2>(&self, service_type: S1,
                                 endpoint_interface: S2) -> ApiResult<Url>
@@ -101,6 +110,24 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
                                Some(endpoint_interface.into()),
                                self.default_region.clone(),
                                &self)
+    }
+
+    /// Make a GET request.
+    pub fn http_get<Srv, Res>(&self, endpoint_interface: Option<String>,
+                              path: &[&str]) -> ApiResult<Res>
+            where Srv: ServiceType, Res: Deserialize {
+        let request = try!(self.request::<Srv>(endpoint_interface, Get, path));
+        let resp = try!(request.send());
+        serde_json::from_reader(resp).map_err(From::from)
+    }
+
+    /// Make an HTTP request to the given service.
+    pub fn request<Srv>(&'a self, endpoint_interface: Option<String>,
+                        method: Method, path: &[&str])
+            -> ApiResult<AuthenticatedRequestBuilder<'a, Auth>>
+            where Srv: ServiceType {
+        let url = try!(self.get_endpoint::<Srv>(endpoint_interface, path));
+        Ok(self.raw_request(method, url))
     }
 
     /// A wrapper for HTTP request.

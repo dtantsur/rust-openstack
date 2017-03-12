@@ -23,16 +23,13 @@ use serde_json;
 use super::super::{ApiResult, Session};
 use super::super::ApiError::{HttpError, EndpointNotFound};
 use super::super::auth::Method as AuthMethod;
-use super::super::service::{ServiceApi, ServiceInfo, ServiceType};
+use super::super::service::{ServiceInfo, ServiceType};
 use super::super::utils;
 use super::protocol::{VersionRoot, VersionsRoot};
 
 /// Service type of Compute API V2.
 #[derive(Copy, Clone, Debug)]
-pub struct ComputeV2Type;
-
-/// Low-level service API implementation.
-pub type ComputeV2<'session, Auth> = ServiceApi<'session, Auth, ComputeV2Type>;
+pub struct V2Type;
 
 
 const SERVICE_TYPE: &'static str = "compute";
@@ -63,7 +60,7 @@ fn extract_info(mut resp: Response, secure: bool) -> ApiResult<ServiceInfo> {
     Ok(info)
 }
 
-impl ServiceType for ComputeV2Type {
+impl ServiceType for V2Type {
     fn catalog_type() -> &'static str {
         SERVICE_TYPE
     }
@@ -86,7 +83,7 @@ impl ServiceType for ComputeV2Type {
                 } else {
                     debug!("Got HTTP 404 from {}, trying parent endpoint",
                            endpoint);
-                    ComputeV2Type::service_info(
+                    V2Type::service_info(
                         utils::url::pop(endpoint, true),
                         session)
                 }
@@ -107,7 +104,7 @@ pub mod test {
     use super::super::super::auth::{NoAuth, SimpleToken};
     use super::super::super::service::ServiceType;
     use super::super::super::session::test;
-    use super::ComputeV2Type;
+    use super::V2Type;
 
     // Copied from compute API reference.
     pub const ONE_VERSION_RESPONSE: &'static str = r#"
@@ -206,7 +203,7 @@ pub mod test {
     fn check_success(cli: hyper::Client, endpoint: &str) {
         let session = prepare_session(cli);
         let url = Url::parse(endpoint).unwrap();
-        let info = ComputeV2Type::service_info(url, &session).unwrap();
+        let info = V2Type::service_info(url, &session).unwrap();
         assert_eq!(info.root_url.as_str(),
                    "http://openstack.example.com/v2.1/");
         assert_eq!(info.current_version.unwrap(), ApiVersion(2, 42));

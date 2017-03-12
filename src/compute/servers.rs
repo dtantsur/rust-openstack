@@ -23,15 +23,13 @@
 //! let auth = openstack::auth::Identity::from_env()
 //!     .expect("Unable to authenticate");
 //! let session = openstack::Session::new(auth);
-//! let server_manager = compute::servers::manager(&session);
-//!
-//! let server_list = server_manager.list().expect("Unable to fetch servers");
+//! let server_list = compute::servers::manager(&session).list()
+//!     .expect("Unable to fetch servers");
 //! ```
 
 use super::super::{ApiResult, Session};
 use super::super::auth::Method as AuthMethod;
-use super::super::service::{IntoId, ServiceApi};
-use super::api::ComputeV2;
+use super::api::V2Type;
 use super::protocol;
 
 /// Structure represending filters for listing servers.
@@ -42,20 +40,20 @@ pub struct ServerFilters {}
 /// Server manager: working with virtual servers.
 #[derive(Debug)]
 pub struct ServerManager<'a, Auth: AuthMethod + 'a> {
-    api: ComputeV2<'a, Auth>
+    session: &'a Session<Auth>
 }
 
 /// Structure representing a summary of a single server.
 #[derive(Debug)]
 pub struct Server<'a, Auth: AuthMethod + 'a> {
-    manager: &'a ServerManager<'a, Auth>,
+    session: &'a Session<Auth>,
     inner: protocol::Server
 }
 
 /// Structure representing a summary of a single server.
 #[derive(Debug)]
 pub struct ServerSummary<'a, Auth: AuthMethod + 'a> {
-    manager: &'a ServerManager<'a, Auth>,
+    session: &'a Session<Auth>,
     inner: protocol::ServerSummary
 }
 
@@ -66,7 +64,7 @@ pub type ServerList<'a, Auth> = Vec<ServerSummary<'a, Auth>>;
 pub fn manager<'a, Auth: AuthMethod + 'a>(session: &'a Session<Auth>)
         -> ServerManager<'a, Auth> {
     ServerManager {
-        api: ServiceApi::new(session)
+        session: session
     }
 }
 
@@ -123,25 +121,36 @@ impl<'a, Auth: AuthMethod + 'a> ServerSummary<'a, Auth> {
 
     /// Get details.
     pub fn details(self) -> ApiResult<Server<'a, Auth>> {
-        self.manager.get(self.id())
+        ServerManager::get_server(self.session, &self.inner.id)
     }
 }
 
 impl<'a, Auth: AuthMethod + 'a> ServerManager<'a, Auth> {
     /// List all servers without any filtering.
-    pub fn list(&'a self) -> ApiResult<ServerList<'a, Auth>> {
-        let inner: protocol::ServersRoot = try!(self.api.list("servers"));
+    pub fn list(&self) -> ApiResult<ServerList<'a, Auth>> {
+        let inner = try!(
+            self.session.http_get::<V2Type, protocol::ServersRoot>(
+                None, &["servers"])
+        );
         Ok(inner.servers.iter().map(|x| ServerSummary {
-            manager: self,
+            session: self.session,
             inner: x.clone()
         }).collect())
     }
 
     /// Get a server.
-    pub fn get<Id: IntoId>(&'a self, id: Id) -> ApiResult<Server<'a, Auth>> {
-        let inner: protocol::ServerRoot = try!(self.api.get("servers", id));
+    pub fn get<Id: AsRef<str>>(&self, id: Id) -> ApiResult<Server<'a, Auth>> {
+        ServerManager::get_server(self.session, id.as_ref())
+    }
+
+    fn get_server(session: &'a Session<Auth>, id: &str)
+            -> ApiResult<Server<'a, Auth>> {
+        let inner = try!(
+            session.http_get::<V2Type, protocol::ServerRoot>(None,
+                                                             &["servers", id])
+        );
         Ok(Server {
-            manager: self,
+            session: session,
             inner: inner.server
         })
     }
