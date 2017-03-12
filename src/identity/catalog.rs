@@ -30,7 +30,7 @@ pub fn get_service_catalog<Auth: AuthMethod>(auth_url: &Url,
     let url = format!("{}/v3/auth/catalog", auth_url.to_string());
     debug!("Requesting a service catalog from {}", url);
 
-    let resp = try!(session.request(Get, &url).send());
+    let resp = try!(session.raw_request(Get, &url).send());
     let body = try!(protocol::CatalogRoot::from_reader(resp));
     Ok(body.catalog)
 }

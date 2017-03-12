@@ -98,7 +98,7 @@ impl<'a, Auth: AuthMethod + 'a, S: ServiceType> ServiceApi<'a, Auth, S> {
         // TODO: filtering
         let url = try!(self.get_endpoint(path));
         debug!("Listing entities from {}", url);
-        let resp = try!(self.session.request(Get, url).send());
+        let resp = try!(self.session.raw_request(Get, url).send());
         let root = try!(serde_json::from_reader(resp));
         Ok(root)
     }
@@ -109,7 +109,7 @@ impl<'a, Auth: AuthMethod + 'a, S: ServiceType> ServiceApi<'a, Auth, S> {
         let url = try!(self.get_endpoint(&path));
         let url_with_id = utils::url::join(url, &id.into_id());
         debug!("Get one entity from {}", url_with_id);
-        let resp = try!(self.session.request(Get, url_with_id).send());
+        let resp = try!(self.session.raw_request(Get, url_with_id).send());
         let root = try!(serde_json::from_reader(resp));
         Ok(root)
     }

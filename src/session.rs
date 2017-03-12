@@ -86,25 +86,25 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
         let key = (Srv::catalog_type(), iface);
 
         try!(self.cached_info.ensure_value(key.clone(), |k| {
-            self.get_endpoint(Srv::catalog_type(), k.1.clone())
+            self.get_catalog_endpoint(Srv::catalog_type(), k.1.clone())
                 .and_then(|ep| Srv::service_info(ep, self))
         }));
 
         Ok(self.cached_info.get(&key).unwrap())
     }
 
-    /// Get an endpoint URL.
-    pub fn get_endpoint<S1, S2>(&self, service_type: S1,
+    /// Get an endpoint URL from the catalog.
+    pub fn get_catalog_endpoint<S1, S2>(&self, service_type: S1,
                                 endpoint_interface: S2) -> ApiResult<Url>
             where S1: Into<String>, S2: Into<String> {
         self.auth.get_endpoint(service_type.into(),
-                                      Some(endpoint_interface.into()),
-                                      self.default_region.clone(),
-                                      &self)
+                               Some(endpoint_interface.into()),
+                               self.default_region.clone(),
+                               &self)
     }
 
     /// A wrapper for HTTP request.
-    pub fn request<U: IntoUrl>(&'a self, method: Method, url: U)
+    pub fn raw_request<U: IntoUrl>(&'a self, method: Method, url: U)
             -> AuthenticatedRequestBuilder<'a, Auth> {
         AuthenticatedRequestBuilder::new(self.client.request(method, url),
                                          self)
@@ -234,7 +234,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_session_request() {
+    fn test_session_raw_request() {
         let cli = hyper::Client::with_connector(MockHttp::default());
         let s = Session {
             auth: NoAuth::new("http://127.0.0.1/").unwrap(),
@@ -244,7 +244,7 @@ pub mod test {
             default_region: None
         };
 
-        let mut resp = s.request(hyper::Post, "http://127.0.0.1/")
+        let mut resp = s.raw_request(hyper::Post, "http://127.0.0.1/")
             .body("body").header(ContentLength(4u64)).send().unwrap();
 
         let mut s = String::new();
@@ -253,7 +253,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_session_request_error() {
+    fn test_session_raw_request_error() {
         let cli = hyper::Client::with_connector(MockHttp::default());
         let s = Session {
             auth: NoAuth::new("http://127.0.0.2/").unwrap(),
@@ -263,7 +263,7 @@ pub mod test {
             default_region: None
         };
 
-        let err = s.request(hyper::Post, "http://127.0.0.2/")
+        let err = s.raw_request(hyper::Post, "http://127.0.0.2/")
             .body("body").header(ContentLength(4u64)).send().err().unwrap();
 
         match err {
@@ -273,7 +273,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_session_request_unchecked_error() {
+    fn test_session_raw_request_unchecked_error() {
         let cli = hyper::Client::with_connector(MockHttp::default());
         let s = Session {
             auth: NoAuth::new("http://127.0.0.2/").unwrap(),
@@ -283,7 +283,7 @@ pub mod test {
             default_region: None
         };
 
-        let mut resp = s.request(hyper::Post, "http://127.0.0.2/")
+        let mut resp = s.raw_request(hyper::Post, "http://127.0.0.2/")
             .body("body").header(ContentLength(4u64)).send_unchecked()
             .unwrap();
 
@@ -295,21 +295,22 @@ pub mod test {
     }
 
     #[test]
-    fn test_session_get_endpoint_no_region() {
+    fn test_session_get_catalog_endpoint_no_region() {
         let session = session_with_identity(None);
 
-        let e1 = session.get_endpoint("identity", "public").unwrap();
+        let e1 = session.get_catalog_endpoint("identity", "public").unwrap();
         assert_eq!(&e1.to_string(), "http://localhost:5000/");
-        let e2 = session.get_endpoint("identity", "admin").unwrap();
+        let e2 = session.get_catalog_endpoint("identity", "admin").unwrap();
         assert_eq!(&e2.to_string(), "http://localhost:35357/");
 
-        match session.get_endpoint("foo", "public").err().unwrap() {
+        match session.get_catalog_endpoint("foo", "public").err().unwrap() {
             ApiError::EndpointNotFound(ref endp) =>
                 assert_eq!(endp, "foo"),
             other => panic!("Unexpected {}", other)
         };
 
-        match session.get_endpoint("identity", "unknown").err().unwrap() {
+        match session.get_catalog_endpoint("identity",
+                                           "unknown").err().unwrap() {
             ApiError::EndpointNotFound(ref endp) =>
                 assert_eq!(endp, "identity"),
             other => panic!("Unexpected {}", other)
@@ -317,18 +318,19 @@ pub mod test {
     }
 
     #[test]
-    fn test_session_get_endpoint_with_region() {
+    fn test_session_get_catalog_endpoint_with_region() {
         let session = session_with_identity(Some("RegionOne"));
 
-        let e1 = session.get_endpoint("identity", "admin").unwrap();
+        let e1 = session.get_catalog_endpoint("identity", "admin").unwrap();
         assert_eq!(&e1.to_string(), "http://localhost:35357/");
     }
 
     #[test]
-    fn test_session_get_endpoint_with_region_fail() {
+    fn test_session_get_catalog_endpoint_with_region_fail() {
         let session = session_with_identity(Some("unknown"));
 
-        match session.get_endpoint("identity", "public").err().unwrap() {
+        match session.get_catalog_endpoint("identity",
+                                           "public").err().unwrap() {
             ApiError::EndpointNotFound(ref endp) =>
                 assert_eq!(endp, "identity"),
             other => panic!("Unexpected {}", other)

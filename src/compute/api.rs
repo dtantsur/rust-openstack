@@ -73,7 +73,7 @@ impl ServiceType for ComputeV2Type {
             -> ApiResult<ServiceInfo> {
         debug!("Fetching service info from {}", endpoint);
         let secure = endpoint.scheme() == "https";
-        let result = session.request(Get, endpoint.clone()).send();
+        let result = session.raw_request(Get, endpoint.clone()).send();
         match result {
             Ok(resp) => {
                 let result = try!(extract_info(resp, secure));
