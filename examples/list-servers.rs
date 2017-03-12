@@ -15,18 +15,13 @@
 extern crate hyper;
 extern crate openstack;
 
-use openstack::auth::Identity;
-#[cfg(feature = "compute")]
-use openstack::compute;
-use openstack::Session;
-
 
 #[cfg(feature = "compute")]
 fn main() {
-    let identity = Identity::from_env()
+    let identity = openstack::auth::Identity::from_env()
         .expect("Failed to create an identity provider from the environment");
-    let session = Session::new(identity);
-    let servers = compute::servers::manager(&session).list()
+    let session = openstack::Session::new(identity);
+    let servers = openstack::compute::servers::manager(&session).list()
         .expect("Cannot list servers");
     for s in &servers {
         println!("ID = {}, Name = {}", s.id(), s.name());

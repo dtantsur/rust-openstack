@@ -17,19 +17,14 @@ extern crate openstack;
 
 use std::env;
 
-use openstack::auth::Identity;
-#[cfg(feature = "compute")]
-use openstack::compute;
-use openstack::Session;
-
 
 #[cfg(feature = "compute")]
 fn main() {
-    let identity = Identity::from_env()
+    let identity = openstack::auth::Identity::from_env()
         .expect("Failed to create an identity provider from the environment");
-    let session = Session::new(identity);
+    let session = openstack::Session::new(identity);
 
-    let manager = compute::servers::manager(&session);
+    let manager = openstack::compute::servers::manager(&session);
     let server = manager.get(env::args().nth(1).expect("Provide a server ID"))
         .expect("Cannot get a server");
     println!("ID = {}, Name = {}, Status = {}",
