@@ -13,9 +13,6 @@
 // limitations under the License.
 
 //! Session structure definition.
-//!
-//! The Session object serves as a wrapper around an HTTP(s) client, handling
-//! authentication, accessing the service catalog and token refresh.
 
 use hyper::{Client, Get, Url};
 use hyper::client::IntoUrl;
@@ -30,41 +27,65 @@ use super::service::{ServiceInfo, ServiceType};
 use super::utils;
 
 
-type InfoKey = (&'static str, String);
-
 /// An OpenStack API session.
 ///
-/// Owns a token and an underlying client.
+/// The session object serves as a wrapper around an HTTP(s) client, handling
+/// authentication, accessing the service catalog and token refresh.
+///
+/// The session object also owns region and endpoint interface to use.
 #[derive(Debug)]
 pub struct Session<Auth: AuthMethod> {
     auth: Auth,
     client: Client,
     cached_token: utils::ValueCache<Auth::TokenType>,
-    cached_info: utils::MapCache<InfoKey, ServiceInfo>,
-    default_region: Option<String>
+    cached_info: utils::MapCache<(&'static str, String), ServiceInfo>,
+    region: Option<String>,
+    endpoint_interface: String
 }
 
 
 impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
     /// Create a new session with a given authentication plugin.
+    ///
+    /// The resulting session will use the default endpoint interface (usually,
+    /// public) and the first available region.
     pub fn new(auth_method: Auth) -> Session<Auth> {
+        let ep = auth_method.default_endpoint_interface();
         Session {
             auth: auth_method,
             client: utils::http_client(),
             cached_token: utils::ValueCache::new(None),
             cached_info: utils::MapCache::new(),
-            default_region: None
+            region: None,
+            endpoint_interface: ep
         }
     }
 
-    /// Create a new session with a given authentication plugin and region.
-    pub fn new_with_region(auth_method: Auth, region: String) -> Session<Auth> {
+    /// Convert this session into one using the given region.
+    pub fn with_region<S: Into<String>>(self, region: S) -> Session<Auth> {
         Session {
-            auth: auth_method,
-            client: utils::http_client(),
-            cached_token: utils::ValueCache::new(None),
+            auth: self.auth,
+            client: self.client,
+            cached_token: self.cached_token,
+            // ServiceInfo has to be refreshed
             cached_info: utils::MapCache::new(),
-            default_region: Some(region)
+            region: Some(region.into()),
+            endpoint_interface: self.endpoint_interface
+        }
+    }
+
+    /// Convert this session into one using the given endpoint interface.
+    pub fn with_endpoint_interface<S: Into<String>>(self,
+                                                    endpoint_interface: S)
+            -> Session<Auth> {
+        Session {
+            auth: self.auth,
+            client: self.client,
+            cached_token: self.cached_token,
+            // ServiceInfo has to be refreshed
+            cached_info: utils::MapCache::new(),
+            region: self.region,
+            endpoint_interface: endpoint_interface.into()
         }
     }
 
@@ -80,14 +101,12 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
     }
 
     /// Get service info for the given service.
-    pub fn get_service_info<Srv>(&self, endpoint_interface: Option<String>)
-            -> ApiResult<ServiceInfo> where Srv: ServiceType {
-        let iface = endpoint_interface.unwrap_or(
-            self.auth.default_endpoint_interface());
-        let key = (Srv::catalog_type(), iface);
+    pub fn get_service_info<Srv>(&self) -> ApiResult<ServiceInfo>
+            where Srv: ServiceType {
+        let key = (Srv::catalog_type(), self.endpoint_interface.clone());
 
-        try!(self.cached_info.ensure_value(key.clone(), |k| {
-            self.get_catalog_endpoint(Srv::catalog_type(), k.1.clone())
+        try!(self.cached_info.ensure_value(key.clone(), |_| {
+            self.get_catalog_endpoint(Srv::catalog_type())
                 .and_then(|ep| Srv::service_info(ep, self))
         }));
 
@@ -95,38 +114,34 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
     }
 
     /// Construct and endpoint for the given service.
-    pub fn get_endpoint<Srv>(&self, endpoint_interface: Option<String>,
-                             path: &[&str]) -> ApiResult<Url>
+    pub fn get_endpoint<Srv>(&self, path: &[&str]) -> ApiResult<Url>
             where Srv: ServiceType {
-        let info = try!(self.get_service_info::<Srv>(endpoint_interface));
+        let info = try!(self.get_service_info::<Srv>());
         Ok(utils::url::extend(info.root_url, path))
     }
 
     /// Get an endpoint URL from the catalog.
-    pub fn get_catalog_endpoint<S1, S2>(&self, service_type: S1,
-                                endpoint_interface: S2) -> ApiResult<Url>
-            where S1: Into<String>, S2: Into<String> {
+    pub fn get_catalog_endpoint<S>(&self, service_type: S) -> ApiResult<Url>
+            where S: Into<String> {
         self.auth.get_endpoint(service_type.into(),
-                               Some(endpoint_interface.into()),
-                               self.default_region.clone(),
+                               Some(self.endpoint_interface.clone()),
+                               self.region.clone(),
                                &self)
     }
 
     /// Make a GET request.
-    pub fn http_get<Srv, Res>(&self, endpoint_interface: Option<String>,
-                              path: &[&str]) -> ApiResult<Res>
+    pub fn http_get<Srv, Res>(&self, path: &[&str]) -> ApiResult<Res>
             where Srv: ServiceType, Res: Deserialize {
-        let request = try!(self.request::<Srv>(endpoint_interface, Get, path));
+        let request = try!(self.request::<Srv>(Get, path));
         let resp = try!(request.send());
         serde_json::from_reader(resp).map_err(From::from)
     }
 
     /// Make an HTTP request to the given service.
-    pub fn request<Srv>(&'a self, endpoint_interface: Option<String>,
-                        method: Method, path: &[&str])
+    pub fn request<Srv>(&'a self, method: Method, path: &[&str])
             -> ApiResult<AuthenticatedRequestBuilder<'a, Auth>>
             where Srv: ServiceType {
-        let url = try!(self.get_endpoint::<Srv>(endpoint_interface, path));
+        let url = try!(self.get_endpoint::<Srv>(path));
         Ok(self.raw_request(method, url))
     }
 
@@ -165,12 +180,14 @@ pub mod test {
                                          token: Auth::TokenType,
                                          region: Option<&str>)
             -> Session<Auth> {
+        let ep = auth.default_endpoint_interface();
         Session {
             auth: auth,
             client: cli,
             cached_token: utils::ValueCache::new(Some(token)),
             cached_info: utils::MapCache::new(),
-            default_region: region.map(From::from)
+            region: region.map(From::from),
+            endpoint_interface: ep
         }
     }
 
@@ -180,20 +197,21 @@ pub mod test {
                         utils::http_client(), token, None)
     }
 
-    fn session_with_identity(region: Option<&str>)
-            -> Session<IdentityAuthMethod> {
+    fn session_with_identity() -> Session<IdentityAuthMethod> {
         let id = Identity::new("http://127.0.2.1").unwrap()
             .with_user("user", "pa$$w0rd", "example.com")
             .with_project_scope("cool project", "example.com")
             .create().unwrap();
         let cli = hyper::Client::with_connector(MockCatalog::default());
         let token = SimpleToken(String::from("abcdef"));
+        let ep = id.default_endpoint_interface();
         Session {
             auth: id,
             client: cli,
             cached_token: utils::ValueCache::new(Some(token)),
             cached_info: utils::MapCache::new(),
-            default_region: region.map(From::from)
+            region: None,
+            endpoint_interface: ep
         }
     }
 
@@ -263,13 +281,8 @@ pub mod test {
     #[test]
     fn test_session_raw_request() {
         let cli = hyper::Client::with_connector(MockHttp::default());
-        let s = Session {
-            auth: NoAuth::new("http://127.0.0.1/").unwrap(),
-            client: cli,
-            cached_token: utils::ValueCache::new(None),
-            cached_info: utils::MapCache::new(),
-            default_region: None
-        };
+        let s = new_with_params(NoAuth::new("http://127.0.0.1/").unwrap(),
+                                cli, SimpleToken(String::from("token")), None);
 
         let mut resp = s.raw_request(hyper::Post, "http://127.0.0.1/")
             .body("body").header(ContentLength(4u64)).send().unwrap();
@@ -282,13 +295,8 @@ pub mod test {
     #[test]
     fn test_session_raw_request_error() {
         let cli = hyper::Client::with_connector(MockHttp::default());
-        let s = Session {
-            auth: NoAuth::new("http://127.0.0.2/").unwrap(),
-            client: cli,
-            cached_token: utils::ValueCache::new(None),
-            cached_info: utils::MapCache::new(),
-            default_region: None
-        };
+        let s = new_with_params(NoAuth::new("http://127.0.0.2/").unwrap(),
+                                cli, SimpleToken(String::from("token")), None);
 
         let err = s.raw_request(hyper::Post, "http://127.0.0.2/")
             .body("body").header(ContentLength(4u64)).send().err().unwrap();
@@ -302,13 +310,8 @@ pub mod test {
     #[test]
     fn test_session_raw_request_unchecked_error() {
         let cli = hyper::Client::with_connector(MockHttp::default());
-        let s = Session {
-            auth: NoAuth::new("http://127.0.0.2/").unwrap(),
-            client: cli,
-            cached_token: utils::ValueCache::new(None),
-            cached_info: utils::MapCache::new(),
-            default_region: None
-        };
+        let s = new_with_params(NoAuth::new("http://127.0.0.2/").unwrap(),
+                                cli, SimpleToken(String::from("token")), None);
 
         let mut resp = s.raw_request(hyper::Post, "http://127.0.0.2/")
             .body("body").header(ContentLength(4u64)).send_unchecked()
@@ -322,22 +325,26 @@ pub mod test {
     }
 
     #[test]
-    fn test_session_get_catalog_endpoint_no_region() {
-        let session = session_with_identity(None);
+    fn test_session_get_catalog_endpoint() {
+        let session = session_with_identity();
 
-        let e1 = session.get_catalog_endpoint("identity", "public").unwrap();
+        let e1 = session.get_catalog_endpoint("identity").unwrap();
         assert_eq!(&e1.to_string(), "http://localhost:5000/");
-        let e2 = session.get_catalog_endpoint("identity", "admin").unwrap();
-        assert_eq!(&e2.to_string(), "http://localhost:35357/");
 
-        match session.get_catalog_endpoint("foo", "public").err().unwrap() {
-            ApiError::EndpointNotFound(ref endp) =>
-                assert_eq!(endp, "foo"),
+        match session.get_catalog_endpoint("foo").err().unwrap() {
+            ApiError::EndpointNotFound(ref endp) => assert_eq!(endp, "foo"),
             other => panic!("Unexpected {}", other)
         };
+    }
 
-        match session.get_catalog_endpoint("identity",
-                                           "unknown").err().unwrap() {
+    #[test]
+    fn test_session_get_catalog_endpoint_with_endpoint_interface() {
+        let sess1 = session_with_identity().with_endpoint_interface("admin");
+        let e2 = sess1.get_catalog_endpoint("identity").unwrap();
+        assert_eq!(&e2.to_string(), "http://localhost:35357/");
+
+        let sess2 = session_with_identity().with_endpoint_interface("unknown");
+        match sess2.get_catalog_endpoint("identity").err().unwrap() {
             ApiError::EndpointNotFound(ref endp) =>
                 assert_eq!(endp, "identity"),
             other => panic!("Unexpected {}", other)
@@ -346,21 +353,23 @@ pub mod test {
 
     #[test]
     fn test_session_get_catalog_endpoint_with_region() {
-        let session = session_with_identity(Some("RegionOne"));
+        let sess1 = session_with_identity().with_region("RegionOne");
+        let e1 = sess1.get_catalog_endpoint("identity").unwrap();
+        assert_eq!(&e1.to_string(), "http://localhost:5000/");
 
-        let e1 = session.get_catalog_endpoint("identity", "admin").unwrap();
-        assert_eq!(&e1.to_string(), "http://localhost:35357/");
-    }
-
-    #[test]
-    fn test_session_get_catalog_endpoint_with_region_fail() {
-        let session = session_with_identity(Some("unknown"));
-
-        match session.get_catalog_endpoint("identity",
-                                           "public").err().unwrap() {
+        let sess2 = session_with_identity().with_region("unknown");
+        match sess2.get_catalog_endpoint("identity").err().unwrap() {
             ApiError::EndpointNotFound(ref endp) =>
                 assert_eq!(endp, "identity"),
             other => panic!("Unexpected {}", other)
         };
+    }
+
+    #[test]
+    fn test_session_get_catalog_endpoint_with_region_and_endpoint_interface() {
+        let session = session_with_identity().with_region("RegionOne")
+            .with_endpoint_interface("admin");
+        let e1 = session.get_catalog_endpoint("identity").unwrap();
+        assert_eq!(&e1.to_string(), "http://localhost:35357/");
     }
 }
