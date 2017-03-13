@@ -16,20 +16,34 @@
 //!
 //! # Examples
 //!
+//! Listing summaries of all servers:
+//!
 //! ```rust,no_run
 //! use openstack;
-//! use openstack::compute;
 //!
 //! let auth = openstack::auth::Identity::from_env()
 //!     .expect("Unable to authenticate");
 //! let session = openstack::Session::new(auth);
-//! let server_list = compute::servers::manager(&session).list()
+//! let server_list = openstack::compute::v2(&session).servers().list()
 //!     .expect("Unable to fetch servers");
 //! ```
+//! Fetching server details by its UUID:
+//!
+//! ```rust,no_run
+//! use openstack;
+//!
+//! let auth = openstack::auth::Identity::from_env()
+//!     .expect("Unable to authenticate");
+//! let session = openstack::Session::new(auth);
+//! let server = openstack::compute::v2(&session).servers()
+//!     .get("8a1c355b-2e1e-440a-8aa8-f272df72bc32")
+//!     .expect("Unable to get a server");
+//! println!("Server name is {}", server.name());
+//! ```
 
-use super::super::{ApiResult, Session};
-use super::super::auth::Method as AuthMethod;
-use super::api::V2Type;
+use super::super::super::{ApiResult, Session};
+use super::super::super::auth::Method as AuthMethod;
+use super::base::V2ServiceType as V2;
 use super::protocol;
 
 /// Structure represending filters for listing servers.
@@ -59,14 +73,6 @@ pub struct ServerSummary<'a, Auth: AuthMethod + 'a> {
 
 /// List of servers.
 pub type ServerList<'a, Auth> = Vec<ServerSummary<'a, Auth>>;
-
-/// Constructor for server manager.
-pub fn manager<'a, Auth: AuthMethod + 'a>(session: &'a Session<Auth>)
-        -> ServerManager<'a, Auth> {
-    ServerManager {
-        session: session
-    }
-}
 
 impl ServerFilters {
     /// Create empty server filters.
@@ -126,11 +132,18 @@ impl<'a, Auth: AuthMethod + 'a> ServerSummary<'a, Auth> {
 }
 
 impl<'a, Auth: AuthMethod + 'a> ServerManager<'a, Auth> {
+    /// Constructor for server manager.
+    pub fn new(session: &'a Session<Auth>) -> ServerManager<'a, Auth> {
+        ServerManager {
+            session: session
+        }
+    }
+
     /// List all servers without any filtering.
     pub fn list(&self) -> ApiResult<ServerList<'a, Auth>> {
         trace!("Listing all compute servers");
         let inner = try!(
-            self.session.http_get::<V2Type, protocol::ServersRoot>(
+            self.session.http_get::<V2, protocol::ServersRoot>(
                 None, &["servers"])
         );
         debug!("Received {} compute servers", inner.servers.len());
@@ -150,8 +163,8 @@ impl<'a, Auth: AuthMethod + 'a> ServerManager<'a, Auth> {
             -> ApiResult<Server<'a, Auth>> {
         trace!("Get compute server {}", id);
         let inner = try!(
-            session.http_get::<V2Type, protocol::ServerRoot>(None,
-                                                             &["servers", id])
+            session.http_get::<V2, protocol::ServerRoot>(None,
+                                                         &["servers", id])
         );
         trace!("Received {:?}", inner.server);
         Ok(Server {
@@ -168,10 +181,10 @@ pub mod test {
 
     use hyper;
 
-    use super::super::super::auth::{NoAuth, SimpleToken};
-    use super::super::super::session::test;
-    use super::super::api::test as api_test;
-    use super::manager;
+    use super::super::super::super::auth::{NoAuth, SimpleToken};
+    use super::super::super::super::session::test;
+    use super::super::base::test as api_test;
+    use super::ServerManager;
 
     const SERVERS_RESPONSE: &'static str = r#"
     {
@@ -207,7 +220,7 @@ pub mod test {
         let token = SimpleToken(String::from("abcdef"));
         let session = test::new_with_params(auth, cli, token, None);
 
-        let mgr = manager(&session);
+        let mgr = ServerManager::new(&session);
         let srvs = mgr.list().unwrap();
         assert_eq!(srvs.len(), 1);
         assert_eq!(srvs[0].id(),

@@ -5,7 +5,7 @@ next
 ----
 
 * Dropped ServiceApi struct in favor of using Session directly.
-* Rename compute::{ComputeV2Type -> V2Type};
+* Rework of the whole compute module.
 
 0.0.8
 -----

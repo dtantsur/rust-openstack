@@ -19,9 +19,9 @@
 
 use hyper::Url;
 
-use super::super::{ApiResult, ApiVersion};
-use super::super::ApiError::MalformedResponse;
-use super::super::service::ServiceInfo;
+use super::super::super::{ApiResult, ApiVersion};
+use super::super::super::ApiError::MalformedResponse;
+use super::super::super::service::ServiceInfo;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Server {

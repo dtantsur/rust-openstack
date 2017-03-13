@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Low-level bits exposing the Compute API.
+//! Foundation bits exposing the Compute API.
 
 use std::io::Read;
 
@@ -20,20 +20,27 @@ use hyper::{Get, NotFound, Url};
 use hyper::client::Response;
 use serde_json;
 
-use super::super::{ApiResult, Session};
-use super::super::ApiError::{HttpError, EndpointNotFound};
-use super::super::auth::Method as AuthMethod;
-use super::super::service::{ServiceInfo, ServiceType};
-use super::super::utils;
+use super::super::super::{ApiResult, Session};
+use super::super::super::ApiError::{HttpError, EndpointNotFound};
+use super::super::super::auth::Method as AuthMethod;
+use super::super::super::service::{ServiceInfo, ServiceType};
+use super::super::super::utils;
 use super::protocol::{VersionRoot, VersionsRoot};
+use super::servers::ServerManager;
 
 /// Service type of Compute API V2.
 #[derive(Copy, Clone, Debug)]
-pub struct V2Type;
+pub struct V2ServiceType;
+
+/// A thin wrapper around Compute V2 API managers.
+#[derive(Clone, Debug)]
+pub struct V2Api<'session, Auth: AuthMethod + 'session> {
+    session: &'session Session<Auth>
+}
 
 
 const SERVICE_TYPE: &'static str = "compute";
-const SUFFIX: &'static str = "v2.1";
+const VERSION_ID: &'static str = "v2.1";
 
 fn extract_info(mut resp: Response, secure: bool) -> ApiResult<ServiceInfo> {
     let mut body = String::new();
@@ -45,7 +52,7 @@ fn extract_info(mut resp: Response, secure: bool) -> ApiResult<ServiceInfo> {
         Err(..) => {
             // Second, assume it's a root URL.
             let vers: VersionsRoot = try!(serde_json::from_str(&body));
-            match vers.versions.iter().find(|x| &x.id == SUFFIX) {
+            match vers.versions.iter().find(|x| &x.id == VERSION_ID) {
                 Some(ver) => ver.clone().into_service_info(),
                 None => Err(EndpointNotFound(String::from(SERVICE_TYPE)))
             }
@@ -60,7 +67,7 @@ fn extract_info(mut resp: Response, secure: bool) -> ApiResult<ServiceInfo> {
     Ok(info)
 }
 
-impl ServiceType for V2Type {
+impl ServiceType for V2ServiceType {
     fn catalog_type() -> &'static str {
         SERVICE_TYPE
     }
@@ -83,7 +90,7 @@ impl ServiceType for V2Type {
                 } else {
                     debug!("Got HTTP 404 from {}, trying parent endpoint",
                            endpoint);
-                    V2Type::service_info(
+                    V2ServiceType::service_info(
                         utils::url::pop(endpoint, true),
                         session)
                 }
@@ -93,6 +100,28 @@ impl ServiceType for V2Type {
     }
 }
 
+impl<'session, Auth: AuthMethod + 'session> V2Api<'session, Auth> {
+    /// Create a new API instance.
+    pub fn new(session: &'session Session<Auth>) -> V2Api<'session, Auth> {
+        V2Api {
+            session: session
+        }
+    }
+
+    /// Create a server manager.
+    pub fn servers(&self) -> ServerManager<'session, Auth> {
+        ServerManager::new(self.session)
+    }
+}
+
+/// Shortcut for creating a new API instance.
+pub fn new<'session, Auth: AuthMethod + 'session>(session:
+                                                  &'session Session<Auth>)
+        -> V2Api<'session, Auth> {
+    V2Api::new(session)
+}
+
+
 #[cfg(test)]
 pub mod test {
     #![allow(missing_debug_implementations)]
@@ -100,11 +129,11 @@ pub mod test {
     use hyper;
     use hyper::Url;
 
-    use super::super::super::{ApiVersion, Session};
-    use super::super::super::auth::{NoAuth, SimpleToken};
-    use super::super::super::service::ServiceType;
-    use super::super::super::session::test;
-    use super::V2Type;
+    use super::super::super::super::{ApiVersion, Session};
+    use super::super::super::super::auth::{NoAuth, SimpleToken};
+    use super::super::super::super::service::ServiceType;
+    use super::super::super::super::session::test;
+    use super::V2ServiceType;
 
     // Copied from compute API reference.
     pub const ONE_VERSION_RESPONSE: &'static str = r#"
@@ -203,7 +232,7 @@ pub mod test {
     fn check_success(cli: hyper::Client, endpoint: &str) {
         let session = prepare_session(cli);
         let url = Url::parse(endpoint).unwrap();
-        let info = V2Type::service_info(url, &session).unwrap();
+        let info = V2ServiceType::service_info(url, &session).unwrap();
         assert_eq!(info.root_url.as_str(),
                    "http://openstack.example.com/v2.1/");
         assert_eq!(info.current_version.unwrap(), ApiVersion(2, 42));

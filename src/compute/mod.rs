@@ -12,14 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Compute API.
+//! Compute API support.
 //!
-//! Supported API groups:
+//! Start with creating an [API v2](api_v2/struct.V2Api.html) instance via
+//! its [new method](api_v2/struct.V2Api.html#method.new) or via handy
+//! [v2 function](fn.v2.html). The resulting object get create specific
+//! API managers for working with different parts of API, e.g.
+//! [ServerManager](api_v2/servers/struct.ServerManager.html).
 //!
-//! * [server management](servers/index.html)
+//! Currently supported functionality:
 //!
-//! See the [api module](api/index.html) for low-level API access.
+//! * [server management](api_v2/servers/index.html) (incomplete)
+//!
+//! # Examples
+//!
+//! ```rust,no_run
+//! use openstack;
+//!
+//! let auth = openstack::auth::Identity::from_env()
+//!     .expect("Unable to authenticate");
+//! let session = openstack::Session::new(auth);
+//! let compute = openstack::compute::v2(&session);
+//!
+//! let server_list = compute.servers().list()
+//!     .expect("Unable to fetch servers");
+//! let one_server = compute.servers()
+//!     .get("8a1c355b-2e1e-440a-8aa8-f272df72bc32")
+//!     .expect("Unable to get a server");
+//! ```
 
-pub mod api;
-mod protocol;
-pub mod servers;
+pub mod api_v2;
+
+pub use self::api_v2::new as v2;
