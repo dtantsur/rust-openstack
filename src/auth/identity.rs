@@ -16,7 +16,7 @@
 //!
 //! Start with creating an [Identity](struct.Identity.html) object which will
 //! guide you through setting all necessary values.
-//! [IdentityAuthMethod](struct.IdentityAuthMethod.html) is the actual
+//! [PasswordAuth](struct.PasswordAuth.html) is the actual
 //! implementation of the authentication [method](../trait.Method.html) trait.
 //!
 //! Note that as of now, only project-scoped tokens are supported.
@@ -54,11 +54,11 @@ pub struct Identity {
     project_scope: Option<protocol::ProjectScope>
 }
 
-/// Authentication method implementation using Identity API V3.
+/// Password authentication using Identity API V3.
 ///
 /// Has to be created via [Identity object](struct.Identity.html) methods.
 #[derive(Clone, Debug)]
-pub struct IdentityAuthMethod {
+pub struct PasswordAuth {
     auth_url: Url,
     body: protocol::ProjectScopedAuthRoot,
     token_endpoint: String
@@ -103,7 +103,7 @@ impl Identity {
     }
 
     /// Create an authentication method based on provided information.
-    pub fn create(self) -> ApiResult<IdentityAuthMethod> {
+    pub fn create(self) -> ApiResult<PasswordAuth> {
         /// TODO: support more authentication methods (at least a token)
         let password_identity = match self.password_identity {
             Some(p) => p,
@@ -122,12 +122,11 @@ impl Identity {
                 )
         };
 
-        Ok(IdentityAuthMethod::new(self.auth_url, password_identity,
-                                   project_scope))
+        Ok(PasswordAuth::new(self.auth_url, password_identity, project_scope))
     }
 
     /// Create an authentication method from environment variables.
-    pub fn from_env() -> ApiResult<IdentityAuthMethod> {
+    pub fn from_env() -> ApiResult<PasswordAuth> {
         let auth_url = try!(_get_env("OS_AUTH_URL"));
         let id = match Identity::new(&auth_url) {
             Ok(x) => x,
@@ -156,20 +155,20 @@ fn _get_env(name: &str) -> ApiResult<String> {
     ))
 }
 
-impl IdentityAuthMethod {
+impl PasswordAuth {
     /// Get a reference to the auth URL.
     pub fn get_auth_url(&self) -> &Url {
         &self.auth_url
     }
 
     fn new(auth_url: Url, password_identity: protocol::PasswordIdentity,
-           project_scope: protocol::ProjectScope) -> IdentityAuthMethod {
+           project_scope: protocol::ProjectScope) -> PasswordAuth {
         let body = protocol::ProjectScopedAuthRoot::new(password_identity,
                                                         project_scope);
         // TODO: allow /v3 postfix built into auth_url?
         let token_endpoint = format!("{}/v3/auth/tokens",
                                      auth_url.to_string());
-        IdentityAuthMethod {
+        PasswordAuth {
             auth_url: auth_url,
             body: body,
             token_endpoint: token_endpoint
@@ -217,7 +216,7 @@ impl IdentityAuthMethod {
     }
 }
 
-impl Method for IdentityAuthMethod {
+impl Method for PasswordAuth {
     // TODO: implement its own token type
     type TokenType = SimpleToken;
 
@@ -238,7 +237,7 @@ impl Method for IdentityAuthMethod {
     fn get_endpoint(&self, service_type: String,
                     endpoint_interface: Option<String>,
                     region: Option<String>,
-                    client: &Session<IdentityAuthMethod>)
+                    client: &Session<PasswordAuth>)
             -> ApiResult<Url> {
         let real_interface = endpoint_interface.unwrap_or(
             self.default_endpoint_interface());
@@ -262,7 +261,7 @@ pub mod test {
 
     use super::super::super::{ApiError, ApiResult, Session};
     use super::super::{Method, Token, SimpleToken};
-    use super::{Identity, IdentityAuthMethod};
+    use super::{Identity, PasswordAuth};
     use super::super::super::session::test;
 
     mock_connector!(MockToken {
@@ -412,7 +411,7 @@ pub mod test {
         };
     }
 
-    fn new_session() -> Session<IdentityAuthMethod> {
+    fn new_session() -> Session<PasswordAuth> {
         let id = Identity::new("http://127.0.2.1").unwrap()
             .with_user("user", "pa$$w0rd", "example.com")
             .with_project_scope("cool project", "example.com")
@@ -422,7 +421,7 @@ pub mod test {
         test::new_with_params(id, cli, token, None)
     }
 
-    fn get_endpoint(session: &Session<IdentityAuthMethod>, service_type: &str,
+    fn get_endpoint(session: &Session<PasswordAuth>, service_type: &str,
                     interface_endpoint: Option<&str>, region: Option<&str>)
             -> ApiResult<Url> {
         session.auth_method().get_endpoint(

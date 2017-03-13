@@ -186,7 +186,7 @@ pub mod test {
 
     use super::super::ApiError;
     use super::super::auth::{Identity, Method, Token, NoAuth, SimpleToken};
-    use super::super::auth::identity::IdentityAuthMethod;
+    use super::super::auth::identity::PasswordAuth;
     use super::super::utils;
     use super::Session;
 
@@ -211,7 +211,7 @@ pub mod test {
                         utils::http_client(), token, None)
     }
 
-    fn session_with_identity() -> Session<IdentityAuthMethod> {
+    fn session_with_identity() -> Session<PasswordAuth> {
         let id = Identity::new("http://127.0.2.1").unwrap()
             .with_user("user", "pa$$w0rd", "example.com")
             .with_project_scope("cool project", "example.com")
