@@ -159,6 +159,20 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
     }
 }
 
+impl<Auth: AuthMethod + Clone> Clone for Session<Auth> {
+    fn clone(&self) -> Session<Auth> {
+        Session {
+            auth: self.auth.clone(),
+            client: utils::http_client(),
+            cached_token: self.cached_token.clone(),
+            cached_info: self.cached_info.clone(),
+            region: self.region.clone(),
+            endpoint_interface: self.endpoint_interface.clone()
+        }
+    }
+}
+
+
 #[cfg(test)]
 pub mod test {
     #![allow(missing_debug_implementations)]

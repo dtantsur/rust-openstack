@@ -37,7 +37,7 @@ pub trait Token: Clone + fmt::Debug + Send + fmt::Display + Into<String> {
 ///
 /// 1. get an authentication token to use when accessing services,
 /// 2. get an endpoint URL for the given service type.
-pub trait Method: Clone + Send {
+pub trait Method: Sized {
     /// A token type.
     type TokenType: Token;
 

@@ -45,7 +45,7 @@ pub fn http_client() -> Client {
 pub struct ValueCache<T: Clone>(RefCell<Option<T>>);
 
 /// Cached map of values.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MapCache<K: Hash + Eq, V: Clone>(RefCell<HashMap<K, V>>);
 
 
