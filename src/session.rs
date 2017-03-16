@@ -55,13 +55,14 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
     /// public) and the first available region.
     pub fn new(auth_method: Auth) -> Session<Auth> {
         let ep = auth_method.default_endpoint_interface();
+        let region = auth_method.default_region();
         Session {
             auth: auth_method,
             client: utils::http_client(),
             cached_token: utils::ValueCache::new(None),
             cached_info: utils::MapCache::new(),
             api_versions: HashMap::new(),
-            region: None,
+            region: region,
             endpoint_interface: ep
         }
     }

@@ -46,6 +46,9 @@ pub trait Method: Sized {
         String::from("public")
     }
 
+    /// Default region to use with this authentication (if any).
+    fn default_region(&self) -> Option<String> { None }
+
     /// Verify authentication and generate an auth token.
     fn get_token(&self, client: &Client) -> ApiResult<Self::TokenType>;
 
