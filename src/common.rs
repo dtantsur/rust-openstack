@@ -57,15 +57,36 @@ pub enum ApiError {
 
     /// Malformed API version.
     #[allow(missing_docs)]
-    InvalidApiVersion { value: String, message: String }
+    InvalidApiVersion { value: String, message: String },
+
+    /// Unsupported API version.
+    #[allow(missing_docs)]
+    UnsupportedApiVersion {
+        requested: ApiVersionRequest,
+        minimum: Option<ApiVersion>,
+        maximum: Option<ApiVersion>
+    }
 }
 
 /// Result of an API call.
 pub type ApiResult<T> = Result<T, ApiError>;
 
 /// API version (major, minor).
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
 pub struct ApiVersion(pub u16, pub u16);
+
+/// A request for negotiating an API version.
+#[derive(Debug, Clone)]
+pub enum ApiVersionRequest {
+    /// Minimum possible version (usually the default).
+    Minimum,
+    /// Latest version.
+    Latest,
+    /// Specified version.
+    Exact(ApiVersion),
+    /// Choice between several versions.
+    Choice(Vec<ApiVersion>)
+}
 
 
 impl fmt::Display for ApiError {
@@ -84,7 +105,11 @@ impl fmt::Display for ApiError {
             ApiError::MalformedResponse(ref msg) =>
                 write!(f, "Malformed response received: {}", msg),
             ApiError::InvalidApiVersion { value: ref val, message: ref msg } =>
-                write!(f, "{} is not a valid API version: {}", val, msg)
+                write!(f, "{} is not a valid API version: {}", val, msg),
+            ApiError::UnsupportedApiVersion {
+                requested: ref req, minimum: minv, maximum: maxv
+            } => write!(f, "Unsupported version requested: {:?}, supported \
+                versions are {:?} to {:?}", req, minv, maxv)
         }
     }
 }
@@ -104,7 +129,9 @@ impl Error for ApiError {
             ApiError::MalformedResponse(..) =>
                 "Malformed response received",
             ApiError::InvalidApiVersion { .. } =>
-                "Invalid API version"
+                "Invalid API version",
+            ApiError::UnsupportedApiVersion { .. } =>
+                "Unsupported API version requested"
         }
     }
 

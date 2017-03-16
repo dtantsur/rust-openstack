@@ -14,7 +14,7 @@
 
 //! Various utilities.
 
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
 use std::collections::HashMap;
 use std::hash::Hash;
 
@@ -94,10 +94,16 @@ impl<K: Hash + Eq, V: Clone> MapCache<K, V> {
         Ok(())
     }
 
-    /// Get the cached value.
-    #[inline]
-    pub fn get(&self, key: &K) -> Option<V> {
-        self.0.borrow().get(key).cloned()
+    /// Get a reference to the value.
+    ///
+    /// Borrows the inner RefCell.
+    pub fn get_ref(&self, key: &K) -> Option<Ref<V>> {
+        let map = self.0.borrow();
+        if map.contains_key(key) {
+            Some(Ref::map(map, |m| m.get(&key).unwrap()))
+        } else {
+            None
+        }
     }
 }
 

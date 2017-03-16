@@ -90,4 +90,5 @@ mod utils;
 pub use common::ApiError;
 pub use common::ApiResult;
 pub use common::ApiVersion;
+pub use common::ApiVersionRequest;
 pub use session::Session;

@@ -14,13 +14,16 @@
 
 //! Session structure definition.
 
+use std::cell::Ref;
+use std::collections::HashMap;
+
 use hyper::{Client, Get, Url};
 use hyper::client::IntoUrl;
 use hyper::method::Method;
 use serde::Deserialize;
 use serde_json;
 
-use super::ApiResult;
+use super::{ApiError, ApiResult, ApiVersion, ApiVersionRequest};
 use super::auth::Method as AuthMethod;
 use super::http::AuthenticatedRequestBuilder;
 use super::service::{ServiceInfo, ServiceType};
@@ -33,12 +36,15 @@ use super::utils;
 /// authentication, accessing the service catalog and token refresh.
 ///
 /// The session object also owns region and endpoint interface to use.
+///
+/// Finally, the session object is responsible for API version negotiation.
 #[derive(Debug)]
 pub struct Session<Auth: AuthMethod> {
     auth: Auth,
     client: Client,
     cached_token: utils::ValueCache<Auth::TokenType>,
     cached_info: utils::MapCache<(&'static str, String), ServiceInfo>,
+    api_versions: HashMap<&'static str, ApiVersion>,
     region: Option<String>,
     endpoint_interface: String
 }
@@ -56,12 +62,15 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
             client: utils::http_client(),
             cached_token: utils::ValueCache::new(None),
             cached_info: utils::MapCache::new(),
+            api_versions: HashMap::new(),
             region: None,
             endpoint_interface: ep
         }
     }
 
     /// Convert this session into one using the given region.
+    ///
+    /// Negotiated API versions are reset to their default values.
     pub fn with_region<S: Into<String>>(self, region: S) -> Session<Auth> {
         Session {
             auth: self.auth,
@@ -69,12 +78,16 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
             cached_token: self.cached_token,
             // ServiceInfo has to be refreshed
             cached_info: utils::MapCache::new(),
+            // Different regions potentially have different API versions?
+            api_versions: HashMap::new(),
             region: Some(region.into()),
             endpoint_interface: self.endpoint_interface
         }
     }
 
     /// Convert this session into one using the given endpoint interface.
+    ///
+    /// Negotiated API versions are kept in the new object.
     pub fn with_endpoint_interface<S: Into<String>>(self,
                                                     endpoint_interface: S)
             -> Session<Auth> {
@@ -84,6 +97,7 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
             cached_token: self.cached_token,
             // ServiceInfo has to be refreshed
             cached_info: utils::MapCache::new(),
+            api_versions: self.api_versions,
             region: self.region,
             endpoint_interface: endpoint_interface.into()
         }
@@ -103,21 +117,15 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
     /// Get service info for the given service.
     pub fn get_service_info<Srv>(&self) -> ApiResult<ServiceInfo>
             where Srv: ServiceType {
-        let key = (Srv::catalog_type(), self.endpoint_interface.clone());
-
-        try!(self.cached_info.ensure_value(key.clone(), |_| {
-            self.get_catalog_endpoint(Srv::catalog_type())
-                .and_then(|ep| Srv::service_info(ep, self))
-        }));
-
-        Ok(self.cached_info.get(&key).unwrap())
+        let info = try!(self.get_service_info_ref::<Srv>());
+        Ok(info.clone())
     }
 
     /// Construct and endpoint for the given service.
     pub fn get_endpoint<Srv>(&self, path: &[&str]) -> ApiResult<Url>
             where Srv: ServiceType {
-        let info = try!(self.get_service_info::<Srv>());
-        Ok(utils::url::extend(info.root_url, path))
+        let info = try!(self.get_service_info_ref::<Srv>());
+        Ok(utils::url::extend(info.root_url.clone(), path))
     }
 
     /// Get an endpoint URL from the catalog.
@@ -152,20 +160,66 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
                                          self)
     }
 
+    /// Negotiate an API version with the service.
+    ///
+    /// Negotiation is based on version information returned from the root
+    /// endpoint. If no minimum version is returned, the current version is
+    /// assumed to be the only supported version.
+    ///
+    /// The resulting API version is cached for this session.
+    pub fn negotiate_api_version<Srv>(&mut self, requested: ApiVersionRequest)
+            -> ApiResult<ApiVersion> where Srv: ServiceType {
+        let key = try!(self.ensure_service_info::<Srv>());
+        let info = self.cached_info.get_ref(&key).unwrap();
+
+        match info.pick_api_version(requested.clone()) {
+            Some(ver) => {
+                let _ = self.api_versions.insert(Srv::catalog_type(), ver);
+                Ok(ver)
+            },
+            None => Err(ApiError::UnsupportedApiVersion {
+                requested: requested,
+                minimum: info.minimum_version.clone(),
+                maximum: info.current_version.clone()
+            })
+        }
+    }
+
     fn refresh_token(&self) -> ApiResult<()> {
         self.cached_token.ensure_value(|| {
             self.auth.get_token(&self.client)
         })
     }
+
+    fn ensure_service_info<Srv>(&self) -> ApiResult<(&'static str, String)>
+            where Srv: ServiceType {
+        let key = (Srv::catalog_type(), self.endpoint_interface.clone());
+
+        try!(self.cached_info.ensure_value(key.clone(), |_| {
+            self.get_catalog_endpoint(Srv::catalog_type())
+                .and_then(|ep| Srv::service_info(ep, self))
+        }));
+
+        Ok(key)
+    }
+
+    fn get_service_info_ref<Srv>(&self) -> ApiResult<Ref<ServiceInfo>>
+            where Srv: ServiceType {
+        let key = try!(self.ensure_service_info::<Srv>());
+        Ok(self.cached_info.get_ref(&key).unwrap())
+    }
 }
+
 
 impl<Auth: AuthMethod + Clone> Clone for Session<Auth> {
     fn clone(&self) -> Session<Auth> {
         Session {
             auth: self.auth.clone(),
+            // NOTE: hyper::Client does not support Clone
             client: utils::http_client(),
             cached_token: self.cached_token.clone(),
             cached_info: self.cached_info.clone(),
+            api_versions: self.api_versions.clone(),
             region: self.region.clone(),
             endpoint_interface: self.endpoint_interface.clone()
         }
@@ -178,6 +232,7 @@ pub mod test {
     #![allow(missing_debug_implementations)]
     #![allow(unused_results)]
 
+    use std::collections::HashMap;
     use std::io::Read;
 
     use hyper;
@@ -200,6 +255,7 @@ pub mod test {
             client: cli,
             cached_token: utils::ValueCache::new(Some(token)),
             cached_info: utils::MapCache::new(),
+            api_versions: HashMap::new(),
             region: region.map(From::from),
             endpoint_interface: ep
         }
@@ -224,6 +280,7 @@ pub mod test {
             client: cli,
             cached_token: utils::ValueCache::new(Some(token)),
             cached_info: utils::MapCache::new(),
+            api_versions: HashMap::new(),
             region: None,
             endpoint_interface: ep
         }

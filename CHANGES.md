@@ -7,6 +7,7 @@ next
 * Dropped ServiceApi struct in favor of using Session directly.
 * Rework of the whole compute module.
 * IdentityAuthMethod renamed to PasswordAuth.
+* API version negotiation support.
 
 0.0.8
 -----

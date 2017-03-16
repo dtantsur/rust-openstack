@@ -40,7 +40,23 @@
 //!     .get("8a1c355b-2e1e-440a-8aa8-f272df72bc32")
 //!     .expect("Unable to get a server");
 //! ```
+//!
+//! Compute API supports version negotiation:
+//!
+//! ```rust,no_run
+//! use openstack;
+//!
+//! let auth = openstack::auth::Identity::from_env()
+//!     .expect("Unable to authenticate");
+//! let mut session = openstack::Session::new(auth);
+//! let version = session.negotiate_api_version::<openstack::compute::V2>(
+//!     openstack::ApiVersionRequest::Exact(openstack::ApiVersion(2, 10))
+//! ).expect("API version 2.10 is not supported");
+//!
+//! let compute = openstack::compute::v2(&session);
+//! ```
 
 pub mod api_v2;
 
 pub use self::api_v2::new as v2;
+pub use self::api_v2::V2ServiceType as V2;
