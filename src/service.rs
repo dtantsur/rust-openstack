@@ -69,21 +69,23 @@ impl<'session, Auth: AuthMethod + 'session, Srv: ServiceType>
     }
 
     /// Construct and endpoint for the given service from the path.
-    pub fn get_endpoint(&self, path: &[&str]) -> ApiResult<Url> {
+    pub fn get_endpoint<P>(&self, path: P) -> ApiResult<Url>
+            where P: IntoIterator, P::Item: AsRef<str> {
         let info = try!(self.session.get_service_info::<Srv>());
         Ok(utils::url::extend(info.root_url, path))
     }
 
     /// Make an HTTP request to the given service.
-    pub fn request(&'session self, method: Method, path: &[&str])
-            -> ApiResult<AuthenticatedRequestBuilder<'session, Auth>> {
+    pub fn request<P>(&'session self, method: Method, path: P)
+            -> ApiResult<AuthenticatedRequestBuilder<'session, Auth>>
+            where P: IntoIterator, P::Item: AsRef<str> {
         let url = try!(self.get_endpoint(path));
         Ok(self.session.raw_request(method, url))
     }
 
     /// Make a GET request.
-    pub fn http_get<Res>(&self, path: &[&str]) -> ApiResult<Res>
-            where Res: Deserialize {
+    pub fn http_get<P, Res>(&self, path: P) -> ApiResult<Res>
+            where Res: Deserialize, P: IntoIterator, P::Item: AsRef<str> {
         let request = try!(self.request(Get, path));
         let resp = try!(request.send());
         serde_json::from_reader(resp).map_err(From::from)
