@@ -14,6 +14,7 @@
 
 //! Generic API bits for implementing new services.
 
+use std::collections::HashMap;
 use std::marker::PhantomData;
 
 use hyper::{Get, Url};
@@ -26,6 +27,9 @@ use super::auth::Method as AuthMethod;
 use super::http::AuthenticatedRequestBuilder;
 use super::utils;
 
+
+/// Type of query parameters.
+pub type Query = HashMap<String, String>;
 
 /// Information about API endpoint.
 #[derive(Clone, Debug)]
@@ -69,24 +73,26 @@ impl<'session, Auth: AuthMethod + 'session, Srv: ServiceType>
     }
 
     /// Construct and endpoint for the given service from the path.
-    pub fn get_endpoint<P>(&self, path: P) -> ApiResult<Url>
+    pub fn get_endpoint<P>(&self, path: P, query: Query) -> ApiResult<Url>
             where P: IntoIterator, P::Item: AsRef<str> {
         let info = try!(self.session.get_service_info::<Srv>());
-        Ok(utils::url::extend(info.root_url, path))
+        let mut url = utils::url::extend(info.root_url, path);
+        let _ = url.query_pairs_mut().extend_pairs(query);
+        Ok(url)
     }
 
     /// Make an HTTP request to the given service.
-    pub fn request<P>(&'session self, method: Method, path: P)
+    pub fn request<P>(&'session self, method: Method, path: P, query: Query)
             -> ApiResult<AuthenticatedRequestBuilder<'session, Auth>>
             where P: IntoIterator, P::Item: AsRef<str> {
-        let url = try!(self.get_endpoint(path));
+        let url = try!(self.get_endpoint(path, query));
         Ok(self.session.raw_request(method, url))
     }
 
     /// Make a GET request.
-    pub fn http_get<P, Res>(&self, path: P) -> ApiResult<Res>
+    pub fn http_get<P, Res>(&self, path: P, query: Query) -> ApiResult<Res>
             where Res: Deserialize, P: IntoIterator, P::Item: AsRef<str> {
-        let request = try!(self.request(Get, path));
+        let request = try!(self.request(Get, path, query));
         let resp = try!(request.send());
         serde_json::from_reader(resp).map_err(From::from)
     }

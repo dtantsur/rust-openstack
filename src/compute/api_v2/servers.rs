@@ -147,7 +147,7 @@ impl<'a, Auth: AuthMethod + 'a> ServerManager<'a, Auth> {
     pub fn list(&self) -> ApiResult<ServerList<'a, Auth>> {
         trace!("Listing all compute servers");
         let inner: protocol::ServersRoot = try!(
-            self.service.http_get(&["servers"])
+            self.service.http_get(&["servers"], Default::default())
         );
         debug!("Received {} compute servers", inner.servers.len());
         trace!("Received servers: {:?}", inner.servers);
@@ -166,7 +166,7 @@ impl<'a, Auth: AuthMethod + 'a> ServerManager<'a, Auth> {
             -> ApiResult<Server<'a, Auth>> {
         trace!("Get compute server {}", id);
         let inner: protocol::ServerRoot = try!(
-            service.http_get(&["servers", id])
+            service.http_get(&["servers", id], Default::default())
         );
         trace!("Received {:?}", inner.server);
         Ok(Server {
