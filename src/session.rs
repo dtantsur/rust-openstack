@@ -126,15 +126,6 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
         Ok(utils::url::extend(info.root_url.clone(), path))
     }
 
-    /// Get an endpoint URL from the catalog.
-    pub fn get_catalog_endpoint<S>(&self, service_type: S) -> ApiResult<Url>
-            where S: Into<String> {
-        self.auth.get_endpoint(service_type.into(),
-                               Some(self.endpoint_interface.clone()),
-                               self.region.clone(),
-                               &self)
-    }
-
     /// A wrapper for HTTP request.
     pub fn raw_request<U: IntoUrl>(&'a self, method: Method, url: U)
             -> AuthenticatedRequestBuilder<'a, Auth> {
@@ -190,6 +181,14 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
         }));
 
         Ok(key)
+    }
+
+    fn get_catalog_endpoint<S>(&self, service_type: S) -> ApiResult<Url>
+            where S: Into<String> {
+        self.auth.get_endpoint(service_type.into(),
+                               Some(self.endpoint_interface.clone()),
+                               self.region.clone(),
+                               &self)
     }
 
     fn get_service_info_ref<Srv>(&self) -> ApiResult<Ref<ServiceInfo>>

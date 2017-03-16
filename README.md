@@ -20,12 +20,7 @@ on `openstack` crate to your software to use this library.
 
 ### Examples
 
-There is an example retrieving a token from Keystone. Source your OpenStack
-credentials and run from the project root:
-
-    cargo run --example get-token
-
-Another example lists all running servers (their ID and name):
+There is an example that lists all running servers (their ID and name):
 
     cargo run --example list-servers
 
