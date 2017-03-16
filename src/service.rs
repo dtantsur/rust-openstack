@@ -24,6 +24,7 @@ use serde_json;
 use super::{ApiResult, ApiVersion, ApiVersionRequest, Session};
 use super::auth::Method as AuthMethod;
 use super::http::AuthenticatedRequestBuilder;
+use super::utils;
 
 
 /// Information about API endpoint.
@@ -69,7 +70,8 @@ impl<'session, Auth: AuthMethod + 'session, Srv: ServiceType>
 
     /// Construct and endpoint for the given service from the path.
     pub fn get_endpoint(&self, path: &[&str]) -> ApiResult<Url> {
-        self.session.get_endpoint::<Srv>(path)
+        let info = try!(self.session.get_service_info::<Srv>());
+        Ok(utils::url::extend(info.root_url, path))
     }
 
     /// Make an HTTP request to the given service.

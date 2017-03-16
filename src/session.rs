@@ -112,25 +112,18 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
         &self.auth
     }
 
-    /// Get service info for the given service.
-    pub fn get_service_info<Srv>(&self) -> ApiResult<ServiceInfo>
-            where Srv: ServiceType {
-        let info = try!(self.get_service_info_ref::<Srv>());
-        Ok(info.clone())
-    }
-
-    /// Construct and endpoint for the given service.
-    pub fn get_endpoint<Srv>(&self, path: &[&str]) -> ApiResult<Url>
-            where Srv: ServiceType {
-        let info = try!(self.get_service_info_ref::<Srv>());
-        Ok(utils::url::extend(info.root_url.clone(), path))
-    }
-
     /// A wrapper for HTTP request.
     pub fn raw_request<U: IntoUrl>(&'a self, method: Method, url: U)
             -> AuthenticatedRequestBuilder<'a, Auth> {
         AuthenticatedRequestBuilder::new(self.client.request(method, url),
                                          self)
+    }
+
+    /// Get service info for the given service.
+    pub fn get_service_info<Srv>(&self) -> ApiResult<ServiceInfo>
+            where Srv: ServiceType {
+        let info = try!(self.get_service_info_ref::<Srv>());
+        Ok(info.clone())
     }
 
     /// Negotiate an API version with the service.
