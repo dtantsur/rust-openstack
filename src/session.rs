@@ -175,13 +175,20 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
         match info.pick_api_version(requested.clone()) {
             Some(ver) => {
                 let _ = self.api_versions.insert(Srv::catalog_type(), ver);
+                info!("Negotiated API version {} for {} API",
+                      ver, Srv::catalog_type());
                 Ok(ver)
             },
-            None => Err(ApiError::UnsupportedApiVersion {
-                requested: requested,
-                minimum: info.minimum_version.clone(),
-                maximum: info.current_version.clone()
-            })
+            None => {
+                let error = ApiError::UnsupportedApiVersion {
+                    requested: requested,
+                    minimum: info.minimum_version.clone(),
+                    maximum: info.current_version.clone()
+                };
+                warn!("API negotiation failed for {} API: {}",
+                      Srv::catalog_type(), error);
+                Err(error)
+            }
         }
     }
 
