@@ -14,10 +14,16 @@
 
 //! Generic API bits for implementing new services.
 
-use hyper::Url;
+use std::marker::PhantomData;
+
+use hyper::{Get, Url};
+use hyper::method::Method;
+use serde::Deserialize;
+use serde_json;
 
 use super::{ApiResult, ApiVersion, ApiVersionRequest, Session};
 use super::auth::Method as AuthMethod;
+use super::http::AuthenticatedRequestBuilder;
 
 
 /// Information about API endpoint.
@@ -41,6 +47,56 @@ pub trait ServiceType {
         -> ApiResult<ServiceInfo>;
 }
 
+/// A service-specific wrapper around Session.
+#[derive(Debug)]
+pub struct ServiceWrapper<'session, Auth: AuthMethod + 'session,
+                          Srv: ServiceType> {
+    session: &'session Session<Auth>,
+    service_type: PhantomData<Srv>
+}
+
+
+impl<'session, Auth: AuthMethod + 'session, Srv: ServiceType>
+        ServiceWrapper<'session, Auth, Srv> {
+    /// Create a new wrapper for the specific service.
+    pub fn new(session: &'session Session<Auth>)
+            -> ServiceWrapper<'session, Auth, Srv> {
+        ServiceWrapper {
+            session: session,
+            service_type: PhantomData
+        }
+    }
+
+    /// Construct and endpoint for the given service from the path.
+    pub fn get_endpoint(&self, path: &[&str]) -> ApiResult<Url> {
+        self.session.get_endpoint::<Srv>(path)
+    }
+
+    /// Make an HTTP request to the given service.
+    pub fn request(&'session self, method: Method, path: &[&str])
+            -> ApiResult<AuthenticatedRequestBuilder<'session, Auth>> {
+        let url = try!(self.get_endpoint(path));
+        Ok(self.session.raw_request(method, url))
+    }
+
+    /// Make a GET request.
+    pub fn http_get<Res>(&self, path: &[&str]) -> ApiResult<Res>
+            where Res: Deserialize {
+        let request = try!(self.request(Get, path));
+        let resp = try!(request.send());
+        serde_json::from_reader(resp).map_err(From::from)
+    }
+}
+
+impl<'session, Auth: AuthMethod + 'session, Srv: ServiceType>
+        Clone for ServiceWrapper<'session, Auth, Srv> {
+    fn clone(&self) -> ServiceWrapper<'session, Auth, Srv> {
+        ServiceWrapper {
+            session: self.session,
+            service_type: PhantomData
+        }
+    }
+}
 
 impl ServiceInfo {
     /// Pick an API version.

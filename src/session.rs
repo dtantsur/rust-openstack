@@ -17,11 +17,9 @@
 use std::cell::Ref;
 use std::collections::HashMap;
 
-use hyper::{Client, Get, Url};
+use hyper::{Client, Url};
 use hyper::client::IntoUrl;
 use hyper::method::Method;
-use serde::Deserialize;
-use serde_json;
 
 use super::{ApiError, ApiResult, ApiVersion, ApiVersionRequest};
 use super::auth::Method as AuthMethod;
@@ -135,22 +133,6 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
                                Some(self.endpoint_interface.clone()),
                                self.region.clone(),
                                &self)
-    }
-
-    /// Make a GET request.
-    pub fn http_get<Srv, Res>(&self, path: &[&str]) -> ApiResult<Res>
-            where Srv: ServiceType, Res: Deserialize {
-        let request = try!(self.request::<Srv>(Get, path));
-        let resp = try!(request.send());
-        serde_json::from_reader(resp).map_err(From::from)
-    }
-
-    /// Make an HTTP request to the given service.
-    pub fn request<Srv>(&'a self, method: Method, path: &[&str])
-            -> ApiResult<AuthenticatedRequestBuilder<'a, Auth>>
-            where Srv: ServiceType {
-        let url = try!(self.get_endpoint::<Srv>(path));
-        Ok(self.raw_request(method, url))
     }
 
     /// A wrapper for HTTP request.

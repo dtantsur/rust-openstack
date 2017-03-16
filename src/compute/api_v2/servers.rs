@@ -43,8 +43,12 @@
 
 use super::super::super::{ApiResult, Session};
 use super::super::super::auth::Method as AuthMethod;
-use super::base::V2ServiceType as V2;
+use super::super::super::service::ServiceWrapper;
+use super::base::V2ServiceType;
 use super::protocol;
+
+
+type V2ServiceWrapper<'a, Auth> = ServiceWrapper<'a, Auth, V2ServiceType>;
 
 /// Structure represending filters for listing servers.
 #[allow(missing_copy_implementations)]
@@ -54,20 +58,20 @@ pub struct ServerFilters {}
 /// Server manager: working with virtual servers.
 #[derive(Debug)]
 pub struct ServerManager<'a, Auth: AuthMethod + 'a> {
-    session: &'a Session<Auth>
+    service: V2ServiceWrapper<'a, Auth>
 }
 
 /// Structure representing a summary of a single server.
 #[derive(Debug)]
 pub struct Server<'a, Auth: AuthMethod + 'a> {
-    session: &'a Session<Auth>,
+    service: V2ServiceWrapper<'a, Auth>,
     inner: protocol::Server
 }
 
 /// Structure representing a summary of a single server.
 #[derive(Debug)]
 pub struct ServerSummary<'a, Auth: AuthMethod + 'a> {
-    session: &'a Session<Auth>,
+    service: V2ServiceWrapper<'a, Auth>,
     inner: protocol::ServerSummary
 }
 
@@ -127,7 +131,7 @@ impl<'a, Auth: AuthMethod + 'a> ServerSummary<'a, Auth> {
 
     /// Get details.
     pub fn details(self) -> ApiResult<Server<'a, Auth>> {
-        ServerManager::get_server(self.session, &self.inner.id)
+        ServerManager::get_server(self.service.clone(), &self.inner.id)
     }
 }
 
@@ -135,38 +139,38 @@ impl<'a, Auth: AuthMethod + 'a> ServerManager<'a, Auth> {
     /// Constructor for server manager.
     pub fn new(session: &'a Session<Auth>) -> ServerManager<'a, Auth> {
         ServerManager {
-            session: session
+            service: ServiceWrapper::new(session)
         }
     }
 
     /// List all servers without any filtering.
     pub fn list(&self) -> ApiResult<ServerList<'a, Auth>> {
         trace!("Listing all compute servers");
-        let inner = try!(
-            self.session.http_get::<V2, protocol::ServersRoot>(&["servers"])
+        let inner: protocol::ServersRoot = try!(
+            self.service.http_get(&["servers"])
         );
         debug!("Received {} compute servers", inner.servers.len());
         trace!("Received servers: {:?}", inner.servers);
         Ok(inner.servers.iter().map(|x| ServerSummary {
-            session: self.session,
+            service: self.service.clone(),
             inner: x.clone()
         }).collect())
     }
 
     /// Get a server.
     pub fn get<Id: AsRef<str>>(&self, id: Id) -> ApiResult<Server<'a, Auth>> {
-        ServerManager::get_server(self.session, id.as_ref())
+        ServerManager::get_server(self.service.clone(), id.as_ref())
     }
 
-    fn get_server(session: &'a Session<Auth>, id: &str)
+    fn get_server(service: V2ServiceWrapper<'a, Auth>, id: &str)
             -> ApiResult<Server<'a, Auth>> {
         trace!("Get compute server {}", id);
-        let inner = try!(
-            session.http_get::<V2, protocol::ServerRoot>(&["servers", id])
+        let inner: protocol::ServerRoot = try!(
+            service.http_get(&["servers", id])
         );
         trace!("Received {:?}", inner.server);
         Ok(Server {
-            session: session,
+            service: service,
             inner: inner.server
         })
     }
