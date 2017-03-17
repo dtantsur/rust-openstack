@@ -9,6 +9,8 @@ repository = "https://github.com/dtantsur/rust-openstack"
 documentation = "https://dtantsur.github.io/rust-openstack/openstack/"
 readme = "README.md"
 license = "Apache-2.0"
+keywords = ["api", "cloud", "openstack"]
+categories = ["api-bindings"]
 
 [features]
 
@@ -36,3 +38,6 @@ yup-hyper-mock = "^2.0"
 
 name = "openstack"
 path = "src/lib.rs"
+
+[badges]
+travis-ci = { repository = "https://github.com/dtantsur/rust-openstack" }
