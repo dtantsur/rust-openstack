@@ -25,6 +25,7 @@ fn main() {
         .expect("Failed to create an identity provider from the environment");
     let session = openstack::Session::new(identity);
     let servers = openstack::compute::v2(&session).servers().list()
+        .sort_by(openstack::Sort::Asc("access_ip_v4")).fetch()
         .expect("Cannot list servers");
     for s in &servers {
         println!("ID = {}, Name = {}", s.id(), s.name());

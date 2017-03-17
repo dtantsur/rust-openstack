@@ -23,10 +23,14 @@ use serde_json;
 use super::super::super::{ApiResult, Session};
 use super::super::super::ApiError::{HttpError, EndpointNotFound};
 use super::super::super::auth::Method as AuthMethod;
-use super::super::super::service::{ServiceInfo, ServiceType};
+use super::super::super::service::{ServiceInfo, ServiceType, ServiceWrapper};
 use super::super::super::utils;
 use super::protocol::{VersionRoot, VersionsRoot};
 use super::servers::ServerManager;
+
+
+/// Service wrapper for Compute API V2.
+pub type V2ServiceWrapper<'a, Auth> = ServiceWrapper<'a, Auth, V2ServiceType>;
 
 /// Service type of Compute API V2.
 #[derive(Copy, Clone, Debug)]

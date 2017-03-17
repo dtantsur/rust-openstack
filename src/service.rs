@@ -14,7 +14,6 @@
 
 //! Generic API bits for implementing new services.
 
-use std::collections::HashMap;
 use std::marker::PhantomData;
 
 use hyper::{Get, Url};
@@ -29,7 +28,7 @@ use super::utils;
 
 
 /// Type of query parameters.
-pub type Query = HashMap<String, String>;
+pub type Query = Vec<(String, String)>;
 
 /// Information about API endpoint.
 #[derive(Clone, Debug)]
@@ -86,6 +85,7 @@ impl<'session, Auth: AuthMethod + 'session, Srv: ServiceType>
             -> ApiResult<AuthenticatedRequestBuilder<'session, Auth>>
             where P: IntoIterator, P::Item: AsRef<str> {
         let url = try!(self.get_endpoint(path, query));
+        trace!("Sending HTTP {} request to {}", method, url);
         Ok(self.session.raw_request(method, url))
     }
 

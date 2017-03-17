@@ -25,8 +25,22 @@
 //!     .expect("Unable to authenticate");
 //! let session = openstack::Session::new(auth);
 //! let server_list = openstack::compute::v2(&session).servers().list()
-//!     .expect("Unable to fetch servers");
+//!     .fetch().expect("Unable to fetch servers");
 //! ```
+//!
+//! Sorting servers by name:
+//!
+//! ```rust,no_run
+//! use openstack;
+//!
+//! let auth = openstack::auth::Identity::from_env()
+//!     .expect("Unable to authenticate");
+//! let session = openstack::Session::new(auth);
+//! let server_list = openstack::compute::v2(&session).servers().list()
+//!     .sort_by(openstack::Sort::Asc("access_ip_v4")).with_limit(5)
+//!     .fetch().expect("Unable to fetch servers");
+//! ```
+//!
 //! Fetching server details by its UUID:
 //!
 //! ```rust,no_run
@@ -41,19 +55,27 @@
 //! println!("Server name is {}", server.name());
 //! ```
 
-use super::super::super::{ApiResult, Session};
+use super::super::super::{ApiResult, Session, Sort};
 use super::super::super::auth::Method as AuthMethod;
-use super::super::super::service::ServiceWrapper;
-use super::base::V2ServiceType;
+use super::super::super::service::Query;
+use super::base::V2ServiceWrapper;
 use super::protocol;
 
 
-type V2ServiceWrapper<'a, Auth> = ServiceWrapper<'a, Auth, V2ServiceType>;
-
-/// Structure represending filters for listing servers.
-#[allow(missing_copy_implementations)]
+/// A request to list servers.
 #[derive(Debug, Clone)]
-pub struct ServerFilters {}
+pub struct ServersListRequest<'a, Auth: AuthMethod + 'a> {
+    service: V2ServiceWrapper<'a, Auth>,
+    /// Marker - ID of server to start listing from.
+    pub marker: Option<String>,
+    /// Limit on number of entities to return.
+    ///
+    /// If missing, the default number will be returned, which is not
+    /// necessary all items.
+    pub limit: Option<usize>,
+    /// Sorting fields and directions.
+    pub sort: Vec<Sort<String>>
+}
 
 /// Server manager: working with virtual servers.
 #[derive(Debug)]
@@ -78,18 +100,6 @@ pub struct ServerSummary<'a, Auth: AuthMethod + 'a> {
 /// List of servers.
 pub type ServerList<'a, Auth> = Vec<ServerSummary<'a, Auth>>;
 
-impl ServerFilters {
-    /// Create empty server filters.
-    pub fn new() -> ServerFilters {
-        ServerFilters {}
-    }
-}
-
-impl Default for ServerFilters {
-    fn default() -> ServerFilters {
-        ServerFilters::new()
-    }
-}
 
 impl<'a, Auth: AuthMethod + 'a> Server<'a, Auth> {
     /// Get a reference to IPv4 address.
@@ -135,26 +145,87 @@ impl<'a, Auth: AuthMethod + 'a> ServerSummary<'a, Auth> {
     }
 }
 
+impl<'a, Auth: AuthMethod + 'a> ServersListRequest<'a, Auth> {
+    fn new(service: V2ServiceWrapper<'a, Auth>)
+            -> ServersListRequest<'a, Auth> {
+        ServersListRequest {
+            service: service,
+            marker: None,
+            limit: None,
+            sort: Vec::new()
+        }
+    }
+
+    /// Add marker to the request.
+    pub fn with_marker<T: Into<String>>(self, marker: T) -> Self {
+        ServersListRequest {
+            marker: Some(marker.into()),
+            .. self
+        }
+    }
+
+    /// Add limit to the request.
+    pub fn with_limit(self, limit: usize) -> Self {
+        ServersListRequest {
+            limit: Some(limit),
+            .. self
+        }
+    }
+
+    /// Add sorting to the request.
+    pub fn sort_by<T: Into<String>>(mut self, sort: Sort<T>) -> Self {
+        self.sort.push(match sort {
+            Sort::Asc(v) => Sort::Asc(v.into()),
+            Sort::Desc(v) => Sort::Desc(v.into())
+        });
+        self
+    }
+
+    /// Execute this request and return its result.
+    #[allow(unused_results)]
+    pub fn fetch(self) -> ApiResult<ServerList<'a, Auth>> {
+        let service = self.service;
+        let mut query = Query::new();
+        if let Some(marker) = self.marker {
+            query.push((String::from("marker"), marker));
+        }
+        if let Some(limit) = self.limit {
+            query.push((String::from("limit"), limit.to_string()));
+        }
+        for sort in self.sort {
+            let (field, direction) = sort.into();
+            query.push((String::from("sort_key"), field));
+            query.push((String::from("sort_dir"), direction));
+        }
+
+        trace!("Listing all compute servers");
+        let inner: protocol::ServersRoot = try!(
+            service.http_get(&["servers"], query)
+        );
+        debug!("Received {} compute servers", inner.servers.len());
+        trace!("Received servers: {:?}", inner.servers);
+        Ok(inner.servers.iter().map(move |x| ServerSummary {
+            service: service.clone(),
+            inner: x.clone()
+        }).collect())
+    }
+}
+
 impl<'a, Auth: AuthMethod + 'a> ServerManager<'a, Auth> {
     /// Constructor for server manager.
     pub fn new(session: &'a Session<Auth>) -> ServerManager<'a, Auth> {
         ServerManager {
-            service: ServiceWrapper::new(session)
+            service: V2ServiceWrapper::new(session)
         }
     }
 
-    /// List all servers without any filtering.
-    pub fn list(&self) -> ApiResult<ServerList<'a, Auth>> {
-        trace!("Listing all compute servers");
-        let inner: protocol::ServersRoot = try!(
-            self.service.http_get(&["servers"], Default::default())
-        );
-        debug!("Received {} compute servers", inner.servers.len());
-        trace!("Received servers: {:?}", inner.servers);
-        Ok(inner.servers.iter().map(|x| ServerSummary {
-            service: self.service.clone(),
-            inner: x.clone()
-        }).collect())
+    /// List servers.
+    ///
+    /// Note that this method does not return results immediately, but rather
+    /// a [ServersListRequest](struct.ServersListRequest.html) object that
+    /// you can futher specify with e.g. filtering or sorting.
+    pub fn list(&self) -> ServersListRequest<'a, Auth> {
+        ServersListRequest::new(self.service.clone())
     }
 
     /// Get a server.
@@ -223,7 +294,7 @@ pub mod test {
         let session = test::new_with_params(auth, cli, token, None);
 
         let mgr = ServerManager::new(&session);
-        let srvs = mgr.list().unwrap();
+        let srvs = mgr.list().fetch().unwrap();
         assert_eq!(srvs.len(), 1);
         assert_eq!(srvs[0].id(),
                    "22c91117-08de-4894-9aa9-6ef382400985");

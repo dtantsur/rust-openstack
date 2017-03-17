@@ -88,6 +88,15 @@ pub enum ApiVersionRequest {
     Choice(Vec<ApiVersion>)
 }
 
+/// Sorting request.
+#[derive(Debug, Clone)]
+pub enum Sort<T: Into<String>> {
+    /// Sorting by given field in ascendant order.
+    Asc(T),
+    /// Sorting by given field in descendant order.
+    Desc(T)
+}
+
 
 impl fmt::Display for ApiError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -205,6 +214,15 @@ impl ApiVersion {
                                          "Second component is not a number"));
 
         Ok(ApiVersion(major, minor))
+    }
+}
+
+impl<T: Into<String>> Into<(String, String)> for Sort<T> {
+    fn into(self) -> (String, String) {
+        match self {
+            Sort::Asc(val) => (val.into(), String::from("asc")),
+            Sort::Desc(val) => (val.into(), String::from("desc"))
+        }
     }
 }
 

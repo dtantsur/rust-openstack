@@ -35,7 +35,7 @@
 //! let compute = openstack::compute::v2(&session);
 //!
 //! let server_list = compute.servers().list()
-//!     .expect("Unable to fetch servers");
+//!     .fetch().expect("Unable to fetch servers");
 //! let one_server = compute.servers()
 //!     .get("8a1c355b-2e1e-440a-8aa8-f272df72bc32")
 //!     .expect("Unable to get a server");
