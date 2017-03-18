@@ -52,9 +52,6 @@ pub enum ApiError {
     /// JSON parsing failed.
     InvalidJson(JsonError),
 
-    /// Malformed response.
-    MalformedResponse(String),
-
     /// Malformed API version.
     #[allow(missing_docs)]
     InvalidApiVersion { value: String, message: String },
@@ -111,8 +108,6 @@ impl fmt::Display for ApiError {
                 write!(f, "HTTP error {}", status),
             ApiError::ProtocolError(ref e) => fmt::Display::fmt(e, f),
             ApiError::InvalidJson(ref e) => fmt::Display::fmt(e, f),
-            ApiError::MalformedResponse(ref msg) =>
-                write!(f, "Malformed response received: {}", msg),
             ApiError::InvalidApiVersion { value: ref val, message: ref msg } =>
                 write!(f, "{} is not a valid API version: {}", val, msg),
             ApiError::UnsupportedApiVersion {
@@ -135,8 +130,6 @@ impl Error for ApiError {
             ApiError::HttpError(..) => "HTTP error",
             ApiError::ProtocolError(ref e) => e.description(),
             ApiError::InvalidJson(ref e) => e.description(),
-            ApiError::MalformedResponse(..) =>
-                "Malformed response received",
             ApiError::InvalidApiVersion { .. } =>
                 "Invalid API version",
             ApiError::UnsupportedApiVersion { .. } =>

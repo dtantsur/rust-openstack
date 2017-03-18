@@ -18,9 +18,11 @@
 #![allow(missing_docs)]
 
 use hyper::Url;
+use serde::de::Error as DeserError;
+use serde_json::Error as JsonError;
 
 use super::super::super::{ApiResult, ApiVersion};
-use super::super::super::ApiError::MalformedResponse;
+use super::super::super::ApiError::InvalidJson;
 use super::super::super::service::ServiceInfo;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -92,9 +94,11 @@ impl Version {
         let endpoint = match self.links.iter().find(|x| &x.rel == "self") {
             Some(link) => try!(Url::parse(&link.href)),
             None => {
-                let msg = format!("No link to self in version, only {:?}",
-                                  self.links);
-                return Err(MalformedResponse(msg))
+                error!("Received malformed version response: no self link \
+                        in {:?}", self.links);
+                return Err(
+                    InvalidJson(JsonError::missing_field("link to self"))
+                );
             }
         };
 
