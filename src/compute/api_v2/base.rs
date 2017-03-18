@@ -56,8 +56,8 @@ fn extract_info(mut resp: Response, secure: bool) -> ApiResult<ServiceInfo> {
         Err(..) => {
             // Second, assume it's a root URL.
             let vers: VersionsRoot = try!(serde_json::from_str(&body));
-            match vers.versions.iter().find(|x| &x.id == VERSION_ID) {
-                Some(ver) => ver.clone().into_service_info(),
+            match vers.versions.into_iter().find(|x| &x.id == VERSION_ID) {
+                Some(ver) => ver.into_service_info(),
                 None => Err(EndpointNotFound(String::from(SERVICE_TYPE)))
             }
         }

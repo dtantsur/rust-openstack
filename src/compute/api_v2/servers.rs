@@ -187,15 +187,15 @@ impl<'a, Auth: AuthMethod + 'a> ServersListRequest<'a, Auth> {
         let service = self.service;
         let mut query = Query::new();
         if let Some(marker) = self.marker {
-            query.push((String::from("marker"), marker));
+            query.push("marker", marker);
         }
         if let Some(limit) = self.limit {
-            query.push((String::from("limit"), limit.to_string()));
+            query.push("limit", limit);
         }
         for sort in self.sort {
             let (field, direction) = sort.into();
-            query.push((String::from("sort_key"), field));
-            query.push((String::from("sort_dir"), direction));
+            query.push("sort_key", field);
+            query.push("sort_dir", direction);
         }
 
         trace!("Listing all compute servers");
@@ -204,9 +204,9 @@ impl<'a, Auth: AuthMethod + 'a> ServersListRequest<'a, Auth> {
         );
         debug!("Received {} compute servers", inner.servers.len());
         trace!("Received servers: {:?}", inner.servers);
-        Ok(inner.servers.iter().map(move |x| ServerSummary {
+        Ok(inner.servers.into_iter().map(|x| ServerSummary {
             service: service.clone(),
-            inner: x.clone()
+            inner: x
         }).collect())
     }
 }
@@ -237,7 +237,7 @@ impl<'a, Auth: AuthMethod + 'a> ServerManager<'a, Auth> {
             -> ApiResult<Server<'a, Auth>> {
         trace!("Get compute server {}", id);
         let inner: protocol::ServerRoot = try!(
-            service.http_get(&["servers", id], Default::default())
+            service.http_get(&["servers", id], Query::new())
         );
         trace!("Received {:?}", inner.server);
         Ok(Server {

@@ -41,8 +41,7 @@ pub fn find_endpoint(catalog: &Catalog, service_type: String,
         -> ApiResult<&protocol::Endpoint> {
     let svc = match catalog.iter().find(|x| x.service_type == service_type) {
         Some(s) => s,
-        None =>
-            return Err(ApiError::EndpointNotFound(service_type))
+        None => return Err(ApiError::EndpointNotFound(service_type))
     };
 
     let maybe_endp: Option<&protocol::Endpoint>;
@@ -54,10 +53,7 @@ pub fn find_endpoint(catalog: &Catalog, service_type: String,
             |x| x.interface == endpoint_interface);
     }
 
-    match maybe_endp {
-        Some(e) => Ok(e),
-        None => Err(ApiError::EndpointNotFound(service_type))
-    }
+    maybe_endp.ok_or(ApiError::EndpointNotFound(service_type))
 }
 
 

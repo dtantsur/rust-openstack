@@ -28,7 +28,8 @@ use super::utils;
 
 
 /// Type of query parameters.
-pub type Query = Vec<(String, String)>;
+#[derive(Clone, Debug)]
+pub struct Query(pub Vec<(String, String)>);
 
 /// Information about API endpoint.
 #[derive(Clone, Debug)]
@@ -60,6 +61,19 @@ pub struct ServiceWrapper<'session, Auth: AuthMethod + 'session,
 }
 
 
+impl Query {
+    /// Empty query.
+    pub fn new() -> Query {
+        Query(Vec::new())
+    }
+
+    /// Add items to the query.
+    pub fn push<K, V>(&mut self, param: K, value: V)
+            where K: Into<String>, V: ToString {
+        self.0.push((param.into(), value.to_string()))
+    }
+}
+
 impl<'session, Auth: AuthMethod + 'session, Srv: ServiceType>
         ServiceWrapper<'session, Auth, Srv> {
     /// Create a new wrapper for the specific service.
@@ -76,7 +90,7 @@ impl<'session, Auth: AuthMethod + 'session, Srv: ServiceType>
             where P: IntoIterator, P::Item: AsRef<str> {
         let info = try!(self.session.get_service_info::<Srv>());
         let mut url = utils::url::extend(info.root_url, path);
-        let _ = url.query_pairs_mut().extend_pairs(query);
+        let _ = url.query_pairs_mut().extend_pairs(query.0);
         Ok(url)
     }
 
