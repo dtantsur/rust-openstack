@@ -37,7 +37,7 @@ use super::super::{ApiError, ApiResult, Session};
 use super::super::identity::{catalog, protocol};
 use super::{Method, SimpleToken};
 
-use ApiError::InsufficientCredentials;
+use ApiError::InvalidInput;
 
 
 const MISSING_USER: &'static str = "User information required";
@@ -109,7 +109,7 @@ impl Identity {
             Some(p) => p,
             None =>
                 return Err(
-                    InsufficientCredentials(String::from(MISSING_USER))
+                    InvalidInput(String::from(MISSING_USER))
                 )
         };
 
@@ -118,7 +118,7 @@ impl Identity {
             Some(p) => p,
             None =>
                 return Err(
-                    InsufficientCredentials(String::from(MISSING_SCOPE))
+                    InvalidInput(String::from(MISSING_SCOPE))
                 )
         };
 
@@ -149,10 +149,9 @@ impl Identity {
     }
 }
 
+#[inline]
 fn _get_env(name: &str) -> ApiResult<String> {
-    env::var(name).or(Err(
-            InsufficientCredentials(String::from(MISSING_ENV_VARS))
-    ))
+    env::var(name).or(Err(InvalidInput(String::from(MISSING_ENV_VARS))))
 }
 
 impl PasswordAuth {

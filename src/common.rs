@@ -28,11 +28,6 @@ use serde_json::Error as JsonError;
 /// Error from an OpenStack API call.
 #[derive(Debug)]
 pub enum ApiError {
-    /// Insufficient credentials passed to make authentication request.
-    ///
-    /// Contains the error message.
-    InsufficientCredentials(String),
-
     /// Requested service endpoint was not found.
     ///
     /// Contains the failed endpoint name.
@@ -41,7 +36,7 @@ pub enum ApiError {
     /// Invalid value passed to one of paremeters.
     ///
     /// Contains the error message.
-    InvalidParameterValue(String),
+    InvalidInput(String),
 
     /// Generic HTTP error.
     HttpError(StatusCode, Response),
@@ -98,12 +93,10 @@ pub enum Sort<T: Into<String>> {
 impl fmt::Display for ApiError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ApiError::InsufficientCredentials(ref msg) =>
-                write!(f, "Insufficient credentials provided: {}", msg),
             ApiError::EndpointNotFound(ref endp) =>
                 write!(f, "Requested endpoint {} was not found", endp),
-            ApiError::InvalidParameterValue(ref msg) =>
-                write!(f, "Passed parameters are invalid: {}", msg),
+            ApiError::InvalidInput(ref msg) =>
+                write!(f, "Input value(s) are invalid: {}", msg),
             ApiError::HttpError(status, ..) =>
                 write!(f, "HTTP error {}", status),
             ApiError::ProtocolError(ref e) => fmt::Display::fmt(e, f),
@@ -121,12 +114,9 @@ impl fmt::Display for ApiError {
 impl Error for ApiError {
     fn description(&self) -> &str {
         match *self {
-            ApiError::InsufficientCredentials(..) =>
-                "Insufficient credentials provided",
             ApiError::EndpointNotFound(..) =>
                 "Requested endpoint was not found",
-            ApiError::InvalidParameterValue(..) =>
-                "Invalid values passed for parameters",
+            ApiError::InvalidInput(..) => "Invalid value(s) provided",
             ApiError::HttpError(..) => "HTTP error",
             ApiError::ProtocolError(ref e) => e.description(),
             ApiError::InvalidJson(ref e) => e.description(),
