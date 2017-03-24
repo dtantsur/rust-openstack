@@ -17,6 +17,8 @@
 #![allow(non_snake_case)]
 #![allow(missing_docs)]
 
+use std::str::FromStr;
+
 use hyper::Url;
 use serde::de::Error as DeserError;
 use serde_json::Error as JsonError;
@@ -78,17 +80,17 @@ pub struct VersionRoot {
 
 
 impl Version {
-    pub fn into_service_info(self) -> ApiResult<ServiceInfo> {
+    pub fn to_service_info(&self) -> ApiResult<ServiceInfo> {
         let current_version = if self.version.is_empty() {
             None
         } else {
-            Some(try!(ApiVersion::parse(self.version)))
+            Some(try!(ApiVersion::from_str(&self.version)))
         };
 
         let minimum_version = if self.min_version.is_empty() {
             None
         } else {
-            Some(try!(ApiVersion::parse(self.min_version)))
+            Some(try!(ApiVersion::from_str(&self.min_version)))
         };
 
         let endpoint = match self.links.iter().find(|x| &x.rel == "self") {

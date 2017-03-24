@@ -17,6 +17,7 @@
 use std::marker::PhantomData;
 
 use hyper::{Get, Url};
+use hyper::header::Headers;
 use hyper::method::Method;
 use serde::Deserialize;
 use serde_json;
@@ -50,6 +51,12 @@ pub trait ServiceType {
     /// Get basic service information.
     fn service_info<Auth: AuthMethod>(endpoint: Url, session: &Session<Auth>)
         -> ApiResult<ServiceInfo>;
+}
+
+/// Trait representing a service with API version support.
+pub trait ApiVersioning {
+    /// Return headers to set for this API version.
+    fn api_version_headers(version: ApiVersion) -> ApiResult<Headers>;
 }
 
 /// A service-specific wrapper around Session.
@@ -100,7 +107,11 @@ impl<'session, Auth: AuthMethod + 'session, Srv: ServiceType>
             where P: IntoIterator, P::Item: AsRef<str> {
         let url = try!(self.get_endpoint(path, query));
         trace!("Sending HTTP {} request to {}", method, url);
-        Ok(self.session.raw_request(method, url))
+        let builder = self.session.raw_request(method, url);
+        Ok(match self.session.service_headers::<Srv>() {
+            Some(hdrs) => builder.headers(hdrs),
+            None => builder
+        })
     }
 
     /// Make a GET request.

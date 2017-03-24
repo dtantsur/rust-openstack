@@ -17,6 +17,7 @@
 use std::error::Error;
 use std::fmt;
 use std::io;
+use std::str::FromStr;
 
 use hyper::Error as HttpClientError;
 use hyper::client::Response;
@@ -166,34 +167,34 @@ impl fmt::Display for ApiVersion {
     }
 }
 
-fn parse_component(component: &str, value: &String, message: &str)
+fn parse_component(component: &str, value: &str, message: &str)
         -> ApiResult<u16> {
     match component.parse() {
         Ok(val) => Ok(val),
         Err(..) => Err(ApiError::InvalidApiVersion {
-            value: value.clone(),
+            value: String::from(value),
             message: String::from(message)
         })
     }
 }
 
-impl ApiVersion {
-    /// Parse string, yielding an API version.
-    pub fn parse<S: Into<String>>(value: S) -> ApiResult<ApiVersion> {
-        let s = value.into();
+impl FromStr for ApiVersion {
+    type Err = ApiError;
+
+    fn from_str(s: &str) -> ApiResult<ApiVersion> {
         let parts: Vec<&str> = s.split('.').collect();
 
         if parts.len() != 2 {
             return Err(ApiError::InvalidApiVersion {
-                value: s.clone(),
+                value: String::from(s),
                 message: String::from("Expected format X.Y")
             });
         }
 
-        let major = try!(parse_component(parts[0], &s,
+        let major = try!(parse_component(parts[0], s,
                                          "First component is not a number"));
 
-        let minor = try!(parse_component(parts[1], &s,
+        let minor = try!(parse_component(parts[1], s,
                                          "Second component is not a number"));
 
         Ok(ApiVersion(major, minor))

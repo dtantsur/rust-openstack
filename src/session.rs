@@ -19,12 +19,13 @@ use std::collections::HashMap;
 
 use hyper::{Client, Url};
 use hyper::client::IntoUrl;
+use hyper::header::Headers;
 use hyper::method::Method;
 
 use super::{ApiError, ApiResult, ApiVersion, ApiVersionRequest};
 use super::auth::Method as AuthMethod;
 use super::http::AuthenticatedRequestBuilder;
-use super::service::{ServiceInfo, ServiceType};
+use super::service::{ApiVersioning, ServiceInfo, ServiceType};
 use super::utils;
 
 
@@ -42,7 +43,7 @@ pub struct Session<Auth: AuthMethod> {
     client: Client,
     cached_token: utils::ValueCache<Auth::TokenType>,
     cached_info: utils::MapCache<(&'static str, String), ServiceInfo>,
-    api_versions: HashMap<&'static str, ApiVersion>,
+    api_versions: HashMap<&'static str, (ApiVersion, Headers)>,
     region: Option<String>,
     endpoint_interface: String
 }
@@ -113,6 +114,18 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
         &self.auth
     }
 
+    /// Get an API version used for given service.
+    pub fn api_version<Srv: ServiceType>(&self) -> Option<ApiVersion> {
+        self.api_versions.get(Srv::catalog_type()).map(|x| x.0)
+    }
+
+    /// Get a copy of headers to send for given service.
+    ///
+    /// Currently only includes API version headers.
+    pub fn service_headers<Srv: ServiceType>(&self) -> Option<Headers> {
+        self.api_versions.get(Srv::catalog_type()).map(|x| x.1.clone())
+    }
+
     /// A wrapper for HTTP request.
     pub fn raw_request<U: IntoUrl>(&'a self, method: Method, url: U)
             -> AuthenticatedRequestBuilder<'a, Auth> {
@@ -135,13 +148,16 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
     ///
     /// The resulting API version is cached for this session.
     pub fn negotiate_api_version<Srv>(&mut self, requested: ApiVersionRequest)
-            -> ApiResult<ApiVersion> where Srv: ServiceType {
+            -> ApiResult<ApiVersion>
+            where Srv: ServiceType + ApiVersioning {
         let key = try!(self.ensure_service_info::<Srv>());
         let info = self.cached_info.get_ref(&key).unwrap();
 
         match info.pick_api_version(requested.clone()) {
             Some(ver) => {
-                let _ = self.api_versions.insert(Srv::catalog_type(), ver);
+                let hdrs = try!(Srv::api_version_headers(ver));
+                let _ = self.api_versions.insert(Srv::catalog_type(),
+                                                 (ver, hdrs));
                 info!("Negotiated API version {} for {} API",
                       ver, Srv::catalog_type());
                 Ok(ver)

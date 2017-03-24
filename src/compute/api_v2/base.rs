@@ -18,12 +18,14 @@ use std::io::Read;
 
 use hyper::{Get, NotFound, Url};
 use hyper::client::Response;
+use hyper::header::Headers;
 use serde_json;
 
-use super::super::super::{ApiResult, Session};
+use super::super::super::{ApiResult, ApiVersion, Session};
 use super::super::super::ApiError::{HttpError, EndpointNotFound};
 use super::super::super::auth::Method as AuthMethod;
-use super::super::super::service::{ServiceInfo, ServiceType, ServiceWrapper};
+use super::super::super::service::{ApiVersioning, ServiceInfo, ServiceType,
+                                   ServiceWrapper};
 use super::super::super::utils;
 use super::protocol::{VersionRoot, VersionsRoot};
 use super::servers::ServerManager;
@@ -43,6 +45,10 @@ pub struct V2Api<'session, Auth: AuthMethod + 'session> {
 }
 
 
+header! {
+    (XOpenStackNovaApiVersion, "X-OpenStack-Nova-Api-Version") => [ApiVersion]
+}
+
 const SERVICE_TYPE: &'static str = "compute";
 const VERSION_ID: &'static str = "v2.1";
 
@@ -52,12 +58,12 @@ fn extract_info(mut resp: Response, secure: bool) -> ApiResult<ServiceInfo> {
 
     // First, assume it's a versioned URL.
     let mut info = try!(match serde_json::from_str::<VersionRoot>(&body) {
-        Ok(ver) => ver.version.into_service_info(),
+        Ok(ver) => ver.version.to_service_info(),
         Err(..) => {
             // Second, assume it's a root URL.
             let vers: VersionsRoot = try!(serde_json::from_str(&body));
             match vers.versions.into_iter().find(|x| &x.id == VERSION_ID) {
-                Some(ver) => ver.into_service_info(),
+                Some(ver) => ver.to_service_info(),
                 None => Err(EndpointNotFound(String::from(SERVICE_TYPE)))
             }
         }
@@ -101,6 +107,15 @@ impl ServiceType for V2ServiceType {
             },
             Err(other) => Err(other)
         }
+    }
+}
+
+impl ApiVersioning for V2ServiceType {
+    fn api_version_headers(version: ApiVersion) -> ApiResult<Headers> {
+        let mut hdrs = Headers::new();
+        // TODO: new-style header support
+        hdrs.set(XOpenStackNovaApiVersion(version));
+        Ok(hdrs)
     }
 }
 
