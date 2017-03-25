@@ -14,7 +14,7 @@
 
 //! Base code for authentication.
 
-use std::fmt;
+use std::fmt::Debug;
 
 use hyper::{Client, Url};
 
@@ -22,15 +22,9 @@ use super::super::{ApiResult, Session};
 
 
 /// Trait for authentication token implementations.
-pub trait Token: Clone + fmt::Debug + Send + fmt::Display + Into<String> {
-    /// A reference to token contents.
-    fn value(&self) -> &String;
-
+pub trait Token: Clone + Debug + Into<String> {
     /// Check whether the token needs refreshing right now.
     fn needs_refresh(&self) -> bool;
-
-    /// Client-side check on whether the token is (still) valid.
-    fn valid(&self) -> bool { true }
 }
 
 /// Trait for an authentication method.

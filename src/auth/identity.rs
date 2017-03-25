@@ -258,7 +258,7 @@ pub mod test {
     use hyper::status::StatusCode;
 
     use super::super::super::{ApiError, ApiResult, Session};
-    use super::super::{Method, Token, SimpleToken};
+    use super::super::{Method, SimpleToken};
     use super::{Identity, PasswordAuth};
     use super::super::super::session::test;
 
@@ -380,7 +380,7 @@ pub mod test {
             .create().unwrap();
         let cli = hyper::Client::with_connector(MockToken::default());
         let token = id.get_token(&cli).unwrap();
-        assert_eq!(token.value(), "abcdef");
+        assert_eq!(&token.to_string(), "abcdef");
     }
 
     #[test]

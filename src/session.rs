@@ -344,8 +344,8 @@ pub mod test {
     fn test_session_new() {
         let s = new_session("foo");
         let token = s.auth_token().unwrap();
-        assert_eq!(token.value(), "foo");
-        assert!(token.valid());
+        assert_eq!(&token.to_string(), "foo");
+        assert!(!token.needs_refresh());
     }
 
     #[test]

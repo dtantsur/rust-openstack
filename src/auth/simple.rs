@@ -14,7 +14,9 @@
 
 //! Simple authentication methods.
 
+use std::collections::hash_map::DefaultHasher;
 use std::fmt;
+use std::hash::{Hash, Hasher};
 
 use hyper::{Client, Url};
 use hyper::client::IntoUrl;
@@ -24,7 +26,7 @@ use super::super::{ApiResult, Session};
 use super::{Method, Token};
 
 /// Plain authentication token without additional details.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct SimpleToken(pub String);
 
 /// Authentication method that provides no authentication.
@@ -36,25 +38,35 @@ pub struct NoAuth {
     endpoint: Url
 }
 
-impl fmt::Display for SimpleToken {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.0, f)
-    }
-}
-
 impl Into<String> for SimpleToken {
     fn into(self) -> String {
         self.0
     }
 }
 
-impl Token for SimpleToken {
-    fn value(&self) -> &String {
-        &self.0
+impl ToString for SimpleToken {
+    fn to_string(&self) -> String {
+        self.clone().into()
     }
+}
 
+impl Token for SimpleToken {
     fn needs_refresh(&self) -> bool {
         false
+    }
+}
+
+impl fmt::Debug for SimpleToken {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut hasher = DefaultHasher::new();
+        self.hash(&mut hasher);
+        write!(f, "Token {{ hash: {} }}", hasher.finish())
+    }
+}
+
+impl Hash for SimpleToken {
+    fn hash<H>(&self, state: &mut H) where H: Hasher {
+        self.0.hash(state);
     }
 }
 
@@ -117,8 +129,7 @@ pub mod test {
     fn test_noauth_get_token() {
         let a = NoAuth::new("http://127.0.0.1:8080/v1").unwrap();
         let tok = a.get_token(&hyper::Client::new()).unwrap();
-        assert_eq!(tok.value(), "no-auth");
-        assert!(tok.valid());
+        assert_eq!(&tok.to_string(), "no-auth");
         assert!(!tok.needs_refresh());
     }
 
