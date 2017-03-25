@@ -122,8 +122,9 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
     /// Get a copy of headers to send for given service.
     ///
     /// Currently only includes API version headers.
-    pub fn service_headers<Srv: ServiceType>(&self) -> Option<Headers> {
+    pub fn service_headers<Srv: ServiceType>(&self) -> Headers {
         self.api_versions.get(Srv::catalog_type()).map(|x| x.1.clone())
+            .unwrap_or_else(Headers::new)
     }
 
     /// A wrapper for HTTP request.

@@ -106,12 +106,10 @@ impl<'session, Auth: AuthMethod + 'session, Srv: ServiceType>
             -> ApiResult<AuthenticatedRequestBuilder<'session, Auth>>
             where P: IntoIterator, P::Item: AsRef<str> {
         let url = try!(self.get_endpoint(path, query));
-        trace!("Sending HTTP {} request to {}", method, url);
-        let builder = self.session.raw_request(method, url);
-        Ok(match self.session.service_headers::<Srv>() {
-            Some(hdrs) => builder.headers(hdrs),
-            None => builder
-        })
+        let headers = self.session.service_headers::<Srv>();
+        trace!("Sending HTTP {} request to {} with {:?}",
+               method, url, headers);
+        Ok(self.session.raw_request(method, url).headers(headers))
     }
 
     /// Make a GET request.
