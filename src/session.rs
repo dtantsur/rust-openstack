@@ -345,7 +345,7 @@ pub mod test {
         let s = new_session("foo");
         let token = s.auth_token().unwrap();
         assert_eq!(token.value(), "foo");
-        assert!(token.expires_at().is_none());
+        assert!(token.valid());
     }
 
     #[test]

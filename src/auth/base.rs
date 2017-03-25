@@ -17,7 +17,6 @@
 use std::fmt;
 
 use hyper::{Client, Url};
-use time::PreciseTime;
 
 use super::super::{ApiResult, Session};
 
@@ -27,8 +26,11 @@ pub trait Token: Clone + fmt::Debug + Send + fmt::Display + Into<String> {
     /// A reference to token contents.
     fn value(&self) -> &String;
 
-    /// Expiration time (if any).
-    fn expires_at(&self) -> Option<&PreciseTime>;
+    /// Check whether the token needs refreshing right now.
+    fn needs_refresh(&self) -> bool;
+
+    /// Client-side check on whether the token is (still) valid.
+    fn valid(&self) -> bool { true }
 }
 
 /// Trait for an authentication method.

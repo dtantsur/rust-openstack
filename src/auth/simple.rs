@@ -19,7 +19,6 @@ use std::fmt;
 use hyper::{Client, Url};
 use hyper::client::IntoUrl;
 use hyper::error::ParseError;
-use time::PreciseTime;
 
 use super::super::{ApiResult, Session};
 use super::{Method, Token};
@@ -54,8 +53,8 @@ impl Token for SimpleToken {
         &self.0
     }
 
-    fn expires_at(&self) -> Option<&PreciseTime> {
-        None
+    fn needs_refresh(&self) -> bool {
+        false
     }
 }
 
@@ -119,7 +118,8 @@ pub mod test {
         let a = NoAuth::new("http://127.0.0.1:8080/v1").unwrap();
         let tok = a.get_token(&hyper::Client::new()).unwrap();
         assert_eq!(tok.value(), "no-auth");
-        assert!(tok.expires_at().is_none());
+        assert!(tok.valid());
+        assert!(!tok.needs_refresh());
     }
 
     #[test]

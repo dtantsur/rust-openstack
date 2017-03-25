@@ -25,7 +25,6 @@ log = "^0.3"
 serde = "^0.9"
 serde_derive = "^0.9"
 serde_json = "^0.9"
-time = "^0.1"
 
 hyper-rustls = { version = "^0.3", optional = true }
 
