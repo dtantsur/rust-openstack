@@ -66,8 +66,6 @@ extern crate hyper;
 extern crate hyper_rustls;
 #[macro_use]
 extern crate log;
-#[macro_use]
-extern crate mime;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;

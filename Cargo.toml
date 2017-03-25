@@ -22,7 +22,6 @@ compute = []
 
 hyper = "^0.10"
 log = "^0.3"
-mime = "^0.2"
 serde = "^0.9"
 serde_derive = "^0.9"
 serde_json = "^0.9"

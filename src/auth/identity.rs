@@ -226,9 +226,8 @@ impl Method for PasswordAuth {
                self.token_endpoint);
 
         let body = self.body.to_string().unwrap();
-        let json_type = ContentType(mime!(Application/Json));
         let resp = try!(client.post(&self.token_endpoint).body(&body)
-                        .header(json_type).send());
+                        .header(ContentType::json()).send());
         self.token_from_response(resp)
     }
 
