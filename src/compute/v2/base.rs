@@ -28,21 +28,14 @@ use super::super::super::service::{ApiVersioning, ServiceInfo, ServiceType,
                                    ServiceWrapper};
 use super::super::super::utils;
 use super::protocol::{VersionRoot, VersionsRoot};
-use super::servers::ServerManager;
 
 
 /// Service wrapper for Compute API V2.
-pub type V2ServiceWrapper<'a, Auth> = ServiceWrapper<'a, Auth, V2ServiceType>;
+pub type V2ServiceWrapper<'a, Auth> = ServiceWrapper<'a, Auth, V2>;
 
 /// Service type of Compute API V2.
 #[derive(Copy, Clone, Debug)]
-pub struct V2ServiceType;
-
-/// A thin wrapper around Compute V2 API managers.
-#[derive(Clone, Debug)]
-pub struct V2Api<'session, Auth: AuthMethod + 'session> {
-    session: &'session Session<Auth>
-}
+pub struct V2;
 
 
 header! {
@@ -77,7 +70,7 @@ fn extract_info(mut resp: Response, secure: bool) -> ApiResult<ServiceInfo> {
     Ok(info)
 }
 
-impl ServiceType for V2ServiceType {
+impl ServiceType for V2 {
     fn catalog_type() -> &'static str {
         SERVICE_TYPE
     }
@@ -100,7 +93,7 @@ impl ServiceType for V2ServiceType {
                 } else {
                     debug!("Got HTTP 404 from {}, trying parent endpoint",
                            endpoint);
-                    V2ServiceType::service_info(
+                    V2::service_info(
                         utils::url::pop(endpoint, true),
                         session)
                 }
@@ -110,34 +103,13 @@ impl ServiceType for V2ServiceType {
     }
 }
 
-impl ApiVersioning for V2ServiceType {
+impl ApiVersioning for V2 {
     fn api_version_headers(version: ApiVersion) -> ApiResult<Headers> {
         let mut hdrs = Headers::new();
         // TODO: new-style header support
         hdrs.set(XOpenStackNovaApiVersion(version));
         Ok(hdrs)
     }
-}
-
-impl<'session, Auth: AuthMethod + 'session> V2Api<'session, Auth> {
-    /// Create a new API instance.
-    pub fn new(session: &'session Session<Auth>) -> V2Api<'session, Auth> {
-        V2Api {
-            session: session
-        }
-    }
-
-    /// Create a server manager.
-    pub fn servers(&self) -> ServerManager<'session, Auth> {
-        ServerManager::new(self.session)
-    }
-}
-
-/// Shortcut for creating a new API instance.
-pub fn new<'session, Auth: AuthMethod + 'session>(session:
-                                                  &'session Session<Auth>)
-        -> V2Api<'session, Auth> {
-    V2Api::new(session)
 }
 
 
@@ -152,7 +124,7 @@ pub mod test {
     use super::super::super::super::auth::{NoAuth, SimpleToken};
     use super::super::super::super::service::ServiceType;
     use super::super::super::super::session::test;
-    use super::V2ServiceType;
+    use super::V2;
 
     // Copied from compute API reference.
     pub const ONE_VERSION_RESPONSE: &'static str = r#"
@@ -251,7 +223,7 @@ pub mod test {
     fn check_success(cli: hyper::Client, endpoint: &str) {
         let session = prepare_session(cli);
         let url = Url::parse(endpoint).unwrap();
-        let info = V2ServiceType::service_info(url, &session).unwrap();
+        let info = V2::service_info(url, &session).unwrap();
         assert_eq!(info.root_url.as_str(),
                    "http://openstack.example.com/v2.1/");
         assert_eq!(info.current_version.unwrap(), ApiVersion(2, 42));

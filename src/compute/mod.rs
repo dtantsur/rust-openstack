@@ -14,49 +14,10 @@
 
 //! Compute API support.
 //!
-//! Start with creating an [API v2](api_v2/struct.V2Api.html) instance via
-//! its [new method](api_v2/struct.V2Api.html#method.new) or via handy
-//! [v2 function](fn.v2.html). The resulting object get create specific
-//! API managers for working with different parts of API, e.g.
-//! [ServerManager](api_v2/servers/struct.ServerManager.html).
+//! Supported major API versions:
 //!
-//! Currently supported functionality:
-//!
-//! * [server management](api_v2/servers/index.html) (incomplete)
-//!
-//! # Examples
-//!
-//! ```rust,no_run
-//! use openstack;
-//!
-//! let auth = openstack::auth::Identity::from_env()
-//!     .expect("Unable to authenticate");
-//! let session = openstack::Session::new(auth);
-//! let compute = openstack::compute::v2(&session);
-//!
-//! let server_list = compute.servers().list()
-//!     .fetch().expect("Unable to fetch servers");
-//! let one_server = compute.servers()
-//!     .get("8a1c355b-2e1e-440a-8aa8-f272df72bc32")
-//!     .expect("Unable to get a server");
-//! ```
-//!
-//! Compute API supports version negotiation:
-//!
-//! ```rust,no_run
-//! use openstack;
-//!
-//! let auth = openstack::auth::Identity::from_env()
-//!     .expect("Unable to authenticate");
-//! let mut session = openstack::Session::new(auth);
-//! let version = session.negotiate_api_version::<openstack::compute::V2>(
-//!     openstack::ApiVersionRequest::Exact(openstack::ApiVersion(2, 10))
-//! ).expect("API version 2.10 is not supported");
-//!
-//! let compute = openstack::compute::v2(&session);
-//! ```
+//! * [v2 with microversions (also known as v2.1)](v2/index.html)
 
-pub mod api_v2;
+pub mod v2;
 
-pub use self::api_v2::new as v2;
-pub use self::api_v2::V2ServiceType as V2;
+pub use self::v2::V2;

@@ -13,47 +13,6 @@
 // limitations under the License.
 
 //! Server management via Compute API.
-//!
-//! # Examples
-//!
-//! Listing summaries of all servers:
-//!
-//! ```rust,no_run
-//! use openstack;
-//!
-//! let auth = openstack::auth::Identity::from_env()
-//!     .expect("Unable to authenticate");
-//! let session = openstack::Session::new(auth);
-//! let server_list = openstack::compute::v2(&session).servers().list()
-//!     .fetch().expect("Unable to fetch servers");
-//! ```
-//!
-//! Sorting servers by name:
-//!
-//! ```rust,no_run
-//! use openstack;
-//!
-//! let auth = openstack::auth::Identity::from_env()
-//!     .expect("Unable to authenticate");
-//! let session = openstack::Session::new(auth);
-//! let server_list = openstack::compute::v2(&session).servers().list()
-//!     .sort_by(openstack::Sort::Asc("access_ip_v4")).with_limit(5)
-//!     .fetch().expect("Unable to fetch servers");
-//! ```
-//!
-//! Fetching server details by its UUID:
-//!
-//! ```rust,no_run
-//! use openstack;
-//!
-//! let auth = openstack::auth::Identity::from_env()
-//!     .expect("Unable to authenticate");
-//! let session = openstack::Session::new(auth);
-//! let server = openstack::compute::v2(&session).servers()
-//!     .get("8a1c355b-2e1e-440a-8aa8-f272df72bc32")
-//!     .expect("Unable to get a server");
-//! println!("Server name is {}", server.name());
-//! ```
 
 use super::super::super::{ApiResult, Session, Sort};
 use super::super::super::auth::Method as AuthMethod;
@@ -64,7 +23,7 @@ use super::protocol;
 
 /// A request to list servers.
 #[derive(Debug, Clone)]
-pub struct ServersListRequest<'a, Auth: AuthMethod + 'a> {
+pub struct ServerListRequest<'a, Auth: AuthMethod + 'a> {
     service: V2ServiceWrapper<'a, Auth>,
     /// Marker - ID of server to start listing from.
     pub marker: Option<String>,
@@ -78,6 +37,47 @@ pub struct ServersListRequest<'a, Auth: AuthMethod + 'a> {
 }
 
 /// Server manager: working with virtual servers.
+///
+/// # Examples
+///
+/// Listing summaries of all servers:
+///
+/// ```rust,no_run
+/// use openstack;
+///
+/// let auth = openstack::auth::Identity::from_env()
+///     .expect("Unable to authenticate");
+/// let session = openstack::Session::new(auth);
+/// let server_list = openstack::compute::v2::servers(&session).list()
+///     .fetch().expect("Unable to fetch servers");
+/// ```
+///
+/// Sorting servers by name:
+///
+/// ```rust,no_run
+/// use openstack;
+///
+/// let auth = openstack::auth::Identity::from_env()
+///     .expect("Unable to authenticate");
+/// let session = openstack::Session::new(auth);
+/// let server_list = openstack::compute::v2::servers(&session).list()
+///     .sort_by(openstack::Sort::Asc("access_ip_v4")).with_limit(5)
+///     .fetch().expect("Unable to fetch servers");
+/// ```
+///
+/// Fetching server details by its UUID:
+///
+/// ```rust,no_run
+/// use openstack;
+///
+/// let auth = openstack::auth::Identity::from_env()
+///     .expect("Unable to authenticate");
+/// let session = openstack::Session::new(auth);
+/// let server = openstack::compute::v2::servers(&session)
+///     .get("8a1c355b-2e1e-440a-8aa8-f272df72bc32")
+///     .expect("Unable to get a server");
+/// println!("Server name is {}", server.name());
+/// ```
 #[derive(Debug)]
 pub struct ServerManager<'a, Auth: AuthMethod + 'a> {
     service: V2ServiceWrapper<'a, Auth>
@@ -145,10 +145,10 @@ impl<'a, Auth: AuthMethod + 'a> ServerSummary<'a, Auth> {
     }
 }
 
-impl<'a, Auth: AuthMethod + 'a> ServersListRequest<'a, Auth> {
+impl<'a, Auth: AuthMethod + 'a> ServerListRequest<'a, Auth> {
     fn new(service: V2ServiceWrapper<'a, Auth>)
-            -> ServersListRequest<'a, Auth> {
-        ServersListRequest {
+            -> ServerListRequest<'a, Auth> {
+        ServerListRequest {
             service: service,
             marker: None,
             limit: None,
@@ -158,7 +158,7 @@ impl<'a, Auth: AuthMethod + 'a> ServersListRequest<'a, Auth> {
 
     /// Add marker to the request.
     pub fn with_marker<T: Into<String>>(self, marker: T) -> Self {
-        ServersListRequest {
+        ServerListRequest {
             marker: Some(marker.into()),
             .. self
         }
@@ -166,7 +166,7 @@ impl<'a, Auth: AuthMethod + 'a> ServersListRequest<'a, Auth> {
 
     /// Add limit to the request.
     pub fn with_limit(self, limit: usize) -> Self {
-        ServersListRequest {
+        ServerListRequest {
             limit: Some(limit),
             .. self
         }
@@ -222,10 +222,10 @@ impl<'a, Auth: AuthMethod + 'a> ServerManager<'a, Auth> {
     /// List servers.
     ///
     /// Note that this method does not return results immediately, but rather
-    /// a [ServersListRequest](struct.ServersListRequest.html) object that
+    /// a [ServerListRequest](struct.ServerListRequest.html) object that
     /// you can futher specify with e.g. filtering or sorting.
-    pub fn list(&self) -> ServersListRequest<'a, Auth> {
-        ServersListRequest::new(self.service.clone())
+    pub fn list(&self) -> ServerListRequest<'a, Auth> {
+        ServerListRequest::new(self.service.clone())
     }
 
     /// Get a server.
@@ -246,6 +246,13 @@ impl<'a, Auth: AuthMethod + 'a> ServerManager<'a, Auth> {
         })
     }
 }
+
+/// Create a server manager.
+pub fn servers<'session, Auth>(session: &'session Session<Auth>)
+        -> ServerManager<'session, Auth> where Auth: AuthMethod {
+    ServerManager::new(session)
+}
+
 
 #[cfg(test)]
 pub mod test {
