@@ -74,10 +74,16 @@ impl Query {
         Query(Vec::new())
     }
 
-    /// Add items to the query.
+    /// Add an item to the query.
     pub fn push<K, V>(&mut self, param: K, value: V)
             where K: Into<String>, V: ToString {
         self.0.push((param.into(), value.to_string()))
+    }
+
+    /// Add a strng item to the query.
+    pub fn push_str<K, V>(&mut self, param: K, value: V)
+            where K: Into<String>, V: Into<String> {
+        self.0.push((param.into(), value.into()))
     }
 }
 

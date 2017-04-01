@@ -14,6 +14,8 @@
 
 //! Server management via Compute API.
 
+use std::net::{Ipv4Addr, Ipv6Addr};
+
 use super::super::super::{ApiResult, Session, Sort};
 use super::super::super::auth::Method as AuthMethod;
 use super::super::super::service::Query;
@@ -25,15 +27,8 @@ use super::protocol;
 #[derive(Debug, Clone)]
 pub struct ServerQuery<'a, Auth: AuthMethod + 'a> {
     service: V2ServiceWrapper<'a, Auth>,
-    /// Marker - ID of server to start listing from.
-    pub marker: Option<String>,
-    /// Limit on number of entities to return.
-    ///
-    /// If missing, the default number will be returned, which is not
-    /// necessary all items.
-    pub limit: Option<usize>,
-    /// Sorting fields and directions.
-    pub sort: Vec<Sort<String>>
+    /// Underlying query.
+    pub query: Query,
 }
 
 /// Server manager: working with virtual servers.
@@ -150,34 +145,105 @@ impl<'a, Auth: AuthMethod + 'a> ServerQuery<'a, Auth> {
             -> ServerQuery<'a, Auth> {
         ServerQuery {
             service: service,
-            marker: None,
-            limit: None,
-            sort: Vec::new()
+            query: Query::new(),
         }
     }
 
     /// Add marker to the request.
-    pub fn with_marker<T: Into<String>>(self, marker: T) -> Self {
-        ServerQuery {
-            marker: Some(marker.into()),
-            .. self
-        }
+    pub fn with_marker<T: Into<String>>(mut self, marker: T) -> Self {
+        self.query.push_str("marker", marker);
+        self
     }
 
     /// Add limit to the request.
-    pub fn with_limit(self, limit: usize) -> Self {
-        ServerQuery {
-            limit: Some(limit),
-            .. self
-        }
+    pub fn with_limit(mut self, limit: usize) -> Self {
+        self.query.push("limit", limit);
+        self
     }
 
     /// Add sorting to the request.
     pub fn sort_by<T: Into<String>>(mut self, sort: Sort<T>) -> Self {
-        self.sort.push(match sort {
-            Sort::Asc(v) => Sort::Asc(v.into()),
-            Sort::Desc(v) => Sort::Desc(v.into())
-        });
+        let (field, direction) = sort.into();
+        self.query.push_str("sort_key", field);
+        self.query.push("sort_dir", direction);
+        self
+    }
+
+    /// Filter by IPv4 address that should be used to access the server.
+    pub fn with_access_ip_v4(mut self, value: Ipv4Addr) -> Self {
+        self.query.push("access_ip_v4", value);
+        self
+    }
+
+    /// Filter by IPv6 address that should be used to access the server.
+    pub fn with_access_ip_v6(mut self, value: Ipv6Addr) -> Self {
+        self.query.push("access_ipv6", value);
+        self
+    }
+
+    /// Filter by availability zone.
+    pub fn with_availability_zone<T: Into<String>>(mut self, value: T) -> Self {
+        self.query.push_str("availability_zone", value);
+        self
+    }
+
+    /// Filter by flavor.
+    pub fn with_flavor<T: Into<String>>(mut self, value: T) -> Self {
+        self.query.push_str("flavor", value);
+        self
+    }
+
+    /// Filter by host name.
+    pub fn with_hostname<T: Into<String>>(mut self, value: T) -> Self {
+        self.query.push_str("hostname", value);
+        self
+    }
+
+    /// Filter by image ID.
+    pub fn with_image<T: Into<String>>(mut self, value: T) -> Self {
+        self.query.push_str("image", value);
+        self
+    }
+
+    /// Filter by an IPv4 address.
+    pub fn with_ip_v4(mut self, value: Ipv4Addr) -> Self {
+        self.query.push("ip", value);
+        self
+    }
+
+    /// Filter by an IPv6 address.
+    pub fn with_ip_v6(mut self, value: Ipv6Addr) -> Self {
+        self.query.push("ip6", value);
+        self
+    }
+
+    /// Filter by server name (a database regular expression).
+    pub fn with_name<T: Into<String>>(mut self, value: T) -> Self {
+        self.query.push_str("name", value);
+        self
+    }
+
+    /// Filter by power state.
+    pub fn with_power_state<T: Into<String>>(mut self, value: T) -> Self {
+        self.query.push_str("power_state", value);
+        self
+    }
+
+    /// Filter by project ID (also commonly known as tenant ID).
+    pub fn with_project_id<T: Into<String>>(mut self, value: T) -> Self {
+        self.query.push_str("project_id", value);
+        self
+    }
+
+    /// Filter by server status.
+    pub fn with_status<T: Into<String>>(mut self, value: T) -> Self {
+        self.query.push_str("status", value);
+        self
+    }
+
+    /// Filter by user ID.
+    pub fn with_user_id<T: Into<String>>(mut self, value: T) -> Self {
+        self.query.push_str("user_id", value);
         self
     }
 
@@ -185,20 +251,9 @@ impl<'a, Auth: AuthMethod + 'a> ServerQuery<'a, Auth> {
     #[allow(unused_results)]
     pub fn fetch(self) -> ApiResult<ServerList<'a, Auth>> {
         let service = self.service;
-        let mut query = Query::new();
-        if let Some(marker) = self.marker {
-            query.push("marker", marker);
-        }
-        if let Some(limit) = self.limit {
-            query.push("limit", limit);
-        }
-        for sort in self.sort {
-            let (field, direction) = sort.into();
-            query.push("sort_key", field);
-            query.push("sort_dir", direction);
-        }
+        let query = self.query;
 
-        trace!("Listing all compute servers");
+        trace!("Listing compute servers with {:?}", query);
         let inner: protocol::ServersRoot = try!(
             service.http_get(&["servers"], query)
         );
