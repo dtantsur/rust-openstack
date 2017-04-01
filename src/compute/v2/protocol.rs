@@ -27,6 +27,43 @@ use super::super::super::{ApiResult, ApiVersion};
 use super::super::super::ApiError::InvalidJson;
 use super::super::super::service::ServiceInfo;
 
+
+/// Available sort keys.
+#[derive(Debug, Copy, Clone)]
+pub enum ServerSortKey {
+    AccessIpv4,
+    AccessIpv6,
+    AutoDiskConfig,
+    AvailabilityZone,
+    ConfigDrive,
+    CreatedAt,
+    DisplayDescription,
+    DisplayName,
+    Host,
+    HostName,
+    ImageRef,
+    InstanceTypeId,
+    KernelId,
+    KeyName,
+    LaunchIndex,
+    LaunchedAt,
+    LockedBy,
+    Node,
+    PowerState,
+    Progress,
+    ProjectId,
+    RamdiskId,
+    RootDeviceName,
+    TaskState,
+    TerminatedAt,
+    UpdatedAt,
+    UserId,
+    Uuid,
+    VmState,
+    #[doc(hidden)]
+    __Nonexhaustive,
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Server {
     pub accessIPv4: String,
@@ -108,6 +145,43 @@ impl Version {
             root_url: endpoint,
             current_version: current_version,
             minimum_version: minimum_version
+        })
+    }
+}
+
+impl Into<String> for ServerSortKey {
+    fn into(self) -> String {
+        String::from(match self {
+            ServerSortKey::AccessIpv4 => "access_ip_v4",
+            ServerSortKey::AccessIpv6 => "access_ip_v6",
+            ServerSortKey::AutoDiskConfig => "auto_disk_config",
+            ServerSortKey::AvailabilityZone => "availability_zone",
+            ServerSortKey::ConfigDrive => "config_drive",
+            ServerSortKey::CreatedAt => "created_at",
+            ServerSortKey::DisplayDescription => "display_description",
+            ServerSortKey::DisplayName => "display_name",
+            ServerSortKey::Host => "host",
+            ServerSortKey::HostName => "hostname",
+            ServerSortKey::ImageRef => "image_ref",
+            ServerSortKey::InstanceTypeId => "instance_type_id",
+            ServerSortKey::KernelId => "kernel_id",
+            ServerSortKey::KeyName => "key_name",
+            ServerSortKey::LaunchIndex => "launch_index",
+            ServerSortKey::LaunchedAt => "launched_at",
+            ServerSortKey::LockedBy => "locked_by",
+            ServerSortKey::Node => "node",
+            ServerSortKey::PowerState => "power_state",
+            ServerSortKey::Progress => "progress",
+            ServerSortKey::ProjectId => "project_id",
+            ServerSortKey::RamdiskId => "ramdisk_id",
+            ServerSortKey::RootDeviceName => "root_device_name",
+            ServerSortKey::TaskState => "task_state",
+            ServerSortKey::TerminatedAt => "terminated_at",
+            ServerSortKey::UpdatedAt => "updated_at",
+            ServerSortKey::UserId => "user_id",
+            ServerSortKey::Uuid => "uuid",
+            ServerSortKey::VmState => "vm_state",
+            _ => unreachable!()
         })
     }
 }

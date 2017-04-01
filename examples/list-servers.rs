@@ -25,9 +25,10 @@ fn main() {
         .expect("Failed to create an identity provider from the environment");
     let session = openstack::Session::new(identity);
     let server_manager = openstack::compute::v2::servers(&session);
+    let sorting = openstack::compute::v2::ServerSortKey::AccessIpv4;
 
     let servers = server_manager.query()
-        .sort_by(openstack::Sort::Asc("access_ip_v4"))
+        .sort_by(openstack::Sort::Asc(sorting))
         .fetch().expect("Cannot list servers");
     println!("All servers:");
     for s in &servers {
@@ -35,8 +36,7 @@ fn main() {
     }
 
     let active = server_manager.query()
-        .sort_by(openstack::Sort::Asc("access_ip_v4"))
-        .with_status("ACTIVE")
+        .sort_by(openstack::Sort::Asc(sorting)).with_status("ACTIVE")
         .fetch().expect("Cannot list servers");
     println!("Only active servers:");
     for s in &active {

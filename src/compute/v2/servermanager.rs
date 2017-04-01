@@ -55,8 +55,9 @@ pub struct ServerQuery<'a, Auth: AuthMethod + 'a> {
 /// let auth = openstack::auth::Identity::from_env()
 ///     .expect("Unable to authenticate");
 /// let session = openstack::Session::new(auth);
+/// let sorting = openstack::compute::v2::ServerSortKey::AccessIpv4;
 /// let server_list = openstack::compute::v2::servers(&session).query()
-///     .sort_by(openstack::Sort::Asc("access_ip_v4")).with_limit(5)
+///     .sort_by(openstack::Sort::Asc(sorting)).with_limit(5)
 ///     .fetch().expect("Unable to fetch servers");
 /// ```
 ///
@@ -162,7 +163,7 @@ impl<'a, Auth: AuthMethod + 'a> ServerQuery<'a, Auth> {
     }
 
     /// Add sorting to the request.
-    pub fn sort_by<T: Into<String>>(mut self, sort: Sort<T>) -> Self {
+    pub fn sort_by(mut self, sort: Sort<protocol::ServerSortKey>) -> Self {
         let (field, direction) = sort.into();
         self.query.push_str("sort_key", field);
         self.query.push("sort_dir", direction);
