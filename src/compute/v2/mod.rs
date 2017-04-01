@@ -52,5 +52,5 @@ mod servermanager;
 mod protocol;
 
 pub use self::base::V2;
-pub use self::servermanager::{servers, Server, ServerList, ServerListRequest,
-                              ServerManager, ServerSummary};
+pub use self::servermanager::{servers, Server, ServerList, ServerManager,
+                              ServerQuery, ServerSummary};

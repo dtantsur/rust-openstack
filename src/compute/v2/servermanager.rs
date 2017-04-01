@@ -21,9 +21,9 @@ use super::base::V2ServiceWrapper;
 use super::protocol;
 
 
-/// A request to list servers.
+/// A query to server list.
 #[derive(Debug, Clone)]
-pub struct ServerListRequest<'a, Auth: AuthMethod + 'a> {
+pub struct ServerQuery<'a, Auth: AuthMethod + 'a> {
     service: V2ServiceWrapper<'a, Auth>,
     /// Marker - ID of server to start listing from.
     pub marker: Option<String>,
@@ -49,10 +49,10 @@ pub struct ServerListRequest<'a, Auth: AuthMethod + 'a> {
 ///     .expect("Unable to authenticate");
 /// let session = openstack::Session::new(auth);
 /// let server_list = openstack::compute::v2::servers(&session).list()
-///     .fetch().expect("Unable to fetch servers");
+///     .expect("Unable to fetch servers");
 /// ```
 ///
-/// Sorting servers by name:
+/// Sorting servers by `access_ip_v4` and getting first 5 results:
 ///
 /// ```rust,no_run
 /// use openstack;
@@ -60,7 +60,7 @@ pub struct ServerListRequest<'a, Auth: AuthMethod + 'a> {
 /// let auth = openstack::auth::Identity::from_env()
 ///     .expect("Unable to authenticate");
 /// let session = openstack::Session::new(auth);
-/// let server_list = openstack::compute::v2::servers(&session).list()
+/// let server_list = openstack::compute::v2::servers(&session).query()
 ///     .sort_by(openstack::Sort::Asc("access_ip_v4")).with_limit(5)
 ///     .fetch().expect("Unable to fetch servers");
 /// ```
@@ -145,10 +145,10 @@ impl<'a, Auth: AuthMethod + 'a> ServerSummary<'a, Auth> {
     }
 }
 
-impl<'a, Auth: AuthMethod + 'a> ServerListRequest<'a, Auth> {
+impl<'a, Auth: AuthMethod + 'a> ServerQuery<'a, Auth> {
     fn new(service: V2ServiceWrapper<'a, Auth>)
-            -> ServerListRequest<'a, Auth> {
-        ServerListRequest {
+            -> ServerQuery<'a, Auth> {
+        ServerQuery {
             service: service,
             marker: None,
             limit: None,
@@ -158,7 +158,7 @@ impl<'a, Auth: AuthMethod + 'a> ServerListRequest<'a, Auth> {
 
     /// Add marker to the request.
     pub fn with_marker<T: Into<String>>(self, marker: T) -> Self {
-        ServerListRequest {
+        ServerQuery {
             marker: Some(marker.into()),
             .. self
         }
@@ -166,7 +166,7 @@ impl<'a, Auth: AuthMethod + 'a> ServerListRequest<'a, Auth> {
 
     /// Add limit to the request.
     pub fn with_limit(self, limit: usize) -> Self {
-        ServerListRequest {
+        ServerQuery {
             limit: Some(limit),
             .. self
         }
@@ -219,13 +219,18 @@ impl<'a, Auth: AuthMethod + 'a> ServerManager<'a, Auth> {
         }
     }
 
-    /// List servers.
+    /// Run a query against server list.
     ///
     /// Note that this method does not return results immediately, but rather
-    /// a [ServerListRequest](struct.ServerListRequest.html) object that
+    /// a [ServerQuery](struct.ServerQuery.html) object that
     /// you can futher specify with e.g. filtering or sorting.
-    pub fn list(&self) -> ServerListRequest<'a, Auth> {
-        ServerListRequest::new(self.service.clone())
+    pub fn query(&self) -> ServerQuery<'a, Auth> {
+        ServerQuery::new(self.service.clone())
+    }
+
+    /// List all servers.
+    pub fn list(&self) -> ApiResult<ServerList<'a, Auth>> {
+        self.query().fetch()
     }
 
     /// Get a server.
@@ -301,7 +306,7 @@ pub mod test {
         let session = test::new_with_params(auth, cli, token, None);
 
         let mgr = ServerManager::new(&session);
-        let srvs = mgr.list().fetch().unwrap();
+        let srvs = mgr.list().unwrap();
         assert_eq!(srvs.len(), 1);
         assert_eq!(srvs[0].id(),
                    "22c91117-08de-4894-9aa9-6ef382400985");
