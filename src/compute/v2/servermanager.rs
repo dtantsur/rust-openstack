@@ -137,7 +137,7 @@ impl<'a, Auth: AuthMethod + 'a> ServerSummary<'a, Auth> {
 
     /// Get details.
     pub fn details(self) -> ApiResult<Server<'a, Auth>> {
-        ServerManager::get_server(self.service.clone(), &self.inner.id)
+        ServerManager::get_server(self.service, &self.inner.id)
     }
 }
 
@@ -261,7 +261,7 @@ impl<'a, Auth: AuthMethod + 'a> ServerQuery<'a, Auth> {
         debug!("Received {} compute servers", inner.servers.len());
         trace!("Received servers: {:?}", inner.servers);
         Ok(inner.servers.into_iter().map(|x| ServerSummary {
-            service: service.clone(),
+            service: service,
             inner: x
         }).collect())
     }
@@ -281,7 +281,7 @@ impl<'a, Auth: AuthMethod + 'a> ServerManager<'a, Auth> {
     /// a [ServerQuery](struct.ServerQuery.html) object that
     /// you can futher specify with e.g. filtering or sorting.
     pub fn query(&self) -> ServerQuery<'a, Auth> {
-        ServerQuery::new(self.service.clone())
+        ServerQuery::new(self.service)
     }
 
     /// List all servers.
@@ -291,7 +291,7 @@ impl<'a, Auth: AuthMethod + 'a> ServerManager<'a, Auth> {
 
     /// Get a server.
     pub fn get<Id: AsRef<str>>(&self, id: Id) -> ApiResult<Server<'a, Auth>> {
-        ServerManager::get_server(self.service.clone(), id.as_ref())
+        ServerManager::get_server(self.service, id.as_ref())
     }
 
     fn get_server(service: V2ServiceWrapper<'a, Auth>, id: &str)

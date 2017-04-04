@@ -128,6 +128,9 @@ impl<'session, Auth: AuthMethod + 'session, Srv: ServiceType>
 }
 
 impl<'session, Auth: AuthMethod + 'session, Srv: ServiceType>
+        Copy for ServiceWrapper<'session, Auth, Srv> {}
+
+impl<'session, Auth: AuthMethod + 'session, Srv: ServiceType>
         Clone for ServiceWrapper<'session, Auth, Srv> {
     fn clone(&self) -> ServiceWrapper<'session, Auth, Srv> {
         ServiceWrapper {
