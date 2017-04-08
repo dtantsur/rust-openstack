@@ -16,10 +16,11 @@
 
 use std::marker::PhantomData;
 
-use hyper::{Get, Url};
+use hyper::Url;
+use hyper::client::Response;
 use hyper::header::Headers;
-use hyper::method::Method;
-use serde::Deserialize;
+pub use hyper::method::Method;
+use serde::{Deserialize, Serialize};
 use serde_json;
 
 use super::{ApiResult, ApiVersion, ApiVersionRequest, Session};
@@ -118,12 +119,47 @@ impl<'session, Auth: AuthMethod + 'session, Srv: ServiceType>
         Ok(self.session.raw_request(method, url).headers(headers))
     }
 
-    /// Make a GET request.
+    /// Make an HTTP request with JSON body and JSON response.
+    pub fn json<P, Req, Res>(&self, method: Method, path: P, query: Query,
+                             body: &Req) -> ApiResult<Res>
+            where Req: Serialize, Res: Deserialize,
+            P: IntoIterator, P::Item: AsRef<str> {
+        let str_body = try!(serde_json::to_string(body));
+        let request = try!(self.request(method, path, query));
+        request.body(&str_body).fetch_json()
+    }
+
+    /// Make a GET request returning a JSON.
     pub fn get_json<P, Res>(&self, path: P, query: Query) -> ApiResult<Res>
             where Res: Deserialize, P: IntoIterator, P::Item: AsRef<str> {
-        let request = try!(self.request(Get, path, query));
-        let resp = try!(request.send());
-        serde_json::from_reader(resp).map_err(From::from)
+        try!(self.request(Method::Get, path, query)).fetch_json()
+    }
+
+    /// Make a POST request sending and returning a JSON.
+    pub fn post_json<P, Req, Res>(&self, path: P, query: Query, body: &Req)
+            -> ApiResult<Res> where Req: Serialize, Res: Deserialize,
+            P: IntoIterator, P::Item: AsRef<str> {
+        self.json(Method::Post, path, query, body)
+    }
+
+    /// Make a POST request sending and returning a JSON.
+    pub fn put_json<P, Req, Res>(&self, path: P, query: Query, body: &Req)
+            -> ApiResult<Res> where Req: Serialize, Res: Deserialize,
+            P: IntoIterator, P::Item: AsRef<str> {
+        self.json(Method::Put, path, query, body)
+    }
+
+    /// Make a PATCH request sending and returning a JSON.
+    pub fn patch_json<P, Req, Res>(&self, path: P, query: Query, body: &Req)
+            -> ApiResult<Res> where Req: Serialize, Res: Deserialize,
+            P: IntoIterator, P::Item: AsRef<str> {
+        self.json(Method::Patch, path, query, body)
+    }
+
+    /// Make a DELETE request.
+    pub fn delete<P>(&self, path: P, query: Query) -> ApiResult<Response>
+            where P: IntoIterator, P::Item: AsRef<str> {
+        try!(self.request(Method::Delete, path, query)).send()
     }
 }
 

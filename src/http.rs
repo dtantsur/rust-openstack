@@ -16,6 +16,8 @@
 
 use hyper::client::{Body, RequestBuilder, Response};
 use hyper::header::{Header, Headers, HeaderFormat};
+use serde::Deserialize;
+use serde_json;
 
 use super::{ApiError, ApiResult, Session};
 use super::auth::Method as AuthMethod;
@@ -57,6 +59,12 @@ impl<'a, Auth: AuthMethod> AuthenticatedRequestBuilder<'a, Auth> {
         let token = try!(self.parent.auth_token());
         let hdr = protocol::AuthTokenHeader(token.into());
         self.inner.header(hdr).send().map_err(From::from)
+    }
+
+    /// Send this request and parse JSON response on success.
+    pub fn fetch_json<T: Deserialize>(self) -> ApiResult<T> {
+        let resp = try!(self.send());
+        serde_json::from_reader(resp).map_err(From::from)
     }
 
     /// Add body to the request.
