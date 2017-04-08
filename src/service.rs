@@ -119,7 +119,7 @@ impl<'session, Auth: AuthMethod + 'session, Srv: ServiceType>
     }
 
     /// Make a GET request.
-    pub fn http_get<P, Res>(&self, path: P, query: Query) -> ApiResult<Res>
+    pub fn get_json<P, Res>(&self, path: P, query: Query) -> ApiResult<Res>
             where Res: Deserialize, P: IntoIterator, P::Item: AsRef<str> {
         let request = try!(self.request(Get, path, query));
         let resp = try!(request.send());

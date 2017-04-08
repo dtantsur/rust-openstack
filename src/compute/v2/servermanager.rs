@@ -256,7 +256,7 @@ impl<'a, Auth: AuthMethod + 'a> ServerQuery<'a, Auth> {
 
         trace!("Listing compute servers with {:?}", query);
         let inner: protocol::ServersRoot = try!(
-            service.http_get(&["servers"], query)
+            service.get_json(&["servers"], query)
         );
         debug!("Received {} compute servers", inner.servers.len());
         trace!("Received servers: {:?}", inner.servers);
@@ -298,7 +298,7 @@ impl<'a, Auth: AuthMethod + 'a> ServerManager<'a, Auth> {
             -> ApiResult<Server<'a, Auth>> {
         trace!("Get compute server {}", id);
         let inner: protocol::ServerRoot = try!(
-            service.http_get(&["servers", id], Query::new())
+            service.get_json(&["servers", id], Query::new())
         );
         trace!("Received {:?}", inner.server);
         Ok(Server {
