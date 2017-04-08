@@ -38,4 +38,4 @@ name = "openstack"
 path = "src/lib.rs"
 
 [badges]
-travis-ci = { repository = "https://github.com/dtantsur/rust-openstack" }
+travis-ci = { repository = "dtantsur/rust-openstack" }
