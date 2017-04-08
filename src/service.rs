@@ -17,17 +17,26 @@
 use std::marker::PhantomData;
 
 use hyper::Url;
-use hyper::client::Response;
-use hyper::header::Headers;
+use hyper::client::{Body, RequestBuilder as HyperRequestBuilder, Response};
+use hyper::header::{Header, HeaderFormat, Headers};
 pub use hyper::method::Method;
 use serde::{Deserialize, Serialize};
 use serde_json;
 
-use super::{ApiResult, ApiVersion, ApiVersionRequest, Session};
+use super::{ApiError, ApiResult, ApiVersion, ApiVersionRequest, Session};
 use super::auth::Method as AuthMethod;
-use super::http::AuthenticatedRequestBuilder;
+use super::identity::protocol::AuthTokenHeader;
 use super::utils;
 
+
+/// Request builder with authentication, error checking and JSON support.
+///
+/// Partly copies the interface of hyper::client::RequestBuilder.
+#[allow(missing_debug_implementations)]
+pub struct RequestBuilder<'a, A: AuthMethod + 'a> {
+    parent: &'a Session<A>,
+    inner: HyperRequestBuilder<'a>
+}
 
 /// Type of query parameters.
 #[derive(Clone, Debug)]
@@ -88,6 +97,69 @@ impl Query {
     }
 }
 
+impl<'a, Auth: AuthMethod> RequestBuilder<'a, Auth> {
+    /// Wrap a request builder.
+    pub fn new(inner: HyperRequestBuilder<'a>, session: &'a Session<Auth>)
+            -> RequestBuilder<'a, Auth> {
+        RequestBuilder {
+            parent: session,
+            inner: inner
+        }
+    }
+
+    /// Send this request.
+    pub fn send(self) -> ApiResult<Response> {
+        let resp = try!(self.send_unchecked());
+        if resp.status.is_success() {
+            Ok(resp)
+        } else {
+            Err(ApiError::HttpError(resp.status, resp))
+        }
+    }
+
+    /// Send this request without checking on status code.
+    pub fn send_unchecked(self) -> ApiResult<Response> {
+        let token = try!(self.parent.auth_token());
+        let hdr = AuthTokenHeader(token.into());
+        self.inner.header(hdr).send().map_err(From::from)
+    }
+
+    /// Send this request and parse JSON response on success.
+    pub fn fetch_json<T: Deserialize>(self) -> ApiResult<T> {
+        let resp = try!(self.send());
+        serde_json::from_reader(resp).map_err(From::from)
+    }
+
+    /// Add body to the request.
+    pub fn body<B: Into<Body<'a>>>(self, body: B)
+            -> RequestBuilder<'a, Auth> {
+        RequestBuilder {
+            inner: self.inner.body(body),
+            .. self
+        }
+    }
+
+    /// Add additional headers to the request.
+    pub fn headers(self, headers: Headers)
+            -> RequestBuilder<'a, Auth> {
+        RequestBuilder {
+            inner: self.inner.headers(headers),
+            .. self
+        }
+    }
+
+    /// Add an individual header to the request.
+    ///
+    /// Note that X-Auth-Token is always overwritten with a token in use.
+    pub fn header<H: Header + HeaderFormat>(self, header: H)
+            -> RequestBuilder<'a, Auth> {
+        RequestBuilder {
+            inner: self.inner.header(header),
+            .. self
+        }
+    }
+}
+
 impl<'session, Auth: AuthMethod + 'session, Srv: ServiceType>
         ServiceWrapper<'session, Auth, Srv> {
     /// Create a new wrapper for the specific service.
@@ -110,7 +182,7 @@ impl<'session, Auth: AuthMethod + 'session, Srv: ServiceType>
 
     /// Make an HTTP request to the given service.
     pub fn request<P>(&'session self, method: Method, path: P, query: Query)
-            -> ApiResult<AuthenticatedRequestBuilder<'session, Auth>>
+            -> ApiResult<RequestBuilder<'session, Auth>>
             where P: IntoIterator, P::Item: AsRef<str> {
         let url = try!(self.get_endpoint(path, query));
         let headers = self.session.service_headers::<Srv>();

@@ -24,8 +24,7 @@ use hyper::method::Method;
 
 use super::{ApiError, ApiResult, ApiVersion, ApiVersionRequest};
 use super::auth::Method as AuthMethod;
-use super::http::AuthenticatedRequestBuilder;
-use super::service::{ApiVersioning, ServiceInfo, ServiceType};
+use super::service::{ApiVersioning, RequestBuilder, ServiceInfo, ServiceType};
 use super::utils;
 
 
@@ -129,9 +128,8 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
 
     /// A wrapper for HTTP request.
     pub fn raw_request<U: IntoUrl>(&'a self, method: Method, url: U)
-            -> AuthenticatedRequestBuilder<'a, Auth> {
-        AuthenticatedRequestBuilder::new(self.client.request(method, url),
-                                         self)
+            -> RequestBuilder<'a, Auth> {
+        RequestBuilder::new(self.client.request(method, url), self)
     }
 
     /// Get service info for the given service.
