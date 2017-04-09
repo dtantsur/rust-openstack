@@ -174,7 +174,7 @@ impl<'session, Auth: AuthMethod + 'session, Srv: ServiceType>
     /// Construct and endpoint for the given service from the path.
     pub fn get_endpoint<P>(&self, path: P, query: Query) -> ApiResult<Url>
             where P: IntoIterator, P::Item: AsRef<str> {
-        let info = try!(self.session.get_service_info::<Srv>());
+        let info = try!(self.session.get_service_info::<Srv>(None));
         let mut url = utils::url::extend(info.root_url, path);
         let _ = url.query_pairs_mut().extend_pairs(query.0);
         Ok(url)

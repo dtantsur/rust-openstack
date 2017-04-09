@@ -133,9 +133,13 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
     }
 
     /// Get service info for the given service.
-    pub fn get_service_info<Srv>(&self) -> ApiResult<ServiceInfo>
-            where Srv: ServiceType {
-        let info = try!(self.get_service_info_ref::<Srv>());
+    ///
+    /// If endpoint interface is not provided, the default for this session
+    /// is used.
+    pub fn get_service_info<Srv>(&self, endpoint_interface: Option<String>)
+            -> ApiResult<ServiceInfo> where Srv: ServiceType {
+        let ep = endpoint_interface.unwrap_or(self.endpoint_interface.clone());
+        let info = try!(self.get_service_info_ref::<Srv>(ep));
         Ok(info.clone())
     }
 
@@ -149,7 +153,8 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
     pub fn negotiate_api_version<Srv>(&mut self, requested: ApiVersionRequest)
             -> ApiResult<ApiVersion>
             where Srv: ServiceType + ApiVersioning {
-        let key = try!(self.ensure_service_info::<Srv>());
+        let ep = self.endpoint_interface.clone();
+        let key = try!(self.ensure_service_info::<Srv>(ep));
         let info = self.cached_info.get_ref(&key).unwrap();
 
         match info.pick_api_version(requested.clone()) {
@@ -180,9 +185,9 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
         })
     }
 
-    fn ensure_service_info<Srv>(&self) -> ApiResult<(&'static str, String)>
-            where Srv: ServiceType {
-        let key = (Srv::catalog_type(), self.endpoint_interface.clone());
+    fn ensure_service_info<Srv>(&self, endpoint_interface: String)
+            -> ApiResult<(&'static str, String)> where Srv: ServiceType {
+        let key = (Srv::catalog_type(), endpoint_interface);
 
         try!(self.cached_info.ensure_value(key.clone(), |_| {
             self.get_catalog_endpoint(Srv::catalog_type())
@@ -200,9 +205,9 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
                                &self)
     }
 
-    fn get_service_info_ref<Srv>(&self) -> ApiResult<Ref<ServiceInfo>>
-            where Srv: ServiceType {
-        let key = try!(self.ensure_service_info::<Srv>());
+    fn get_service_info_ref<Srv>(&self, endpoint_interface: String)
+            -> ApiResult<Ref<ServiceInfo>> where Srv: ServiceType {
+        let key = try!(self.ensure_service_info::<Srv>(endpoint_interface));
         Ok(self.cached_info.get_ref(&key).unwrap())
     }
 }
