@@ -122,7 +122,11 @@ impl<'a, Auth: AuthMethod> RequestBuilder<'a, Auth> {
     pub fn send_unchecked(self) -> ApiResult<Response> {
         let token = try!(self.parent.auth_token());
         let hdr = AuthTokenHeader(token.into());
-        self.inner.header(hdr).send().map_err(From::from)
+        self.inner.header(hdr).send().map_err(From::from).map(|resp| {
+            trace!("Got {} from {} with {:?}",
+                   resp.status, resp.url, resp.headers);
+            resp
+        })
     }
 
     /// Send this request and parse JSON response on success.
