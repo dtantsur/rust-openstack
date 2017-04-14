@@ -17,6 +17,8 @@
 use std::collections::HashMap;
 use std::net::{Ipv4Addr, Ipv6Addr};
 
+use chrono::{DateTime, FixedOffset};
+
 use super::super::super::{ApiResult, Session, Sort};
 use super::super::super::auth::Method as AuthMethod;
 use super::super::super::service::Query;
@@ -114,6 +116,16 @@ impl<'a, Auth: AuthMethod + 'a> Server<'a, Auth> {
         &self.inner.addresses
     }
 
+    /// Get a reference to the availability zone.
+    pub fn availability_zone(&self) -> &String {
+        &self.inner.availability_zone
+    }
+
+    /// Get a reference to creation date and time.
+    pub fn created_at(&self) -> &DateTime<FixedOffset> {
+        &self.inner.created
+    }
+
     /// Get a reference to server unique ID.
     pub fn id(&self) -> &String {
         &self.inner.id
@@ -127,6 +139,11 @@ impl<'a, Auth: AuthMethod + 'a> Server<'a, Auth> {
     /// Get server status.
     pub fn status(&self) -> protocol::ServerStatus {
         self.inner.status
+    }
+
+    /// Get a reference to last update date and time.
+    pub fn updated_at(&self) -> &DateTime<FixedOffset> {
+        &self.inner.updated
     }
 }
 

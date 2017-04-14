@@ -20,6 +20,7 @@ compute = []
 
 [dependencies]
 
+chrono = { version = "0.3", features = ["serde"] }
 hyper = "^0.10"
 log = "^0.3"
 serde = "^0.9"

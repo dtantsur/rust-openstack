@@ -60,6 +60,7 @@
         unused_results,
         while_true)]
 
+extern crate chrono;
 #[macro_use]
 extern crate hyper;
 #[cfg(feature = "tls")]

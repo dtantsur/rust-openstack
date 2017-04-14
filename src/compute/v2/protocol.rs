@@ -21,6 +21,7 @@ use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::str::FromStr;
 
+use chrono::{DateTime, FixedOffset};
 use hyper::Url;
 use serde::{Deserialize, Deserializer};
 use serde::de::Error as DeserError;
@@ -138,11 +139,15 @@ pub struct Server {
     pub accessIPv6: Option<Ipv6Addr>,
     #[serde(default)]
     pub addresses: HashMap<String, Vec<ServerAddress>>,
+    #[serde(rename = "OS-EXT-AZ:availability_zone")]
+    pub availability_zone: String,
+    pub created: DateTime<FixedOffset>,
     pub id: String,
     pub name: String,
     #[serde(deserialize_with = "de_server_status", default)]
     pub status: ServerStatus,
     pub tenant_id: String,
+    pub updated: DateTime<FixedOffset>,
     pub user_id: String
 }
 
