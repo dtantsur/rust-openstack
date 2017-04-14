@@ -52,6 +52,7 @@ mod servermanager;
 mod protocol;
 
 pub use self::base::V2;
-pub use self::protocol::{AddressType, ServerAddress, ServerSortKey};
+pub use self::protocol::{AddressType, ServerAddress, ServerSortKey,
+                         ServerStatus};
 pub use self::servermanager::{servers, Server, ServerList, ServerManager,
                               ServerQuery, ServerSummary};

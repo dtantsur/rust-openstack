@@ -68,6 +68,39 @@ pub enum ServerSortKey {
     __Nonexhaustive,
 }
 
+
+/// All possible server statuses.
+#[derive(Debug, Copy, Clone)]
+pub enum ServerStatus {
+    Active,
+    Building,
+    Deleted,
+    Error,
+    HardRebooting,
+    Migrating,
+    Paused,
+    Rebooting,
+    Resizing,
+    RevertingResize,
+    ShutOff,
+    Suspended,
+    Rescuing,
+    Shelved,
+    ShelvedOffloaded,
+    SoftDeleted,
+    Unknown,
+    UpdatingPassword,
+    VerifyingResize,
+    #[doc(hidden)]
+    __Nonexhaustive,
+}
+
+impl Default for ServerStatus {
+    fn default() -> ServerStatus {
+        ServerStatus::Unknown
+    }
+}
+
 /// Address of a server.
 #[derive(Clone, Copy, Debug)]
 pub enum AddressType {
@@ -107,7 +140,8 @@ pub struct Server {
     pub addresses: HashMap<String, Vec<ServerAddress>>,
     pub id: String,
     pub name: String,
-    pub status: String,
+    #[serde(deserialize_with = "de_server_status", default)]
+    pub status: ServerStatus,
     pub tenant_id: String,
     pub user_id: String
 }
@@ -119,6 +153,35 @@ pub fn de_address_type<D>(des: D) -> Result<AddressType, D::Error>
         "fixed" => AddressType::Fixed,
         "floating" => AddressType::Floating,
         _ => Default::default()
+    })
+}
+
+pub fn de_server_status<D>(des: D) -> Result<ServerStatus, D::Error>
+        where D: Deserializer {
+    let s = try!(String::deserialize(des));
+    Ok(match s.as_ref() {
+        "ACTIVE" => ServerStatus::Active,
+        "BUILD" => ServerStatus::Building,
+        "DELETED" => ServerStatus::Deleted,
+        "ERROR" => ServerStatus::Error,
+        "HARD_REBOOT" => ServerStatus::HardRebooting,
+        "MIGRATING" => ServerStatus::Migrating,
+        "PAUSED" => ServerStatus::Paused,
+        "REBOOT" => ServerStatus::Rebooting,
+        "RESIZE" => ServerStatus::Resizing,
+        "REVERT_RESIZE" => ServerStatus::RevertingResize,
+        "SHUTOFF" => ServerStatus::ShutOff,
+        "SUSPENDED" => ServerStatus::Suspended,
+        "RESCUE" => ServerStatus::Rescuing,
+        "SHELVED" => ServerStatus::Shelved,
+        "SHELVED_OFFLOADED" => ServerStatus::ShelvedOffloaded,
+        "SOFT_DELETED" => ServerStatus::SoftDeleted,
+        "PASSWORD" => ServerStatus::UpdatingPassword,
+        "VERIFY_RESIZE" => ServerStatus::VerifyingResize,
+        _ => {
+            warn!("Got unknown server status {}", s);
+            Default::default()
+        }
     })
 }
 

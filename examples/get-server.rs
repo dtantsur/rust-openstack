@@ -30,7 +30,7 @@ fn main() {
     let manager = openstack::compute::v2::servers(&session);
     let server = manager.get(env::args().nth(1).expect("Provide a server ID"))
         .expect("Cannot get a server");
-    println!("ID = {}, Name = {}, Status = {}",
+    println!("ID = {}, Name = {}, Status = {:?}",
              server.id(), server.name(), server.status());
 }
 
