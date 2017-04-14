@@ -14,6 +14,7 @@
 
 //! Server management via Compute API.
 
+use std::collections::HashMap;
 use std::net::{Ipv4Addr, Ipv6Addr};
 
 use super::super::super::{ApiResult, Session, Sort};
@@ -106,6 +107,11 @@ impl<'a, Auth: AuthMethod + 'a> Server<'a, Auth> {
     /// Get a reference to IPv6 address.
     pub fn access_ipv6(&self) -> &Option<Ipv6Addr> {
         &self.inner.accessIPv6
+    }
+
+    /// Get a reference to associated addresses.
+    pub fn addresses(&self) -> &HashMap<String, Vec<protocol::ServerAddress>> {
+        &self.inner.addresses
     }
 
     /// Get a reference to server unique ID.

@@ -17,10 +17,12 @@
 #![allow(non_snake_case)]
 #![allow(missing_docs)]
 
-use std::net::{Ipv4Addr, Ipv6Addr};
+use std::collections::HashMap;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::str::FromStr;
 
 use hyper::Url;
+use serde::{Deserialize, Deserializer};
 use serde::de::Error as DeserError;
 use serde_json::Error as JsonError;
 
@@ -66,12 +68,43 @@ pub enum ServerSortKey {
     __Nonexhaustive,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+/// Address of a server.
+#[derive(Clone, Copy, Debug)]
+pub enum AddressType {
+    Fixed,
+    Floating,
+    Unknown
+}
+
+impl Default for AddressType {
+    fn default() -> AddressType {
+        AddressType::Unknown
+    }
+}
+
+/// Address of a server.
+#[derive(Clone, Debug, Deserialize)]
+pub struct ServerAddress {
+    /// IP (v4 of v6) address.
+    pub addr: IpAddr,
+    /// MAC address (if available).
+    #[serde(rename = "OS-EXT-IPS-MAC:mac_addr")]
+    pub mac_addr: Option<String>,
+    /// Address type (if known).
+    #[serde(rename = "OS-EXT-IPS:type", default,
+            deserialize_with = "de_address_type")]
+    pub addr_type: AddressType
+}
+
+
+#[derive(Clone, Debug, Deserialize)]
 pub struct Server {
     #[serde(deserialize_with = "utils::empty_as_none")]
     pub accessIPv4: Option<Ipv4Addr>,
     #[serde(deserialize_with = "utils::empty_as_none")]
     pub accessIPv6: Option<Ipv6Addr>,
+    #[serde(default)]
+    pub addresses: HashMap<String, Vec<ServerAddress>>,
     pub id: String,
     pub name: String,
     pub status: String,
@@ -79,28 +112,38 @@ pub struct Server {
     pub user_id: String
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+pub fn de_address_type<D>(des: D) -> Result<AddressType, D::Error>
+        where D: Deserializer {
+    let s = try!(String::deserialize(des));
+    Ok(match s.as_ref() {
+        "fixed" => AddressType::Fixed,
+        "floating" => AddressType::Floating,
+        _ => Default::default()
+    })
+}
+
+#[derive(Clone, Debug, Deserialize)]
 pub struct ServerSummary {
     pub id: String,
     pub name: String,
 }
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct ServersRoot {
     pub servers: Vec<ServerSummary>
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct ServerRoot {
     pub server: Server
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Link {
     pub href: String,
     pub rel: String
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Version {
     pub id: String,
     pub links: Vec<Link>,
@@ -109,12 +152,12 @@ pub struct Version {
     pub min_version: String
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct VersionsRoot {
     pub versions: Vec<Version>
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct VersionRoot {
     pub version: Version
 }
