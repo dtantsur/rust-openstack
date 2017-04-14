@@ -16,13 +16,17 @@
 
 use std::cell::{Ref, RefCell};
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::hash::Hash;
+use std::str::FromStr;
 
 use hyper::Client;
 #[cfg(feature = "tls")]
 use hyper::net::HttpsConnector;
 #[cfg(feature = "tls")]
 use hyper_rustls::TlsClient;
+use serde::{Deserialize, Deserializer};
+use serde::de::Error as DeserError;
 
 use super::ApiResult;
 
@@ -104,6 +108,18 @@ impl<K: Hash + Eq, V: Clone> MapCache<K, V> {
         } else {
             None
         }
+    }
+}
+
+/// Deserialize value where empty string equals None.
+#[allow(dead_code)]
+pub fn empty_as_none<D, T>(des: D) -> Result<Option<T>, D::Error>
+        where D: Deserializer, T: FromStr, T::Err: Display {
+    let s = try!(String::deserialize(des));
+    if &s == "" {
+        Ok(None)
+    } else {
+        FromStr::from_str(&s).map(Some).map_err(DeserError::custom)
     }
 }
 

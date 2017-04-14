@@ -99,12 +99,12 @@ pub type ServerList<'a, Auth> = Vec<ServerSummary<'a, Auth>>;
 
 impl<'a, Auth: AuthMethod + 'a> Server<'a, Auth> {
     /// Get a reference to IPv4 address.
-    pub fn access_ipv4(&self) -> &String {
+    pub fn access_ipv4(&self) -> &Option<Ipv4Addr> {
         &self.inner.accessIPv4
     }
 
     /// Get a reference to IPv6 address.
-    pub fn access_ipv6(&self) -> &String {
+    pub fn access_ipv6(&self) -> &Option<Ipv6Addr> {
         &self.inner.accessIPv6
     }
 

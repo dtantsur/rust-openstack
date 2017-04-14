@@ -17,6 +17,7 @@
 #![allow(non_snake_case)]
 #![allow(missing_docs)]
 
+use std::net::{Ipv4Addr, Ipv6Addr};
 use std::str::FromStr;
 
 use hyper::Url;
@@ -26,6 +27,7 @@ use serde_json::Error as JsonError;
 use super::super::super::{ApiResult, ApiVersion};
 use super::super::super::ApiError::InvalidJson;
 use super::super::super::service::ServiceInfo;
+use super::super::super::utils;
 
 
 /// Available sort keys.
@@ -66,8 +68,10 @@ pub enum ServerSortKey {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Server {
-    pub accessIPv4: String,
-    pub accessIPv6: String,
+    #[serde(deserialize_with = "utils::empty_as_none")]
+    pub accessIPv4: Option<Ipv4Addr>,
+    #[serde(deserialize_with = "utils::empty_as_none")]
+    pub accessIPv6: Option<Ipv6Addr>,
     pub id: String,
     pub name: String,
     pub status: String,
