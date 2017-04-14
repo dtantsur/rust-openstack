@@ -125,8 +125,8 @@ impl<'a, Auth: AuthMethod + 'a> Server<'a, Auth> {
     }
 
     /// Get server status.
-    pub fn status(&self) -> &protocol::ServerStatus {
-        &self.inner.status
+    pub fn status(&self) -> protocol::ServerStatus {
+        self.inner.status
     }
 }
 
