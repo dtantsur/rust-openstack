@@ -27,7 +27,7 @@ use super::protocol;
 
 
 /// A query to server list.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ServerQuery<'a, Auth: AuthMethod + 'a> {
     service: V2ServiceWrapper<'a, Auth>,
     /// Underlying query.
@@ -400,6 +400,41 @@ impl<'a, Auth: AuthMethod + 'a> Clone for ImageRef<'a, Auth> {
     fn clone(&self) -> ImageRef<'a, Auth> {
         ImageRef {
             server: self.server
+        }
+    }
+}
+
+impl<'a, Auth: AuthMethod + 'a> Clone for Server<'a, Auth> {
+    fn clone(&self) -> Server<'a, Auth> {
+        Server {
+            service: self.service.clone(),
+            inner: self.inner.clone()
+        }
+    }
+}
+
+impl<'a, Auth: AuthMethod + 'a> Clone for ServerManager<'a, Auth> {
+    fn clone(&self) -> ServerManager<'a, Auth> {
+        ServerManager {
+            service: self.service.clone()
+        }
+    }
+}
+
+impl<'a, Auth: AuthMethod + 'a> Clone for ServerQuery<'a, Auth> {
+    fn clone(&self) -> ServerQuery<'a, Auth> {
+        ServerQuery {
+            service: self.service.clone(),
+            query: self.query.clone()
+        }
+    }
+}
+
+impl<'a, Auth: AuthMethod + 'a> Clone for ServerSummary<'a, Auth> {
+    fn clone(&self) -> ServerSummary<'a, Auth> {
+        ServerSummary {
+            service: self.service.clone(),
+            inner: self.inner.clone()
         }
     }
 }
