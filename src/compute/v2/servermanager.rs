@@ -204,7 +204,7 @@ impl<'a, Auth: AuthMethod + 'a> ServerSummary<'a, Auth> {
     }
 
     /// Get details.
-    pub fn details(self) -> ApiResult<Server<'a, Auth>> {
+    pub fn details(&self) -> ApiResult<Server<'a, Auth>> {
         ServerManager::get_server(self.service.clone(), &self.inner.id)
     }
 }
