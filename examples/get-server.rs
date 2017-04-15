@@ -32,6 +32,8 @@ fn main() {
         .expect("Cannot get a server");
     println!("ID = {}, Name = {}, Status = {:?}",
              server.id(), server.name(), server.status());
+    println!("Links: flavor = {}, image = {}",
+             server.flavor().id(), server.image().id());
 }
 
 #[cfg(not(feature = "compute"))]

@@ -118,6 +118,12 @@ pub struct ServerAddress {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+pub struct Ref {
+    pub id: String,
+    pub links: Vec<Link>
+}
+
+#[derive(Clone, Debug, Deserialize)]
 pub struct Server {
     #[serde(deserialize_with = "utils::empty_as_none")]
     pub accessIPv4: Option<Ipv4Addr>,
@@ -128,7 +134,9 @@ pub struct Server {
     #[serde(rename = "OS-EXT-AZ:availability_zone")]
     pub availability_zone: String,
     pub created: DateTime<FixedOffset>,
+    pub flavor: Ref,
     pub id: String,
+    pub image: Ref,
     pub name: String,
     #[serde(deserialize_with = "de_server_status", default)]
     pub status: ServerStatus,

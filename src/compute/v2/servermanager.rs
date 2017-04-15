@@ -75,7 +75,8 @@ pub struct ServerQuery<'a, Auth: AuthMethod + 'a> {
 /// let server = openstack::compute::v2::servers(&session)
 ///     .get("8a1c355b-2e1e-440a-8aa8-f272df72bc32")
 ///     .expect("Unable to get a server");
-/// println!("Server name is {}", server.name());
+/// println!("Server name is {}, image ID is {}, flavor ID is {}",
+///          server.name(), server.image().id(), server.flavor().id());
 /// ```
 #[derive(Debug)]
 pub struct ServerManager<'a, Auth: AuthMethod + 'a> {
@@ -98,6 +99,18 @@ pub struct ServerSummary<'a, Auth: AuthMethod + 'a> {
 
 /// List of servers.
 pub type ServerList<'a, Auth> = Vec<ServerSummary<'a, Auth>>;
+
+/// A reference to a flavor.
+#[derive(Debug)]
+pub struct FlavorRef<'a, Auth: AuthMethod + 'a> {
+    server: &'a Server<'a, Auth>
+}
+
+/// A reference to an image.
+#[derive(Debug)]
+pub struct ImageRef<'a, Auth: AuthMethod + 'a> {
+    server: &'a Server<'a, Auth>
+}
 
 
 impl<'a, Auth: AuthMethod + 'a> Server<'a, Auth> {
@@ -126,9 +139,23 @@ impl<'a, Auth: AuthMethod + 'a> Server<'a, Auth> {
         &self.inner.created
     }
 
+    /// Get a reference to the flavor.
+    pub fn flavor(&'a self) -> FlavorRef<'a, Auth> {
+        FlavorRef {
+            server: self
+        }
+    }
+
     /// Get a reference to server unique ID.
     pub fn id(&self) -> &String {
         &self.inner.id
+    }
+
+    /// Get a reference to the image.
+    pub fn image(&'a self) -> ImageRef<'a, Auth> {
+        ImageRef {
+            server: self
+        }
     }
 
     /// Get a reference to server name.
@@ -145,6 +172,24 @@ impl<'a, Auth: AuthMethod + 'a> Server<'a, Auth> {
     pub fn updated_at(&self) -> &DateTime<FixedOffset> {
         &self.inner.updated
     }
+}
+
+impl<'a, Auth: AuthMethod + 'a> FlavorRef<'a, Auth> {
+    /// Get a reference to flavor unique ID.
+    pub fn id(&self) -> &'a String {
+        &self.server.inner.flavor.id
+    }
+
+    // TODO: pub fn details(&self) -> ApiResult<Flavor>
+}
+
+impl<'a, Auth: AuthMethod + 'a> ImageRef<'a, Auth> {
+    /// Get a reference to image unique ID.
+    pub fn id(&self) -> &'a String {
+        &self.server.inner.image.id
+    }
+
+    // TODO: #[cfg(feature = "image")] pub fn details(&self) -> ApiResult<Image>
 }
 
 impl<'a, Auth: AuthMethod + 'a> ServerSummary<'a, Auth> {
@@ -335,6 +380,28 @@ impl<'a, Auth: AuthMethod + 'a> ServerManager<'a, Auth> {
 pub fn servers<'session, Auth>(session: &'session Session<Auth>)
         -> ServerManager<'session, Auth> where Auth: AuthMethod {
     ServerManager::new(session)
+}
+
+// These implementations cannot be correctly derived
+
+impl<'a, Auth: AuthMethod + 'a> Copy for FlavorRef<'a, Auth> {}
+
+impl<'a, Auth: AuthMethod + 'a> Clone for FlavorRef<'a, Auth> {
+    fn clone(&self) -> FlavorRef<'a, Auth> {
+        FlavorRef {
+            server: self.server
+        }
+    }
+}
+
+impl<'a, Auth: AuthMethod + 'a> Copy for ImageRef<'a, Auth> {}
+
+impl<'a, Auth: AuthMethod + 'a> Clone for ImageRef<'a, Auth> {
+    fn clone(&self) -> ImageRef<'a, Auth> {
+        ImageRef {
+            server: self.server
+        }
+    }
 }
 
 
