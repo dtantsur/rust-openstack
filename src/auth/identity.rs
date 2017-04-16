@@ -23,7 +23,10 @@
 //! An attempt to create unscoped tokens always fails. This restriction may
 //! be lifted in the future.
 
+use std::collections::hash_map::DefaultHasher;
 use std::env;
+use std::fmt;
+use std::hash::{Hash, Hasher};
 use std::io::Read;
 
 use hyper::{Client, Url};
@@ -35,7 +38,8 @@ use hyper::status::StatusCode;
 
 use super::super::{ApiError, ApiResult, Session};
 use super::super::identity::{catalog, protocol};
-use super::{Method, SimpleToken};
+use super::super::utils::ValueCache;
+use super::Method;
 
 use ApiError::InvalidInput;
 
@@ -44,6 +48,25 @@ const MISSING_USER: &'static str = "User information required";
 const MISSING_SCOPE: &'static str = "Unscoped tokens are not supported now";
 const MISSING_ENV_VARS: &'static str =
     "Not all required environment variables were provided";
+
+
+/// Plain authentication token without additional details.
+#[derive(Clone)]
+struct Token(pub String);
+
+impl fmt::Debug for Token {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut hasher = DefaultHasher::new();
+        self.hash(&mut hasher);
+        write!(f, "Token {{ hash: {} }}", hasher.finish())
+    }
+}
+
+impl Hash for Token {
+    fn hash<H>(&self, state: &mut H) where H: Hasher {
+        self.0.hash(state);
+    }
+}
 
 
 /// Authentication method factory using Identity API V3.
@@ -61,7 +84,8 @@ pub struct Identity {
 pub struct PasswordAuth {
     auth_url: Url,
     body: protocol::ProjectScopedAuthRoot,
-    token_endpoint: String
+    token_endpoint: String,
+    cached_token: ValueCache<Token>
 }
 
 impl Identity {
@@ -76,7 +100,7 @@ impl Identity {
         Ok(Identity {
             auth_url: real_url,
             password_identity: None,
-            project_scope: None
+            project_scope: None,
         })
     }
 
@@ -170,12 +194,13 @@ impl PasswordAuth {
         PasswordAuth {
             auth_url: auth_url,
             body: body,
-            token_endpoint: token_endpoint
+            token_endpoint: token_endpoint,
+            cached_token: ValueCache::new(None)
         }
     }
 
     fn token_from_response(&self, mut resp: Response)
-            -> ApiResult<SimpleToken> {
+            -> ApiResult<Token> {
         let mut resp_body = String::new();
         let _ignored = try!(resp.read_to_string(&mut resp_body));
 
@@ -211,24 +236,28 @@ impl PasswordAuth {
 
         // TODO: detect expiration time
         // TODO: do something useful about the body
-        Ok(SimpleToken(token_value))
+        Ok(Token(token_value))
+    }
+
+    fn refresh_token(&self, client: &Client) -> ApiResult<()> {
+        // TODO: refresh on expiration
+        self.cached_token.ensure_value(|| {
+            debug!("Requesting a token for user {} from {}",
+                   self.body.auth.identity.password.user.name,
+                   self.token_endpoint);
+            let body = self.body.to_string().unwrap();
+            let resp = try!(client.post(&self.token_endpoint).body(&body)
+                            .header(ContentType::json()).send());
+            self.token_from_response(resp)
+        })
     }
 }
 
 impl Method for PasswordAuth {
-    // TODO: implement its own token type
-    type TokenType = SimpleToken;
-
     /// Verify authentication and generate an auth token.
-    fn get_token(&self, client: &Client) -> ApiResult<SimpleToken> {
-        debug!("Requesting a token for user {} from {}",
-               self.body.auth.identity.password.user.name,
-               self.token_endpoint);
-
-        let body = self.body.to_string().unwrap();
-        let resp = try!(client.post(&self.token_endpoint).body(&body)
-                        .header(ContentType::json()).send());
-        self.token_from_response(resp)
+    fn get_token(&self, client: &Client) -> ApiResult<String> {
+        try!(self.refresh_token(client));
+        Ok(self.cached_token.get().unwrap().0)
     }
 
     /// Get a URL for the requested service.
@@ -258,7 +287,7 @@ pub mod test {
     use hyper::status::StatusCode;
 
     use super::super::super::{ApiError, ApiResult, Session};
-    use super::super::{Method, SimpleToken};
+    use super::super::Method;
     use super::{Identity, PasswordAuth};
     use super::super::super::session::test;
 
@@ -380,7 +409,7 @@ pub mod test {
             .create().unwrap();
         let cli = hyper::Client::with_connector(MockToken::default());
         let token = id.get_token(&cli).unwrap();
-        assert_eq!(&token.to_string(), "abcdef");
+        assert_eq!(&token, "abcdef");
     }
 
     #[test]
@@ -415,8 +444,7 @@ pub mod test {
             .with_project_scope("cool project", "example.com")
             .create().unwrap();
         let cli = hyper::Client::with_connector(MockCatalog::default());
-        let token = SimpleToken(String::from("abcdef"));
-        test::new_with_params(id, cli, token, None)
+        test::new_with_params(id, cli, None)
     }
 
     fn get_endpoint(session: &Session<PasswordAuth>, service_type: &str,

@@ -447,7 +447,7 @@ pub mod test {
 
     use hyper;
 
-    use super::super::super::super::auth::{NoAuth, SimpleToken};
+    use super::super::super::super::auth::NoAuth;
     use super::super::super::super::session::test;
     use super::super::base::test as api_test;
     use super::ServerManager;
@@ -483,8 +483,7 @@ pub mod test {
     fn test_servers_list() {
         let auth = NoAuth::new("http://127.0.2.1/v2.1").unwrap();
         let cli = hyper::Client::with_connector(MockServers::default());
-        let token = SimpleToken(String::from("abcdef"));
-        let session = test::new_with_params(auth, cli, token, None);
+        let session = test::new_with_params(auth, cli, None);
 
         let mgr = ServerManager::new(&session);
         let srvs = mgr.list().unwrap();

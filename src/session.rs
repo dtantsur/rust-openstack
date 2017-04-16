@@ -40,7 +40,6 @@ use super::utils;
 pub struct Session<Auth: AuthMethod> {
     auth: Auth,
     client: Client,
-    cached_token: utils::ValueCache<Auth::TokenType>,
     cached_info: utils::MapCache<(&'static str, String), ServiceInfo>,
     api_versions: HashMap<&'static str, (ApiVersion, Headers)>,
     region: Option<String>,
@@ -59,7 +58,6 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
         Session {
             auth: auth_method,
             client: utils::http_client(),
-            cached_token: utils::ValueCache::new(None),
             cached_info: utils::MapCache::new(),
             api_versions: HashMap::new(),
             region: region,
@@ -74,7 +72,6 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
         Session {
             auth: self.auth,
             client: self.client,
-            cached_token: self.cached_token,
             // ServiceInfo has to be refreshed
             cached_info: utils::MapCache::new(),
             // Different regions potentially have different API versions?
@@ -93,7 +90,6 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
         Session {
             auth: self.auth,
             client: self.client,
-            cached_token: self.cached_token,
             // ServiceInfo has to be refreshed
             cached_info: utils::MapCache::new(),
             api_versions: self.api_versions,
@@ -103,9 +99,8 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
     }
 
     /// Get a clone of the authentication token.
-    pub fn auth_token(&self) -> ApiResult<Auth::TokenType> {
-        try!(self.refresh_token());
-        Ok(self.cached_token.get().unwrap())
+    pub fn auth_token(&self) -> ApiResult<String> {
+        self.auth.get_token(&self.client)
     }
 
     /// Get a reference to the authentication method in use.
@@ -179,12 +174,6 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
         }
     }
 
-    fn refresh_token(&self) -> ApiResult<()> {
-        self.cached_token.ensure_value(|| {
-            self.auth.get_token(&self.client)
-        })
-    }
-
     fn ensure_service_info<Srv>(&self, endpoint_interface: String)
             -> ApiResult<(&'static str, String)> where Srv: ServiceType {
         let key = (Srv::catalog_type(), endpoint_interface);
@@ -219,7 +208,6 @@ impl<Auth: AuthMethod + Clone> Clone for Session<Auth> {
             auth: self.auth.clone(),
             // NOTE: hyper::Client does not support Clone
             client: utils::http_client(),
-            cached_token: self.cached_token.clone(),
             cached_info: self.cached_info.clone(),
             api_versions: self.api_versions.clone(),
             region: self.region.clone(),
@@ -242,20 +230,18 @@ pub mod test {
     use hyper::status::StatusCode;
 
     use super::super::ApiError;
-    use super::super::auth::{Identity, Method, Token, NoAuth, SimpleToken};
+    use super::super::auth::{Identity, Method, NoAuth};
     use super::super::auth::identity::PasswordAuth;
     use super::super::utils;
     use super::Session;
 
     pub fn new_with_params<Auth: Method>(auth: Auth, cli: hyper::Client,
-                                         token: Auth::TokenType,
                                          region: Option<&str>)
             -> Session<Auth> {
         let ep = auth.default_endpoint_interface();
         Session {
             auth: auth,
             client: cli,
-            cached_token: utils::ValueCache::new(Some(token)),
             cached_info: utils::MapCache::new(),
             api_versions: HashMap::new(),
             region: region.map(From::from),
@@ -263,10 +249,9 @@ pub mod test {
         }
     }
 
-    pub fn new_session(token: &str) -> Session<NoAuth> {
-        let token = SimpleToken(String::from(token));
+    pub fn new_session() -> Session<NoAuth> {
         new_with_params(NoAuth::new("http://127.0.0.1/").unwrap(),
-                        utils::http_client(), token, None)
+                        utils::http_client(), None)
     }
 
     fn session_with_identity() -> Session<PasswordAuth> {
@@ -275,12 +260,10 @@ pub mod test {
             .with_project_scope("cool project", "example.com")
             .create().unwrap();
         let cli = hyper::Client::with_connector(MockCatalog::default());
-        let token = SimpleToken(String::from("abcdef"));
         let ep = id.default_endpoint_interface();
         Session {
             auth: id,
             client: cli,
-            cached_token: utils::ValueCache::new(Some(token)),
             cached_info: utils::MapCache::new(),
             api_versions: HashMap::new(),
             region: None,
@@ -345,17 +328,16 @@ pub mod test {
 
     #[test]
     fn test_session_new() {
-        let s = new_session("foo");
+        let s = new_session();
         let token = s.auth_token().unwrap();
-        assert_eq!(&token.to_string(), "foo");
-        assert!(!token.needs_refresh());
+        assert_eq!(&token, "no-auth");
     }
 
     #[test]
     fn test_session_raw_request() {
         let cli = hyper::Client::with_connector(MockHttp::default());
         let s = new_with_params(NoAuth::new("http://127.0.0.1/").unwrap(),
-                                cli, SimpleToken(String::from("token")), None);
+                                cli, None);
 
         let mut resp = s.raw_request(hyper::Post, "http://127.0.0.1/")
             .body("body").header(ContentLength(4u64)).send().unwrap();
@@ -369,7 +351,7 @@ pub mod test {
     fn test_session_raw_request_error() {
         let cli = hyper::Client::with_connector(MockHttp::default());
         let s = new_with_params(NoAuth::new("http://127.0.0.2/").unwrap(),
-                                cli, SimpleToken(String::from("token")), None);
+                                cli, None);
 
         let err = s.raw_request(hyper::Post, "http://127.0.0.2/")
             .body("body").header(ContentLength(4u64)).send().err().unwrap();
@@ -384,7 +366,7 @@ pub mod test {
     fn test_session_raw_request_unchecked_error() {
         let cli = hyper::Client::with_connector(MockHttp::default());
         let s = new_with_params(NoAuth::new("http://127.0.0.2/").unwrap(),
-                                cli, SimpleToken(String::from("token")), None);
+                                cli, None);
 
         let mut resp = s.raw_request(hyper::Post, "http://127.0.0.2/")
             .body("body").header(ContentLength(4u64)).send_unchecked()

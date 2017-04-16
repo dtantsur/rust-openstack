@@ -14,20 +14,12 @@
 
 //! Simple authentication methods.
 
-use std::collections::hash_map::DefaultHasher;
-use std::fmt;
-use std::hash::{Hash, Hasher};
-
 use hyper::{Client, Url};
 use hyper::client::IntoUrl;
 use hyper::error::ParseError;
 
 use super::super::{ApiResult, Session};
-use super::{Method, Token};
-
-/// Plain authentication token without additional details.
-#[derive(Clone)]
-pub struct SimpleToken(pub String);
+use super::Method;
 
 /// Authentication method that provides no authentication.
 ///
@@ -36,38 +28,6 @@ pub struct SimpleToken(pub String);
 #[derive(Clone, Debug)]
 pub struct NoAuth {
     endpoint: Url
-}
-
-impl Into<String> for SimpleToken {
-    fn into(self) -> String {
-        self.0
-    }
-}
-
-impl ToString for SimpleToken {
-    fn to_string(&self) -> String {
-        self.clone().into()
-    }
-}
-
-impl Token for SimpleToken {
-    fn needs_refresh(&self) -> bool {
-        false
-    }
-}
-
-impl fmt::Debug for SimpleToken {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut hasher = DefaultHasher::new();
-        self.hash(&mut hasher);
-        write!(f, "Token {{ hash: {} }}", hasher.finish())
-    }
-}
-
-impl Hash for SimpleToken {
-    fn hash<H>(&self, state: &mut H) where H: Hasher {
-        self.0.hash(state);
-    }
 }
 
 impl NoAuth {
@@ -84,11 +44,9 @@ impl NoAuth {
 }
 
 impl Method for NoAuth {
-    type TokenType = SimpleToken;
-
     /// Return a fake token for compliance with the protocol.
-    fn get_token(&self, _client: &Client) -> ApiResult<SimpleToken> {
-        Ok(SimpleToken(String::from("no-auth")))
+    fn get_token(&self, _client: &Client) -> ApiResult<String> {
+        Ok(String::from("no-auth"))
     }
 
     /// Get a predefined endpoint for all service types
@@ -107,7 +65,7 @@ pub mod test {
     use hyper;
 
     use super::super::super::session::test::new_session;
-    use super::super::{Method, Token};
+    use super::super::Method;
     use super::NoAuth;
 
     #[test]
@@ -129,15 +87,14 @@ pub mod test {
     fn test_noauth_get_token() {
         let a = NoAuth::new("http://127.0.0.1:8080/v1").unwrap();
         let tok = a.get_token(&hyper::Client::new()).unwrap();
-        assert_eq!(&tok.to_string(), "no-auth");
-        assert!(!tok.needs_refresh());
+        assert_eq!(&tok, "no-auth");
     }
 
     #[test]
     fn test_noauth_get_endpoint() {
         let a = NoAuth::new("http://127.0.0.1:8080/v1").unwrap();
         let e = a.get_endpoint(String::from("foobar"), None, None,
-                               &new_session("token")).unwrap();
+                               &new_session()).unwrap();
         assert_eq!(e.scheme(), "http");
         assert_eq!(e.host_str().unwrap(), "127.0.0.1");
         assert_eq!(e.port().unwrap(), 8080u16);

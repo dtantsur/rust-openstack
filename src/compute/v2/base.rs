@@ -121,7 +121,7 @@ pub mod test {
     use hyper::Url;
 
     use super::super::super::super::{ApiVersion, Session};
-    use super::super::super::super::auth::{NoAuth, SimpleToken};
+    use super::super::super::super::auth::NoAuth;
     use super::super::super::super::service::ServiceType;
     use super::super::super::super::session::test;
     use super::V2;
@@ -216,8 +216,7 @@ pub mod test {
 
     fn prepare_session(cli: hyper::Client) -> Session<NoAuth> {
         let auth = NoAuth::new("http://127.0.2.1/v2.1").unwrap();
-        let token = SimpleToken(String::from("abcdef"));
-        test::new_with_params(auth, cli, token, None)
+        test::new_with_params(auth, cli, None)
     }
 
     fn check_success(cli: hyper::Client, endpoint: &str) {

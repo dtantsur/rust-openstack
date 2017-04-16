@@ -14,18 +14,10 @@
 
 //! Base code for authentication.
 
-use std::fmt::Debug;
-
 use hyper::{Client, Url};
 
 use super::super::{ApiResult, Session};
 
-
-/// Trait for authentication token implementations.
-pub trait Token: Clone + Debug + Into<String> {
-    /// Check whether the token needs refreshing right now.
-    fn needs_refresh(&self) -> bool;
-}
 
 /// Trait for an authentication method.
 ///
@@ -33,10 +25,9 @@ pub trait Token: Clone + Debug + Into<String> {
 ///
 /// 1. get an authentication token to use when accessing services,
 /// 2. get an endpoint URL for the given service type.
+///
+/// An authentication method should cache the token as long as it's valid.
 pub trait Method: Sized {
-    /// A token type.
-    type TokenType: Token;
-
     /// Default endpoint interface that is used when none is provided.
     fn default_endpoint_interface(&self) -> String {
         String::from("public")
@@ -46,7 +37,9 @@ pub trait Method: Sized {
     fn default_region(&self) -> Option<String> { None }
 
     /// Verify authentication and generate an auth token.
-    fn get_token(&self, client: &Client) -> ApiResult<Self::TokenType>;
+    ///
+    /// An authentication method should cache the token as long as it's valid.
+    fn get_token(&self, client: &Client) -> ApiResult<String>;
 
     /// Get a URL for the requested service.
     fn get_endpoint(&self, service_type: String,
