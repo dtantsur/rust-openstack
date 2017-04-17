@@ -25,7 +25,6 @@ use serde::Deserialize;
 
 use super::{ApiError, ApiResult, ApiVersion, ApiVersionRequest};
 use super::auth::AuthMethod;
-use super::identity::protocol::AuthTokenHeader;
 use super::service::{ApiVersioning, RequestBuilder, ServiceInfo, ServiceType};
 use super::utils;
 
@@ -100,11 +99,6 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
         }
     }
 
-    /// Get a clone of the authentication token.
-    pub fn auth_token(&self) -> ApiResult<String> {
-        self.auth.get_token(&self.client)
-    }
-
     /// Get a reference to the authentication method in use.
     pub fn auth_method(&self) -> &Auth {
         &self.auth
@@ -173,9 +167,8 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
     /// Prepare an HTTP request with authentication.
     pub fn request<U>(&'a self, method: Method, url: U, headers: Headers)
             -> ApiResult<RequestBuilder<'a>> where U: IntoUrl {
-        let token = try!(self.auth.get_token(&self.client));
-        Ok(RequestBuilder::new(&self.client, method, url, headers)
-           .header(AuthTokenHeader(token)))
+        let real_url = try!(url.into_url());
+        self.auth.request(&self.client, method, real_url, headers)
     }
 
     /// Send a simple GET request.
@@ -340,13 +333,6 @@ pub mod test {
                                             X-Subject-Token: abcdef\r\n
                                             \r\n") + EXAMPLE_CATALOG_RESPONSE
     });
-
-    #[test]
-    fn test_session_new() {
-        let s = new_session();
-        let token = s.auth_token().unwrap();
-        assert_eq!(&token, "no-auth");
-    }
 
     #[test]
     fn test_session_request() {

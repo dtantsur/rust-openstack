@@ -17,8 +17,11 @@
 use hyper::{Client, Url};
 use hyper::client::IntoUrl;
 use hyper::error::ParseError;
+use hyper::header::Headers;
+use hyper::method::Method;
 
 use super::super::{ApiResult, Session};
+use super::super::service::RequestBuilder;
 use super::AuthMethod;
 
 /// Authentication method that provides no authentication.
@@ -44,9 +47,10 @@ impl NoAuth {
 }
 
 impl AuthMethod for NoAuth {
-    /// Return a fake token for compliance with the protocol.
-    fn get_token(&self, _client: &Client) -> ApiResult<String> {
-        Ok(String::from("no-auth"))
+    /// Create a request.
+    fn request<'a>(&self, client: &'a Client, method: Method, url: Url,
+                   headers: Headers) -> ApiResult<RequestBuilder<'a>> {
+        Ok(RequestBuilder::new(client, method, url, headers))
     }
 
     /// Get a predefined endpoint for all service types
@@ -61,8 +65,6 @@ impl AuthMethod for NoAuth {
 #[cfg(test)]
 pub mod test {
     #![allow(unused_results)]
-
-    use hyper;
 
     use super::super::super::session::test::new_session;
     use super::super::AuthMethod;
@@ -81,13 +83,6 @@ pub mod test {
     #[test]
     fn test_noauth_new_fail() {
         NoAuth::new("foo bar").err().unwrap();
-    }
-
-    #[test]
-    fn test_noauth_get_token() {
-        let a = NoAuth::new("http://127.0.0.1:8080/v1").unwrap();
-        let tok = a.get_token(&hyper::Client::new()).unwrap();
-        assert_eq!(&tok, "no-auth");
     }
 
     #[test]

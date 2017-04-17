@@ -15,8 +15,11 @@
 //! Base code for authentication.
 
 use hyper::{Client, Url};
+use hyper::header::Headers;
+use hyper::method::Method;
 
 use super::super::{ApiResult, Session};
+use super::super::service::RequestBuilder;
 
 
 /// Trait for an authentication method.
@@ -36,14 +39,13 @@ pub trait AuthMethod: Sized {
     /// Default region to use with this authentication (if any).
     fn default_region(&self) -> Option<String> { None }
 
-    /// Verify authentication and generate an auth token.
-    ///
-    /// An authentication method should cache the token as long as it's valid.
-    fn get_token(&self, client: &Client) -> ApiResult<String>;
-
     /// Get a URL for the requested service.
     fn get_endpoint(&self, service_type: String,
                     endpoint_interface: Option<String>,
                     region: Option<String>,
                     session: &Session<Self>) -> ApiResult<Url>;
+
+    /// Create an authenticated request.
+    fn request<'a>(&self, client: &'a Client, method: Method, url: Url,
+                   headers: Headers) -> ApiResult<RequestBuilder<'a>>;
 }

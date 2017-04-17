@@ -33,11 +33,13 @@ use hyper::{Client, Url};
 use hyper::Error as HttpClientError;
 use hyper::client::{IntoUrl, Response};
 use hyper::error::ParseError;
-use hyper::header::ContentType;
+use hyper::header::{ContentType, Headers};
+use hyper::method::Method;
 use hyper::status::StatusCode;
 
 use super::super::{ApiError, ApiResult, Session};
 use super::super::identity::{catalog, protocol};
+use super::super::service::RequestBuilder;
 use super::super::utils::ValueCache;
 use super::AuthMethod;
 
@@ -251,13 +253,20 @@ impl PasswordAuth {
             self.token_from_response(resp)
         })
     }
-}
 
-impl AuthMethod for PasswordAuth {
-    /// Verify authentication and generate an auth token.
     fn get_token(&self, client: &Client) -> ApiResult<String> {
         try!(self.refresh_token(client));
         Ok(self.cached_token.get().unwrap().0)
+    }
+}
+
+impl AuthMethod for PasswordAuth {
+    /// Create an authenticated request.
+    fn request<'a>(&self, client: &'a Client, method: Method, url: Url,
+                   headers: Headers) -> ApiResult<RequestBuilder<'a>> {
+        let token = try!(self.get_token(client));
+        Ok(RequestBuilder::new(client, method, url, headers)
+           .header(protocol::AuthTokenHeader(token)))
     }
 
     /// Get a URL for the requested service.
