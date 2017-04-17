@@ -17,7 +17,7 @@
 use hyper::Url;
 
 use super::super::{ApiError, ApiResult, Session};
-use super::super::auth::Method as AuthMethod;
+use super::super::auth::AuthMethod;
 use super::protocol::{CatalogRecord, CatalogRoot, Endpoint};
 
 /// Fetch the service catalog from a given auth URL.

@@ -23,7 +23,7 @@ use serde_json;
 
 use super::super::super::{ApiResult, ApiVersion, Session};
 use super::super::super::ApiError::{HttpError, EndpointNotFound};
-use super::super::super::auth::Method as AuthMethod;
+use super::super::super::auth::AuthMethod;
 use super::super::super::service::{ApiVersioning, ServiceInfo, ServiceType,
                                    ServiceWrapper};
 use super::super::super::utils;

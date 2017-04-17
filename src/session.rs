@@ -24,7 +24,7 @@ use hyper::method::Method;
 use serde::Deserialize;
 
 use super::{ApiError, ApiResult, ApiVersion, ApiVersionRequest};
-use super::auth::Method as AuthMethod;
+use super::auth::AuthMethod;
 use super::identity::protocol::AuthTokenHeader;
 use super::service::{ApiVersioning, RequestBuilder, ServiceInfo, ServiceType};
 use super::utils;
@@ -245,13 +245,13 @@ pub mod test {
     use hyper::status::StatusCode;
 
     use super::super::ApiError;
-    use super::super::auth::{Identity, Method, NoAuth};
+    use super::super::auth::{AuthMethod, Identity, NoAuth};
     use super::super::auth::identity::PasswordAuth;
     use super::super::utils;
     use super::Session;
 
-    pub fn new_with_params<Auth: Method>(auth: Auth, cli: hyper::Client,
-                                         region: Option<&str>)
+    pub fn new_with_params<Auth: AuthMethod>(auth: Auth, cli: hyper::Client,
+                                             region: Option<&str>)
             -> Session<Auth> {
         let ep = auth.default_endpoint_interface();
         Session {

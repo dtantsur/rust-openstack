@@ -16,8 +16,8 @@
 //!
 //! Start with creating an [Identity](struct.Identity.html) object which will
 //! guide you through setting all necessary values.
-//! [PasswordAuth](struct.PasswordAuth.html) is the actual
-//! implementation of the authentication [method](../trait.Method.html) trait.
+//! [PasswordAuth](struct.PasswordAuth.html) is the actual implementation
+//! of the authentication [method](../trait.AuthMethod.html) trait.
 //!
 //! Note that as of now, only project-scoped tokens are supported.
 //! An attempt to create unscoped tokens always fails. This restriction may
@@ -39,7 +39,7 @@ use hyper::status::StatusCode;
 use super::super::{ApiError, ApiResult, Session};
 use super::super::identity::{catalog, protocol};
 use super::super::utils::ValueCache;
-use super::Method;
+use super::AuthMethod;
 
 use ApiError::InvalidInput;
 
@@ -253,7 +253,7 @@ impl PasswordAuth {
     }
 }
 
-impl Method for PasswordAuth {
+impl AuthMethod for PasswordAuth {
     /// Verify authentication and generate an auth token.
     fn get_token(&self, client: &Client) -> ApiResult<String> {
         try!(self.refresh_token(client));
@@ -287,7 +287,7 @@ pub mod test {
     use hyper::status::StatusCode;
 
     use super::super::super::{ApiError, ApiResult, Session};
-    use super::super::Method;
+    use super::super::AuthMethod;
     use super::{Identity, PasswordAuth};
     use super::super::super::session::test;
 

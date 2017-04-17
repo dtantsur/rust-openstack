@@ -73,6 +73,6 @@ mod base;
 pub mod identity;
 mod simple;
 
-pub use self::base::Method;
+pub use self::base::AuthMethod;
 pub use self::simple::NoAuth;
 pub use self::identity::Identity;

@@ -27,7 +27,7 @@ use super::super::{ApiResult, Session};
 /// 2. get an endpoint URL for the given service type.
 ///
 /// An authentication method should cache the token as long as it's valid.
-pub trait Method: Sized {
+pub trait AuthMethod: Sized {
     /// Default endpoint interface that is used when none is provided.
     fn default_endpoint_interface(&self) -> String {
         String::from("public")

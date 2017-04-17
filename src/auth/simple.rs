@@ -19,7 +19,7 @@ use hyper::client::IntoUrl;
 use hyper::error::ParseError;
 
 use super::super::{ApiResult, Session};
-use super::Method;
+use super::AuthMethod;
 
 /// Authentication method that provides no authentication.
 ///
@@ -34,7 +34,7 @@ impl NoAuth {
     /// Create a new fake authentication method using a fixed endpoint.
     ///
     /// This endpoint will be returned in response to all get_endpoint calls
-    /// of the [Method](trait.Method.html) trait.
+    /// of the [AuthMethod](trait.AuthMethod.html) trait.
     pub fn new<U>(endpoint: U) -> Result<NoAuth, ParseError> where U: IntoUrl {
         let url = try!(endpoint.into_url());
         Ok(NoAuth {
@@ -43,7 +43,7 @@ impl NoAuth {
     }
 }
 
-impl Method for NoAuth {
+impl AuthMethod for NoAuth {
     /// Return a fake token for compliance with the protocol.
     fn get_token(&self, _client: &Client) -> ApiResult<String> {
         Ok(String::from("no-auth"))
@@ -65,7 +65,7 @@ pub mod test {
     use hyper;
 
     use super::super::super::session::test::new_session;
-    use super::super::Method;
+    use super::super::AuthMethod;
     use super::NoAuth;
 
     #[test]

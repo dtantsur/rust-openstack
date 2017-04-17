@@ -25,7 +25,7 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 
 use super::{ApiError, ApiResult, ApiVersion, ApiVersionRequest, Session};
-use super::auth::Method as AuthMethod;
+use super::auth::AuthMethod;
 use super::utils;
 
 

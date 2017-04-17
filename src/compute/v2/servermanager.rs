@@ -20,7 +20,7 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 use chrono::{DateTime, FixedOffset};
 
 use super::super::super::{ApiResult, Session, Sort};
-use super::super::super::auth::Method as AuthMethod;
+use super::super::super::auth::AuthMethod;
 use super::super::super::service::Query;
 use super::base::V2ServiceWrapper;
 use super::protocol;
