@@ -14,37 +14,32 @@
 
 //! Low-level code to work with the service catalog.
 
-use hyper::{Get, Url};
+use hyper::Url;
 
 use super::super::{ApiError, ApiResult, Session};
 use super::super::auth::Method as AuthMethod;
-use super::protocol;
-
-/// Type alias for the catalog.
-pub type Catalog = Vec<protocol::CatalogRecord>;
+use super::protocol::{CatalogRecord, CatalogRoot, Endpoint};
 
 /// Fetch the service catalog from a given auth URL.
 pub fn get_service_catalog<Auth: AuthMethod>(auth_url: &Url,
                                              session: &Session<Auth>)
-        -> ApiResult<Catalog> {
+        -> ApiResult<Vec<CatalogRecord>> {
     let url = format!("{}/v3/auth/catalog", auth_url.to_string());
     debug!("Requesting a service catalog from {}", url);
-
-    let resp = try!(session.raw_request(Get, &url).send());
-    let body = try!(protocol::CatalogRoot::from_reader(resp));
+    let body: CatalogRoot = try!(session.get_json(&url));
     Ok(body.catalog)
 }
 
 /// Find an endpoint in the service catalog.
-pub fn find_endpoint(catalog: &Catalog, service_type: String,
+pub fn find_endpoint(catalog: &Vec<CatalogRecord>, service_type: String,
                      endpoint_interface: String, region: Option<String>)
-        -> ApiResult<&protocol::Endpoint> {
+        -> ApiResult<&Endpoint> {
     let svc = match catalog.iter().find(|x| x.service_type == service_type) {
         Some(s) => s,
         None => return Err(ApiError::EndpointNotFound(service_type))
     };
 
-    let maybe_endp: Option<&protocol::Endpoint>;
+    let maybe_endp: Option<&Endpoint>;
     if let Some(rgn) = region {
         maybe_endp = svc.endpoints.iter().find(
             |x| x.interface == endpoint_interface && x.region == rgn);
@@ -61,7 +56,6 @@ pub fn find_endpoint(catalog: &Catalog, service_type: String,
 pub mod test {
     use super::super::super::{ApiError, ApiResult};
     use super::super::protocol::{CatalogRecord, Endpoint};
-    use super::Catalog;
 
     fn demo_service1() -> CatalogRecord {
         CatalogRecord {
@@ -113,11 +107,11 @@ pub mod test {
         }
     }
 
-    pub fn demo_catalog() -> Catalog {
+    pub fn demo_catalog() -> Vec<CatalogRecord> {
         vec![demo_service1(), demo_service2()]
     }
 
-    fn find_endpoint<'a>(cat: &'a Catalog,
+    fn find_endpoint<'a>(cat: &'a Vec<CatalogRecord>,
                          service_type: &str, interface_type: &str,
                          region: Option<&str>) -> ApiResult<&'a Endpoint> {
         super::find_endpoint(cat, String::from(service_type),

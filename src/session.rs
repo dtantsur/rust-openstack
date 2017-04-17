@@ -17,13 +17,15 @@
 use std::cell::Ref;
 use std::collections::HashMap;
 
-use hyper::{Client, Url};
-use hyper::client::IntoUrl;
+use hyper::{Client, Get, Url};
+use hyper::client::{IntoUrl, Response};
 use hyper::header::Headers;
 use hyper::method::Method;
+use serde::Deserialize;
 
 use super::{ApiError, ApiResult, ApiVersion, ApiVersionRequest};
 use super::auth::Method as AuthMethod;
+use super::identity::protocol::AuthTokenHeader;
 use super::service::{ApiVersioning, RequestBuilder, ServiceInfo, ServiceType};
 use super::utils;
 
@@ -121,12 +123,6 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
             .unwrap_or_else(Headers::new)
     }
 
-    /// A wrapper for HTTP request.
-    pub fn raw_request<U: IntoUrl>(&'a self, method: Method, url: U)
-            -> RequestBuilder<'a, Auth> {
-        RequestBuilder::new(self.client.request(method, url), self)
-    }
-
     /// Get service info for the given service.
     ///
     /// If endpoint interface is not provided, the default for this session
@@ -172,6 +168,26 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
                 Err(error)
             }
         }
+    }
+
+    /// Prepare an HTTP request with authentication.
+    pub fn request<U>(&'a self, method: Method, url: U, headers: Headers)
+            -> ApiResult<RequestBuilder<'a>> where U: IntoUrl {
+        let token = try!(self.auth.get_token(&self.client));
+        let req = self.client.request(method, url)
+            .headers(headers).header(AuthTokenHeader(token));
+        Ok(RequestBuilder::new(req))
+    }
+
+    /// Send a simple GET request.
+    pub fn http_get<U>(&self, url: U) -> ApiResult<Response> where U: IntoUrl {
+        try!(self.request(Get, url, Headers::new())).send()
+    }
+
+    /// Send a simple GET request returning a JSON
+    pub fn get_json<U, D>(&self, url: U) -> ApiResult<D>
+            where U: IntoUrl, D: Deserialize {
+        try!(self.request(Get, url, Headers::new())).fetch_json()
     }
 
     fn ensure_service_info<Srv>(&self, endpoint_interface: String)
@@ -226,7 +242,7 @@ pub mod test {
     use std::io::Read;
 
     use hyper;
-    use hyper::header::ContentLength;
+    use hyper::header::{ContentLength, Headers};
     use hyper::status::StatusCode;
 
     use super::super::ApiError;
@@ -334,12 +350,13 @@ pub mod test {
     }
 
     #[test]
-    fn test_session_raw_request() {
+    fn test_session_request() {
         let cli = hyper::Client::with_connector(MockHttp::default());
         let s = new_with_params(NoAuth::new("http://127.0.0.1/").unwrap(),
                                 cli, None);
 
-        let mut resp = s.raw_request(hyper::Post, "http://127.0.0.1/")
+        let mut resp = s.request(hyper::Post, "http://127.0.0.1/",
+                                 Headers::new()).unwrap()
             .body("body").header(ContentLength(4u64)).send().unwrap();
 
         let mut s = String::new();
@@ -348,12 +365,13 @@ pub mod test {
     }
 
     #[test]
-    fn test_session_raw_request_error() {
+    fn test_session_request_error() {
         let cli = hyper::Client::with_connector(MockHttp::default());
         let s = new_with_params(NoAuth::new("http://127.0.0.2/").unwrap(),
                                 cli, None);
 
-        let err = s.raw_request(hyper::Post, "http://127.0.0.2/")
+        let err = s.request(hyper::Post, "http://127.0.0.2/",
+                            Headers::new()).unwrap()
             .body("body").header(ContentLength(4u64)).send().err().unwrap();
 
         match err {
@@ -363,12 +381,13 @@ pub mod test {
     }
 
     #[test]
-    fn test_session_raw_request_unchecked_error() {
+    fn test_session_request_unchecked_error() {
         let cli = hyper::Client::with_connector(MockHttp::default());
         let s = new_with_params(NoAuth::new("http://127.0.0.2/").unwrap(),
                                 cli, None);
 
-        let mut resp = s.raw_request(hyper::Post, "http://127.0.0.2/")
+        let mut resp = s.request(hyper::Post, "http://127.0.0.2/",
+                                 Headers::new()).unwrap()
             .body("body").header(ContentLength(4u64)).send_unchecked()
             .unwrap();
 

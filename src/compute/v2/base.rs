@@ -16,7 +16,7 @@
 
 use std::io::Read;
 
-use hyper::{Get, NotFound, Url};
+use hyper::{NotFound, Url};
 use hyper::client::Response;
 use hyper::header::Headers;
 use serde_json;
@@ -80,7 +80,7 @@ impl ServiceType for V2 {
             -> ApiResult<ServiceInfo> {
         debug!("Fetching compute service info from {}", endpoint);
         let secure = endpoint.scheme() == "https";
-        let result = session.raw_request(Get, endpoint.clone()).send();
+        let result = session.http_get(endpoint.clone());
         match result {
             Ok(resp) => {
                 let result = try!(extract_info(resp, secure));

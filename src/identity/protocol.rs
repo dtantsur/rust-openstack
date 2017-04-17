@@ -16,8 +16,6 @@
 
 #![allow(missing_docs)]
 
-use std::io::Read;
-
 use serde_json;
 
 
@@ -150,12 +148,5 @@ impl ProjectScopedAuthRoot {
 
     pub fn to_string(&self) -> Result<String, serde_json::Error> {
         serde_json::to_string(&self)
-    }
-}
-
-impl CatalogRoot {
-    pub fn from_reader<R: Read>(reader: R)
-            -> Result<CatalogRoot, serde_json::Error> {
-        serde_json::from_reader(reader)
     }
 }
