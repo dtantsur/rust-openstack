@@ -174,9 +174,8 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
     pub fn request<U>(&'a self, method: Method, url: U, headers: Headers)
             -> ApiResult<RequestBuilder<'a>> where U: IntoUrl {
         let token = try!(self.auth.get_token(&self.client));
-        let req = self.client.request(method, url)
-            .headers(headers).header(AuthTokenHeader(token));
-        Ok(RequestBuilder::new(req))
+        Ok(RequestBuilder::new(&self.client, method, url, headers)
+           .header(AuthTokenHeader(token)))
     }
 
     /// Send a simple GET request.

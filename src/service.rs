@@ -16,8 +16,9 @@
 
 use std::marker::PhantomData;
 
-use hyper::Url;
-use hyper::client::{Body, RequestBuilder as HyperRequestBuilder, Response};
+use hyper::{Client, Url};
+use hyper::client::{Body, IntoUrl, RequestBuilder as HyperRequestBuilder,
+                    Response};
 use hyper::header::{Header, HeaderFormat, Headers};
 pub use hyper::method::Method;
 use serde::{Deserialize, Serialize};
@@ -98,9 +99,10 @@ impl Query {
 
 impl<'a> RequestBuilder<'a> {
     /// Wrap a request builder.
-    pub fn new(inner: HyperRequestBuilder<'a>) -> RequestBuilder<'a> {
+    pub fn new<U>(client: &'a Client, method: Method, url: U, headers: Headers)
+            -> RequestBuilder<'a> where U: IntoUrl {
         RequestBuilder {
-            inner: inner
+            inner: client.request(method, url).headers(headers)
         }
     }
 
