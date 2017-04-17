@@ -46,9 +46,4 @@ pub trait Method: Sized {
                     endpoint_interface: Option<String>,
                     region: Option<String>,
                     session: &Session<Self>) -> ApiResult<Url>;
-
-    /// Create a session with this authentication method.
-    fn session(self) -> Session<Self> {
-        Session::new(self)
-    }
 }

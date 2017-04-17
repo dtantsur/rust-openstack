@@ -23,8 +23,7 @@
 //! 1. Create a suitable authentication method.
 //! 2. Populate it with authentication data (credentials, etc).
 //! 3. Create a [Session](../session/struct.Session.html) by using the
-//!    [Session constructor](../session/struct.Session.html#method.new) or
-//!    the [session method](trait.Method.html#method.session).
+//!    [Session constructor](../session/struct.Session.html#method.new).
 //! 4. Pass a reference to the resulting session to various API managers.
 //!
 //! See [identity module](identity/index.html) for more details on how to use
