@@ -20,7 +20,8 @@ on `openstack` crate to your software to use this library.
 
 ### Examples
 
-There is an example that lists all running servers (their ID and name):
+There is an example that lists all running servers (their ID and name).
+Source your Keystone V3 credentials and run:
 
     cargo run --example list-servers
 
