@@ -55,24 +55,19 @@ pub mod test {
 
     fn demo_service1() -> CatalogRecord {
         CatalogRecord {
-            id: String::from("1"),
             service_type: String::from("identity"),
-            name: String::from("keystone"),
             endpoints: vec![
                 Endpoint {
-                    id: String::from("e1"),
                     interface: String::from("public"),
                     region: String::from("RegionOne"),
                     url: String::from("https://host.one/identity")
                 },
                 Endpoint {
-                    id: String::from("e2"),
                     interface: String::from("internal"),
                     region: String::from("RegionOne"),
                     url: String::from("http://192.168.22.1/identity")
                 },
                 Endpoint {
-                    id: String::from("e3"),
                     interface: String::from("public"),
                     region: String::from("RegionTwo"),
                     url: String::from("https://host.two:5000")
@@ -83,18 +78,14 @@ pub mod test {
 
     fn demo_service2() -> CatalogRecord {
         CatalogRecord {
-            id: String::from("2"),
             service_type: String::from("baremetal"),
-            name: String::from("ironic"),
             endpoints: vec![
                 Endpoint {
-                    id: String::from("e4"),
                     interface: String::from("public"),
                     region: String::from("RegionOne"),
                     url: String::from("https://host.one/baremetal")
                 },
                 Endpoint {
-                    id: String::from("e5"),
                     interface: String::from("public"),
                     region: String::from("RegionTwo"),
                     url: String::from("https://host.two:6385")
@@ -120,15 +111,12 @@ pub mod test {
         let cat = demo_catalog();
 
         let e1 = find_endpoint(&cat, "identity", "public", None).unwrap();
-        assert_eq!(&e1.id, "e1");
         assert_eq!(&e1.url, "https://host.one/identity");
 
         let e2 = find_endpoint(&cat, "identity", "internal", None).unwrap();
-        assert_eq!(&e2.id, "e2");
         assert_eq!(&e2.url, "http://192.168.22.1/identity");
 
         let e3 = find_endpoint(&cat, "baremetal", "public", None).unwrap();
-        assert_eq!(&e3.id, "e4");
         assert_eq!(&e3.url, "https://host.one/baremetal");
     }
 
@@ -138,17 +126,14 @@ pub mod test {
 
         let e1 = find_endpoint(&cat, "identity", "public",
                                Some("RegionTwo")).unwrap();
-        assert_eq!(&e1.id, "e3");
         assert_eq!(&e1.url, "https://host.two:5000");
 
         let e2 = find_endpoint(&cat, "identity", "internal",
                                Some("RegionOne")).unwrap();
-        assert_eq!(&e2.id, "e2");
         assert_eq!(&e2.url, "http://192.168.22.1/identity");
 
         let e3 = find_endpoint(&cat, "baremetal", "public",
                                Some("RegionTwo")).unwrap();
-        assert_eq!(&e3.id, "e5");
         assert_eq!(&e3.url, "https://host.two:6385");
     }
 

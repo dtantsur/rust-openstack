@@ -71,7 +71,6 @@ pub struct ProjectScopedAuthRoot {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Endpoint {
-    pub id: String,
     pub interface: String,
     pub region: String,
     pub url: String
@@ -79,10 +78,8 @@ pub struct Endpoint {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CatalogRecord {
-    pub id: String,
     #[serde(rename = "type")]
     pub service_type: String,
-    pub name: String,
     pub endpoints: Vec<Endpoint>
 }
 
