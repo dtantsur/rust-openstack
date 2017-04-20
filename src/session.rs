@@ -239,7 +239,7 @@ pub mod test {
 
     use super::super::ApiError;
     use super::super::auth::{AuthMethod, Identity, NoAuth};
-    use super::super::auth::identity::PasswordAuth;
+    use super::super::auth::PasswordAuth;
     use super::super::utils;
     use super::Session;
 

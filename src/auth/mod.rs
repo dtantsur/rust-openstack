@@ -70,9 +70,9 @@
 //! * Only Identity API v3 is supported and planned for support.
 
 mod base;
-pub mod identity;
+mod identity;
 mod simple;
 
 pub use self::base::AuthMethod;
 pub use self::simple::NoAuth;
-pub use self::identity::Identity;
+pub use self::identity::{Identity, PasswordAuth};
