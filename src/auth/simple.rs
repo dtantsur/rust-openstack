@@ -20,7 +20,7 @@ use hyper::error::ParseError;
 use hyper::header::Headers;
 use hyper::method::Method;
 
-use super::super::{ApiResult, Session};
+use super::super::ApiResult;
 use super::super::service::RequestBuilder;
 use super::AuthMethod;
 
@@ -54,10 +54,10 @@ impl AuthMethod for NoAuth {
     }
 
     /// Get a predefined endpoint for all service types
-    fn get_endpoint(&self, _service_type: String,
+    fn get_endpoint(&self, _client: &Client,
+                    _service_type: String,
                     _endpoint_interface: Option<String>,
-                    _region: Option<String>,
-                    _client: &Session<NoAuth>) -> ApiResult<Url> {
+                    _region: Option<String>) -> ApiResult<Url> {
         Ok(self.endpoint.clone())
     }
 }
@@ -66,7 +66,7 @@ impl AuthMethod for NoAuth {
 pub mod test {
     #![allow(unused_results)]
 
-    use super::super::super::session::test::new_session;
+    use super::super::super::utils;
     use super::super::AuthMethod;
     use super::NoAuth;
 
@@ -88,8 +88,8 @@ pub mod test {
     #[test]
     fn test_noauth_get_endpoint() {
         let a = NoAuth::new("http://127.0.0.1:8080/v1").unwrap();
-        let e = a.get_endpoint(String::from("foobar"), None, None,
-                               &new_session()).unwrap();
+        let e = a.get_endpoint(&utils::http_client(),
+                               String::from("foobar"), None, None).unwrap();
         assert_eq!(e.scheme(), "http");
         assert_eq!(e.host_str().unwrap(), "127.0.0.1");
         assert_eq!(e.port().unwrap(), 8080u16);

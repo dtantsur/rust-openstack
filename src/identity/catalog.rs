@@ -16,18 +16,14 @@
 
 use hyper::Url;
 
-use super::super::{ApiError, ApiResult, Session};
-use super::super::auth::AuthMethod;
-use super::protocol::{CatalogRecord, CatalogRoot, Endpoint};
+use super::super::{ApiError, ApiResult};
+use super::super::utils;
+use super::protocol::{CatalogRecord, Endpoint};
 
-/// Fetch the service catalog from a given auth URL.
-pub fn get_service_catalog<Auth: AuthMethod>(auth_url: &Url,
-                                             session: &Session<Auth>)
-        -> ApiResult<Vec<CatalogRecord>> {
-    let url = format!("{}/v3/auth/catalog", auth_url.to_string());
-    debug!("Requesting a service catalog from {}", url);
-    let body: CatalogRoot = try!(session.get_json(&url));
-    Ok(body.catalog)
+
+/// Build a catalog URI.
+pub fn get_url(auth_url: Url) -> Url {
+    utils::url::extend(auth_url, &["v3", "auth", "catalog"])
 }
 
 /// Find an endpoint in the service catalog.

@@ -29,7 +29,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::io::Read;
 
-use hyper::{Client, Url};
+use hyper::{Client, Get, Url};
 use hyper::Error as HttpClientError;
 use hyper::client::{IntoUrl, Response};
 use hyper::error::ParseError;
@@ -37,7 +37,7 @@ use hyper::header::{ContentType, Headers};
 use hyper::method::Method;
 use hyper::status::StatusCode;
 
-use super::super::{ApiError, ApiResult, Session};
+use super::super::{ApiError, ApiResult};
 use super::super::identity::{catalog, protocol};
 use super::super::service::RequestBuilder;
 use super::super::utils::ValueCache;
@@ -258,6 +258,17 @@ impl PasswordAuth {
         try!(self.refresh_token(client));
         Ok(self.cached_token.get().unwrap().0)
     }
+
+    fn get_catalog(&self, client: &Client)
+            -> ApiResult<Vec<protocol::CatalogRecord>> {
+        // TODO: catalog caching
+        let catalog_url = catalog::get_url(self.auth_url.clone());
+        trace!("Requesting a service catalog from {}", catalog_url);
+        let req = try!(self.request(client, Get, catalog_url, Headers::new()));
+        let body: protocol::CatalogRoot = try!(req.fetch_json());
+        trace!("Received catalog: {:?}", body.catalog);
+        Ok(body.catalog)
+    }
 }
 
 impl AuthMethod for PasswordAuth {
@@ -270,16 +281,15 @@ impl AuthMethod for PasswordAuth {
     }
 
     /// Get a URL for the requested service.
-    fn get_endpoint(&self, service_type: String,
+    fn get_endpoint(&self, client: &Client,
+                    service_type: String,
                     endpoint_interface: Option<String>,
-                    region: Option<String>,
-                    client: &Session<PasswordAuth>)
-            -> ApiResult<Url> {
+                    region: Option<String>) -> ApiResult<Url> {
         let real_interface = endpoint_interface.unwrap_or(
             self.default_endpoint_interface());
         debug!("Requesting a catalog endpoint for service '{}', interface \
                '{}' from region {:?}", service_type, real_interface, region);
-        let cat = try!(catalog::get_service_catalog(&self.auth_url, client));
+        let cat = try!(self.get_catalog(client));
         let endp = try!(catalog::find_endpoint(&cat, service_type,
                                                real_interface, region));
         info!("Received {:?}", endp);
@@ -295,10 +305,9 @@ pub mod test {
     use hyper::{self, Url};
     use hyper::status::StatusCode;
 
-    use super::super::super::{ApiError, ApiResult, Session};
+    use super::super::super::{ApiError, ApiResult};
     use super::super::AuthMethod;
-    use super::{Identity, PasswordAuth};
-    use super::super::super::session::test;
+    use super::Identity;
 
     mock_connector!(MockToken {
         "http://127.0.1.1" => "HTTP/1.1 200 OK\r\n\
@@ -447,43 +456,32 @@ pub mod test {
         };
     }
 
-    fn new_session() -> Session<PasswordAuth> {
+    fn get_endpoint(service_type: &str, interface_endpoint: Option<&str>,
+                    region: Option<&str>) -> ApiResult<Url> {
         let id = Identity::new("http://127.0.2.1").unwrap()
             .with_user("user", "pa$$w0rd", "example.com")
             .with_project_scope("cool project", "example.com")
             .create().unwrap();
         let cli = hyper::Client::with_connector(MockCatalog::default());
-        test::new_with_params(id, cli, None)
-    }
-
-    fn get_endpoint(session: &Session<PasswordAuth>, service_type: &str,
-                    interface_endpoint: Option<&str>, region: Option<&str>)
-            -> ApiResult<Url> {
-        session.auth_method().get_endpoint(
-            String::from(service_type),
-            interface_endpoint.map(String::from),
-            region.map(String::from),
-            session)
+        id.get_endpoint(&cli, String::from(service_type),
+                        interface_endpoint.map(String::from),
+                        region.map(String::from))
     }
 
     #[test]
     fn test_identity_get_endpoint() {
-        let session = new_session();
-
-        let e1 = get_endpoint(&session, "identity", None, None).unwrap();
+        let e1 = get_endpoint("identity", None, None).unwrap();
         assert_eq!(&e1.to_string(), "http://localhost:5000/");
-        let e2 = get_endpoint(&session, "identity", Some("admin"), None)
-            .unwrap();
+        let e2 = get_endpoint("identity", Some("admin"), None).unwrap();
         assert_eq!(&e2.to_string(), "http://localhost:35357/");
 
-        match get_endpoint(&session, "foo", None, None).err().unwrap() {
+        match get_endpoint("foo", None, None).err().unwrap() {
             ApiError::EndpointNotFound(ref endp) =>
                 assert_eq!(endp, "foo"),
             other => panic!("Unexpected {}", other)
         };
 
-        match get_endpoint(&session, "identity", Some("unknown"), None)
-                .err().unwrap() {
+        match get_endpoint("identity", Some("unknown"), None).err().unwrap() {
             ApiError::EndpointNotFound(ref endp) =>
                 assert_eq!(endp, "identity"),
             other => panic!("Unexpected {}", other)
@@ -492,13 +490,11 @@ pub mod test {
 
     #[test]
     fn test_identity_get_endpoint_with_region() {
-        let session = new_session();
-
-        let e1 = get_endpoint(&session, "identity", Some("admin"),
+        let e1 = get_endpoint("identity", Some("admin"),
                               Some("RegionOne")).unwrap();
         assert_eq!(&e1.to_string(), "http://localhost:35357/");
 
-        match get_endpoint(&session, "identity", None,
+        match get_endpoint("identity", None,
                            Some("unknown")).err().unwrap() {
             ApiError::EndpointNotFound(ref endp) =>
                 assert_eq!(endp, "identity"),

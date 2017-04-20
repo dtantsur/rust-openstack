@@ -196,10 +196,10 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
 
     fn get_catalog_endpoint<S>(&self, service_type: S) -> ApiResult<Url>
             where S: Into<String> {
-        self.auth.get_endpoint(service_type.into(),
+        self.auth.get_endpoint(&self.client,
+                               service_type.into(),
                                Some(self.endpoint_interface.clone()),
-                               self.region.clone(),
-                               &self)
+                               self.region.clone())
     }
 
     fn get_service_info_ref<Srv>(&self, endpoint_interface: String)
@@ -255,11 +255,6 @@ pub mod test {
             region: region.map(From::from),
             endpoint_interface: ep
         }
-    }
-
-    pub fn new_session() -> Session<NoAuth> {
-        new_with_params(NoAuth::new("http://127.0.0.1/").unwrap(),
-                        utils::http_client(), None)
     }
 
     fn session_with_identity() -> Session<PasswordAuth> {

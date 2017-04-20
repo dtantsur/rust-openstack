@@ -18,7 +18,7 @@ use hyper::{Client, Url};
 use hyper::header::Headers;
 use hyper::method::Method;
 
-use super::super::{ApiResult, Session};
+use super::super::ApiResult;
 use super::super::service::RequestBuilder;
 
 
@@ -30,7 +30,7 @@ use super::super::service::RequestBuilder;
 /// 2. get an endpoint URL for the given service type.
 ///
 /// An authentication method should cache the token as long as it's valid.
-pub trait AuthMethod: Sized {
+pub trait AuthMethod {
     /// Default endpoint interface that is used when none is provided.
     fn default_endpoint_interface(&self) -> String {
         String::from("public")
@@ -40,10 +40,10 @@ pub trait AuthMethod: Sized {
     fn default_region(&self) -> Option<String> { None }
 
     /// Get a URL for the requested service.
-    fn get_endpoint(&self, service_type: String,
+    fn get_endpoint(&self, client: &Client,
+                    service_type: String,
                     endpoint_interface: Option<String>,
-                    region: Option<String>,
-                    session: &Session<Self>) -> ApiResult<Url>;
+                    region: Option<String>) -> ApiResult<Url>;
 
     /// Create an authenticated request.
     fn request<'a>(&self, client: &'a Client, method: Method, url: Url,
