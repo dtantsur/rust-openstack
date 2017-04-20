@@ -13,15 +13,6 @@
 // limitations under the License.
 
 //! OpenStack Identity V3 API support for access tokens.
-//!
-//! Start with creating an [Identity](struct.Identity.html) object which will
-//! guide you through setting all necessary values.
-//! [PasswordAuth](struct.PasswordAuth.html) is the actual implementation
-//! of the authentication [method](../trait.AuthMethod.html) trait.
-//!
-//! Note that as of now, only project-scoped tokens are supported.
-//! An attempt to create unscoped tokens always fails. This restriction may
-//! be lifted in the future.
 
 use std::collections::hash_map::DefaultHasher;
 use std::env;
