@@ -2,7 +2,7 @@
 
 name = "openstack"
 description = "OpenStack SDK for Rust"
-version = "0.0.13"
+version = "0.0.14"
 authors = ["Dmitry Tantsur <divius.inside@gmail.com>"]
 homepage = "https://dtantsur.github.io/rust-openstack/openstack/"
 repository = "https://github.com/dtantsur/rust-openstack"
