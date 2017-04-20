@@ -38,8 +38,8 @@ use super::utils;
 ///
 /// Finally, the session object is responsible for API version negotiation.
 #[derive(Debug)]
-pub struct Session<Auth: AuthMethod> {
-    auth: Auth,
+pub struct Session {
+    auth: Box<AuthMethod>,
     client: Client,
     cached_info: utils::MapCache<(&'static str, String), ServiceInfo>,
     api_versions: HashMap<&'static str, (ApiVersion, Headers)>,
@@ -48,16 +48,16 @@ pub struct Session<Auth: AuthMethod> {
 }
 
 
-impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
+impl Session {
     /// Create a new session with a given authentication plugin.
     ///
     /// The resulting session will use the default endpoint interface (usually,
     /// public) and the first available region.
-    pub fn new(auth_method: Auth) -> Session<Auth> {
+    pub fn new<Auth: AuthMethod + 'static>(auth_method: Auth) -> Session {
         let ep = auth_method.default_endpoint_interface();
         let region = auth_method.default_region();
         Session {
-            auth: auth_method,
+            auth: Box::new(auth_method),
             client: utils::http_client(),
             cached_info: utils::MapCache::new(),
             api_versions: HashMap::new(),
@@ -69,7 +69,7 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
     /// Convert this session into one using the given region.
     ///
     /// Negotiated API versions are reset to their default values.
-    pub fn with_region<S: Into<String>>(self, region: S) -> Session<Auth> {
+    pub fn with_region<S: Into<String>>(self, region: S) -> Session {
         Session {
             auth: self.auth,
             client: self.client,
@@ -85,9 +85,8 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
     /// Convert this session into one using the given endpoint interface.
     ///
     /// Negotiated API versions are kept in the new object.
-    pub fn with_endpoint_interface<S: Into<String>>(self,
-                                                    endpoint_interface: S)
-            -> Session<Auth> {
+    pub fn with_endpoint_interface<S>(self, endpoint_interface: S)
+            -> Session where S: Into<String> {
         Session {
             auth: self.auth,
             client: self.client,
@@ -100,8 +99,8 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
     }
 
     /// Get a reference to the authentication method in use.
-    pub fn auth_method(&self) -> &Auth {
-        &self.auth
+    pub fn auth_method(&self) -> &AuthMethod {
+        self.auth.as_ref()
     }
 
     /// Get an API version used for given service.
@@ -165,7 +164,7 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
     }
 
     /// Prepare an HTTP request with authentication.
-    pub fn request<U>(&'a self, method: Method, url: U, headers: Headers)
+    pub fn request<'a, U>(&'a self, method: Method, url: U, headers: Headers)
             -> ApiResult<RequestBuilder<'a>> where U: IntoUrl {
         let real_url = try!(url.into_url());
         self.auth.request(&self.client, method, real_url, headers)
@@ -210,8 +209,8 @@ impl<'a, Auth: AuthMethod + 'a> Session<Auth> {
 }
 
 
-impl<Auth: AuthMethod + Clone> Clone for Session<Auth> {
-    fn clone(&self) -> Session<Auth> {
+impl Clone for Session {
+    fn clone(&self) -> Session {
         Session {
             auth: self.auth.clone(),
             // NOTE: hyper::Client does not support Clone
@@ -239,16 +238,15 @@ pub mod test {
 
     use super::super::ApiError;
     use super::super::auth::{AuthMethod, Identity, NoAuth};
-    use super::super::auth::PasswordAuth;
     use super::super::utils;
     use super::Session;
 
-    pub fn new_with_params<Auth: AuthMethod>(auth: Auth, cli: hyper::Client,
-                                             region: Option<&str>)
-            -> Session<Auth> {
+    pub fn new_with_params<Auth>(auth: Auth, cli: hyper::Client,
+                                 region: Option<&str>)
+            -> Session where Auth: AuthMethod + 'static {
         let ep = auth.default_endpoint_interface();
         Session {
-            auth: auth,
+            auth: Box::new(auth),
             client: cli,
             cached_info: utils::MapCache::new(),
             api_versions: HashMap::new(),
@@ -257,7 +255,7 @@ pub mod test {
         }
     }
 
-    fn session_with_identity() -> Session<PasswordAuth> {
+    fn session_with_identity() -> Session {
         let id = Identity::new("http://127.0.2.1").unwrap()
             .with_user("user", "pa$$w0rd", "example.com")
             .with_project_scope("cool project", "example.com")
@@ -265,7 +263,7 @@ pub mod test {
         let cli = hyper::Client::with_connector(MockCatalog::default());
         let ep = id.default_endpoint_interface();
         Session {
-            auth: id,
+            auth: Box::new(id),
             client: cli,
             cached_info: utils::MapCache::new(),
             api_versions: HashMap::new(),

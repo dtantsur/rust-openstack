@@ -23,7 +23,6 @@ use serde_json;
 
 use super::super::super::{ApiResult, ApiVersion, Session};
 use super::super::super::ApiError::{HttpError, EndpointNotFound};
-use super::super::super::auth::AuthMethod;
 use super::super::super::service::{ApiVersioning, ServiceInfo, ServiceType,
                                    ServiceWrapper};
 use super::super::super::utils;
@@ -31,7 +30,7 @@ use super::protocol::{VersionRoot, VersionsRoot};
 
 
 /// Service wrapper for Compute API V2.
-pub type V2ServiceWrapper<'a, Auth> = ServiceWrapper<'a, Auth, V2>;
+pub type V2ServiceWrapper<'session> = ServiceWrapper<'session, V2>;
 
 /// Service type of Compute API V2.
 #[derive(Copy, Clone, Debug)]
@@ -75,8 +74,7 @@ impl ServiceType for V2 {
         SERVICE_TYPE
     }
 
-    fn service_info<Auth: AuthMethod>(endpoint: Url,
-                                      session: &Session<Auth>)
+    fn service_info(endpoint: Url, session: &Session)
             -> ApiResult<ServiceInfo> {
         debug!("Fetching compute service info from {}", endpoint);
         let secure = endpoint.scheme() == "https";
@@ -214,7 +212,7 @@ pub mod test {
         String::from("HTTP/1.1 404 NOT FOUND\r\nServer: Mock.Mock\r\n\r\n{}")
     });
 
-    fn prepare_session(cli: hyper::Client) -> Session<NoAuth> {
+    fn prepare_session(cli: hyper::Client) -> Session {
         let auth = NoAuth::new("http://127.0.2.1/v2.1").unwrap();
         test::new_with_params(auth, cli, None)
     }

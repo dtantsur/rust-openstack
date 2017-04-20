@@ -25,7 +25,6 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 
 use super::{ApiError, ApiResult, ApiVersion, ApiVersionRequest, Session};
-use super::auth::AuthMethod;
 use super::utils;
 
 
@@ -58,7 +57,7 @@ pub trait ServiceType {
     fn catalog_type() -> &'static str;
 
     /// Get basic service information.
-    fn service_info<Auth: AuthMethod>(endpoint: Url, session: &Session<Auth>)
+    fn service_info(endpoint: Url, session: &Session)
         -> ApiResult<ServiceInfo>;
 }
 
@@ -70,9 +69,8 @@ pub trait ApiVersioning {
 
 /// A service-specific wrapper around Session.
 #[derive(Debug)]
-pub struct ServiceWrapper<'session, Auth: AuthMethod + 'session,
-                          Srv: ServiceType> {
-    session: &'session Session<Auth>,
+pub struct ServiceWrapper<'session, Srv: ServiceType> {
+    session: &'session Session,
     service_type: PhantomData<Srv>,
     endpoint_interface: Option<String>
 }
@@ -147,11 +145,9 @@ impl<'a> RequestBuilder<'a> {
     }
 }
 
-impl<'session, Auth: AuthMethod + 'session, Srv: ServiceType>
-        ServiceWrapper<'session, Auth, Srv> {
+impl<'session, Srv: ServiceType> ServiceWrapper<'session, Srv> {
     /// Create a new wrapper for the specific service.
-    pub fn new(session: &'session Session<Auth>)
-            -> ServiceWrapper<'session, Auth, Srv> {
+    pub fn new(session: &'session Session) -> ServiceWrapper<'session, Srv> {
         ServiceWrapper {
             session: session,
             service_type: PhantomData,
@@ -161,7 +157,7 @@ impl<'session, Auth: AuthMethod + 'session, Srv: ServiceType>
 
     /// Change the endpoint interface used for this wrapper.
     pub fn with_endpoint_interface(self, endpoint_interface: String)
-            -> ServiceWrapper<'session, Auth, Srv> {
+            -> ServiceWrapper<'session, Srv> {
         ServiceWrapper {
             endpoint_interface: Some(endpoint_interface),
             .. self
@@ -233,9 +229,8 @@ impl<'session, Auth: AuthMethod + 'session, Srv: ServiceType>
     }
 }
 
-impl<'session, Auth: AuthMethod + 'session, Srv: ServiceType>
-        Clone for ServiceWrapper<'session, Auth, Srv> {
-    fn clone(&self) -> ServiceWrapper<'session, Auth, Srv> {
+impl<'session, Srv: ServiceType> Clone for ServiceWrapper<'session, Srv> {
+    fn clone(&self) -> ServiceWrapper<'session, Srv> {
         ServiceWrapper {
             session: self.session,
             service_type: PhantomData,

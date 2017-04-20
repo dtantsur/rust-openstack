@@ -14,6 +14,8 @@
 
 //! Base code for authentication.
 
+use std::fmt::Debug;
+
 use hyper::{Client, Url};
 use hyper::header::Headers;
 use hyper::method::Method;
@@ -30,7 +32,7 @@ use super::super::service::RequestBuilder;
 /// 2. get an endpoint URL for the given service type.
 ///
 /// An authentication method should cache the token as long as it's valid.
-pub trait AuthMethod {
+pub trait AuthMethod: BoxedClone + Debug {
     /// Default endpoint interface that is used when none is provided.
     fn default_endpoint_interface(&self) -> String {
         String::from("public")
@@ -48,4 +50,23 @@ pub trait AuthMethod {
     /// Create an authenticated request.
     fn request<'a>(&self, client: &'a Client, method: Method, url: Url,
                    headers: Headers) -> ApiResult<RequestBuilder<'a>>;
+}
+
+
+/// Helper trait to allow cloning of sessions.
+pub trait BoxedClone {
+    /// Clone the authentication method.
+    fn boxed_clone(&self) -> Box<AuthMethod>;
+}
+
+impl<T> BoxedClone for T where T: 'static + AuthMethod + Clone {
+    fn boxed_clone(&self) -> Box<AuthMethod> {
+        Box::new(self.clone())
+    }
+}
+
+impl Clone for Box<AuthMethod> {
+    fn clone(&self) -> Box<AuthMethod> {
+        self.boxed_clone()
+    }
 }

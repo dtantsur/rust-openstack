@@ -20,16 +20,15 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 use chrono::{DateTime, FixedOffset};
 
 use super::super::super::{ApiResult, Session, Sort};
-use super::super::super::auth::AuthMethod;
 use super::super::super::service::Query;
 use super::base::V2ServiceWrapper;
 use super::protocol;
 
 
 /// A query to server list.
-#[derive(Debug)]
-pub struct ServerQuery<'a, Auth: AuthMethod + 'a> {
-    service: V2ServiceWrapper<'a, Auth>,
+#[derive(Clone, Debug)]
+pub struct ServerQuery<'session> {
+    service: V2ServiceWrapper<'session>,
     /// Underlying query.
     pub query: Query,
 }
@@ -78,42 +77,42 @@ pub struct ServerQuery<'a, Auth: AuthMethod + 'a> {
 /// println!("Server name is {}, image ID is {}, flavor ID is {}",
 ///          server.name(), server.image().id(), server.flavor().id());
 /// ```
-#[derive(Debug)]
-pub struct ServerManager<'a, Auth: AuthMethod + 'a> {
-    service: V2ServiceWrapper<'a, Auth>
+#[derive(Clone, Debug)]
+pub struct ServerManager<'session> {
+    service: V2ServiceWrapper<'session>
 }
 
 /// Structure representing a summary of a single server.
-#[derive(Debug)]
-pub struct Server<'a, Auth: AuthMethod + 'a> {
-    service: V2ServiceWrapper<'a, Auth>,
+#[derive(Clone, Debug)]
+pub struct Server<'session> {
+    service: V2ServiceWrapper<'session>,
     inner: protocol::Server
 }
 
 /// Structure representing a summary of a single server.
-#[derive(Debug)]
-pub struct ServerSummary<'a, Auth: AuthMethod + 'a> {
-    service: V2ServiceWrapper<'a, Auth>,
+#[derive(Clone, Debug)]
+pub struct ServerSummary<'session> {
+    service: V2ServiceWrapper<'session>,
     inner: protocol::ServerSummary
 }
 
 /// List of servers.
-pub type ServerList<'a, Auth> = Vec<ServerSummary<'a, Auth>>;
+pub type ServerList<'session> = Vec<ServerSummary<'session>>;
 
 /// A reference to a flavor.
-#[derive(Debug)]
-pub struct FlavorRef<'a, Auth: AuthMethod + 'a> {
-    server: &'a Server<'a, Auth>
+#[derive(Clone, Copy, Debug)]
+pub struct FlavorRef<'session> {
+    server: &'session Server<'session>
 }
 
 /// A reference to an image.
-#[derive(Debug)]
-pub struct ImageRef<'a, Auth: AuthMethod + 'a> {
-    server: &'a Server<'a, Auth>
+#[derive(Clone, Copy, Debug)]
+pub struct ImageRef<'session> {
+    server: &'session Server<'session>
 }
 
 
-impl<'a, Auth: AuthMethod + 'a> Server<'a, Auth> {
+impl<'session> Server<'session> {
     /// Get a reference to IPv4 address.
     pub fn access_ipv4(&self) -> &Option<Ipv4Addr> {
         &self.inner.accessIPv4
@@ -140,7 +139,7 @@ impl<'a, Auth: AuthMethod + 'a> Server<'a, Auth> {
     }
 
     /// Get a reference to the flavor.
-    pub fn flavor(&'a self) -> FlavorRef<'a, Auth> {
+    pub fn flavor(&'session self) -> FlavorRef<'session> {
         FlavorRef {
             server: self
         }
@@ -152,7 +151,7 @@ impl<'a, Auth: AuthMethod + 'a> Server<'a, Auth> {
     }
 
     /// Get a reference to the image.
-    pub fn image(&'a self) -> ImageRef<'a, Auth> {
+    pub fn image(&'session self) -> ImageRef<'session> {
         ImageRef {
             server: self
         }
@@ -174,25 +173,25 @@ impl<'a, Auth: AuthMethod + 'a> Server<'a, Auth> {
     }
 }
 
-impl<'a, Auth: AuthMethod + 'a> FlavorRef<'a, Auth> {
+impl<'session> FlavorRef<'session> {
     /// Get a reference to flavor unique ID.
-    pub fn id(&self) -> &'a String {
+    pub fn id(&self) -> &'session String {
         &self.server.inner.flavor.id
     }
 
     // TODO: pub fn details(&self) -> ApiResult<Flavor>
 }
 
-impl<'a, Auth: AuthMethod + 'a> ImageRef<'a, Auth> {
+impl<'session> ImageRef<'session> {
     /// Get a reference to image unique ID.
-    pub fn id(&self) -> &'a String {
+    pub fn id(&self) -> &'session String {
         &self.server.inner.image.id
     }
 
     // TODO: #[cfg(feature = "image")] pub fn details(&self) -> ApiResult<Image>
 }
 
-impl<'a, Auth: AuthMethod + 'a> ServerSummary<'a, Auth> {
+impl<'session> ServerSummary<'session> {
     /// Get a reference to server unique ID.
     pub fn id(&self) -> &String {
         &self.inner.id
@@ -204,14 +203,14 @@ impl<'a, Auth: AuthMethod + 'a> ServerSummary<'a, Auth> {
     }
 
     /// Get details.
-    pub fn details(&self) -> ApiResult<Server<'a, Auth>> {
+    pub fn details(&self) -> ApiResult<Server<'session>> {
         ServerManager::get_server(self.service.clone(), &self.inner.id)
     }
 }
 
-impl<'a, Auth: AuthMethod + 'a> ServerQuery<'a, Auth> {
-    fn new(service: V2ServiceWrapper<'a, Auth>)
-            -> ServerQuery<'a, Auth> {
+impl<'session> ServerQuery<'session> {
+    fn new(service: V2ServiceWrapper<'session>)
+            -> ServerQuery<'session> {
         ServerQuery {
             service: service,
             query: Query::new(),
@@ -318,7 +317,7 @@ impl<'a, Auth: AuthMethod + 'a> ServerQuery<'a, Auth> {
 
     /// Execute this request and return its result.
     #[allow(unused_results)]
-    pub fn fetch(self) -> ApiResult<ServerList<'a, Auth>> {
+    pub fn fetch(self) -> ApiResult<ServerList<'session>> {
         let service = self.service;
         let query = self.query;
 
@@ -335,9 +334,9 @@ impl<'a, Auth: AuthMethod + 'a> ServerQuery<'a, Auth> {
     }
 }
 
-impl<'a, Auth: AuthMethod + 'a> ServerManager<'a, Auth> {
+impl<'session> ServerManager<'session> {
     /// Constructor for server manager.
-    pub fn new(session: &'a Session<Auth>) -> ServerManager<'a, Auth> {
+    pub fn new(session: &'session Session) -> ServerManager<'session> {
         ServerManager {
             service: V2ServiceWrapper::new(session)
         }
@@ -348,22 +347,22 @@ impl<'a, Auth: AuthMethod + 'a> ServerManager<'a, Auth> {
     /// Note that this method does not return results immediately, but rather
     /// a [ServerQuery](struct.ServerQuery.html) object that
     /// you can futher specify with e.g. filtering or sorting.
-    pub fn query(&self) -> ServerQuery<'a, Auth> {
+    pub fn query(&self) -> ServerQuery<'session> {
         ServerQuery::new(self.service.clone())
     }
 
     /// List all servers.
-    pub fn list(&self) -> ApiResult<ServerList<'a, Auth>> {
+    pub fn list(&self) -> ApiResult<ServerList<'session>> {
         self.query().fetch()
     }
 
     /// Get a server.
-    pub fn get<Id: AsRef<str>>(&self, id: Id) -> ApiResult<Server<'a, Auth>> {
+    pub fn get<Id: AsRef<str>>(&self, id: Id) -> ApiResult<Server<'session>> {
         ServerManager::get_server(self.service.clone(), id.as_ref())
     }
 
-    fn get_server(service: V2ServiceWrapper<'a, Auth>, id: &str)
-            -> ApiResult<Server<'a, Auth>> {
+    fn get_server(service: V2ServiceWrapper<'session>, id: &str)
+            -> ApiResult<Server<'session>> {
         trace!("Get compute server {}", id);
         let inner: protocol::ServerRoot = try!(
             service.get_json(&["servers", id], Query::new())
@@ -377,66 +376,8 @@ impl<'a, Auth: AuthMethod + 'a> ServerManager<'a, Auth> {
 }
 
 /// Create a server manager.
-pub fn servers<'session, Auth>(session: &'session Session<Auth>)
-        -> ServerManager<'session, Auth> where Auth: AuthMethod {
+pub fn servers<'session>(session: &'session Session) -> ServerManager<'session> {
     ServerManager::new(session)
-}
-
-// These implementations cannot be correctly derived
-
-impl<'a, Auth: AuthMethod + 'a> Copy for FlavorRef<'a, Auth> {}
-
-impl<'a, Auth: AuthMethod + 'a> Clone for FlavorRef<'a, Auth> {
-    fn clone(&self) -> FlavorRef<'a, Auth> {
-        FlavorRef {
-            server: self.server
-        }
-    }
-}
-
-impl<'a, Auth: AuthMethod + 'a> Copy for ImageRef<'a, Auth> {}
-
-impl<'a, Auth: AuthMethod + 'a> Clone for ImageRef<'a, Auth> {
-    fn clone(&self) -> ImageRef<'a, Auth> {
-        ImageRef {
-            server: self.server
-        }
-    }
-}
-
-impl<'a, Auth: AuthMethod + 'a> Clone for Server<'a, Auth> {
-    fn clone(&self) -> Server<'a, Auth> {
-        Server {
-            service: self.service.clone(),
-            inner: self.inner.clone()
-        }
-    }
-}
-
-impl<'a, Auth: AuthMethod + 'a> Clone for ServerManager<'a, Auth> {
-    fn clone(&self) -> ServerManager<'a, Auth> {
-        ServerManager {
-            service: self.service.clone()
-        }
-    }
-}
-
-impl<'a, Auth: AuthMethod + 'a> Clone for ServerQuery<'a, Auth> {
-    fn clone(&self) -> ServerQuery<'a, Auth> {
-        ServerQuery {
-            service: self.service.clone(),
-            query: self.query.clone()
-        }
-    }
-}
-
-impl<'a, Auth: AuthMethod + 'a> Clone for ServerSummary<'a, Auth> {
-    fn clone(&self) -> ServerSummary<'a, Auth> {
-        ServerSummary {
-            service: self.service.clone(),
-            inner: self.inner.clone()
-        }
-    }
 }
 
 

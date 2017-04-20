@@ -81,6 +81,6 @@ mod base;
 mod identity;
 mod simple;
 
-pub use self::base::AuthMethod;
+pub use self::base::{AuthMethod, BoxedClone};
 pub use self::simple::NoAuth;
 pub use self::identity::{Identity, PasswordAuth};
