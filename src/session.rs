@@ -21,7 +21,6 @@ use hyper::{Client, Get, Url};
 use hyper::client::{IntoUrl, Response};
 use hyper::header::Headers;
 use hyper::method::Method;
-use serde::Deserialize;
 
 use super::{ApiError, ApiResult, ApiVersion, ApiVersionRequest};
 use super::auth::AuthMethod;
@@ -173,12 +172,6 @@ impl Session {
     /// Send a simple GET request.
     pub fn http_get<U>(&self, url: U) -> ApiResult<Response> where U: IntoUrl {
         try!(self.request(Get, url, Headers::new())).send()
-    }
-
-    /// Send a simple GET request returning a JSON
-    pub fn get_json<U, D>(&self, url: U) -> ApiResult<D>
-            where U: IntoUrl, D: Deserialize {
-        try!(self.request(Get, url, Headers::new())).fetch_json()
     }
 
     fn ensure_service_info<Srv>(&self, endpoint_interface: String)
