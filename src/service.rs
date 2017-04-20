@@ -20,7 +20,7 @@ use hyper::{Client, Url};
 use hyper::client::{Body, IntoUrl, RequestBuilder as HyperRequestBuilder,
                     Response};
 use hyper::header::{Header, HeaderFormat, Headers};
-pub use hyper::method::Method;
+use hyper::method::Method;
 use serde::{Deserialize, Serialize};
 use serde_json;
 
