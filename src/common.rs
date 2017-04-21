@@ -191,11 +191,11 @@ impl FromStr for ApiVersion {
             });
         }
 
-        let major = try!(parse_component(parts[0], s,
-                                         "First component is not a number"));
+        let major = parse_component(parts[0], s,
+                                    "First component is not a number")?;
 
-        let minor = try!(parse_component(parts[1], s,
-                                         "Second component is not a number"));
+        let minor = parse_component(parts[1], s,
+                                    "Second component is not a number")?;
 
         Ok(ApiVersion(major, minor))
     }

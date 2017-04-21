@@ -39,9 +39,8 @@ impl NoAuth {
     /// This endpoint will be returned in response to all get_endpoint calls
     /// of the [AuthMethod](trait.AuthMethod.html) trait.
     pub fn new<U>(endpoint: U) -> Result<NoAuth, ParseError> where U: IntoUrl {
-        let url = try!(endpoint.into_url());
         Ok(NoAuth {
-            endpoint: url
+            endpoint: endpoint.into_url()?
         })
     }
 }

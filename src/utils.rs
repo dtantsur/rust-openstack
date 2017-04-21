@@ -66,9 +66,7 @@ impl<T: Clone> ValueCache<T> {
             return Ok(());
         };
 
-        let new = try!(default());
-
-        *self.0.borrow_mut() = Some(new);
+        *self.0.borrow_mut() = Some(default()?);
         Ok(())
     }
 
@@ -92,8 +90,7 @@ impl<K: Hash + Eq, V: Clone> MapCache<K, V> {
             return Ok(());
         }
 
-        let new = try!(default(&key));
-
+        let new = default(&key)?;
         let _ = self.0.borrow_mut().insert(key, new);
         Ok(())
     }
@@ -115,11 +112,11 @@ impl<K: Hash + Eq, V: Clone> MapCache<K, V> {
 #[allow(dead_code)]
 pub fn empty_as_none<D, T>(des: D) -> Result<Option<T>, D::Error>
         where D: Deserializer, T: FromStr, T::Err: Display {
-    let s = try!(String::deserialize(des));
-    if &s == "" {
+    let s = String::deserialize(des)?;
+    if s.is_empty() {
         Ok(None)
     } else {
-        FromStr::from_str(&s).map(Some).map_err(DeserError::custom)
+        T::from_str(&s).map(Some).map_err(DeserError::custom)
     }
 }
 

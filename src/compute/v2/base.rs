@@ -16,7 +16,7 @@
 
 use std::io::Read;
 
-use hyper::{NotFound, Url};
+use hyper::{Get, NotFound, Url};
 use hyper::client::Response;
 use hyper::header::Headers;
 use serde_json;
@@ -46,20 +46,20 @@ const VERSION_ID: &'static str = "v2.1";
 
 fn extract_info(mut resp: Response, secure: bool) -> ApiResult<ServiceInfo> {
     let mut body = String::new();
-    let _ = try!(resp.read_to_string(&mut body));
+    let _ = resp.read_to_string(&mut body)?;
 
     // First, assume it's a versioned URL.
-    let mut info = try!(match serde_json::from_str::<VersionRoot>(&body) {
+    let mut info = match serde_json::from_str::<VersionRoot>(&body) {
         Ok(ver) => ver.version.to_service_info(),
         Err(..) => {
             // Second, assume it's a root URL.
-            let vers: VersionsRoot = try!(serde_json::from_str(&body));
+            let vers: VersionsRoot = serde_json::from_str(&body)?;
             match vers.versions.into_iter().find(|x| &x.id == VERSION_ID) {
                 Some(ver) => ver.to_service_info(),
                 None => Err(EndpointNotFound(String::from(SERVICE_TYPE)))
             }
         }
-    });
+    }?;
 
     // Nova returns insecure URLs even for secure protocol. WHY??
     if secure {
@@ -78,10 +78,11 @@ impl ServiceType for V2 {
             -> ApiResult<ServiceInfo> {
         debug!("Fetching compute service info from {}", endpoint);
         let secure = endpoint.scheme() == "https";
-        let result = session.http_get(endpoint.clone());
+        let result = session.request(Get, endpoint.clone(), Headers::new())?
+            .send();
         match result {
             Ok(resp) => {
-                let result = try!(extract_info(resp, secure));
+                let result = extract_info(resp, secure)?;
                 info!("Received {:?} from {}", result, endpoint);
                 Ok(result)
             },

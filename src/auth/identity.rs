@@ -89,9 +89,8 @@ impl Identity {
 
     /// Create a password authentication against the given Identity service.
     pub fn new<U>(auth_url: U) -> Result<Identity, ParseError> where U: IntoUrl  {
-        let real_url = try!(auth_url.into_url());
         Ok(Identity {
-            auth_url: real_url,
+            auth_url: auth_url.into_url()?,
             password_identity: None,
             project_scope: None,
         })
@@ -144,16 +143,16 @@ impl Identity {
 
     /// Create an authentication method from environment variables.
     pub fn from_env() -> ApiResult<PasswordAuth> {
-        let auth_url = try!(_get_env("OS_AUTH_URL"));
+        let auth_url = _get_env("OS_AUTH_URL")?;
         let id = match Identity::new(&auth_url) {
             Ok(x) => x,
             Err(e) =>
                 return Err(ApiError::ProtocolError(HttpClientError::Uri(e)))
         };
 
-        let user_name = try!(_get_env("OS_USERNAME"));
-        let password = try!(_get_env("OS_PASSWORD"));
-        let project_name = try!(_get_env("OS_PROJECT_NAME"));
+        let user_name = _get_env("OS_USERNAME")?;
+        let password = _get_env("OS_PASSWORD")?;
+        let project_name = _get_env("OS_PROJECT_NAME")?;
 
         let user_domain = env::var("OS_USER_DOMAIN_NAME")
             .unwrap_or(String::from("Default"));
@@ -195,7 +194,7 @@ impl PasswordAuth {
     fn token_from_response(&self, mut resp: Response)
             -> ApiResult<Token> {
         let mut resp_body = String::new();
-        let _ignored = try!(resp.read_to_string(&mut resp_body));
+        let _ignored = resp.read_to_string(&mut resp_body)?;
 
         let token_value = match resp.status {
             StatusCode::Ok | StatusCode::Created => {
@@ -239,14 +238,14 @@ impl PasswordAuth {
                    self.body.auth.identity.password.user.name,
                    self.token_endpoint);
             let body = self.body.to_string().unwrap();
-            let resp = try!(client.post(&self.token_endpoint).body(&body)
-                            .header(ContentType::json()).send());
+            let resp = client.post(&self.token_endpoint).body(&body)
+                .header(ContentType::json()).send()?;
             self.token_from_response(resp)
         })
     }
 
     fn get_token(&self, client: &Client) -> ApiResult<String> {
-        try!(self.refresh_token(client));
+        self.refresh_token(client)?;
         Ok(self.cached_token.get().unwrap().0)
     }
 
@@ -255,8 +254,8 @@ impl PasswordAuth {
         // TODO: catalog caching
         let catalog_url = catalog::get_url(self.auth_url.clone());
         trace!("Requesting a service catalog from {}", catalog_url);
-        let req = try!(self.request(client, Get, catalog_url, Headers::new()));
-        let body: protocol::CatalogRoot = try!(req.fetch_json());
+        let req = self.request(client, Get, catalog_url, Headers::new())?;
+        let body: protocol::CatalogRoot = req.fetch_json()?;
         trace!("Received catalog: {:?}", body.catalog);
         Ok(body.catalog)
     }
@@ -266,7 +265,7 @@ impl AuthMethod for PasswordAuth {
     /// Create an authenticated request.
     fn request<'a>(&self, client: &'a Client, method: Method, url: Url,
                    headers: Headers) -> ApiResult<RequestBuilder<'a>> {
-        let token = try!(self.get_token(client));
+        let token = self.get_token(client)?;
         Ok(RequestBuilder::new(client, method, url, headers)
            .header(protocol::AuthTokenHeader(token)))
     }
@@ -280,9 +279,9 @@ impl AuthMethod for PasswordAuth {
             self.default_endpoint_interface());
         debug!("Requesting a catalog endpoint for service '{}', interface \
                '{}' from region {:?}", service_type, real_interface, region);
-        let cat = try!(self.get_catalog(client));
-        let endp = try!(catalog::find_endpoint(&cat, service_type,
-                                               real_interface, region));
+        let cat = self.get_catalog(client)?;
+        let endp = catalog::find_endpoint(&cat, service_type,
+                                          real_interface, region)?;
         info!("Received {:?}", endp);
         endp.url.into_url().map_err(From::from)
     }

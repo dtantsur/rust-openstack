@@ -191,17 +191,17 @@ impl Version {
         let current_version = if self.version.is_empty() {
             None
         } else {
-            Some(try!(ApiVersion::from_str(&self.version)))
+            Some(ApiVersion::from_str(&self.version)?)
         };
 
         let minimum_version = if self.min_version.is_empty() {
             None
         } else {
-            Some(try!(ApiVersion::from_str(&self.min_version)))
+            Some(ApiVersion::from_str(&self.min_version)?)
         };
 
         let endpoint = match self.links.iter().find(|x| &x.rel == "self") {
-            Some(link) => try!(Url::parse(&link.href)),
+            Some(link) => Url::parse(&link.href)?,
             None => {
                 error!("Received malformed version response: no self link \
                         in {:?}", self.links);
@@ -270,8 +270,7 @@ impl Default for AddressType {
 
 fn de_address_type<D>(des: D) -> Result<AddressType, D::Error>
         where D: Deserializer {
-    let s = try!(String::deserialize(des));
-    Ok(match s.as_ref() {
+    Ok(match String::deserialize(des)?.as_ref() {
         "fixed" => AddressType::Fixed,
         "floating" => AddressType::Floating,
         _ => Default::default()
@@ -280,7 +279,7 @@ fn de_address_type<D>(des: D) -> Result<AddressType, D::Error>
 
 fn de_server_status<D>(des: D) -> Result<ServerStatus, D::Error>
         where D: Deserializer {
-    let s = try!(String::deserialize(des));
+    let s = String::deserialize(des)?;
     Ok(match s.as_ref() {
         "ACTIVE" => ServerStatus::Active,
         "BUILD" => ServerStatus::Building,

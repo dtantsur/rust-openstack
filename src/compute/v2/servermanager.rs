@@ -322,9 +322,8 @@ impl<'session> ServerQuery<'session> {
         let query = self.query;
 
         trace!("Listing compute servers with {:?}", query);
-        let inner: protocol::ServersRoot = try!(
-            service.get_json(&["servers"], query)
-        );
+        let inner: protocol::ServersRoot = service.get_json(&["servers"],
+                                                            query)?;
         debug!("Received {} compute servers", inner.servers.len());
         trace!("Received servers: {:?}", inner.servers);
         Ok(inner.servers.into_iter().map(|x| ServerSummary {
@@ -364,9 +363,8 @@ impl<'session> ServerManager<'session> {
     fn get_server(service: V2ServiceWrapper<'session>, id: &str)
             -> ApiResult<Server<'session>> {
         trace!("Get compute server {}", id);
-        let inner: protocol::ServerRoot = try!(
-            service.get_json(&["servers", id], Query::new())
-        );
+        let inner: protocol::ServerRoot = service.get_json(&["servers", id],
+                                                           Query::new())?;
         trace!("Received {:?}", inner.server);
         Ok(Server {
             service: service,

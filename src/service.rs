@@ -106,7 +106,7 @@ impl<'a> RequestBuilder<'a> {
 
     /// Send this request.
     pub fn send(self) -> ApiResult<Response> {
-        let resp = try!(self.send_unchecked());
+        let resp = self.send_unchecked()?;
         if resp.status.is_success() {
             Ok(resp)
         } else {
@@ -125,8 +125,7 @@ impl<'a> RequestBuilder<'a> {
 
     /// Send this request and parse JSON response on success.
     pub fn fetch_json<T: Deserialize>(self) -> ApiResult<T> {
-        let resp = try!(self.send());
-        serde_json::from_reader(resp).map_err(From::from)
+        serde_json::from_reader(self.send()?).map_err(From::from)
     }
 
     /// Add body to the request.
@@ -168,7 +167,7 @@ impl<'session, Srv: ServiceType> ServiceWrapper<'session, Srv> {
     pub fn get_endpoint<P>(&self, path: P, query: Query) -> ApiResult<Url>
             where P: IntoIterator, P::Item: AsRef<str> {
         let ep = self.endpoint_interface.clone();
-        let info = try!(self.session.get_service_info::<Srv>(ep));
+        let info = self.session.get_service_info::<Srv>(ep)?;
         let mut url = utils::url::extend(info.root_url, path);
         let _ = url.query_pairs_mut().extend_pairs(query.0);
         Ok(url)
@@ -178,7 +177,7 @@ impl<'session, Srv: ServiceType> ServiceWrapper<'session, Srv> {
     pub fn request<P>(&'session self, method: Method, path: P, query: Query)
             -> ApiResult<RequestBuilder<'session>>
             where P: IntoIterator, P::Item: AsRef<str> {
-        let url = try!(self.get_endpoint(path, query));
+        let url = self.get_endpoint(path, query)?;
         let headers = self.session.service_headers::<Srv>();
         trace!("Sending HTTP {} request to {} with {:?}",
                method, url, headers);
@@ -190,15 +189,15 @@ impl<'session, Srv: ServiceType> ServiceWrapper<'session, Srv> {
                              body: &Req) -> ApiResult<Res>
             where Req: Serialize, Res: Deserialize,
             P: IntoIterator, P::Item: AsRef<str> {
-        let str_body = try!(serde_json::to_string(body));
-        let request = try!(self.request(method, path, query));
+        let str_body = serde_json::to_string(body)?;
+        let request = self.request(method, path, query)?;
         request.body(&str_body).fetch_json()
     }
 
     /// Make a GET request returning a JSON.
     pub fn get_json<P, Res>(&self, path: P, query: Query) -> ApiResult<Res>
             where Res: Deserialize, P: IntoIterator, P::Item: AsRef<str> {
-        try!(self.request(Method::Get, path, query)).fetch_json()
+        self.request(Method::Get, path, query)?.fetch_json()
     }
 
     /// Make a POST request sending and returning a JSON.
@@ -225,7 +224,7 @@ impl<'session, Srv: ServiceType> ServiceWrapper<'session, Srv> {
     /// Make a DELETE request.
     pub fn delete<P>(&self, path: P, query: Query) -> ApiResult<Response>
             where P: IntoIterator, P::Item: AsRef<str> {
-        try!(self.request(Method::Delete, path, query)).send()
+        self.request(Method::Delete, path, query)?.send()
     }
 }
 
