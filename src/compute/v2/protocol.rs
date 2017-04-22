@@ -19,7 +19,6 @@
 
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-use std::str::FromStr;
 
 use chrono::{DateTime, FixedOffset};
 use hyper::Url;
@@ -171,8 +170,10 @@ pub struct Version {
     pub id: String,
     pub links: Vec<Link>,
     pub status: String,
-    pub version: String,
-    pub min_version: String
+    #[serde(deserialize_with = "utils::empty_as_none")]
+    pub version: Option<ApiVersion>,
+    #[serde(deserialize_with = "utils::empty_as_none")]
+    pub min_version: Option<ApiVersion>
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -188,18 +189,6 @@ pub struct VersionRoot {
 
 impl Version {
     pub fn to_service_info(&self) -> ApiResult<ServiceInfo> {
-        let current_version = if self.version.is_empty() {
-            None
-        } else {
-            Some(ApiVersion::from_str(&self.version)?)
-        };
-
-        let minimum_version = if self.min_version.is_empty() {
-            None
-        } else {
-            Some(ApiVersion::from_str(&self.min_version)?)
-        };
-
         let endpoint = match self.links.iter().find(|x| &x.rel == "self") {
             Some(link) => Url::parse(&link.href)?,
             None => {
@@ -213,8 +202,8 @@ impl Version {
 
         Ok(ServiceInfo {
             root_url: endpoint,
-            current_version: current_version,
-            minimum_version: minimum_version
+            current_version: self.version,
+            minimum_version: self.min_version
         })
     }
 }

@@ -23,6 +23,8 @@ use hyper::Error as HttpClientError;
 use hyper::client::Response;
 use hyper::error::ParseError;
 use hyper::status::StatusCode;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::de::{Error as DeserError, Visitor};
 use serde_json::Error as JsonError;
 
 
@@ -201,6 +203,35 @@ impl FromStr for ApiVersion {
     }
 }
 
+impl Serialize for ApiVersion {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where S: Serializer {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+struct ApiVersionVisitor;
+
+impl Visitor for ApiVersionVisitor {
+    type Value = ApiVersion;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a string in format X.Y")
+    }
+
+    fn visit_str<E>(self, value: &str) -> Result<ApiVersion, E>
+            where E: DeserError {
+        ApiVersion::from_str(value).map_err(DeserError::custom)
+    }
+}
+
+impl Deserialize for ApiVersion {
+    fn deserialize<D>(deserializer: D) -> Result<ApiVersion, D::Error>
+            where D: Deserializer {
+        deserializer.deserialize_str(ApiVersionVisitor)
+    }
+}
+
 impl<T: Into<String>> Into<(String, String)> for Sort<T> {
     fn into(self) -> (String, String) {
         match self {
@@ -212,11 +243,24 @@ impl<T: Into<String>> Into<(String, String)> for Sort<T> {
 
 #[cfg(test)]
 pub mod test {
+    use std::str::FromStr;
+
+    use serde_json;
+
     use super::ApiVersion;
 
     #[test]
-    fn test_apiversion() {
+    fn test_apiversion_format() {
         let ver = ApiVersion(2, 27);
         assert_eq!(&ver.to_string(), "2.27");
+        assert_eq!(ApiVersion::from_str("2.27").unwrap(), ver);
+    }
+
+    #[test]
+    fn test_apiversion_serde() {
+        let ver = ApiVersion(2, 27);
+        let ser = serde_json::to_string(&ver).unwrap();
+        assert_eq!(&ser, "\"2.27\"");
+        assert_eq!(serde_json::from_str::<ApiVersion>(&ser).unwrap(), ver);
     }
 }
