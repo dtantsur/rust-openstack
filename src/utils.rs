@@ -110,8 +110,8 @@ impl<K: Hash + Eq, V: Clone> MapCache<K, V> {
 
 /// Deserialize value where empty string equals None.
 #[allow(dead_code)]
-pub fn empty_as_none<D, T>(des: D) -> Result<Option<T>, D::Error>
-        where D: Deserializer, T: FromStr, T::Err: Display {
+pub fn empty_as_none<'de, D, T>(des: D) -> Result<Option<T>, D::Error>
+        where D: Deserializer<'de>, T: FromStr, T::Err: Display {
     let s = String::deserialize(des)?;
     if s.is_empty() {
         Ok(None)

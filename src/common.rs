@@ -212,7 +212,7 @@ impl Serialize for ApiVersion {
 
 struct ApiVersionVisitor;
 
-impl Visitor for ApiVersionVisitor {
+impl<'de> Visitor<'de> for ApiVersionVisitor {
     type Value = ApiVersion;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -225,9 +225,9 @@ impl Visitor for ApiVersionVisitor {
     }
 }
 
-impl Deserialize for ApiVersion {
+impl<'de> Deserialize<'de> for ApiVersion {
     fn deserialize<D>(deserializer: D) -> Result<ApiVersion, D::Error>
-            where D: Deserializer {
+            where D: Deserializer<'de> {
         deserializer.deserialize_str(ApiVersionVisitor)
     }
 }

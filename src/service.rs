@@ -124,7 +124,8 @@ impl<'a> RequestBuilder<'a> {
     }
 
     /// Send this request and parse JSON response on success.
-    pub fn fetch_json<T: Deserialize>(self) -> ApiResult<T> {
+    pub fn fetch_json<T>(self) -> ApiResult<T>
+            where for<'de> T: Deserialize<'de> {
         serde_json::from_reader(self.send()?).map_err(From::from)
     }
 
@@ -187,7 +188,7 @@ impl<'session, Srv: ServiceType> ServiceWrapper<'session, Srv> {
     /// Make an HTTP request with JSON body and JSON response.
     pub fn json<P, Req, Res>(&self, method: Method, path: P, query: Query,
                              body: &Req) -> ApiResult<Res>
-            where Req: Serialize, Res: Deserialize,
+            where Req: Serialize, for<'de> Res: Deserialize<'de>,
             P: IntoIterator, P::Item: AsRef<str> {
         let str_body = serde_json::to_string(body)?;
         let request = self.request(method, path, query)?;
@@ -196,27 +197,27 @@ impl<'session, Srv: ServiceType> ServiceWrapper<'session, Srv> {
 
     /// Make a GET request returning a JSON.
     pub fn get_json<P, Res>(&self, path: P, query: Query) -> ApiResult<Res>
-            where Res: Deserialize, P: IntoIterator, P::Item: AsRef<str> {
+            where for<'de> Res: Deserialize<'de>, P: IntoIterator, P::Item: AsRef<str> {
         self.request(Method::Get, path, query)?.fetch_json()
     }
 
     /// Make a POST request sending and returning a JSON.
     pub fn post_json<P, Req, Res>(&self, path: P, query: Query, body: &Req)
-            -> ApiResult<Res> where Req: Serialize, Res: Deserialize,
+            -> ApiResult<Res> where Req: Serialize, for <'de> Res: Deserialize<'de>,
             P: IntoIterator, P::Item: AsRef<str> {
         self.json(Method::Post, path, query, body)
     }
 
     /// Make a POST request sending and returning a JSON.
     pub fn put_json<P, Req, Res>(&self, path: P, query: Query, body: &Req)
-            -> ApiResult<Res> where Req: Serialize, Res: Deserialize,
+            -> ApiResult<Res> where Req: Serialize, for<'de> Res: Deserialize<'de>,
             P: IntoIterator, P::Item: AsRef<str> {
         self.json(Method::Put, path, query, body)
     }
 
     /// Make a PATCH request sending and returning a JSON.
     pub fn patch_json<P, Req, Res>(&self, path: P, query: Query, body: &Req)
-            -> ApiResult<Res> where Req: Serialize, Res: Deserialize,
+            -> ApiResult<Res> where Req: Serialize, for<'de> Res: Deserialize<'de>,
             P: IntoIterator, P::Item: AsRef<str> {
         self.json(Method::Patch, path, query, body)
     }

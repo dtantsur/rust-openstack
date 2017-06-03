@@ -257,8 +257,8 @@ impl Default for AddressType {
     }
 }
 
-fn de_address_type<D>(des: D) -> Result<AddressType, D::Error>
-        where D: Deserializer {
+fn de_address_type<'de, D>(des: D) -> Result<AddressType, D::Error>
+        where D: Deserializer<'de> {
     Ok(match String::deserialize(des)?.as_ref() {
         "fixed" => AddressType::Fixed,
         "floating" => AddressType::Floating,
@@ -266,8 +266,8 @@ fn de_address_type<D>(des: D) -> Result<AddressType, D::Error>
     })
 }
 
-fn de_server_status<D>(des: D) -> Result<ServerStatus, D::Error>
-        where D: Deserializer {
+fn de_server_status<'de, D>(des: D) -> Result<ServerStatus, D::Error>
+        where D: Deserializer<'de> {
     let s = String::deserialize(des)?;
     Ok(match s.as_ref() {
         "ACTIVE" => ServerStatus::Active,
