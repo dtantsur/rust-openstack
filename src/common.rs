@@ -16,16 +16,12 @@
 
 use std::error::Error;
 use std::fmt;
-use std::io;
 use std::str::FromStr;
 
-use hyper::Error as HttpClientError;
-use hyper::client::Response;
-use hyper::error::ParseError;
-use hyper::status::StatusCode;
+use reqwest::{Response, StatusCode};
+use reqwest::Error as HttpClientError;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde::de::{Error as DeserError, Visitor};
-use serde_json::Error as JsonError;
 
 
 /// Error from an OpenStack API call.
@@ -47,8 +43,10 @@ pub enum ApiError {
     /// Protocol-level error reported by underlying HTTP library.
     ProtocolError(HttpClientError),
 
-    /// JSON parsing failed.
-    InvalidJson(JsonError),
+    /// Response received from the server is malformed.
+    ///
+    /// Contains the error message.
+    InvalidResponse(String),
 
     /// Malformed API version.
     #[allow(missing_docs)]
@@ -103,7 +101,8 @@ impl fmt::Display for ApiError {
             ApiError::HttpError(status, ..) =>
                 write!(f, "HTTP error {}", status),
             ApiError::ProtocolError(ref e) => fmt::Display::fmt(e, f),
-            ApiError::InvalidJson(ref e) => fmt::Display::fmt(e, f),
+            ApiError::InvalidResponse(ref msg) =>
+                write!(f, "Response was invalid: {}", msg),
             ApiError::InvalidApiVersion { value: ref val, message: ref msg } =>
                 write!(f, "{} is not a valid API version: {}", val, msg),
             ApiError::UnsupportedApiVersion {
@@ -122,7 +121,8 @@ impl Error for ApiError {
             ApiError::InvalidInput(..) => "Invalid value(s) provided",
             ApiError::HttpError(..) => "HTTP error",
             ApiError::ProtocolError(ref e) => e.description(),
-            ApiError::InvalidJson(ref e) => e.description(),
+            ApiError::InvalidResponse(..) =>
+                "Invalid response received from the server",
             ApiError::InvalidApiVersion { .. } =>
                 "Invalid API version",
             ApiError::UnsupportedApiVersion { .. } =>
@@ -133,7 +133,6 @@ impl Error for ApiError {
     fn cause(&self) -> Option<&Error> {
         match *self {
             ApiError::ProtocolError(ref e) => Some(e),
-            ApiError::InvalidJson(ref e) => Some(e),
             _ => None
         }
     }
@@ -142,24 +141,6 @@ impl Error for ApiError {
 impl From<HttpClientError> for ApiError {
     fn from(value: HttpClientError) -> ApiError {
         ApiError::ProtocolError(value)
-    }
-}
-
-impl From<io::Error> for ApiError {
-    fn from(value: io::Error) -> ApiError {
-        ApiError::ProtocolError(HttpClientError::Io(value))
-    }
-}
-
-impl From<JsonError> for ApiError {
-    fn from(value: JsonError) -> ApiError {
-        ApiError::InvalidJson(value)
-    }
-}
-
-impl From<ParseError> for ApiError {
-    fn from(value: ParseError) -> ApiError {
-        ApiError::ProtocolError(HttpClientError::Uri(value))
     }
 }
 

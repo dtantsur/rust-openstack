@@ -20,29 +20,12 @@ use std::fmt::Display;
 use std::hash::Hash;
 use std::str::FromStr;
 
-use hyper::Client;
-#[cfg(feature = "tls")]
-use hyper::net::HttpsConnector;
-#[cfg(feature = "tls")]
-use hyper_rustls::TlsClient;
+use reqwest::Client;
 use serde::{Deserialize, Deserializer};
 use serde::de::Error as DeserError;
 
 use super::ApiResult;
 
-
-/// Create an HTTP(s) client.
-#[cfg(feature = "tls")]
-pub fn http_client() -> Client {
-    let connector = HttpsConnector::new(TlsClient::new());
-    Client::with_connector(connector)
-}
-
-/// Create an HTTP-only client.
-#[cfg(not(feature = "tls"))]
-pub fn http_client() -> Client {
-    Client::new()
-}
 
 /// Cached clone-able value.
 #[derive(Debug, Clone)]
@@ -126,7 +109,7 @@ pub mod url {
 
     #![allow(dead_code)] // unused with --no-default-features
 
-    use hyper::Url;
+    use reqwest::Url;
 
     #[inline]
     #[allow(unused_results)]

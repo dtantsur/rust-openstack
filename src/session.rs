@@ -17,14 +17,12 @@
 use std::cell::Ref;
 use std::collections::HashMap;
 
-use hyper::{Client, Url};
-use hyper::client::IntoUrl;
-use hyper::header::Headers;
-use hyper::method::Method;
+use reqwest::{Client, IntoUrl, Method, RequestBuilder, Url};
+use reqwest::header::Headers;
 
 use super::{ApiError, ApiResult, ApiVersion, ApiVersionRequest};
 use super::auth::AuthMethod;
-use super::service::{ApiVersioning, RequestBuilder, ServiceInfo, ServiceType};
+use super::service::{ApiVersioning, ServiceInfo, ServiceType};
 use super::utils;
 
 
@@ -36,7 +34,7 @@ use super::utils;
 /// The session object also owns region and endpoint interface to use.
 ///
 /// Finally, the session object is responsible for API version negotiation.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Session {
     auth: Box<AuthMethod>,
     client: Client,
@@ -57,7 +55,7 @@ impl Session {
         let region = auth_method.default_region();
         Session {
             auth: Box::new(auth_method),
-            client: utils::http_client(),
+            client: Client::new(),
             cached_info: utils::MapCache::new(),
             api_versions: HashMap::new(),
             region: region,
@@ -163,9 +161,9 @@ impl Session {
     }
 
     /// Prepare an HTTP request with authentication.
-    pub fn request<'a, U>(&'a self, method: Method, url: U, headers: Headers)
-            -> ApiResult<RequestBuilder<'a>> where U: IntoUrl {
-        self.auth.request(&self.client, method, url.into_url()?, headers)
+    pub fn request<U>(&self, method: Method, url: U)
+            -> ApiResult<RequestBuilder> where U: IntoUrl {
+        self.auth.request(&self.client, method, url.into_url()?)
     }
 
     fn ensure_service_info<Srv>(&self, endpoint_interface: String)
@@ -192,21 +190,6 @@ impl Session {
             -> ApiResult<Ref<ServiceInfo>> where Srv: ServiceType {
         let key = self.ensure_service_info::<Srv>(endpoint_interface)?;
         Ok(self.cached_info.get_ref(&key).unwrap())
-    }
-}
-
-
-impl Clone for Session {
-    fn clone(&self) -> Session {
-        Session {
-            auth: self.auth.clone(),
-            // NOTE: hyper::Client does not support Clone
-            client: utils::http_client(),
-            cached_info: self.cached_info.clone(),
-            api_versions: self.api_versions.clone(),
-            region: self.region.clone(),
-            endpoint_interface: self.endpoint_interface.clone()
-        }
     }
 }
 

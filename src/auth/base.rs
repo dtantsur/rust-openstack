@@ -16,12 +16,9 @@
 
 use std::fmt::Debug;
 
-use hyper::{Client, Url};
-use hyper::header::Headers;
-use hyper::method::Method;
+use reqwest::{Client, Method, RequestBuilder, Url};
 
 use super::super::ApiResult;
-use super::super::service::RequestBuilder;
 
 
 /// Trait for an authentication method.
@@ -48,8 +45,8 @@ pub trait AuthMethod: BoxedClone + Debug {
                     region: Option<String>) -> ApiResult<Url>;
 
     /// Create an authenticated request.
-    fn request<'a>(&self, client: &'a Client, method: Method, url: Url,
-                   headers: Headers) -> ApiResult<RequestBuilder<'a>>;
+    fn request(&self, client: &Client,
+               method: Method, url: Url) -> ApiResult<RequestBuilder>;
 }
 
 

@@ -14,7 +14,7 @@
 
 //! Low-level code to work with the service catalog.
 
-use hyper::Url;
+use reqwest::Url;
 
 use super::super::{ApiError, ApiResult};
 use super::super::utils;

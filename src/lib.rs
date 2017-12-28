@@ -64,18 +64,12 @@
 #[cfg(feature = "compute")]
 extern crate chrono;
 #[macro_use]
-extern crate hyper;
-#[cfg(feature = "tls")]
-extern crate hyper_rustls;
-#[macro_use]
 extern crate log;
+extern crate reqwest;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
-
-#[cfg(test)] #[macro_use]
-extern crate yup_hyper_mock;
 
 pub mod auth;
 mod common;

@@ -14,11 +14,8 @@
 
 //! Foundation bits exposing the Compute API.
 
-use std::io::Read;
-
-use hyper::{Get, NotFound, Url};
-use hyper::client::Response;
-use hyper::header::Headers;
+use reqwest::{Method, Response, StatusCode, Url};
+use reqwest::header::Headers;
 use serde_json;
 
 use super::super::super::{ApiResult, ApiVersion, Session};
@@ -37,23 +34,18 @@ pub type V2ServiceWrapper<'session> = ServiceWrapper<'session, V2>;
 pub struct V2;
 
 
-header! {
-    (XOpenStackNovaApiVersion, "X-OpenStack-Nova-Api-Version") => [ApiVersion]
-}
-
 const SERVICE_TYPE: &'static str = "compute";
 const VERSION_ID: &'static str = "v2.1";
 
 fn extract_info(mut resp: Response, secure: bool) -> ApiResult<ServiceInfo> {
-    let mut body = String::new();
-    let _ = resp.read_to_string(&mut body)?;
+    let body = resp.text()?;
 
     // First, assume it's a versioned URL.
     let mut info = match serde_json::from_str::<VersionRoot>(&body) {
         Ok(ver) => ver.version.to_service_info(),
         Err(..) => {
             // Second, assume it's a root URL.
-            let vers: VersionsRoot = serde_json::from_str(&body)?;
+            let vers: VersionsRoot = resp.json()?;
             match vers.versions.into_iter().find(|x| &x.id == VERSION_ID) {
                 Some(ver) => ver.to_service_info(),
                 None => Err(EndpointNotFound(String::from(SERVICE_TYPE)))
@@ -78,15 +70,15 @@ impl ServiceType for V2 {
             -> ApiResult<ServiceInfo> {
         debug!("Fetching compute service info from {}", endpoint);
         let secure = endpoint.scheme() == "https";
-        let result = session.request(Get, endpoint.clone(), Headers::new())?
-            .send();
+        let result = session.request(Method::Get, endpoint.clone())?.send()
+            .map_err(From::from);
         match result {
             Ok(resp) => {
                 let result = extract_info(resp, secure)?;
                 info!("Received {:?} from {}", result, endpoint);
                 Ok(result)
             },
-            Err(HttpError(NotFound, ..)) => {
+            Err(HttpError(StatusCode::NotFound, ..)) => {
                 if utils::url::is_root(&endpoint) {
                     Err(EndpointNotFound(String::from(SERVICE_TYPE)))
                 } else {
@@ -105,8 +97,8 @@ impl ServiceType for V2 {
 impl ApiVersioning for V2 {
     fn api_version_headers(version: ApiVersion) -> ApiResult<Headers> {
         let mut hdrs = Headers::new();
-        // TODO: new-style header support
-        hdrs.set(XOpenStackNovaApiVersion(version));
+        // TODO: typed header, new-style header support
+        hdrs.set_raw("x-openstack-nova-api-version", version.to_string());
         Ok(hdrs)
     }
 }

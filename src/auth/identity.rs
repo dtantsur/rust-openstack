@@ -18,19 +18,13 @@ use std::collections::hash_map::DefaultHasher;
 use std::env;
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use std::io::Read;
 
-use hyper::{Client, Get, Url};
-use hyper::Error as HttpClientError;
-use hyper::client::{IntoUrl, Response};
-use hyper::error::ParseError;
-use hyper::header::{ContentType, Headers};
-use hyper::method::Method;
-use hyper::status::StatusCode;
+use reqwest::{Client, IntoUrl, Method, RequestBuilder, Response, StatusCode,
+              Url, UrlError};
+use reqwest::header::{ContentType, Headers};
 
 use super::super::{ApiError, ApiResult};
 use super::super::identity::{catalog, protocol};
-use super::super::service::RequestBuilder;
 use super::super::utils::ValueCache;
 use super::AuthMethod;
 
@@ -41,6 +35,12 @@ const MISSING_USER: &'static str = "User information required";
 const MISSING_SCOPE: &'static str = "Unscoped tokens are not supported now";
 const MISSING_ENV_VARS: &'static str =
     "Not all required environment variables were provided";
+const INVALID_ENV_AUTH_URL: &'static str =
+    "Malformed authentication URL provided in the environment";
+const MISSING_SUBJECT_HEADER: &'static str =
+    "Missing X-Subject-Token header";
+const INVALID_URL: &'static str =
+    "Invalid URL received from service catalog";
 
 
 /// Plain authentication token without additional details.
@@ -88,7 +88,7 @@ impl Identity {
     }
 
     /// Create a password authentication against the given Identity service.
-    pub fn new<U>(auth_url: U) -> Result<Identity, ParseError> where U: IntoUrl  {
+    pub fn new<U>(auth_url: U) -> Result<Identity, UrlError> where U: IntoUrl  {
         Ok(Identity {
             auth_url: auth_url.into_url()?,
             password_identity: None,
@@ -144,11 +144,9 @@ impl Identity {
     /// Create an authentication method from environment variables.
     pub fn from_env() -> ApiResult<PasswordAuth> {
         let auth_url = _get_env("OS_AUTH_URL")?;
-        let id = match Identity::new(&auth_url) {
-            Ok(x) => x,
-            Err(e) =>
-                return Err(ApiError::ProtocolError(HttpClientError::Uri(e)))
-        };
+        let id = Identity::new(&auth_url).map_err(|e| {
+            InvalidInput(String::from(INVALID_ENV_AUTH_URL))
+        })?;
 
         let user_name = _get_env("OS_USERNAME")?;
         let password = _get_env("OS_PASSWORD")?;
@@ -168,6 +166,13 @@ impl Identity {
 #[inline]
 fn _get_env(name: &str) -> ApiResult<String> {
     env::var(name).or(Err(InvalidInput(String::from(MISSING_ENV_VARS))))
+}
+
+#[inline]
+fn extract_subject_token(headers: &Headers) -> Option<String> {
+    // TODO: replace with a typed header
+    headers.get_raw("x-subject-token").and_then(|h| h.one())
+        .map(|buf| { String::from_utf8_lossy(buf).into_owned() })
 }
 
 impl PasswordAuth {
@@ -193,32 +198,30 @@ impl PasswordAuth {
 
     fn token_from_response(&self, mut resp: Response)
             -> ApiResult<Token> {
-        let mut resp_body = String::new();
-        let _ignored = resp.read_to_string(&mut resp_body)?;
+        let mut resp_body = resp.text()?;
 
-        let token_value = match resp.status {
+        let token_value = match resp.status() {
             StatusCode::Ok | StatusCode::Created => {
-                let header: Option<&protocol::SubjectTokenHeader> =
-                    resp.headers.get();
-                match header {
-                    Some(ref value) => value.0.clone(),
+                match extract_subject_token(resp.headers()) {
+                    Some(value) => value,
                     None => {
                         error!("No X-Subject-Token header received from {}",
                                self.token_endpoint);
                         return Err(
-                            ApiError::ProtocolError(HttpClientError::Header))
+                            ApiError::InvalidResponse(
+                                String::from(MISSING_SUBJECT_HEADER)))
                     }
                 }
             },
             StatusCode::Unauthorized => {
                 error!("Invalid credentials for user {}",
                        self.body.auth.identity.password.user.name);
-                return Err(ApiError::HttpError(resp.status, resp));
+                return Err(ApiError::HttpError(resp.status(), resp));
             },
             other => {
                 error!("Unexpected HTTP error {} when getting a token for {}",
                        other, self.body.auth.identity.password.user.name);
-                return Err(ApiError::HttpError(resp.status, resp));
+                return Err(ApiError::HttpError(resp.status(), resp));
             }
         };
 
@@ -237,8 +240,7 @@ impl PasswordAuth {
             debug!("Requesting a token for user {} from {}",
                    self.body.auth.identity.password.user.name,
                    self.token_endpoint);
-            let body = self.body.to_string().unwrap();
-            let resp = client.post(&self.token_endpoint).body(&body)
+            let resp = client.post(&self.token_endpoint).json(&self.body)
                 .header(ContentType::json()).send()?;
             self.token_from_response(resp)
         })
@@ -254,8 +256,8 @@ impl PasswordAuth {
         // TODO: catalog caching
         let catalog_url = catalog::get_url(self.auth_url.clone());
         trace!("Requesting a service catalog from {}", catalog_url);
-        let req = self.request(client, Get, catalog_url, Headers::new())?;
-        let body: protocol::CatalogRoot = req.fetch_json()?;
+        let req = self.request(client, Method::Get, catalog_url)?;
+        let body: protocol::CatalogRoot = req.send()?.json()?;
         trace!("Received catalog: {:?}", body.catalog);
         Ok(body.catalog)
     }
@@ -263,11 +265,14 @@ impl PasswordAuth {
 
 impl AuthMethod for PasswordAuth {
     /// Create an authenticated request.
-    fn request<'a>(&self, client: &'a Client, method: Method, url: Url,
-                   headers: Headers) -> ApiResult<RequestBuilder<'a>> {
+    fn request(&self, client: &Client, method: Method, url: Url) -> ApiResult<RequestBuilder> {
         let token = self.get_token(client)?;
-        Ok(RequestBuilder::new(client, method, url, headers)
-           .header(protocol::AuthTokenHeader(token)))
+        let mut headers = Headers::new();
+        // TODO: replace with a typed header
+        headers.set_raw("x-auth-token", token);
+        let mut builder = client.request(method, url);
+        builder.headers(headers);
+        Ok(builder)
     }
 
     /// Get a URL for the requested service.
@@ -283,7 +288,11 @@ impl AuthMethod for PasswordAuth {
         let endp = catalog::find_endpoint(&cat, service_type,
                                           real_interface, region)?;
         info!("Received {:?}", endp);
-        endp.url.into_url().map_err(From::from)
+        Url::parse(&endp.url).map_err(|e| {
+            error!("Invalid URL received for service '{}': {}",
+                   service_type, e);
+            ApiError::InvalidResponse(String::from(INVALID_URL))
+        })
     }
 }
 

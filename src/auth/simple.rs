@@ -14,14 +14,9 @@
 
 //! Simple authentication methods.
 
-use hyper::{Client, Url};
-use hyper::client::IntoUrl;
-use hyper::error::ParseError;
-use hyper::header::Headers;
-use hyper::method::Method;
+use reqwest::{Client, IntoUrl, Method, RequestBuilder, Url, UrlError};
 
 use super::super::ApiResult;
-use super::super::service::RequestBuilder;
 use super::AuthMethod;
 
 /// Authentication method that provides no authentication.
@@ -38,7 +33,7 @@ impl NoAuth {
     ///
     /// This endpoint will be returned in response to all get_endpoint calls
     /// of the [AuthMethod](trait.AuthMethod.html) trait.
-    pub fn new<U>(endpoint: U) -> Result<NoAuth, ParseError> where U: IntoUrl {
+    pub fn new<U>(endpoint: U) -> Result<NoAuth, UrlError> where U: IntoUrl {
         Ok(NoAuth {
             endpoint: endpoint.into_url()?
         })
@@ -47,9 +42,9 @@ impl NoAuth {
 
 impl AuthMethod for NoAuth {
     /// Create a request.
-    fn request<'a>(&self, client: &'a Client, method: Method, url: Url,
-                   headers: Headers) -> ApiResult<RequestBuilder<'a>> {
-        Ok(RequestBuilder::new(client, method, url, headers))
+    fn request(&self, client: &Client, method: Method, url: Url)
+            -> ApiResult<RequestBuilder> {
+        Ok(client.request(method, url))
     }
 
     /// Get a predefined endpoint for all service types

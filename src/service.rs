@@ -16,25 +16,14 @@
 
 use std::marker::PhantomData;
 
-use hyper::{Client, Url};
-use hyper::client::{Body, IntoUrl, RequestBuilder as HyperRequestBuilder,
-                    Response};
-use hyper::header::{Header, HeaderFormat, Headers};
-use hyper::method::Method;
+use reqwest::{Client, IntoUrl, Method, Request, Response, Url};
+use reqwest::header::{Header, Headers};
 use serde::{Deserialize, Serialize};
 use serde_json;
 
 use super::{ApiError, ApiResult, ApiVersion, ApiVersionRequest, Session};
 use super::utils;
 
-
-/// Request builder with error checking and JSON support.
-///
-/// Partly copies the interface of hyper::client::RequestBuilder.
-#[allow(missing_debug_implementations)]
-pub struct RequestBuilder<'a> {
-    inner: HyperRequestBuilder<'a>
-}
 
 /// Type of query parameters.
 #[derive(Clone, Debug)]
@@ -95,56 +84,6 @@ impl Query {
     }
 }
 
-impl<'a> RequestBuilder<'a> {
-    /// Wrap a request builder.
-    pub fn new<U>(client: &'a Client, method: Method, url: U, headers: Headers)
-            -> RequestBuilder<'a> where U: IntoUrl {
-        RequestBuilder {
-            inner: client.request(method, url).headers(headers)
-        }
-    }
-
-    /// Send this request.
-    pub fn send(self) -> ApiResult<Response> {
-        let resp = self.send_unchecked()?;
-        if resp.status.is_success() {
-            Ok(resp)
-        } else {
-            Err(ApiError::HttpError(resp.status, resp))
-        }
-    }
-
-    /// Send this request without checking on status code.
-    pub fn send_unchecked(self) -> ApiResult<Response> {
-        self.inner.send().map_err(From::from).map(|resp| {
-            trace!("Got {} from {} with {:?}",
-                   resp.status, resp.url, resp.headers);
-            resp
-        })
-    }
-
-    /// Send this request and parse JSON response on success.
-    pub fn fetch_json<T>(self) -> ApiResult<T>
-            where for<'de> T: Deserialize<'de> {
-        serde_json::from_reader(self.send()?).map_err(From::from)
-    }
-
-    /// Add body to the request.
-    pub fn body<B: Into<Body<'a>>>(self, body: B) -> RequestBuilder<'a> {
-        RequestBuilder {
-            inner: self.inner.body(body)
-        }
-    }
-
-    /// Add an individual header to the request.
-    pub fn header<H: Header + HeaderFormat>(self, header: H)
-            -> RequestBuilder<'a> {
-        RequestBuilder {
-            inner: self.inner.header(header)
-        }
-    }
-}
-
 impl<'session, Srv: ServiceType> ServiceWrapper<'session, Srv> {
     /// Create a new wrapper for the specific service.
     pub fn new(session: &'session Session) -> ServiceWrapper<'session, Srv> {
@@ -175,8 +114,8 @@ impl<'session, Srv: ServiceType> ServiceWrapper<'session, Srv> {
     }
 
     /// Make an HTTP request to the given service.
-    pub fn request<P>(&'session self, method: Method, path: P, query: Query)
-            -> ApiResult<RequestBuilder<'session>>
+    pub fn request<P>(&self, method: Method, path: P, query: Query)
+            -> ApiResult<Request>
             where P: IntoIterator, P::Item: AsRef<str> {
         let url = self.get_endpoint(path, query)?;
         let headers = self.session.service_headers::<Srv>();
