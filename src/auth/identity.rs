@@ -18,19 +18,13 @@ use std::collections::hash_map::DefaultHasher;
 use std::env;
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use std::io::Read;
 
-use hyper::{Client, Get, Url};
-use hyper::Error as HttpClientError;
-use hyper::client::{IntoUrl, Response};
-use hyper::error::ParseError;
-use hyper::header::{ContentType, Headers};
-use hyper::method::Method;
-use hyper::status::StatusCode;
+use reqwest::{Client, IntoUrl, Method, RequestBuilder, Response, StatusCode,
+              Url, UrlError};
+use reqwest::header::{ContentType, Headers};
 
 use super::super::{ApiError, ApiResult};
 use super::super::identity::{catalog, protocol};
-use super::super::service::RequestBuilder;
 use super::super::utils::ValueCache;
 use super::AuthMethod;
 
@@ -41,6 +35,12 @@ const MISSING_USER: &'static str = "User information required";
 const MISSING_SCOPE: &'static str = "Unscoped tokens are not supported now";
 const MISSING_ENV_VARS: &'static str =
     "Not all required environment variables were provided";
+const INVALID_ENV_AUTH_URL: &'static str =
+    "Malformed authentication URL provided in the environment";
+const MISSING_SUBJECT_HEADER: &'static str =
+    "Missing X-Subject-Token header";
+const INVALID_URL: &'static str =
+    "Invalid URL received from service catalog";
 
 
 /// Plain authentication token without additional details.
@@ -88,7 +88,7 @@ impl Identity {
     }
 
     /// Create a password authentication against the given Identity service.
-    pub fn new<U>(auth_url: U) -> Result<Identity, ParseError> where U: IntoUrl  {
+    pub fn new<U>(auth_url: U) -> Result<Identity, UrlError> where U: IntoUrl  {
         Ok(Identity {
             auth_url: auth_url.into_url()?,
             password_identity: None,
@@ -144,11 +144,9 @@ impl Identity {
     /// Create an authentication method from environment variables.
     pub fn from_env() -> ApiResult<PasswordAuth> {
         let auth_url = _get_env("OS_AUTH_URL")?;
-        let id = match Identity::new(&auth_url) {
-            Ok(x) => x,
-            Err(e) =>
-                return Err(ApiError::ProtocolError(HttpClientError::Uri(e)))
-        };
+        let id = Identity::new(&auth_url).map_err(|_| {
+            InvalidInput(String::from(INVALID_ENV_AUTH_URL))
+        })?;
 
         let user_name = _get_env("OS_USERNAME")?;
         let password = _get_env("OS_PASSWORD")?;
@@ -170,6 +168,13 @@ fn _get_env(name: &str) -> ApiResult<String> {
     env::var(name).or(Err(InvalidInput(String::from(MISSING_ENV_VARS))))
 }
 
+#[inline]
+fn extract_subject_token(headers: &Headers) -> Option<String> {
+    // TODO: replace with a typed header
+    headers.get_raw("x-subject-token").and_then(|h| h.one())
+        .map(|buf| { String::from_utf8_lossy(buf).into_owned() })
+}
+
 impl PasswordAuth {
     /// Get a reference to the auth URL.
     pub fn get_auth_url(&self) -> &Url {
@@ -180,9 +185,13 @@ impl PasswordAuth {
            project_scope: protocol::ProjectScope) -> PasswordAuth {
         let body = protocol::ProjectScopedAuthRoot::new(password_identity,
                                                         project_scope);
-        // TODO: allow /v3 postfix built into auth_url?
-        let token_endpoint = format!("{}/v3/auth/tokens",
-                                     auth_url.to_string());
+        // TODO: more robust logic?
+        let token_endpoint = if auth_url.path().ends_with("/v3") {
+            format!("{}/auth/tokens", auth_url)
+        } else {
+            format!("{}/v3/auth/tokens", auth_url)
+        };
+
         PasswordAuth {
             auth_url: auth_url,
             body: body,
@@ -191,34 +200,29 @@ impl PasswordAuth {
         }
     }
 
-    fn token_from_response(&self, mut resp: Response)
-            -> ApiResult<Token> {
-        let mut resp_body = String::new();
-        let _ignored = resp.read_to_string(&mut resp_body)?;
-
-        let token_value = match resp.status {
+    fn token_from_response(&self, resp: Response) -> ApiResult<Token> {
+        let token_value = match resp.status() {
             StatusCode::Ok | StatusCode::Created => {
-                let header: Option<&protocol::SubjectTokenHeader> =
-                    resp.headers.get();
-                match header {
-                    Some(ref value) => value.0.clone(),
+                match extract_subject_token(resp.headers()) {
+                    Some(value) => value,
                     None => {
                         error!("No X-Subject-Token header received from {}",
                                self.token_endpoint);
                         return Err(
-                            ApiError::ProtocolError(HttpClientError::Header))
+                            ApiError::InvalidResponse(
+                                String::from(MISSING_SUBJECT_HEADER)))
                     }
                 }
             },
             StatusCode::Unauthorized => {
                 error!("Invalid credentials for user {}",
                        self.body.auth.identity.password.user.name);
-                return Err(ApiError::HttpError(resp.status, resp));
+                return Err(ApiError::HttpError(resp.status(), resp));
             },
             other => {
                 error!("Unexpected HTTP error {} when getting a token for {}",
                        other, self.body.auth.identity.password.user.name);
-                return Err(ApiError::HttpError(resp.status, resp));
+                return Err(ApiError::HttpError(resp.status(), resp));
             }
         };
 
@@ -237,8 +241,7 @@ impl PasswordAuth {
             debug!("Requesting a token for user {} from {}",
                    self.body.auth.identity.password.user.name,
                    self.token_endpoint);
-            let body = self.body.to_string().unwrap();
-            let resp = client.post(&self.token_endpoint).body(&body)
+            let resp = client.post(&self.token_endpoint).json(&self.body)
                 .header(ContentType::json()).send()?;
             self.token_from_response(resp)
         })
@@ -254,8 +257,8 @@ impl PasswordAuth {
         // TODO: catalog caching
         let catalog_url = catalog::get_url(self.auth_url.clone());
         trace!("Requesting a service catalog from {}", catalog_url);
-        let req = self.request(client, Get, catalog_url, Headers::new())?;
-        let body: protocol::CatalogRoot = req.fetch_json()?;
+        let mut req = self.request(client, Method::Get, catalog_url)?;
+        let body: protocol::CatalogRoot = req.send()?.json()?;
         trace!("Received catalog: {:?}", body.catalog);
         Ok(body.catalog)
     }
@@ -263,11 +266,16 @@ impl PasswordAuth {
 
 impl AuthMethod for PasswordAuth {
     /// Create an authenticated request.
-    fn request<'a>(&self, client: &'a Client, method: Method, url: Url,
-                   headers: Headers) -> ApiResult<RequestBuilder<'a>> {
+    fn request(&self, client: &Client, method: Method, url: Url) -> ApiResult<RequestBuilder> {
         let token = self.get_token(client)?;
-        Ok(RequestBuilder::new(client, method, url, headers)
-           .header(protocol::AuthTokenHeader(token)))
+        let mut headers = Headers::new();
+        // TODO: replace with a typed header
+        headers.set_raw("x-auth-token", token);
+        let mut builder = client.request(method, url);
+        {
+            let _unused = builder.headers(headers);
+        }
+        Ok(builder)
     }
 
     /// Get a URL for the requested service.
@@ -283,81 +291,19 @@ impl AuthMethod for PasswordAuth {
         let endp = catalog::find_endpoint(&cat, service_type,
                                           real_interface, region)?;
         info!("Received {:?}", endp);
-        endp.url.into_url().map_err(From::from)
+        Url::parse(&endp.url).map_err(|e| {
+            error!("Invalid URL {} received from service catalog: {}",
+                   endp.url, e);
+            ApiError::InvalidResponse(String::from(INVALID_URL))
+        })
     }
 }
 
 #[cfg(test)]
 pub mod test {
-    #![allow(missing_debug_implementations)]
     #![allow(unused_results)]
 
-    use hyper::{self, Url};
-    use hyper::status::StatusCode;
-
-    use super::super::super::{ApiError, ApiResult};
-    use super::super::AuthMethod;
     use super::Identity;
-
-    mock_connector!(MockToken {
-        "http://127.0.1.1" => "HTTP/1.1 200 OK\r\n\
-                               Server: Mock.Mock\r\n\
-                               X-Subject-Token: abcdef\r\n
-                               \r\n\
-                               "
-        "http://127.0.1.2" => "HTTP/1.1 401 Unauthorized\r\n\
-                               Server: Mock.Mock\r\n\
-                               \r\n\
-                               boom"
-        "http://127.0.1.3" => "HTTP/1.1 404 Not Found\r\n\
-                               Server: Mock.Mock\r\n\
-                               \r\n\
-                               nothing found"
-    });
-
-    // Copied from keystone API reference.
-    const EXAMPLE_CATALOG_RESPONSE: &'static str = r#"
-    {
-        "catalog": [
-            {
-                "endpoints": [
-                    {
-                        "id": "39dc322ce86c4111b4f06c2eeae0841b",
-                        "interface": "public",
-                        "region": "RegionOne",
-                        "url": "http://localhost:5000"
-                    },
-                    {
-                        "id": "ec642f27474842e78bf059f6c48f4e99",
-                        "interface": "internal",
-                        "region": "RegionOne",
-                        "url": "http://localhost:5000"
-                    },
-                    {
-                        "id": "c609fc430175452290b62a4242e8a7e8",
-                        "interface": "admin",
-                        "region": "RegionOne",
-                        "url": "http://localhost:35357"
-                    }
-                ],
-                "id": "4363ae44bdf34a3981fde3b823cb9aa2",
-                "type": "identity",
-                "name": "keystone"
-            }
-        ],
-        "links": {
-            "self": "https://example.com/identity/v3/catalog",
-            "previous": null,
-            "next": null
-        }
-    }"#;
-
-    mock_connector!(MockCatalog {
-        "http://127.0.2.1" => String::from("HTTP/1.1 200 OK\r\n\
-                                            Server: Mock.Mock\r\n\
-                                            X-Subject-Token: abcdef\r\n
-                                            \r\n") + EXAMPLE_CATALOG_RESPONSE
-    });
 
     #[test]
     fn test_identity_new() {
@@ -407,88 +353,5 @@ pub mod test {
         Identity::new("http://127.0.0.1:8080/identity").unwrap()
             .with_project_scope("cool project", "example.com")
             .create().err().unwrap();
-    }
-
-    #[test]
-    fn test_identity_get_token() {
-        let id = Identity::new("http://127.0.1.1").unwrap()
-            .with_user("user", "pa$$w0rd", "example.com")
-            .with_project_scope("cool project", "example.com")
-            .create().unwrap();
-        let cli = hyper::Client::with_connector(MockToken::default());
-        let token = id.get_token(&cli).unwrap();
-        assert_eq!(&token, "abcdef");
-    }
-
-    #[test]
-    fn test_identity_get_token_unauthorized() {
-        let id = Identity::new("http://127.0.1.2").unwrap()
-            .with_user("user", "pa$$w0rd", "example.com")
-            .with_project_scope("cool project", "example.com")
-            .create().unwrap();
-        let cli = hyper::Client::with_connector(MockToken::default());
-        match id.get_token(&cli).err().unwrap() {
-            ApiError::HttpError(StatusCode::Unauthorized, ..) => (),
-            other => panic!("Unexpected {}", other)
-        };
-    }
-
-    #[test]
-    fn test_identity_get_token_fail() {
-        let id = Identity::new("http://127.0.1.3").unwrap()
-            .with_user("user", "pa$$w0rd", "example.com")
-            .with_project_scope("cool project", "example.com")
-            .create().unwrap();
-        let cli = hyper::Client::with_connector(MockToken::default());
-        match id.get_token(&cli).err().unwrap() {
-            ApiError::HttpError(hyper::NotFound, ..) => (),
-            other => panic!("Unexpected {}", other)
-        };
-    }
-
-    fn get_endpoint(service_type: &str, interface_endpoint: Option<&str>,
-                    region: Option<&str>) -> ApiResult<Url> {
-        let id = Identity::new("http://127.0.2.1").unwrap()
-            .with_user("user", "pa$$w0rd", "example.com")
-            .with_project_scope("cool project", "example.com")
-            .create().unwrap();
-        let cli = hyper::Client::with_connector(MockCatalog::default());
-        id.get_endpoint(&cli, String::from(service_type),
-                        interface_endpoint.map(String::from),
-                        region.map(String::from))
-    }
-
-    #[test]
-    fn test_identity_get_endpoint() {
-        let e1 = get_endpoint("identity", None, None).unwrap();
-        assert_eq!(&e1.to_string(), "http://localhost:5000/");
-        let e2 = get_endpoint("identity", Some("admin"), None).unwrap();
-        assert_eq!(&e2.to_string(), "http://localhost:35357/");
-
-        match get_endpoint("foo", None, None).err().unwrap() {
-            ApiError::EndpointNotFound(ref endp) =>
-                assert_eq!(endp, "foo"),
-            other => panic!("Unexpected {}", other)
-        };
-
-        match get_endpoint("identity", Some("unknown"), None).err().unwrap() {
-            ApiError::EndpointNotFound(ref endp) =>
-                assert_eq!(endp, "identity"),
-            other => panic!("Unexpected {}", other)
-        };
-    }
-
-    #[test]
-    fn test_identity_get_endpoint_with_region() {
-        let e1 = get_endpoint("identity", Some("admin"),
-                              Some("RegionOne")).unwrap();
-        assert_eq!(&e1.to_string(), "http://localhost:35357/");
-
-        match get_endpoint("identity", None,
-                           Some("unknown")).err().unwrap() {
-            ApiError::EndpointNotFound(ref endp) =>
-                assert_eq!(endp, "identity"),
-            other => panic!("Unexpected {}", other)
-        };
     }
 }

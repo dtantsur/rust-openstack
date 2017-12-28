@@ -16,13 +16,6 @@
 
 #![allow(missing_docs)]
 
-use serde_json;
-
-
-header! { (AuthTokenHeader, "X-Auth-Token") => [String] }
-
-header! { (SubjectTokenHeader, "X-Subject-Token") => [String] }
-
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Domain {
@@ -141,9 +134,5 @@ impl ProjectScopedAuthRoot {
                 scope: scope
             }
         }
-    }
-
-    pub fn to_string(&self) -> Result<String, serde_json::Error> {
-        serde_json::to_string(&self)
     }
 }

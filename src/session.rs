@@ -17,14 +17,12 @@
 use std::cell::Ref;
 use std::collections::HashMap;
 
-use hyper::{Client, Url};
-use hyper::client::IntoUrl;
-use hyper::header::Headers;
-use hyper::method::Method;
+use reqwest::{Client, IntoUrl, Method, RequestBuilder, Url};
+use reqwest::header::Headers;
 
 use super::{ApiError, ApiResult, ApiVersion, ApiVersionRequest};
 use super::auth::AuthMethod;
-use super::service::{ApiVersioning, RequestBuilder, ServiceInfo, ServiceType};
+use super::service::{ApiVersioning, ServiceInfo, ServiceType};
 use super::utils;
 
 
@@ -36,7 +34,7 @@ use super::utils;
 /// The session object also owns region and endpoint interface to use.
 ///
 /// Finally, the session object is responsible for API version negotiation.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Session {
     auth: Box<AuthMethod>,
     client: Client,
@@ -57,7 +55,7 @@ impl Session {
         let region = auth_method.default_region();
         Session {
             auth: Box::new(auth_method),
-            client: utils::http_client(),
+            client: Client::new(),
             cached_info: utils::MapCache::new(),
             api_versions: HashMap::new(),
             region: region,
@@ -163,9 +161,9 @@ impl Session {
     }
 
     /// Prepare an HTTP request with authentication.
-    pub fn request<'a, U>(&'a self, method: Method, url: U, headers: Headers)
-            -> ApiResult<RequestBuilder<'a>> where U: IntoUrl {
-        self.auth.request(&self.client, method, url.into_url()?, headers)
+    pub fn request<U>(&self, method: Method, url: U)
+            -> ApiResult<RequestBuilder> where U: IntoUrl {
+        self.auth.request(&self.client, method, url.into_url()?)
     }
 
     fn ensure_service_info<Srv>(&self, endpoint_interface: String)
@@ -192,223 +190,5 @@ impl Session {
             -> ApiResult<Ref<ServiceInfo>> where Srv: ServiceType {
         let key = self.ensure_service_info::<Srv>(endpoint_interface)?;
         Ok(self.cached_info.get_ref(&key).unwrap())
-    }
-}
-
-
-impl Clone for Session {
-    fn clone(&self) -> Session {
-        Session {
-            auth: self.auth.clone(),
-            // NOTE: hyper::Client does not support Clone
-            client: utils::http_client(),
-            cached_info: self.cached_info.clone(),
-            api_versions: self.api_versions.clone(),
-            region: self.region.clone(),
-            endpoint_interface: self.endpoint_interface.clone()
-        }
-    }
-}
-
-
-#[cfg(test)]
-pub mod test {
-    #![allow(missing_debug_implementations)]
-    #![allow(unused_results)]
-
-    use std::collections::HashMap;
-    use std::io::Read;
-
-    use hyper;
-    use hyper::header::{ContentLength, Headers};
-    use hyper::status::StatusCode;
-
-    use super::super::ApiError;
-    use super::super::auth::{AuthMethod, Identity, NoAuth};
-    use super::super::utils;
-    use super::Session;
-
-    pub fn new_with_params<Auth>(auth: Auth, cli: hyper::Client,
-                                 region: Option<&str>)
-            -> Session where Auth: AuthMethod + 'static {
-        let ep = auth.default_endpoint_interface();
-        Session {
-            auth: Box::new(auth),
-            client: cli,
-            cached_info: utils::MapCache::new(),
-            api_versions: HashMap::new(),
-            region: region.map(From::from),
-            endpoint_interface: ep
-        }
-    }
-
-    fn session_with_identity() -> Session {
-        let id = Identity::new("http://127.0.2.1").unwrap()
-            .with_user("user", "pa$$w0rd", "example.com")
-            .with_project_scope("cool project", "example.com")
-            .create().unwrap();
-        let cli = hyper::Client::with_connector(MockCatalog::default());
-        let ep = id.default_endpoint_interface();
-        Session {
-            auth: Box::new(id),
-            client: cli,
-            cached_info: utils::MapCache::new(),
-            api_versions: HashMap::new(),
-            region: None,
-            endpoint_interface: ep
-        }
-    }
-
-    mock_connector!(MockHttp {
-        "http://127.0.0.1" => "HTTP/1.1 200 OK\r\n\
-                               Server: Mock.Mock\r\n\
-                               \r\n\
-                               {}"
-        "http://127.0.0.2" => "HTTP/1.1 404 NOT FOUND\r\n\
-                               Server: Mock.Mock\r\n\
-                               \r\n\
-                               {}"
-    });
-
-    // Copied from keystone API reference.
-    const EXAMPLE_CATALOG_RESPONSE: &'static str = r#"
-    {
-        "catalog": [
-            {
-                "endpoints": [
-                    {
-                        "id": "39dc322ce86c4111b4f06c2eeae0841b",
-                        "interface": "public",
-                        "region": "RegionOne",
-                        "url": "http://localhost:5000"
-                    },
-                    {
-                        "id": "ec642f27474842e78bf059f6c48f4e99",
-                        "interface": "internal",
-                        "region": "RegionOne",
-                        "url": "http://localhost:5000"
-                    },
-                    {
-                        "id": "c609fc430175452290b62a4242e8a7e8",
-                        "interface": "admin",
-                        "region": "RegionOne",
-                        "url": "http://localhost:35357"
-                    }
-                ],
-                "id": "4363ae44bdf34a3981fde3b823cb9aa2",
-                "type": "identity",
-                "name": "keystone"
-            }
-        ],
-        "links": {
-            "self": "https://example.com/identity/v3/catalog",
-            "previous": null,
-            "next": null
-        }
-    }"#;
-
-    mock_connector!(MockCatalog {
-        "http://127.0.2.1" => String::from("HTTP/1.1 200 OK\r\n\
-                                            Server: Mock.Mock\r\n\
-                                            X-Subject-Token: abcdef\r\n
-                                            \r\n") + EXAMPLE_CATALOG_RESPONSE
-    });
-
-    #[test]
-    fn test_session_request() {
-        let cli = hyper::Client::with_connector(MockHttp::default());
-        let s = new_with_params(NoAuth::new("http://127.0.0.1/").unwrap(),
-                                cli, None);
-
-        let mut resp = s.request(hyper::Post, "http://127.0.0.1/",
-                                 Headers::new()).unwrap()
-            .body("body").header(ContentLength(4u64)).send().unwrap();
-
-        let mut s = String::new();
-        resp.read_to_string(&mut s).unwrap();
-        assert_eq!(&s, "{}");
-    }
-
-    #[test]
-    fn test_session_request_error() {
-        let cli = hyper::Client::with_connector(MockHttp::default());
-        let s = new_with_params(NoAuth::new("http://127.0.0.2/").unwrap(),
-                                cli, None);
-
-        let err = s.request(hyper::Post, "http://127.0.0.2/",
-                            Headers::new()).unwrap()
-            .body("body").header(ContentLength(4u64)).send().err().unwrap();
-
-        match err {
-            ApiError::HttpError(StatusCode::NotFound, ..) => (),
-            other => panic!("Unexpected {}", other)
-        }
-    }
-
-    #[test]
-    fn test_session_request_unchecked_error() {
-        let cli = hyper::Client::with_connector(MockHttp::default());
-        let s = new_with_params(NoAuth::new("http://127.0.0.2/").unwrap(),
-                                cli, None);
-
-        let mut resp = s.request(hyper::Post, "http://127.0.0.2/",
-                                 Headers::new()).unwrap()
-            .body("body").header(ContentLength(4u64)).send_unchecked()
-            .unwrap();
-
-        assert_eq!(resp.status, StatusCode::NotFound);
-
-        let mut s = String::new();
-        resp.read_to_string(&mut s).unwrap();
-        assert_eq!(&s, "{}");
-    }
-
-    #[test]
-    fn test_session_get_catalog_endpoint() {
-        let session = session_with_identity();
-
-        let e1 = session.get_catalog_endpoint("identity").unwrap();
-        assert_eq!(&e1.to_string(), "http://localhost:5000/");
-
-        match session.get_catalog_endpoint("foo").err().unwrap() {
-            ApiError::EndpointNotFound(ref endp) => assert_eq!(endp, "foo"),
-            other => panic!("Unexpected {}", other)
-        };
-    }
-
-    #[test]
-    fn test_session_get_catalog_endpoint_with_endpoint_interface() {
-        let sess1 = session_with_identity().with_endpoint_interface("admin");
-        let e2 = sess1.get_catalog_endpoint("identity").unwrap();
-        assert_eq!(&e2.to_string(), "http://localhost:35357/");
-
-        let sess2 = session_with_identity().with_endpoint_interface("unknown");
-        match sess2.get_catalog_endpoint("identity").err().unwrap() {
-            ApiError::EndpointNotFound(ref endp) =>
-                assert_eq!(endp, "identity"),
-            other => panic!("Unexpected {}", other)
-        };
-    }
-
-    #[test]
-    fn test_session_get_catalog_endpoint_with_region() {
-        let sess1 = session_with_identity().with_region("RegionOne");
-        let e1 = sess1.get_catalog_endpoint("identity").unwrap();
-        assert_eq!(&e1.to_string(), "http://localhost:5000/");
-
-        let sess2 = session_with_identity().with_region("unknown");
-        match sess2.get_catalog_endpoint("identity").err().unwrap() {
-            ApiError::EndpointNotFound(ref endp) =>
-                assert_eq!(endp, "identity"),
-            other => panic!("Unexpected {}", other)
-        };
-    }
-
-    #[test]
-    fn test_session_get_catalog_endpoint_with_region_and_endpoint_interface() {
-        let session = session_with_identity().with_region("RegionOne")
-            .with_endpoint_interface("admin");
-        let e1 = session.get_catalog_endpoint("identity").unwrap();
-        assert_eq!(&e1.to_string(), "http://localhost:35357/");
     }
 }
