@@ -53,6 +53,7 @@
         unused,
         unused_allocation,
         unused_comparisons,
+        unused_doc_comment,
         unused_extern_crates,
         unused_import_braces,
         unused_parens,

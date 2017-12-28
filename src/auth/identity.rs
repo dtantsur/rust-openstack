@@ -120,7 +120,7 @@ impl Identity {
 
     /// Create an authentication method based on provided information.
     pub fn create(self) -> ApiResult<PasswordAuth> {
-        /// TODO: support more authentication methods (at least a token)
+        // TODO: support more authentication methods (at least a token)
         let password_identity = match self.password_identity {
             Some(p) => p,
             None =>
@@ -129,7 +129,7 @@ impl Identity {
                 )
         };
 
-        /// TODO: support unscoped tokens
+        // TODO: support unscoped tokens
         let project_scope = match self.project_scope {
             Some(p) => p,
             None =>
