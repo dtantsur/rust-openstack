@@ -16,12 +16,12 @@
 
 use std::marker::PhantomData;
 
-use reqwest::{Client, IntoUrl, Method, Request, Response, Url};
-use reqwest::header::{Header, Headers};
-use serde::{Deserialize, Serialize};
-use serde_json;
+use reqwest::{Method, RequestBuilder, Response, Url};
+use reqwest::header::Headers;
+use serde::Serialize;
+use serde::de::DeserializeOwned;
 
-use super::{ApiError, ApiResult, ApiVersion, ApiVersionRequest, Session};
+use super::{ApiResult, ApiVersion, ApiVersionRequest, Session};
 use super::utils;
 
 
@@ -115,48 +115,51 @@ impl<'session, Srv: ServiceType> ServiceWrapper<'session, Srv> {
 
     /// Make an HTTP request to the given service.
     pub fn request<P>(&self, method: Method, path: P, query: Query)
-            -> ApiResult<Request>
+            -> ApiResult<RequestBuilder>
             where P: IntoIterator, P::Item: AsRef<str> {
         let url = self.get_endpoint(path, query)?;
         let headers = self.session.service_headers::<Srv>();
         trace!("Sending HTTP {} request to {} with {:?}",
                method, url, headers);
-        self.session.request(method, url, headers)
+        let mut builder = self.session.request(method, url)?;
+        {
+            let _unused = builder.headers(headers);
+        }
+        Ok(builder)
     }
 
     /// Make an HTTP request with JSON body and JSON response.
     pub fn json<P, Req, Res>(&self, method: Method, path: P, query: Query,
                              body: &Req) -> ApiResult<Res>
-            where Req: Serialize, for<'de> Res: Deserialize<'de>,
+            where Req: Serialize, Res: DeserializeOwned,
             P: IntoIterator, P::Item: AsRef<str> {
-        let str_body = serde_json::to_string(body)?;
-        let request = self.request(method, path, query)?;
-        request.body(&str_body).fetch_json()
+        let mut builder = self.request(method, path, query)?;
+        builder.json(body).send()?.json().map_err(From::from)
     }
 
     /// Make a GET request returning a JSON.
     pub fn get_json<P, Res>(&self, path: P, query: Query) -> ApiResult<Res>
-            where for<'de> Res: Deserialize<'de>, P: IntoIterator, P::Item: AsRef<str> {
-        self.request(Method::Get, path, query)?.fetch_json()
+            where Res: DeserializeOwned, P: IntoIterator, P::Item: AsRef<str> {
+        self.request(Method::Get, path, query)?.send()?.json().map_err(From::from)
     }
 
     /// Make a POST request sending and returning a JSON.
     pub fn post_json<P, Req, Res>(&self, path: P, query: Query, body: &Req)
-            -> ApiResult<Res> where Req: Serialize, for <'de> Res: Deserialize<'de>,
+            -> ApiResult<Res> where Req: Serialize, Res: DeserializeOwned,
             P: IntoIterator, P::Item: AsRef<str> {
         self.json(Method::Post, path, query, body)
     }
 
     /// Make a POST request sending and returning a JSON.
     pub fn put_json<P, Req, Res>(&self, path: P, query: Query, body: &Req)
-            -> ApiResult<Res> where Req: Serialize, for<'de> Res: Deserialize<'de>,
+            -> ApiResult<Res> where Req: Serialize, Res: DeserializeOwned,
             P: IntoIterator, P::Item: AsRef<str> {
         self.json(Method::Put, path, query, body)
     }
 
     /// Make a PATCH request sending and returning a JSON.
     pub fn patch_json<P, Req, Res>(&self, path: P, query: Query, body: &Req)
-            -> ApiResult<Res> where Req: Serialize, for<'de> Res: Deserialize<'de>,
+            -> ApiResult<Res> where Req: Serialize, Res: DeserializeOwned,
             P: IntoIterator, P::Item: AsRef<str> {
         self.json(Method::Patch, path, query, body)
     }
@@ -164,7 +167,7 @@ impl<'session, Srv: ServiceType> ServiceWrapper<'session, Srv> {
     /// Make a DELETE request.
     pub fn delete<P>(&self, path: P, query: Query) -> ApiResult<Response>
             where P: IntoIterator, P::Item: AsRef<str> {
-        self.request(Method::Delete, path, query)?.send()
+        self.request(Method::Delete, path, query)?.send().map_err(From::from)
     }
 }
 

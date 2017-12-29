@@ -21,13 +21,10 @@ use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 use chrono::{DateTime, FixedOffset};
-use hyper::Url;
+use reqwest::Url;
 use serde::{Deserialize, Deserializer};
-use serde::de::Error as DeserError;
-use serde_json::Error as JsonError;
 
-use super::super::super::{ApiResult, ApiVersion};
-use super::super::super::ApiError::InvalidJson;
+use super::super::super::{ApiError, ApiResult, ApiVersion};
 use super::super::super::service::ServiceInfo;
 use super::super::super::utils;
 
@@ -195,7 +192,8 @@ impl Version {
                 error!("Received malformed version response: no self link \
                         in {:?}", self.links);
                 return Err(
-                    InvalidJson(JsonError::missing_field("link to self"))
+                    ApiError::InvalidResponse(String::from(
+                            "Invalid version - missing self link"))
                 );
             }
         };

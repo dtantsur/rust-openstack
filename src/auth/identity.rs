@@ -144,7 +144,7 @@ impl Identity {
     /// Create an authentication method from environment variables.
     pub fn from_env() -> ApiResult<PasswordAuth> {
         let auth_url = _get_env("OS_AUTH_URL")?;
-        let id = Identity::new(&auth_url).map_err(|e| {
+        let id = Identity::new(&auth_url).map_err(|_| {
             InvalidInput(String::from(INVALID_ENV_AUTH_URL))
         })?;
 
@@ -196,10 +196,7 @@ impl PasswordAuth {
         }
     }
 
-    fn token_from_response(&self, mut resp: Response)
-            -> ApiResult<Token> {
-        let mut resp_body = resp.text()?;
-
+    fn token_from_response(&self, resp: Response) -> ApiResult<Token> {
         let token_value = match resp.status() {
             StatusCode::Ok | StatusCode::Created => {
                 match extract_subject_token(resp.headers()) {
@@ -256,7 +253,7 @@ impl PasswordAuth {
         // TODO: catalog caching
         let catalog_url = catalog::get_url(self.auth_url.clone());
         trace!("Requesting a service catalog from {}", catalog_url);
-        let req = self.request(client, Method::Get, catalog_url)?;
+        let mut req = self.request(client, Method::Get, catalog_url)?;
         let body: protocol::CatalogRoot = req.send()?.json()?;
         trace!("Received catalog: {:?}", body.catalog);
         Ok(body.catalog)
@@ -271,7 +268,9 @@ impl AuthMethod for PasswordAuth {
         // TODO: replace with a typed header
         headers.set_raw("x-auth-token", token);
         let mut builder = client.request(method, url);
-        builder.headers(headers);
+        {
+            let _unused = builder.headers(headers);
+        }
         Ok(builder)
     }
 
@@ -289,8 +288,8 @@ impl AuthMethod for PasswordAuth {
                                           real_interface, region)?;
         info!("Received {:?}", endp);
         Url::parse(&endp.url).map_err(|e| {
-            error!("Invalid URL received for service '{}': {}",
-                   service_type, e);
+            error!("Invalid URL {} received from service catalog: {}",
+                   endp.url, e);
             ApiError::InvalidResponse(String::from(INVALID_URL))
         })
     }

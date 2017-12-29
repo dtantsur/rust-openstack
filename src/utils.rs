@@ -20,7 +20,6 @@ use std::fmt::Display;
 use std::hash::Hash;
 use std::str::FromStr;
 
-use reqwest::Client;
 use serde::{Deserialize, Deserializer};
 use serde::de::Error as DeserError;
 

@@ -18,7 +18,7 @@ use std::error::Error;
 use std::fmt;
 use std::str::FromStr;
 
-use reqwest::{Response, StatusCode};
+use reqwest::{Response, StatusCode, UrlError};
 use reqwest::Error as HttpClientError;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde::de::{Error as DeserError, Visitor};
@@ -36,6 +36,9 @@ pub enum ApiError {
     ///
     /// Contains the error message.
     InvalidInput(String),
+
+    /// Invalid URL.
+    InvalidUrl(UrlError),
 
     /// Generic HTTP error.
     HttpError(StatusCode, Response),
@@ -98,6 +101,7 @@ impl fmt::Display for ApiError {
                 write!(f, "Requested endpoint {} was not found", endp),
             ApiError::InvalidInput(ref msg) =>
                 write!(f, "Input value(s) are invalid: {}", msg),
+            ApiError::InvalidUrl(ref e) => fmt::Display::fmt(e, f),
             ApiError::HttpError(status, ..) =>
                 write!(f, "HTTP error {}", status),
             ApiError::ProtocolError(ref e) => fmt::Display::fmt(e, f),
@@ -119,6 +123,7 @@ impl Error for ApiError {
             ApiError::EndpointNotFound(..) =>
                 "Requested endpoint was not found",
             ApiError::InvalidInput(..) => "Invalid value(s) provided",
+            ApiError::InvalidUrl(ref e) => e.description(),
             ApiError::HttpError(..) => "HTTP error",
             ApiError::ProtocolError(ref e) => e.description(),
             ApiError::InvalidResponse(..) =>
@@ -133,6 +138,7 @@ impl Error for ApiError {
     fn cause(&self) -> Option<&Error> {
         match *self {
             ApiError::ProtocolError(ref e) => Some(e),
+            ApiError::InvalidUrl(ref e) => Some(e),
             _ => None
         }
     }
@@ -141,6 +147,12 @@ impl Error for ApiError {
 impl From<HttpClientError> for ApiError {
     fn from(value: HttpClientError) -> ApiError {
         ApiError::ProtocolError(value)
+    }
+}
+
+impl From<UrlError> for ApiError {
+    fn from(value: UrlError) -> ApiError {
+        ApiError::InvalidUrl(value)
     }
 }
 
