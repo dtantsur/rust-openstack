@@ -16,7 +16,7 @@
 
 use std::fmt::Debug;
 
-use reqwest::{Client, Method, RequestBuilder, Url};
+use reqwest::{Method, RequestBuilder, Url};
 
 use super::super::ApiResult;
 
@@ -39,14 +39,12 @@ pub trait AuthMethod: BoxedClone + Debug {
     fn default_region(&self) -> Option<String> { None }
 
     /// Get a URL for the requested service.
-    fn get_endpoint(&self, client: &Client,
-                    service_type: String,
+    fn get_endpoint(&self, service_type: String,
                     endpoint_interface: Option<String>,
                     region: Option<String>) -> ApiResult<Url>;
 
     /// Create an authenticated request.
-    fn request(&self, client: &Client,
-               method: Method, url: Url) -> ApiResult<RequestBuilder>;
+    fn request(&self, method: Method, url: Url) -> ApiResult<RequestBuilder>;
 }
 
 

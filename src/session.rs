@@ -17,7 +17,7 @@
 use std::cell::Ref;
 use std::collections::HashMap;
 
-use reqwest::{Client, IntoUrl, Method, RequestBuilder, Url};
+use reqwest::{IntoUrl, Method, RequestBuilder, Url};
 use reqwest::header::Headers;
 
 use super::{ApiError, ApiResult, ApiVersion, ApiVersionRequest};
@@ -37,7 +37,6 @@ use super::utils;
 #[derive(Debug, Clone)]
 pub struct Session {
     auth: Box<AuthMethod>,
-    client: Client,
     cached_info: utils::MapCache<(&'static str, String), ServiceInfo>,
     api_versions: HashMap<&'static str, (ApiVersion, Headers)>,
     region: Option<String>,
@@ -55,7 +54,6 @@ impl Session {
         let region = auth_method.default_region();
         Session {
             auth: Box::new(auth_method),
-            client: Client::new(),
             cached_info: utils::MapCache::new(),
             api_versions: HashMap::new(),
             region: region,
@@ -69,7 +67,6 @@ impl Session {
     pub fn with_region<S: Into<String>>(self, region: S) -> Session {
         Session {
             auth: self.auth,
-            client: self.client,
             // ServiceInfo has to be refreshed
             cached_info: utils::MapCache::new(),
             // Different regions potentially have different API versions?
@@ -86,7 +83,6 @@ impl Session {
             -> Session where S: Into<String> {
         Session {
             auth: self.auth,
-            client: self.client,
             // ServiceInfo has to be refreshed
             cached_info: utils::MapCache::new(),
             api_versions: self.api_versions,
@@ -163,7 +159,7 @@ impl Session {
     /// Prepare an HTTP request with authentication.
     pub fn request<U>(&self, method: Method, url: U)
             -> ApiResult<RequestBuilder> where U: IntoUrl {
-        self.auth.request(&self.client, method, url.into_url()?)
+        self.auth.request(method, url.into_url()?)
     }
 
     fn ensure_service_info<Srv>(&self, endpoint_interface: String)
@@ -180,8 +176,7 @@ impl Session {
 
     fn get_catalog_endpoint<S>(&self, service_type: S) -> ApiResult<Url>
             where S: Into<String> {
-        self.auth.get_endpoint(&self.client,
-                               service_type.into(),
+        self.auth.get_endpoint(service_type.into(),
                                Some(self.endpoint_interface.clone()),
                                self.region.clone())
     }

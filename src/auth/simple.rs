@@ -25,6 +25,7 @@ use super::AuthMethod;
 /// endpoint.
 #[derive(Clone, Debug)]
 pub struct NoAuth {
+    client: Client,
     endpoint: Url
 }
 
@@ -35,6 +36,7 @@ impl NoAuth {
     /// of the [AuthMethod](trait.AuthMethod.html) trait.
     pub fn new<U>(endpoint: U) -> Result<NoAuth, UrlError> where U: IntoUrl {
         Ok(NoAuth {
+            client: Client::new(),
             endpoint: endpoint.into_url()?
         })
     }
@@ -42,14 +44,12 @@ impl NoAuth {
 
 impl AuthMethod for NoAuth {
     /// Create a request.
-    fn request(&self, client: &Client, method: Method, url: Url)
-            -> ApiResult<RequestBuilder> {
-        Ok(client.request(method, url))
+    fn request(&self, method: Method, url: Url) -> ApiResult<RequestBuilder> {
+        Ok(self.client.request(method, url))
     }
 
     /// Get a predefined endpoint for all service types
-    fn get_endpoint(&self, _client: &Client,
-                    _service_type: String,
+    fn get_endpoint(&self, _service_type: String,
                     _endpoint_interface: Option<String>,
                     _region: Option<String>) -> ApiResult<Url> {
         Ok(self.endpoint.clone())
@@ -59,8 +59,6 @@ impl AuthMethod for NoAuth {
 #[cfg(test)]
 pub mod test {
     #![allow(unused_results)]
-
-    use reqwest;
 
     use super::super::AuthMethod;
     use super::NoAuth;
@@ -83,8 +81,7 @@ pub mod test {
     #[test]
     fn test_noauth_get_endpoint() {
         let a = NoAuth::new("http://127.0.0.1:8080/v1").unwrap();
-        let e = a.get_endpoint(&reqwest::Client::new(),
-                               String::from("foobar"), None, None).unwrap();
+        let e = a.get_endpoint(String::from("foobar"), None, None).unwrap();
         assert_eq!(e.scheme(), "http");
         assert_eq!(e.host_str().unwrap(), "127.0.0.1");
         assert_eq!(e.port().unwrap(), 8080u16);

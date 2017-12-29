@@ -65,6 +65,7 @@ impl Hash for Token {
 /// Authentication method factory using Identity API V3.
 #[derive(Clone, Debug)]
 pub struct Identity {
+    client: Client,
     auth_url: Url,
     password_identity: Option<protocol::PasswordIdentity>,
     project_scope: Option<protocol::ProjectScope>
@@ -75,6 +76,7 @@ pub struct Identity {
 /// Has to be created via [Identity object](struct.Identity.html) methods.
 #[derive(Clone, Debug)]
 pub struct PasswordAuth {
+    client: Client,
     auth_url: Url,
     body: protocol::ProjectScopedAuthRoot,
     token_endpoint: String,
@@ -89,7 +91,14 @@ impl Identity {
 
     /// Create a password authentication against the given Identity service.
     pub fn new<U>(auth_url: U) -> Result<Identity, UrlError> where U: IntoUrl  {
+        Identity::new_with_client(auth_url, Client::new())
+    }
+
+    /// Create a password authentication against the given Identity service.
+    pub fn new_with_client<U>(auth_url: U, client: Client)
+            -> Result<Identity, UrlError> where U: IntoUrl  {
         Ok(Identity {
+            client: client,
             auth_url: auth_url.into_url()?,
             password_identity: None,
             project_scope: None,
@@ -138,7 +147,8 @@ impl Identity {
                 )
         };
 
-        Ok(PasswordAuth::new(self.auth_url, password_identity, project_scope))
+        Ok(PasswordAuth::new(self.auth_url, password_identity, project_scope,
+                             self.client))
     }
 
     /// Create an authentication method from environment variables.
@@ -182,7 +192,7 @@ impl PasswordAuth {
     }
 
     fn new(auth_url: Url, password_identity: protocol::PasswordIdentity,
-           project_scope: protocol::ProjectScope) -> PasswordAuth {
+           project_scope: protocol::ProjectScope, client: Client) -> PasswordAuth {
         let body = protocol::ProjectScopedAuthRoot::new(password_identity,
                                                         project_scope);
         // TODO: more robust logic?
@@ -193,6 +203,7 @@ impl PasswordAuth {
         };
 
         PasswordAuth {
+            client: client,
             auth_url: auth_url,
             body: body,
             token_endpoint: token_endpoint,
@@ -235,29 +246,28 @@ impl PasswordAuth {
         Ok(Token(token_value))
     }
 
-    fn refresh_token(&self, client: &Client) -> ApiResult<()> {
+    fn refresh_token(&self) -> ApiResult<()> {
         // TODO: refresh on expiration
         self.cached_token.ensure_value(|| {
             debug!("Requesting a token for user {} from {}",
                    self.body.auth.identity.password.user.name,
                    self.token_endpoint);
-            let resp = client.post(&self.token_endpoint).json(&self.body)
+            let resp = self.client.post(&self.token_endpoint).json(&self.body)
                 .header(ContentType::json()).send()?;
             self.token_from_response(resp)
         })
     }
 
-    fn get_token(&self, client: &Client) -> ApiResult<String> {
-        self.refresh_token(client)?;
+    fn get_token(&self) -> ApiResult<String> {
+        self.refresh_token()?;
         Ok(self.cached_token.get().unwrap().0)
     }
 
-    fn get_catalog(&self, client: &Client)
-            -> ApiResult<Vec<protocol::CatalogRecord>> {
+    fn get_catalog(&self) -> ApiResult<Vec<protocol::CatalogRecord>> {
         // TODO: catalog caching
         let catalog_url = catalog::get_url(self.auth_url.clone());
         trace!("Requesting a service catalog from {}", catalog_url);
-        let mut req = self.request(client, Method::Get, catalog_url)?;
+        let mut req = self.request(Method::Get, catalog_url)?;
         let body: protocol::CatalogRoot = req.send()?.json()?;
         trace!("Received catalog: {:?}", body.catalog);
         Ok(body.catalog)
@@ -266,12 +276,12 @@ impl PasswordAuth {
 
 impl AuthMethod for PasswordAuth {
     /// Create an authenticated request.
-    fn request(&self, client: &Client, method: Method, url: Url) -> ApiResult<RequestBuilder> {
-        let token = self.get_token(client)?;
+    fn request(&self, method: Method, url: Url) -> ApiResult<RequestBuilder> {
+        let token = self.get_token()?;
         let mut headers = Headers::new();
         // TODO: replace with a typed header
         headers.set_raw("x-auth-token", token);
-        let mut builder = client.request(method, url);
+        let mut builder = self.client.request(method, url);
         {
             let _unused = builder.headers(headers);
         }
@@ -279,15 +289,14 @@ impl AuthMethod for PasswordAuth {
     }
 
     /// Get a URL for the requested service.
-    fn get_endpoint(&self, client: &Client,
-                    service_type: String,
+    fn get_endpoint(&self, service_type: String,
                     endpoint_interface: Option<String>,
                     region: Option<String>) -> ApiResult<Url> {
         let real_interface = endpoint_interface.unwrap_or(
             self.default_endpoint_interface());
         debug!("Requesting a catalog endpoint for service '{}', interface \
                '{}' from region {:?}", service_type, real_interface, region);
-        let cat = self.get_catalog(client)?;
+        let cat = self.get_catalog()?;
         let endp = catalog::find_endpoint(&cat, service_type,
                                           real_interface, region)?;
         info!("Received {:?}", endp);
