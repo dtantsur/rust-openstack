@@ -134,13 +134,14 @@ impl<'session, Srv: ServiceType> ServiceWrapper<'session, Srv> {
             where Req: Serialize, Res: DeserializeOwned,
             P: IntoIterator, P::Item: AsRef<str> {
         let mut builder = self.request(method, path, query)?;
-        builder.json(body).send()?.json().map_err(From::from)
+        builder.json(body).send()?.error_for_status()?.json().map_err(From::from)
     }
 
     /// Make a GET request returning a JSON.
     pub fn get_json<P, Res>(&self, path: P, query: Query) -> ApiResult<Res>
             where Res: DeserializeOwned, P: IntoIterator, P::Item: AsRef<str> {
-        self.request(Method::Get, path, query)?.send()?.json().map_err(From::from)
+        self.request(Method::Get, path, query)?.send()?.error_for_status()?
+            .json().map_err(From::from)
     }
 
     /// Make a POST request sending and returning a JSON.
@@ -167,7 +168,8 @@ impl<'session, Srv: ServiceType> ServiceWrapper<'session, Srv> {
     /// Make a DELETE request.
     pub fn delete<P>(&self, path: P, query: Query) -> ApiResult<Response>
             where P: IntoIterator, P::Item: AsRef<str> {
-        self.request(Method::Delete, path, query)?.send().map_err(From::from)
+        self.request(Method::Delete, path, query)?.send()?
+            .error_for_status().map_err(From::from)
     }
 }
 

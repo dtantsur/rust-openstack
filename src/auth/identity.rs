@@ -185,9 +185,13 @@ impl PasswordAuth {
            project_scope: protocol::ProjectScope) -> PasswordAuth {
         let body = protocol::ProjectScopedAuthRoot::new(password_identity,
                                                         project_scope);
-        // TODO: allow /v3 postfix built into auth_url?
-        let token_endpoint = format!("{}/v3/auth/tokens",
-                                     auth_url.to_string());
+        // TODO: more robust logic?
+        let token_endpoint = if auth_url.path().ends_with("/v3") {
+            format!("{}/auth/tokens", auth_url)
+        } else {
+            format!("{}/v3/auth/tokens", auth_url)
+        };
+
         PasswordAuth {
             auth_url: auth_url,
             body: body,

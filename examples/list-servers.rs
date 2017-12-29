@@ -13,7 +13,6 @@
 // limitations under the License.
 
 extern crate env_logger;
-extern crate hyper;
 extern crate openstack;
 
 
