@@ -69,6 +69,7 @@ extern crate reqwest;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+#[allow(unused_extern_crates)]
 extern crate serde_json;
 
 pub mod auth;
