@@ -222,7 +222,7 @@ impl ServiceInfo {
 
 #[cfg(test)]
 pub mod test {
-    use hyper::Url;
+    use reqwest::Url;
 
     use super::super::{ApiVersion, ApiVersionRequest};
     use super::ServiceInfo;

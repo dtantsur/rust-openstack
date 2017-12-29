@@ -60,7 +60,8 @@ impl AuthMethod for NoAuth {
 pub mod test {
     #![allow(unused_results)]
 
-    use super::super::super::utils;
+    use reqwest;
+
     use super::super::AuthMethod;
     use super::NoAuth;
 
@@ -82,7 +83,7 @@ pub mod test {
     #[test]
     fn test_noauth_get_endpoint() {
         let a = NoAuth::new("http://127.0.0.1:8080/v1").unwrap();
-        let e = a.get_endpoint(&utils::http_client(),
+        let e = a.get_endpoint(&reqwest::Client::new(),
                                String::from("foobar"), None, None).unwrap();
         assert_eq!(e.scheme(), "http");
         assert_eq!(e.host_str().unwrap(), "127.0.0.1");
