@@ -39,7 +39,6 @@ pub struct Session {
     auth: Box<AuthMethod>,
     cached_info: utils::MapCache<(&'static str, String), ServiceInfo>,
     api_versions: HashMap<&'static str, (ApiVersion, Headers)>,
-    region: Option<String>,
     endpoint_interface: String
 }
 
@@ -51,28 +50,11 @@ impl Session {
     /// public) and the first available region.
     pub fn new<Auth: AuthMethod + 'static>(auth_method: Auth) -> Session {
         let ep = auth_method.default_endpoint_interface();
-        let region = auth_method.default_region();
         Session {
             auth: Box::new(auth_method),
             cached_info: utils::MapCache::new(),
             api_versions: HashMap::new(),
-            region: region,
             endpoint_interface: ep
-        }
-    }
-
-    /// Convert this session into one using the given region.
-    ///
-    /// Negotiated API versions are reset to their default values.
-    pub fn with_region<S: Into<String>>(self, region: S) -> Session {
-        Session {
-            auth: self.auth,
-            // ServiceInfo has to be refreshed
-            cached_info: utils::MapCache::new(),
-            // Different regions potentially have different API versions?
-            api_versions: HashMap::new(),
-            region: Some(region.into()),
-            endpoint_interface: self.endpoint_interface
         }
     }
 
@@ -86,7 +68,6 @@ impl Session {
             // ServiceInfo has to be refreshed
             cached_info: utils::MapCache::new(),
             api_versions: self.api_versions,
-            region: self.region,
             endpoint_interface: endpoint_interface.into()
         }
     }
@@ -177,8 +158,7 @@ impl Session {
     fn get_catalog_endpoint<S>(&self, service_type: S) -> ApiResult<Url>
             where S: Into<String> {
         self.auth.get_endpoint(service_type.into(),
-                               Some(self.endpoint_interface.clone()),
-                               self.region.clone())
+                               Some(self.endpoint_interface.clone()))
     }
 
     fn get_service_info_ref<Srv>(&self, endpoint_interface: String)

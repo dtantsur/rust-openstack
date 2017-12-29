@@ -39,8 +39,6 @@ const INVALID_ENV_AUTH_URL: &'static str =
     "Malformed authentication URL provided in the environment";
 const MISSING_SUBJECT_HEADER: &'static str =
     "Missing X-Subject-Token header";
-const INVALID_URL: &'static str =
-    "Invalid URL received from service catalog";
 
 
 /// Plain authentication token without additional details.
@@ -67,6 +65,7 @@ impl Hash for Token {
 pub struct Identity {
     client: Client,
     auth_url: Url,
+    region: Option<String>,
     password_identity: Option<protocol::PasswordIdentity>,
     project_scope: Option<protocol::ProjectScope>
 }
@@ -78,6 +77,7 @@ pub struct Identity {
 pub struct PasswordAuth {
     client: Client,
     auth_url: Url,
+    region: Option<String>,
     body: protocol::ProjectScopedAuthRoot,
     token_endpoint: String,
     cached_token: ValueCache<Token>
@@ -95,11 +95,24 @@ impl Identity {
     }
 
     /// Create a password authentication against the given Identity service.
+    pub fn new_with_region<U>(auth_url: U, region: String)
+            -> Result<Identity, UrlError> where U: IntoUrl  {
+        Ok(Identity {
+            client: Client::new(),
+            auth_url: auth_url.into_url()?,
+            region: Some(region),
+            password_identity: None,
+            project_scope: None,
+        })
+    }
+
+    /// Create a password authentication against the given Identity service.
     pub fn new_with_client<U>(auth_url: U, client: Client)
             -> Result<Identity, UrlError> where U: IntoUrl  {
         Ok(Identity {
             client: client,
             auth_url: auth_url.into_url()?,
+            region: None,
             password_identity: None,
             project_scope: None,
         })
@@ -147,8 +160,8 @@ impl Identity {
                 )
         };
 
-        Ok(PasswordAuth::new(self.auth_url, password_identity, project_scope,
-                             self.client))
+        Ok(PasswordAuth::new(self.auth_url, self.region, password_identity,
+                             project_scope, self.client))
     }
 
     /// Create an authentication method from environment variables.
@@ -191,8 +204,10 @@ impl PasswordAuth {
         &self.auth_url
     }
 
-    fn new(auth_url: Url, password_identity: protocol::PasswordIdentity,
-           project_scope: protocol::ProjectScope, client: Client) -> PasswordAuth {
+    fn new(auth_url: Url, region: Option<String>,
+           password_identity: protocol::PasswordIdentity,
+           project_scope: protocol::ProjectScope,
+           client: Client) -> PasswordAuth {
         let body = protocol::ProjectScopedAuthRoot::new(password_identity,
                                                         project_scope);
         // TODO: more robust logic?
@@ -205,6 +220,7 @@ impl PasswordAuth {
         PasswordAuth {
             client: client,
             auth_url: auth_url,
+            region: region,
             body: body,
             token_endpoint: token_endpoint,
             cached_token: ValueCache::new(None)
@@ -275,6 +291,9 @@ impl PasswordAuth {
 }
 
 impl AuthMethod for PasswordAuth {
+    /// Get region.
+    fn get_region(&self) -> Option<String> { self.region.clone() }
+
     /// Create an authenticated request.
     fn request(&self, method: Method, url: Url) -> ApiResult<RequestBuilder> {
         let token = self.get_token()?;
@@ -290,20 +309,24 @@ impl AuthMethod for PasswordAuth {
 
     /// Get a URL for the requested service.
     fn get_endpoint(&self, service_type: String,
-                    endpoint_interface: Option<String>,
-                    region: Option<String>) -> ApiResult<Url> {
+                    endpoint_interface: Option<String>) -> ApiResult<Url> {
         let real_interface = endpoint_interface.unwrap_or(
             self.default_endpoint_interface());
         debug!("Requesting a catalog endpoint for service '{}', interface \
-               '{}' from region {:?}", service_type, real_interface, region);
+               '{}' from region {:?}", service_type, real_interface,
+               self.region);
         let cat = self.get_catalog()?;
-        let endp = catalog::find_endpoint(&cat, service_type,
-                                          real_interface, region)?;
+        let endp = catalog::find_endpoint(&cat, &service_type,
+                                          &real_interface,
+                                          &self.region)?;
         info!("Received {:?}", endp);
         Url::parse(&endp.url).map_err(|e| {
-            error!("Invalid URL {} received from service catalog: {}",
-                   endp.url, e);
-            ApiError::InvalidResponse(String::from(INVALID_URL))
+            error!("Invalid URL {} received from service catalog for service \
+                   '{}', interface '{}' from region {:?}: {}",
+                   endp.url, service_type, real_interface, self.region, e);
+            ApiError::InvalidResponse(
+                format!("Invalid URL {} for {} - {}",
+                        endp.url, service_type, e))
         })
     }
 }

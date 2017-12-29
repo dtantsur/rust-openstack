@@ -35,13 +35,12 @@ pub trait AuthMethod: BoxedClone + Debug {
         String::from("public")
     }
 
-    /// Default region to use with this authentication (if any).
-    fn default_region(&self) -> Option<String> { None }
+    /// Region used with this authentication (if any).
+    fn get_region(&self) -> Option<String> { None }
 
     /// Get a URL for the requested service.
     fn get_endpoint(&self, service_type: String,
-                    endpoint_interface: Option<String>,
-                    region: Option<String>) -> ApiResult<Url>;
+                    endpoint_interface: Option<String>) -> ApiResult<Url>;
 
     /// Create an authenticated request.
     fn request(&self, method: Method, url: Url) -> ApiResult<RequestBuilder>;

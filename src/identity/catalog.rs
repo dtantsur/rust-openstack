@@ -32,24 +32,24 @@ pub fn get_url(auth_url: Url) -> Url {
 }
 
 /// Find an endpoint in the service catalog.
-pub fn find_endpoint(catalog: &Vec<CatalogRecord>, service_type: String,
-                     endpoint_interface: String, region: Option<String>)
-        -> ApiResult<&Endpoint> {
-    let svc = match catalog.iter().find(|x| x.service_type == service_type) {
+pub fn find_endpoint<'c>(catalog: &'c Vec<CatalogRecord>, service_type: &String,
+                     endpoint_interface: &String, region: &Option<String>)
+        -> ApiResult<&'c Endpoint> {
+    let svc = match catalog.iter().find(|x| x.service_type == *service_type) {
         Some(s) => s,
-        None => return Err(ApiError::EndpointNotFound(service_type))
+        None => return Err(ApiError::EndpointNotFound(service_type.clone()))
     };
 
     let maybe_endp: Option<&Endpoint>;
-    if let Some(rgn) = region {
+    if let Some(ref rgn) = *region {
         maybe_endp = svc.endpoints.iter().find(
-            |x| x.interface == endpoint_interface && x.region == rgn);
+            |x| x.interface == *endpoint_interface && x.region == *rgn);
     } else {
         maybe_endp = svc.endpoints.iter().find(
-            |x| x.interface == endpoint_interface);
+            |x| x.interface == *endpoint_interface);
     }
 
-    maybe_endp.ok_or(ApiError::EndpointNotFound(service_type))
+    maybe_endp.ok_or_else(|| ApiError::EndpointNotFound(service_type.clone()))
 }
 
 
@@ -106,9 +106,9 @@ pub mod test {
     fn find_endpoint<'a>(cat: &'a Vec<CatalogRecord>,
                          service_type: &str, interface_type: &str,
                          region: Option<&str>) -> ApiResult<&'a Endpoint> {
-        super::find_endpoint(cat, String::from(service_type),
-                             String::from(interface_type),
-                             region.map(String::from))
+        super::find_endpoint(cat, &String::from(service_type),
+                             &String::from(interface_type),
+                             &region.map(String::from))
     }
 
     #[test]
