@@ -1,7 +1,6 @@
 language: rust
 script:
 - cargo test --verbose
-- cargo clean --verbose
 - cargo test --verbose --no-default-features
 after_success: |
   echo "$TRAVIS_EVENT_TYPE -> $TRAVIS_BRANCH"
