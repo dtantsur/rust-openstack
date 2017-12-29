@@ -20,7 +20,7 @@ use std::env;
 
 #[cfg(feature = "compute")]
 fn main() {
-    env_logger::init().unwrap();
+    env_logger::init();
 
     let identity = openstack::auth::Identity::from_env()
         .expect("Failed to create an identity provider from the environment");
