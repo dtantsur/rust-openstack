@@ -16,16 +16,12 @@
 
 use std::error::Error;
 use std::fmt;
-use std::io;
 use std::str::FromStr;
 
-use hyper::Error as HttpClientError;
-use hyper::client::Response;
-use hyper::error::ParseError;
-use hyper::status::StatusCode;
+use reqwest::{Response, StatusCode, UrlError};
+use reqwest::Error as HttpClientError;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde::de::{Error as DeserError, Visitor};
-use serde_json::Error as JsonError;
 
 
 /// Error from an OpenStack API call.
@@ -41,14 +37,19 @@ pub enum ApiError {
     /// Contains the error message.
     InvalidInput(String),
 
+    /// Invalid URL.
+    InvalidUrl(UrlError),
+
     /// Generic HTTP error.
     HttpError(StatusCode, Response),
 
     /// Protocol-level error reported by underlying HTTP library.
     ProtocolError(HttpClientError),
 
-    /// JSON parsing failed.
-    InvalidJson(JsonError),
+    /// Response received from the server is malformed.
+    ///
+    /// Contains the error message.
+    InvalidResponse(String),
 
     /// Malformed API version.
     #[allow(missing_docs)]
@@ -100,10 +101,12 @@ impl fmt::Display for ApiError {
                 write!(f, "Requested endpoint {} was not found", endp),
             ApiError::InvalidInput(ref msg) =>
                 write!(f, "Input value(s) are invalid: {}", msg),
+            ApiError::InvalidUrl(ref e) => fmt::Display::fmt(e, f),
             ApiError::HttpError(status, ..) =>
                 write!(f, "HTTP error {}", status),
             ApiError::ProtocolError(ref e) => fmt::Display::fmt(e, f),
-            ApiError::InvalidJson(ref e) => fmt::Display::fmt(e, f),
+            ApiError::InvalidResponse(ref msg) =>
+                write!(f, "Response was invalid: {}", msg),
             ApiError::InvalidApiVersion { value: ref val, message: ref msg } =>
                 write!(f, "{} is not a valid API version: {}", val, msg),
             ApiError::UnsupportedApiVersion {
@@ -120,9 +123,11 @@ impl Error for ApiError {
             ApiError::EndpointNotFound(..) =>
                 "Requested endpoint was not found",
             ApiError::InvalidInput(..) => "Invalid value(s) provided",
+            ApiError::InvalidUrl(ref e) => e.description(),
             ApiError::HttpError(..) => "HTTP error",
             ApiError::ProtocolError(ref e) => e.description(),
-            ApiError::InvalidJson(ref e) => e.description(),
+            ApiError::InvalidResponse(..) =>
+                "Invalid response received from the server",
             ApiError::InvalidApiVersion { .. } =>
                 "Invalid API version",
             ApiError::UnsupportedApiVersion { .. } =>
@@ -133,7 +138,7 @@ impl Error for ApiError {
     fn cause(&self) -> Option<&Error> {
         match *self {
             ApiError::ProtocolError(ref e) => Some(e),
-            ApiError::InvalidJson(ref e) => Some(e),
+            ApiError::InvalidUrl(ref e) => Some(e),
             _ => None
         }
     }
@@ -145,21 +150,9 @@ impl From<HttpClientError> for ApiError {
     }
 }
 
-impl From<io::Error> for ApiError {
-    fn from(value: io::Error) -> ApiError {
-        ApiError::ProtocolError(HttpClientError::Io(value))
-    }
-}
-
-impl From<JsonError> for ApiError {
-    fn from(value: JsonError) -> ApiError {
-        ApiError::InvalidJson(value)
-    }
-}
-
-impl From<ParseError> for ApiError {
-    fn from(value: ParseError) -> ApiError {
-        ApiError::ProtocolError(HttpClientError::Uri(value))
+impl From<UrlError> for ApiError {
+    fn from(value: UrlError) -> ApiError {
+        ApiError::InvalidUrl(value)
     }
 }
 

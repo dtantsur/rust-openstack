@@ -14,14 +14,9 @@
 
 //! Simple authentication methods.
 
-use hyper::{Client, Url};
-use hyper::client::IntoUrl;
-use hyper::error::ParseError;
-use hyper::header::Headers;
-use hyper::method::Method;
+use reqwest::{Client, IntoUrl, Method, RequestBuilder, Url, UrlError};
 
 use super::super::ApiResult;
-use super::super::service::RequestBuilder;
 use super::AuthMethod;
 
 /// Authentication method that provides no authentication.
@@ -38,7 +33,7 @@ impl NoAuth {
     ///
     /// This endpoint will be returned in response to all get_endpoint calls
     /// of the [AuthMethod](trait.AuthMethod.html) trait.
-    pub fn new<U>(endpoint: U) -> Result<NoAuth, ParseError> where U: IntoUrl {
+    pub fn new<U>(endpoint: U) -> Result<NoAuth, UrlError> where U: IntoUrl {
         Ok(NoAuth {
             endpoint: endpoint.into_url()?
         })
@@ -47,9 +42,9 @@ impl NoAuth {
 
 impl AuthMethod for NoAuth {
     /// Create a request.
-    fn request<'a>(&self, client: &'a Client, method: Method, url: Url,
-                   headers: Headers) -> ApiResult<RequestBuilder<'a>> {
-        Ok(RequestBuilder::new(client, method, url, headers))
+    fn request(&self, client: &Client, method: Method, url: Url)
+            -> ApiResult<RequestBuilder> {
+        Ok(client.request(method, url))
     }
 
     /// Get a predefined endpoint for all service types
@@ -65,7 +60,8 @@ impl AuthMethod for NoAuth {
 pub mod test {
     #![allow(unused_results)]
 
-    use super::super::super::utils;
+    use reqwest;
+
     use super::super::AuthMethod;
     use super::NoAuth;
 
@@ -87,7 +83,7 @@ pub mod test {
     #[test]
     fn test_noauth_get_endpoint() {
         let a = NoAuth::new("http://127.0.0.1:8080/v1").unwrap();
-        let e = a.get_endpoint(&utils::http_client(),
+        let e = a.get_endpoint(&reqwest::Client::new(),
                                String::from("foobar"), None, None).unwrap();
         assert_eq!(e.scheme(), "http");
         assert_eq!(e.host_str().unwrap(), "127.0.0.1");
