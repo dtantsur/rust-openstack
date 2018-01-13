@@ -93,8 +93,7 @@ impl<'session, Srv: ServiceType> ServiceWrapper<'session, Srv> {
     }
 
     /// Construct and endpoint for the given service from the path.
-    pub fn get_endpoint<P>(&self, path: P, query: Query) -> ApiResult<Url>
-            where P: IntoIterator, P::Item: AsRef<str> {
+    pub fn get_endpoint(&self, path: &[&str], query: Query) -> ApiResult<Url> {
         let info = self.session.get_service_info::<Srv>(None)?;
         let mut url = utils::url::extend(info.root_url, path);
         let _ = url.query_pairs_mut().extend_pairs(query.0);
@@ -102,9 +101,8 @@ impl<'session, Srv: ServiceType> ServiceWrapper<'session, Srv> {
     }
 
     /// Make an HTTP request to the given service.
-    pub fn request<P>(&self, method: Method, path: P, query: Query)
-            -> ApiResult<RequestBuilder>
-            where P: IntoIterator, P::Item: AsRef<str> {
+    pub fn request(&self, method: Method, path: &[&str], query: Query)
+            -> ApiResult<RequestBuilder> {
         let url = self.get_endpoint(path, query)?;
         let headers = self.session.service_headers::<Srv>();
         trace!("Sending HTTP {} request to {} with {:?}",
@@ -117,45 +115,40 @@ impl<'session, Srv: ServiceType> ServiceWrapper<'session, Srv> {
     }
 
     /// Make an HTTP request with JSON body and JSON response.
-    pub fn json<P, Req, Res>(&self, method: Method, path: P, query: Query,
-                             body: &Req) -> ApiResult<Res>
-            where Req: Serialize, Res: DeserializeOwned,
-            P: IntoIterator, P::Item: AsRef<str> {
+    pub fn json<Req, Res>(&self, method: Method, path: &[&str], query: Query,
+                          body: &Req) -> ApiResult<Res>
+            where Req: Serialize, Res: DeserializeOwned {
         let mut builder = self.request(method, path, query)?;
         builder.json(body).send()?.error_for_status()?.json().map_err(From::from)
     }
 
     /// Make a GET request returning a JSON.
-    pub fn get_json<P, Res>(&self, path: P, query: Query) -> ApiResult<Res>
-            where Res: DeserializeOwned, P: IntoIterator, P::Item: AsRef<str> {
+    pub fn get_json<Res>(&self, path: &[&str], query: Query) -> ApiResult<Res>
+            where Res: DeserializeOwned {
         self.request(Method::Get, path, query)?.send()?.error_for_status()?
             .json().map_err(From::from)
     }
 
     /// Make a POST request sending and returning a JSON.
-    pub fn post_json<P, Req, Res>(&self, path: P, query: Query, body: &Req)
-            -> ApiResult<Res> where Req: Serialize, Res: DeserializeOwned,
-            P: IntoIterator, P::Item: AsRef<str> {
+    pub fn post_json<Req, Res>(&self, path: &[&str], query: Query, body: &Req)
+            -> ApiResult<Res> where Req: Serialize, Res: DeserializeOwned {
         self.json(Method::Post, path, query, body)
     }
 
     /// Make a POST request sending and returning a JSON.
-    pub fn put_json<P, Req, Res>(&self, path: P, query: Query, body: &Req)
-            -> ApiResult<Res> where Req: Serialize, Res: DeserializeOwned,
-            P: IntoIterator, P::Item: AsRef<str> {
+    pub fn put_json<Req, Res>(&self, path: &[&str], query: Query, body: &Req)
+            -> ApiResult<Res> where Req: Serialize, Res: DeserializeOwned {
         self.json(Method::Put, path, query, body)
     }
 
     /// Make a PATCH request sending and returning a JSON.
-    pub fn patch_json<P, Req, Res>(&self, path: P, query: Query, body: &Req)
-            -> ApiResult<Res> where Req: Serialize, Res: DeserializeOwned,
-            P: IntoIterator, P::Item: AsRef<str> {
+    pub fn patch_json<Req, Res>(&self, path: &[&str], query: Query, body: &Req)
+            -> ApiResult<Res> where Req: Serialize, Res: DeserializeOwned {
         self.json(Method::Patch, path, query, body)
     }
 
     /// Make a DELETE request.
-    pub fn delete<P>(&self, path: P, query: Query) -> ApiResult<Response>
-            where P: IntoIterator, P::Item: AsRef<str> {
+    pub fn delete(&self, path: &[&str], query: Query) -> ApiResult<Response> {
         self.request(Method::Delete, path, query)?.send()?
             .error_for_status().map_err(From::from)
     }
