@@ -149,7 +149,7 @@ impl Session {
 
         self.cached_info.ensure_value(key.clone(), |_| {
             self.get_catalog_endpoint(Srv::catalog_type())
-                .and_then(|ep| Srv::service_info(ep, self))
+                .and_then(|ep| Srv::service_info(ep, self.auth_method()))
         })?;
 
         Ok(key)

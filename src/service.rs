@@ -22,6 +22,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use super::{ApiResult, ApiVersion, ApiVersionRequest, Session};
+use super::auth::AuthMethod;
 use super::utils;
 
 
@@ -46,8 +47,7 @@ pub trait ServiceType {
     fn catalog_type() -> &'static str;
 
     /// Get basic service information.
-    fn service_info(endpoint: Url, session: &Session)
-        -> ApiResult<ServiceInfo>;
+    fn service_info(endpoint: Url, auth: &AuthMethod) -> ApiResult<ServiceInfo>;
 }
 
 /// Trait representing a service with API version support.

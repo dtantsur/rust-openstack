@@ -18,8 +18,9 @@ use reqwest::{Method, Response, StatusCode, Url};
 use reqwest::header::Headers;
 use serde_json;
 
-use super::super::super::{ApiResult, ApiVersion, Session};
+use super::super::super::{ApiResult, ApiVersion};
 use super::super::super::ApiError::{HttpError, EndpointNotFound};
+use super::super::super::auth::AuthMethod;
 use super::super::super::service::{ApiVersioning, ServiceInfo, ServiceType,
                                    ServiceWrapper};
 use super::super::super::utils;
@@ -66,11 +67,11 @@ impl ServiceType for V2 {
         SERVICE_TYPE
     }
 
-    fn service_info(endpoint: Url, session: &Session)
+    fn service_info(endpoint: Url, auth: &AuthMethod)
             -> ApiResult<ServiceInfo> {
         debug!("Fetching compute service info from {}", endpoint);
         let secure = endpoint.scheme() == "https";
-        let result = session.request(Method::Get, endpoint.clone())?.send()
+        let result = auth.request(Method::Get, endpoint.clone())?.send()
             .map_err(From::from);
         match result {
             Ok(resp) => {
@@ -86,7 +87,7 @@ impl ServiceType for V2 {
                            endpoint);
                     V2::service_info(
                         utils::url::pop(endpoint, true),
-                        session)
+                        auth)
                 }
             },
             Err(other) => Err(other)
