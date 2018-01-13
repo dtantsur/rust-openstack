@@ -61,7 +61,6 @@ pub trait ApiVersioning {
 pub struct ServiceWrapper<'session, Srv: ServiceType> {
     session: &'session Session,
     service_type: PhantomData<Srv>,
-    endpoint_interface: Option<String>
 }
 
 
@@ -90,24 +89,13 @@ impl<'session, Srv: ServiceType> ServiceWrapper<'session, Srv> {
         ServiceWrapper {
             session: session,
             service_type: PhantomData,
-            endpoint_interface: None
-        }
-    }
-
-    /// Change the endpoint interface used for this wrapper.
-    pub fn with_endpoint_interface(self, endpoint_interface: String)
-            -> ServiceWrapper<'session, Srv> {
-        ServiceWrapper {
-            endpoint_interface: Some(endpoint_interface),
-            .. self
         }
     }
 
     /// Construct and endpoint for the given service from the path.
     pub fn get_endpoint<P>(&self, path: P, query: Query) -> ApiResult<Url>
             where P: IntoIterator, P::Item: AsRef<str> {
-        let ep = self.endpoint_interface.clone();
-        let info = self.session.get_service_info::<Srv>(ep)?;
+        let info = self.session.get_service_info::<Srv>(None)?;
         let mut url = utils::url::extend(info.root_url, path);
         let _ = url.query_pairs_mut().extend_pairs(query.0);
         Ok(url)
@@ -178,7 +166,6 @@ impl<'session, Srv: ServiceType> Clone for ServiceWrapper<'session, Srv> {
         ServiceWrapper {
             session: self.session,
             service_type: PhantomData,
-            endpoint_interface: self.endpoint_interface.clone()
         }
     }
 }
