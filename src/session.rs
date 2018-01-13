@@ -17,12 +17,12 @@
 use std::cell::Ref;
 use std::collections::HashMap;
 
-use reqwest::{IntoUrl, Method, RequestBuilder, Url};
+use reqwest::{Method, RequestBuilder, Url};
 use reqwest::header::Headers;
 
 use super::{ApiError, ApiResult, ApiVersion, ApiVersionRequest};
 use super::auth::AuthMethod;
-use super::service::{ApiVersioning, ServiceInfo, ServiceType};
+use super::service::{ApiVersioning, Query, ServiceInfo, ServiceType};
 use super::utils;
 
 
@@ -37,7 +37,7 @@ use super::utils;
 #[derive(Debug, Clone)]
 pub struct Session {
     auth: Box<AuthMethod>,
-    cached_info: utils::MapCache<(&'static str, String), ServiceInfo>,
+    cached_info: utils::MapCache<&'static str, ServiceInfo>,
     api_versions: HashMap<&'static str, (ApiVersion, Headers)>,
     endpoint_interface: String
 }
@@ -82,23 +82,34 @@ impl Session {
         self.api_versions.get(Srv::catalog_type()).map(|x| x.0)
     }
 
-    /// Get a copy of headers to send for given service.
-    ///
-    /// Currently only includes API version headers.
-    pub fn service_headers<Srv: ServiceType>(&self) -> Headers {
-        self.api_versions.get(Srv::catalog_type()).map(|x| x.1.clone())
-            .unwrap_or_else(Headers::new)
+    /// Get service info for the given service.
+    pub fn get_service_info<Srv>(&self) -> ApiResult<ServiceInfo>
+            where Srv: ServiceType {
+        let info = self.get_service_info_ref::<Srv>()?;
+        Ok(info.clone())
     }
 
-    /// Get service info for the given service.
-    ///
-    /// If endpoint interface is not provided, the default for this session
-    /// is used.
-    pub fn get_service_info<Srv>(&self, endpoint_interface: Option<String>)
-            -> ApiResult<ServiceInfo> where Srv: ServiceType {
-        let ep = endpoint_interface.unwrap_or(self.endpoint_interface.clone());
-        let info = self.get_service_info_ref::<Srv>(ep)?;
-        Ok(info.clone())
+    /// Construct and endpoint for the given service from the path.
+    pub fn get_endpoint<Srv: ServiceType>(&self, path: &[&str], query: Query)
+            -> ApiResult<Url> {
+        let info = self.get_service_info_ref::<Srv>()?;
+        let mut url = utils::url::extend(info.root_url.clone(), path);
+        let _ = url.query_pairs_mut().extend_pairs(query.0);
+        Ok(url)
+    }
+
+    /// Make an HTTP request to the given service.
+    pub fn request<Srv: ServiceType>(&self, method: Method, path: &[&str],
+                                     query: Query) -> ApiResult<RequestBuilder> {
+        let url = self.get_endpoint::<Srv>(path, query)?;
+        let maybe_headers = self.service_headers::<Srv>();
+        trace!("Sending HTTP {} request to {} with headers {:?}",
+               method, url, maybe_headers);
+        let mut builder = self.auth.request(method, url)?;
+        if let Some(headers) = maybe_headers {
+            let _unused = builder.headers(headers);
+        }
+        Ok(builder)
     }
 
     /// Negotiate an API version with the service.
@@ -111,9 +122,8 @@ impl Session {
     pub fn negotiate_api_version<Srv>(&mut self, requested: ApiVersionRequest)
             -> ApiResult<ApiVersion>
             where Srv: ServiceType + ApiVersioning {
-        let ep = self.endpoint_interface.clone();
-        let key = self.ensure_service_info::<Srv>(ep)?;
-        let info = self.cached_info.get_ref(&key).unwrap();
+        self.ensure_service_info::<Srv>()?;
+        let info = self.cached_info.get_ref(&Srv::catalog_type()).unwrap();
 
         match info.pick_api_version(requested.clone()) {
             Some(ver) => {
@@ -137,22 +147,13 @@ impl Session {
         }
     }
 
-    /// Prepare an HTTP request with authentication.
-    pub fn request<U>(&self, method: Method, url: U)
-            -> ApiResult<RequestBuilder> where U: IntoUrl {
-        self.auth.request(method, url.into_url()?)
-    }
-
-    fn ensure_service_info<Srv>(&self, endpoint_interface: String)
-            -> ApiResult<(&'static str, String)> where Srv: ServiceType {
-        let key = (Srv::catalog_type(), endpoint_interface);
-
-        self.cached_info.ensure_value(key.clone(), |_| {
+    fn ensure_service_info<Srv>(&self) -> ApiResult<()> where Srv: ServiceType {
+        self.cached_info.ensure_value(Srv::catalog_type(), |_| {
             self.get_catalog_endpoint(Srv::catalog_type())
                 .and_then(|ep| Srv::service_info(ep, self.auth_method()))
         })?;
 
-        Ok(key)
+        Ok(())
     }
 
     fn get_catalog_endpoint<S>(&self, service_type: S) -> ApiResult<Url>
@@ -161,9 +162,13 @@ impl Session {
                                Some(self.endpoint_interface.clone()))
     }
 
-    fn get_service_info_ref<Srv>(&self, endpoint_interface: String)
+    fn get_service_info_ref<Srv>(&self)
             -> ApiResult<Ref<ServiceInfo>> where Srv: ServiceType {
-        let key = self.ensure_service_info::<Srv>(endpoint_interface)?;
-        Ok(self.cached_info.get_ref(&key).unwrap())
+        self.ensure_service_info::<Srv>()?;
+        Ok(self.cached_info.get_ref(&Srv::catalog_type()).unwrap())
+    }
+
+    fn service_headers<Srv: ServiceType>(&self) -> Option<Headers> {
+        self.api_versions.get(Srv::catalog_type()).map(|x| x.1.clone())
     }
 }

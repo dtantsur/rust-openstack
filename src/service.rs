@@ -16,14 +16,13 @@
 
 use std::marker::PhantomData;
 
-use reqwest::{Method, RequestBuilder, Response, Url};
+use reqwest::{Method, Response, Url};
 use reqwest::header::Headers;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use super::{ApiResult, ApiVersion, ApiVersionRequest, Session};
 use super::auth::AuthMethod;
-use super::utils;
 
 
 /// Type of query parameters.
@@ -92,41 +91,24 @@ impl<'session, Srv: ServiceType> ServiceWrapper<'session, Srv> {
         }
     }
 
-    /// Construct and endpoint for the given service from the path.
-    pub fn get_endpoint(&self, path: &[&str], query: Query) -> ApiResult<Url> {
-        let info = self.session.get_service_info::<Srv>(None)?;
-        let mut url = utils::url::extend(info.root_url, path);
-        let _ = url.query_pairs_mut().extend_pairs(query.0);
-        Ok(url)
-    }
-
-    /// Make an HTTP request to the given service.
-    pub fn request(&self, method: Method, path: &[&str], query: Query)
-            -> ApiResult<RequestBuilder> {
-        let url = self.get_endpoint(path, query)?;
-        let headers = self.session.service_headers::<Srv>();
-        trace!("Sending HTTP {} request to {} with {:?}",
-               method, url, headers);
-        let mut builder = self.session.request(method, url)?;
-        {
-            let _unused = builder.headers(headers);
-        }
-        Ok(builder)
+    /// Reference to the session.
+    pub fn get_session(&self) -> &'session Session {
+        self.session
     }
 
     /// Make an HTTP request with JSON body and JSON response.
     pub fn json<Req, Res>(&self, method: Method, path: &[&str], query: Query,
                           body: &Req) -> ApiResult<Res>
             where Req: Serialize, Res: DeserializeOwned {
-        let mut builder = self.request(method, path, query)?;
+        let mut builder = self.session.request::<Srv>(method, path, query)?;
         builder.json(body).send()?.error_for_status()?.json().map_err(From::from)
     }
 
     /// Make a GET request returning a JSON.
     pub fn get_json<Res>(&self, path: &[&str], query: Query) -> ApiResult<Res>
             where Res: DeserializeOwned {
-        self.request(Method::Get, path, query)?.send()?.error_for_status()?
-            .json().map_err(From::from)
+        self.session.request::<Srv>(Method::Get, path, query)?.send()?
+            .error_for_status()?.json().map_err(From::from)
     }
 
     /// Make a POST request sending and returning a JSON.
@@ -149,7 +131,7 @@ impl<'session, Srv: ServiceType> ServiceWrapper<'session, Srv> {
 
     /// Make a DELETE request.
     pub fn delete(&self, path: &[&str], query: Query) -> ApiResult<Response> {
-        self.request(Method::Delete, path, query)?.send()?
+        self.session.request::<Srv>(Method::Delete, path, query)?.send()?
             .error_for_status().map_err(From::from)
     }
 }
