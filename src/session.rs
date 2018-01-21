@@ -18,7 +18,6 @@ use std::cell::Ref;
 use std::collections::HashMap;
 
 use reqwest::{Method, RequestBuilder, Url};
-use reqwest::header::Headers;
 
 use super::{ApiError, ApiResult, ApiVersion, ApiVersionRequest};
 use super::auth::AuthMethod;
@@ -38,7 +37,7 @@ use super::utils;
 pub struct Session {
     auth: Box<AuthMethod>,
     cached_info: utils::MapCache<&'static str, ServiceInfo>,
-    api_versions: HashMap<&'static str, (ApiVersion, Headers)>,
+    api_versions: HashMap<&'static str, ApiVersion>,
     endpoint_interface: String
 }
 
@@ -79,7 +78,7 @@ impl Session {
 
     /// Get an API version used for given service.
     pub fn api_version<Srv: ServiceType>(&self) -> Option<ApiVersion> {
-        self.api_versions.get(Srv::catalog_type()).map(|x| x.0)
+        self.api_versions.get(Srv::catalog_type()).cloned()
     }
 
     /// Get service info for the given service.
@@ -102,7 +101,8 @@ impl Session {
     pub fn request<Srv: ServiceType>(&self, method: Method, path: &[&str],
                                      query: Query) -> ApiResult<RequestBuilder> {
         let url = self.get_endpoint::<Srv>(path, query)?;
-        let maybe_headers = self.service_headers::<Srv>();
+        let maybe_headers = self.api_versions.get(Srv::catalog_type())
+            .and_then(|ver| Srv::api_version_headers(*ver));
         trace!("Sending HTTP {} request to {} with headers {:?}",
                method, url, maybe_headers);
         let mut builder = self.auth.request(method, url)?;
@@ -127,9 +127,7 @@ impl Session {
 
         match info.pick_api_version(requested.clone()) {
             Some(ver) => {
-                let hdrs = Srv::api_version_headers(ver)?;
-                let _ = self.api_versions.insert(Srv::catalog_type(),
-                                                 (ver, hdrs));
+                let _ = self.api_versions.insert(Srv::catalog_type(), ver);
                 info!("Negotiated API version {} for {} API",
                       ver, Srv::catalog_type());
                 Ok(ver)
@@ -166,9 +164,5 @@ impl Session {
             -> ApiResult<Ref<ServiceInfo>> where Srv: ServiceType {
         self.ensure_service_info::<Srv>()?;
         Ok(self.cached_info.get_ref(&Srv::catalog_type()).unwrap())
-    }
-
-    fn service_headers<Srv: ServiceType>(&self) -> Option<Headers> {
-        self.api_versions.get(Srv::catalog_type()).map(|x| x.1.clone())
     }
 }

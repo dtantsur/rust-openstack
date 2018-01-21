@@ -47,13 +47,13 @@ pub trait ServiceType {
 
     /// Get basic service information.
     fn service_info(endpoint: Url, auth: &AuthMethod) -> ApiResult<ServiceInfo>;
+
+    /// Return headers to set for this API version.
+    fn api_version_headers(_version: ApiVersion) -> Option<Headers> { None }
 }
 
 /// Trait representing a service with API version support.
-pub trait ApiVersioning {
-    /// Return headers to set for this API version.
-    fn api_version_headers(version: ApiVersion) -> ApiResult<Headers>;
-}
+pub trait ApiVersioning {}
 
 /// A service-specific wrapper around Session.
 #[derive(Debug)]

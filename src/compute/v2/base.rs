@@ -93,13 +93,13 @@ impl ServiceType for V2 {
             Err(other) => Err(other)
         }
     }
-}
 
-impl ApiVersioning for V2 {
-    fn api_version_headers(version: ApiVersion) -> ApiResult<Headers> {
+    fn api_version_headers(version: ApiVersion) -> Option<Headers> {
         let mut hdrs = Headers::new();
         // TODO: typed header, new-style header support
         hdrs.set_raw("x-openstack-nova-api-version", version.to_string());
-        Ok(hdrs)
+        Some(hdrs)
     }
 }
+
+impl ApiVersioning for V2 {}
