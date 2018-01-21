@@ -14,6 +14,7 @@
 
 //! Generic API bits for implementing new services.
 
+use std::cmp;
 use std::marker::PhantomData;
 
 use reqwest::{Method, Response, Url};
@@ -154,6 +155,15 @@ impl ServiceInfo {
                 self.minimum_version,
             ApiVersionRequest::Latest =>
                 self.current_version,
+            ApiVersionRequest::LatestFrom(from, to) => {
+                match (self.current_version, self.minimum_version) {
+                    (Some(max), None) if max >= from && max <= to => Some(max),
+                    (None, Some(min)) if min >= from && min <= to => Some(min),
+                    (Some(max), Some(min)) if to >= min && from <= max =>
+                        Some(cmp::min(max, to)),
+                    _ => None
+                }
+            },
             ApiVersionRequest::Exact(req) => {
                 self.current_version.and_then(|max| {
                     match self.minimum_version {
@@ -261,6 +271,78 @@ pub mod test {
     fn test_pick_version_latest_unknown() {
         let info = service_info(Some(1), None);
         let result = info.pick_api_version(ApiVersionRequest::Latest);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_pick_version_latest_from_within_range() {
+        let info = service_info(Some(1), Some(24));
+        let req = ApiVersionRequest::LatestFrom(ApiVersion(2, 5),
+                                                ApiVersion(2, 20));
+        let result = info.pick_api_version(req).unwrap();
+        assert_eq!(result, ApiVersion(2, 20));
+    }
+
+    #[test]
+    fn test_pick_version_latest_from_outside_range() {
+        let info = service_info(Some(1), Some(24));
+        let req = ApiVersionRequest::LatestFrom(ApiVersion(2, 0),
+                                                ApiVersion(2, 50));
+        let result = info.pick_api_version(req).unwrap();
+        assert_eq!(result, ApiVersion(2, 24));
+    }
+
+    #[test]
+    fn test_pick_version_latest_from_mismatch_above() {
+        let info = service_info(Some(1), Some(24));
+        let req = ApiVersionRequest::LatestFrom(ApiVersion(2, 25),
+                                                ApiVersion(2, 50));
+        let result = info.pick_api_version(req);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_pick_version_latest_from_mismatch_below() {
+        let info = service_info(Some(5), Some(24));
+        let req = ApiVersionRequest::LatestFrom(ApiVersion(2, 1),
+                                                ApiVersion(2, 4));
+        let result = info.pick_api_version(req);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_pick_version_latest_from_only_current() {
+        let info = service_info(None, Some(24));
+        let req = ApiVersionRequest::LatestFrom(ApiVersion(2, 5),
+                                                ApiVersion(2, 50));
+        let result = info.pick_api_version(req).unwrap();
+        assert_eq!(result, ApiVersion(2, 24));
+    }
+
+    #[test]
+    fn test_pick_version_latest_from_only_current_mismatch() {
+        let info = service_info(None, Some(24));
+        let req = ApiVersionRequest::LatestFrom(ApiVersion(2, 5),
+                                                ApiVersion(2, 10));
+        let result = info.pick_api_version(req);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_pick_version_latest_from_only_minimum() {
+        let info = service_info(Some(1), None);
+        let req = ApiVersionRequest::LatestFrom(ApiVersion(2, 0),
+                                                ApiVersion(2, 50));
+        let result = info.pick_api_version(req).unwrap();
+        assert_eq!(result, ApiVersion(2, 1));
+    }
+
+    #[test]
+    fn test_pick_version_latest_from_only_minimum_mismatch() {
+        let info = service_info(Some(1), None);
+        let req = ApiVersionRequest::LatestFrom(ApiVersion(2, 5),
+                                                ApiVersion(2, 10));
+        let result = info.pick_api_version(req);
         assert!(result.is_none());
     }
 
