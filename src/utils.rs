@@ -141,3 +141,52 @@ pub mod url {
         url
     }
 }
+
+
+#[cfg(test)]
+pub mod test {
+    //! Common primitives for testing.
+
+    use reqwest::{IntoUrl, Url};
+    use reqwest::header::Headers;
+
+    use super::super::{ApiError, ApiResult, ApiVersion};
+    use super::super::auth::{AuthMethod, NoAuth};
+    use super::super::service::{ServiceInfo, ServiceType};
+    use super::super::session::Session;
+
+    /// Create a session with fake authentication.
+    pub fn new_session<U: IntoUrl>(endpoint: U) -> Session {
+        let auth = NoAuth::new(endpoint).expect("Invalid URL in tests");
+        Session::new(auth)
+    }
+
+    /// Fake service type.
+    pub struct FakeServiceType;
+
+    pub const URL: &'static str = "https://127.0.0.1:5000/";
+
+    impl ServiceType for FakeServiceType {
+        fn catalog_type() -> &'static str { "fake" }
+
+        fn service_info(endpoint: Url, _auth: &AuthMethod) -> ApiResult<ServiceInfo> {
+            if endpoint.port() == Some(5000) {
+                Ok(ServiceInfo {
+                    root_url: Url::parse(URL).unwrap(),
+                    current_version: Some(ApiVersion(1, 42)),
+                    minimum_version: Some(ApiVersion(1, 1)),
+                })
+            } else {
+                Err(ApiError::EndpointNotFound(String::new()))
+            }
+        }
+
+        fn api_version_headers(version: ApiVersion) -> Option<Headers> {
+            if version >= ApiVersion(1, 1) && version <= ApiVersion(1, 42) {
+                Some(Headers::new())
+            } else {
+                None
+            }
+        }
+    }
+}

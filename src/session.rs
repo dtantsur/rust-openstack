@@ -93,7 +93,9 @@ impl Session {
             -> ApiResult<Url> {
         let info = self.get_service_info_ref::<Srv>()?;
         let mut url = utils::url::extend(info.root_url.clone(), path);
-        let _ = url.query_pairs_mut().extend_pairs(query.0);
+        if ! query.0.is_empty() {
+            let _ = url.query_pairs_mut().extend_pairs(query.0);
+        }
         Ok(url)
     }
 
@@ -164,5 +166,57 @@ impl Session {
             -> ApiResult<Ref<ServiceInfo>> where Srv: ServiceType {
         self.ensure_service_info::<Srv>()?;
         Ok(self.cached_info.get_ref(&Srv::catalog_type()).unwrap())
+    }
+}
+
+
+#[cfg(test)]
+mod test {
+    use super::super::service::Query;
+    use super::super::utils;
+
+    #[test]
+    fn test_session_new() {
+        let s = utils::test::new_session(utils::test::URL);
+        let ep = s.get_catalog_endpoint("fake").unwrap();
+        assert_eq!(&ep.to_string(), utils::test::URL);
+    }
+
+    #[test]
+    fn test_session_get_endpoint() {
+        let s = utils::test::new_session(utils::test::URL);
+        let ep = s.get_endpoint::<utils::test::FakeServiceType>(&[], Query::new())
+            .unwrap();
+        assert_eq!(&ep.to_string(), utils::test::URL);
+    }
+
+    #[test]
+    fn test_session_get_endpoint_with_query() {
+        let s = utils::test::new_session(utils::test::URL);
+        let mut q = Query::new();
+        q.push("foo", 42);
+        let ep = s.get_endpoint::<utils::test::FakeServiceType>(&[], q)
+            .unwrap();
+        assert_eq!(ep.to_string(), format!("{}?foo=42", utils::test::URL));
+    }
+
+    #[test]
+    fn test_session_get_endpoint_with_path() {
+        let s = utils::test::new_session(utils::test::URL);
+        let ep = s.get_endpoint::<utils::test::FakeServiceType>(&["foo", "bar"],
+                                                                Query::new())
+            .unwrap();
+        assert_eq!(ep.to_string(), format!("{}foo/bar", utils::test::URL));
+    }
+
+    #[test]
+    fn test_session_get_endpoint_with_path_and_query() {
+        let s = utils::test::new_session(utils::test::URL);
+        let mut q = Query::new();
+        q.push("foo", 42);
+        let ep = s.get_endpoint::<utils::test::FakeServiceType>(&["foo", "bar"], q)
+            .unwrap();
+        assert_eq!(ep.to_string(), format!("{}foo/bar?foo=42",
+                                           utils::test::URL));
     }
 }
