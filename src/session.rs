@@ -21,7 +21,7 @@ use reqwest::{Method, RequestBuilder, Url};
 
 use super::{ApiError, ApiResult, ApiVersion, ApiVersionRequest};
 use super::auth::AuthMethod;
-use super::service::{ApiVersioning, Query, ServiceInfo, ServiceType};
+use super::service::{ApiVersioning, ServiceInfo, ServiceType};
 use super::utils;
 
 
@@ -89,20 +89,16 @@ impl Session {
     }
 
     /// Construct and endpoint for the given service from the path.
-    pub fn get_endpoint<Srv: ServiceType>(&self, path: &[&str], query: Query)
+    pub fn get_endpoint<Srv: ServiceType>(&self, path: &[&str])
             -> ApiResult<Url> {
         let info = self.get_service_info_ref::<Srv>()?;
-        let mut url = utils::url::extend(info.root_url.clone(), path);
-        if ! query.0.is_empty() {
-            let _ = url.query_pairs_mut().extend_pairs(query.0);
-        }
-        Ok(url)
+        Ok(utils::url::extend(info.root_url.clone(), path))
     }
 
     /// Make an HTTP request to the given service.
-    pub fn request<Srv: ServiceType>(&self, method: Method, path: &[&str],
-                                     query: Query) -> ApiResult<RequestBuilder> {
-        let url = self.get_endpoint::<Srv>(path, query)?;
+    pub fn request<Srv: ServiceType>(&self, method: Method, path: &[&str])
+            -> ApiResult<RequestBuilder> {
+        let url = self.get_endpoint::<Srv>(path)?;
         let maybe_headers = self.api_versions.get(Srv::catalog_type())
             .and_then(|ver| Srv::api_version_headers(*ver));
         trace!("Sending HTTP {} request to {} with headers {:?}",
@@ -172,7 +168,6 @@ impl Session {
 
 #[cfg(test)]
 mod test {
-    use super::super::service::Query;
     use super::super::utils;
 
     #[test]
@@ -185,38 +180,16 @@ mod test {
     #[test]
     fn test_session_get_endpoint() {
         let s = utils::test::new_session(utils::test::URL);
-        let ep = s.get_endpoint::<utils::test::FakeServiceType>(&[], Query::new())
+        let ep = s.get_endpoint::<utils::test::FakeServiceType>(&[])
             .unwrap();
         assert_eq!(&ep.to_string(), utils::test::URL);
     }
 
     #[test]
-    fn test_session_get_endpoint_with_query() {
-        let s = utils::test::new_session(utils::test::URL);
-        let mut q = Query::new();
-        q.push("foo", 42);
-        let ep = s.get_endpoint::<utils::test::FakeServiceType>(&[], q)
-            .unwrap();
-        assert_eq!(ep.to_string(), format!("{}?foo=42", utils::test::URL));
-    }
-
-    #[test]
     fn test_session_get_endpoint_with_path() {
         let s = utils::test::new_session(utils::test::URL);
-        let ep = s.get_endpoint::<utils::test::FakeServiceType>(&["foo", "bar"],
-                                                                Query::new())
+        let ep = s.get_endpoint::<utils::test::FakeServiceType>(&["foo", "bar"])
             .unwrap();
         assert_eq!(ep.to_string(), format!("{}foo/bar", utils::test::URL));
-    }
-
-    #[test]
-    fn test_session_get_endpoint_with_path_and_query() {
-        let s = utils::test::new_session(utils::test::URL);
-        let mut q = Query::new();
-        q.push("foo", 42);
-        let ep = s.get_endpoint::<utils::test::FakeServiceType>(&["foo", "bar"], q)
-            .unwrap();
-        assert_eq!(ep.to_string(), format!("{}foo/bar?foo=42",
-                                           utils::test::URL));
     }
 }
