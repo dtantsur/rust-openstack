@@ -85,7 +85,7 @@ pub struct PasswordAuth {
 
 impl Identity {
     /// Get a reference to the auth URL.
-    pub fn get_auth_url(&self) -> &Url {
+    pub fn auth_url(&self) -> &Url {
         &self.auth_url
     }
 
@@ -200,7 +200,7 @@ fn extract_subject_token(headers: &Headers) -> Option<String> {
 
 impl PasswordAuth {
     /// Get a reference to the auth URL.
-    pub fn get_auth_url(&self) -> &Url {
+    pub fn auth_url(&self) -> &Url {
         &self.auth_url
     }
 
@@ -292,7 +292,7 @@ impl PasswordAuth {
 
 impl AuthMethod for PasswordAuth {
     /// Get region.
-    fn get_region(&self) -> Option<String> { self.region.clone() }
+    fn region(&self) -> Option<String> { self.region.clone() }
 
     /// Create an authenticated request.
     fn request(&self, method: Method, url: Url) -> ApiResult<RequestBuilder> {
@@ -335,6 +335,7 @@ impl AuthMethod for PasswordAuth {
 pub mod test {
     #![allow(unused_results)]
 
+    use super::super::AuthMethod;
     use super::Identity;
 
     #[test]
@@ -359,7 +360,7 @@ pub mod test {
             .with_project_scope("cool project", "example.com")
             .create().unwrap();
         assert_eq!(&id.auth_url.to_string(), "http://127.0.0.1:8080/identity");
-        assert_eq!(id.get_auth_url().to_string(),
+        assert_eq!(id.auth_url().to_string(),
                    "http://127.0.0.1:8080/identity");
         assert_eq!(&id.body.auth.identity.password.user.name, "user");
         assert_eq!(&id.body.auth.identity.password.user.password, "pa$$w0rd");
@@ -371,6 +372,7 @@ pub mod test {
         assert_eq!(&id.body.auth.scope.project.domain.name, "example.com");
         assert_eq!(&id.token_endpoint,
                    "http://127.0.0.1:8080/identity/v3/auth/tokens");
+        assert_eq!(id.region(), None);
     }
 
     #[test]

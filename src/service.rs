@@ -93,7 +93,7 @@ impl<'session, Srv: ServiceType> ServiceWrapper<'session, Srv> {
     }
 
     /// Reference to the session.
-    pub fn get_session(&self) -> &'session Session {
+    pub fn session(&self) -> &'session Session {
         self.session
     }
 

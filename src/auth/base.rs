@@ -36,7 +36,7 @@ pub trait AuthMethod: BoxedClone + Debug {
     }
 
     /// Region used with this authentication (if any).
-    fn get_region(&self) -> Option<String> { None }
+    fn region(&self) -> Option<String> { None }
 
     /// Get a URL for the requested service.
     fn get_endpoint(&self, service_type: String,
