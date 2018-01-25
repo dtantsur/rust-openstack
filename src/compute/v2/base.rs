@@ -47,8 +47,11 @@ const VERSION_ID: &'static str = "v2.1";
 
 impl V2API for Session {
     fn get_server<S: AsRef<str>>(&self, id: S) -> ApiResult<protocol::Server> {
-        Ok(self.request::<V2>(Method::Get, &["servers", id.as_ref()])?
-           .receive_json::<protocol::ServerRoot>()?.server)
+        trace!("Get compute server {}", id.as_ref());
+        let server = self.request::<V2>(Method::Get, &["servers", id.as_ref()])?
+           .receive_json::<protocol::ServerRoot>()?.server;
+        trace!("Received {:?}", server);
+        Ok(server)
     }
 
     fn list_servers<Q: Serialize>(&self, query: &Q) -> ApiResult<Vec<protocol::ServerSummary>> {

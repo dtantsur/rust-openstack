@@ -73,6 +73,7 @@ extern crate serde_derive;
 extern crate serde_json;
 
 pub mod auth;
+mod cloud;
 mod common;
 #[cfg(feature = "compute")]
 pub mod compute;
@@ -81,6 +82,7 @@ pub mod service;
 pub mod session;
 mod utils;
 
+pub use cloud::Cloud;
 pub use common::ApiError;
 pub use common::ApiResult;
 pub use common::ApiVersion;

@@ -14,6 +14,8 @@
 
 //! Various utilities.
 
+#![allow(dead_code)] // various things are unused with --no-default-features
+
 use std::cell::{Ref, RefCell};
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -114,7 +116,6 @@ impl<K: Hash + Eq, V: Clone> MapCache<K, V> {
 }
 
 /// Deserialize value where empty string equals None.
-#[allow(dead_code)]
 pub fn empty_as_none<'de, D, T>(des: D) -> Result<Option<T>, D::Error>
         where D: Deserializer<'de>, T: FromStr, T::Err: Display {
     let s = String::deserialize(des)?;
@@ -128,8 +129,6 @@ pub fn empty_as_none<'de, D, T>(des: D) -> Result<Option<T>, D::Error>
 
 pub mod url {
     //! Handy primitives for working with URLs.
-
-    #![allow(dead_code)] // unused with --no-default-features
 
     use reqwest::Url;
 

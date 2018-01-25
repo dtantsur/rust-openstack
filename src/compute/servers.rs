@@ -112,6 +112,16 @@ pub struct ImageRef<'session> {
 
 
 impl<'session> Server<'session> {
+    /// Load a Server object.
+    pub(crate) fn new<Id: AsRef<str>>(session: &'session Session, id: Id)
+            -> ApiResult<Server<'session>> {
+        let inner = session.get_server(id)?;
+        Ok(Server {
+            session: session,
+            inner: inner
+        })
+    }
+
     /// Get a reference to IPv4 address.
     pub fn access_ipv4(&self) -> &Option<Ipv4Addr> {
         &self.inner.accessIPv4
@@ -203,12 +213,12 @@ impl<'session> ServerSummary<'session> {
 
     /// Get details.
     pub fn details(&self) -> ApiResult<Server<'session>> {
-        ServerManager::get_server(self.session, &self.inner.id)
+        Server::new(self.session, &self.inner.id)
     }
 }
 
 impl<'session> ServerQuery<'session> {
-    fn new(session: &'session Session) -> ServerQuery<'session> {
+    pub(crate) fn new(session: &'session Session) -> ServerQuery<'session> {
         ServerQuery {
             session: session,
             query: Query::new(),
@@ -351,17 +361,6 @@ impl<'session> ServerManager<'session> {
 
     /// Get a server.
     pub fn get<Id: AsRef<str>>(&self, id: Id) -> ApiResult<Server<'session>> {
-        ServerManager::get_server(self.session, id.as_ref())
-    }
-
-    fn get_server(session: &'session Session, id: &str)
-            -> ApiResult<Server<'session>> {
-        trace!("Get compute server {}", id);
-        let server = session.get_server(id)?;
-        trace!("Received {:?}", server);
-        Ok(Server {
-            session: session,
-            inner: server
-        })
+        Server::new(self.session, id)
     }
 }
