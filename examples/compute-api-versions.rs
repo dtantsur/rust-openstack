@@ -27,7 +27,7 @@ fn main() {
 
     let identity = openstack::auth::Identity::from_env()
         .expect("Failed to create an identity provider from the environment");
-    let mut session = openstack::Session::new(identity);
+    let mut session = openstack::session::Session::new(identity);
 
     let version_choice = vec![KILO, LIBERTY, MITAKA, NEWTON, OCATA];
     let version = session.negotiate_api_version::<openstack::compute::V2>(

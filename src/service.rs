@@ -22,8 +22,9 @@ use reqwest::header::Headers;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-use super::{ApiResult, ApiVersion, ApiVersionRequest, Session};
+use super::{ApiResult, ApiVersion, ApiVersionRequest};
 use super::auth::AuthMethod;
+use super::session::Session;
 
 
 /// Type of query parameters.

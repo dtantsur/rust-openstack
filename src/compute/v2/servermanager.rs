@@ -19,8 +19,9 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 
 use chrono::{DateTime, FixedOffset};
 
-use super::super::super::{ApiResult, Session, Sort};
+use super::super::super::{ApiResult, Sort};
 use super::super::super::service::Query;
+use super::super::super::session::Session;
 use super::base::V2ServiceWrapper;
 use super::protocol;
 

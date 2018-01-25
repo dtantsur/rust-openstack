@@ -78,7 +78,7 @@ mod common;
 pub mod compute;
 mod identity;
 pub mod service;
-mod session;
+pub mod session;
 mod utils;
 
 pub use common::ApiError;
