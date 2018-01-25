@@ -17,12 +17,82 @@
 use std::cell::Ref;
 use std::collections::HashMap;
 
-use reqwest::{Method, RequestBuilder, Url};
+use reqwest::{Body, Method, RequestBuilder as ReqwestRB, Response, Url};
+use reqwest::header::{Header, Headers};
+use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 use super::{ApiError, ApiResult, ApiVersion, ApiVersionRequest};
 use super::auth::AuthMethod;
 use super::service::{ApiVersioning, ServiceInfo, ServiceType};
 use super::utils;
+
+/// An HTTP request builder.
+///
+/// This is a thin wrapper around reqwest's RequestBuilder with error handling.
+#[derive(Debug)]
+pub struct RequestBuilder {
+    inner: ReqwestRB,
+}
+
+impl RequestBuilder {
+    /// Create a RequestBuilder by wrapping a reqwest's one.
+    pub fn new(inner: ReqwestRB) -> RequestBuilder {
+        RequestBuilder {
+            inner: inner
+        }
+    }
+
+    /// Access to the inner object.
+    pub fn inner_mut(&mut self) -> &mut ReqwestRB {
+        &mut self.inner
+    }
+
+    /// Take the inner object out.
+    pub fn into_inner(self) -> ReqwestRB {
+        self.inner
+    }
+
+    /// Add a Header to this Request.
+    pub fn header<H: Header>(&mut self, header: H) -> &mut RequestBuilder {
+        let _ = self.inner.header(header);
+        self
+    }
+
+    /// Add a set of Headers to the existing ones on this Request.
+    pub fn headers(&mut self, headers: Headers) -> &mut RequestBuilder {
+        let _ = self.inner.headers(headers);
+        self
+    }
+
+    /// Set the request body.
+    pub fn body<T: Into<Body>>(&mut self, body: T) -> &mut RequestBuilder {
+        let _ = self.inner.body(body);
+        self
+    }
+
+    /// Modify the query string of the URL.
+    pub fn query<T: Serialize>(&mut self, query: &T) -> &mut RequestBuilder {
+        let _ = self.inner.query(query);
+        self
+    }
+
+    /// Send a JSON body.
+    pub fn json<T: Serialize>(&mut self, json: &T) -> &mut RequestBuilder {
+        let _ = self.inner.json(json);
+        self
+    }
+
+    /// Construct the Request and sends it the target URL, returning a Response.
+    pub fn send(&mut self) -> ApiResult<Response> {
+        self.inner.send()?.error_for_status().map_err(From::from)
+    }
+
+    /// Construct the Request, send it and receive a JSON.
+    pub fn receive_json<T: DeserializeOwned>(&mut self) -> ApiResult<T> {
+        self.inner.send()?.error_for_status()?.json().map_err(From::from)
+    }
+}
 
 
 /// An OpenStack API session.

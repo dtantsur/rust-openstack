@@ -14,9 +14,10 @@
 
 //! Simple authentication methods.
 
-use reqwest::{Client, IntoUrl, Method, RequestBuilder, Url, UrlError};
+use reqwest::{Client, IntoUrl, Method, Url, UrlError};
 
 use super::super::ApiResult;
+use super::super::session::RequestBuilder;
 use super::AuthMethod;
 
 /// Authentication method that provides no authentication.
@@ -45,7 +46,7 @@ impl NoAuth {
 impl AuthMethod for NoAuth {
     /// Create a request.
     fn request(&self, method: Method, url: Url) -> ApiResult<RequestBuilder> {
-        Ok(self.client.request(method, url))
+        Ok(RequestBuilder::new(self.client.request(method, url)))
     }
 
     /// Get a predefined endpoint for all service types

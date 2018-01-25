@@ -16,9 +16,10 @@
 
 use std::fmt::Debug;
 
-use reqwest::{Method, RequestBuilder, Url};
+use reqwest::{Method, Url};
 
 use super::super::ApiResult;
+use super::super::session::RequestBuilder;
 
 
 /// Trait for an authentication method.

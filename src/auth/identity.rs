@@ -19,12 +19,12 @@ use std::env;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
-use reqwest::{Client, IntoUrl, Method, RequestBuilder, Response, StatusCode,
-              Url, UrlError};
+use reqwest::{Client, IntoUrl, Method, Response, StatusCode, Url, UrlError};
 use reqwest::header::{ContentType, Headers};
 
 use super::super::{ApiError, ApiResult};
 use super::super::identity::{catalog, protocol};
+use super::super::session::RequestBuilder;
 use super::super::utils::ValueCache;
 use super::AuthMethod;
 
@@ -304,7 +304,7 @@ impl AuthMethod for PasswordAuth {
         {
             let _unused = builder.headers(headers);
         }
-        Ok(builder)
+        Ok(RequestBuilder::new(builder))
     }
 
     /// Get a URL for the requested service.
