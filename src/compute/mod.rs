@@ -12,12 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Compute API support.
+//! Compute API implementation bits.
 //!
-//! Supported major API versions:
+//! # Examples
 //!
-//! * [v2 with microversions (also known as v2.1)](v2/index.html)
+//! ```rust,no_run
+//! use openstack;
+//!
+//! let auth = openstack::auth::Identity::from_env()
+//!     .expect("Unable to authenticate");
+//! let session = openstack::Session::new(auth);
+//! let servers = openstack::compute::ServerManager::new(&session);
+//!
+//! let server = servers.get("8a1c355b-2e1e-440a-8aa8-f272df72bc32")
+//!     .expect("Unable to get a server");
+//! ```
 
-pub mod v2;
+mod servers;
+mod v2;
 
-pub use self::v2::V2;
+pub use self::v2::V2 as ServiceType;
+pub use self::v2::protocol::{AddressType, ServerAddress, ServerSortKey,
+                             ServerStatus};
+pub use self::servers::{Server, ServerList, ServerManager,
+                        ServerQuery, ServerSummary, FlavorRef, ImageRef};

@@ -30,7 +30,7 @@ fn main() {
     let mut session = openstack::session::Session::new(identity);
 
     let version_choice = vec![KILO, LIBERTY, MITAKA, NEWTON, OCATA];
-    let version = session.negotiate_api_version::<openstack::compute::V2>(
+    let version = session.negotiate_api_version::<openstack::compute::ServiceType>(
         openstack::ApiVersionRequest::Choice(version_choice)
     ).expect("Unable to negotiation any Compute API version");
 
@@ -42,7 +42,7 @@ fn main() {
         OCATA => println!("Ocata API detected"),
         _ => unreachable!()
     }
-    openstack::compute::v2::servers(&session).list()
+    openstack::compute::ServerManager::new(&session).list()
         .expect(&format!("Cannot list servers with API version {}", version));
 }
 

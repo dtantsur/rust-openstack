@@ -23,8 +23,8 @@ fn main() {
     let identity = openstack::auth::Identity::from_env()
         .expect("Failed to create an identity provider from the environment");
     let session = openstack::session::Session::new(identity);
-    let server_manager = openstack::compute::v2::servers(&session);
-    let sorting = openstack::compute::v2::ServerSortKey::AccessIpv4;
+    let server_manager = openstack::compute::ServerManager::new(&session);
+    let sorting = openstack::compute::ServerSortKey::AccessIpv4;
 
     let servers = server_manager.query()
         .sort_by(openstack::Sort::Asc(sorting))

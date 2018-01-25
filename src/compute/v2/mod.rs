@@ -13,46 +13,8 @@
 // limitations under the License.
 
 //! Compute API (v2 with microversions) implementation.
-//!
-//! Currently supported functionality:
-//!
-//! * [server management](struct.ServerManager.html) (incomplete)
-//!
-//! # Examples
-//!
-//! ```rust,no_run
-//! use openstack;
-//!
-//! let auth = openstack::auth::Identity::from_env()
-//!     .expect("Unable to authenticate");
-//! let session = openstack::Session::new(auth);
-//! let servers = openstack::compute::v2::servers(&session);
-//!
-//! let server = servers.get("8a1c355b-2e1e-440a-8aa8-f272df72bc32")
-//!     .expect("Unable to get a server");
-//! ```
-//!
-//! Compute API supports version negotiation:
-//!
-//! ```rust,no_run
-//! use openstack;
-//!
-//! let auth = openstack::auth::Identity::from_env()
-//!     .expect("Unable to authenticate");
-//! let mut session = openstack::Session::new(auth);
-//! let version = session.negotiate_api_version::<openstack::compute::V2>(
-//!     openstack::ApiVersionRequest::Exact(openstack::ApiVersion(2, 10))
-//! ).expect("API version 2.10 is not supported");
-//!
-//! let servers = openstack::compute::v2::servers(&session);
-//! ```
 
 mod base;
-mod servermanager;
-mod protocol;
+pub mod protocol;
 
-pub use self::base::V2;
-pub use self::protocol::{AddressType, ServerAddress, ServerSortKey,
-                         ServerStatus};
-pub use self::servermanager::{servers, Server, ServerList, ServerManager,
-                              ServerQuery, ServerSummary, FlavorRef, ImageRef};
+pub use self::base::{V2, V2API};

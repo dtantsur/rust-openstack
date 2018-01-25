@@ -26,7 +26,7 @@ fn main() {
         .expect("Failed to create an identity provider from the environment");
     let session = openstack::session::Session::new(identity);
 
-    let manager = openstack::compute::v2::servers(&session);
+    let manager = openstack::compute::ServerManager::new(&session);
     let server = manager.get(env::args().nth(1).expect("Provide a server ID"))
         .expect("Cannot get a server");
     println!("ID = {}, Name = {}, Status = {:?}",

@@ -29,9 +29,10 @@ use super::protocol;
 
 
 /// Extensions for Session.
-pub trait ComputeV2API {
+pub trait V2API {
     /// Get a server.
     fn get_server<S: AsRef<str>>(&self, id: S) -> ApiResult<protocol::Server>;
+
     /// List servers.
     fn list_servers<Q: Serialize>(&self, query: &Q) -> ApiResult<Vec<protocol::ServerSummary>>;
 }
@@ -44,7 +45,7 @@ pub struct V2;
 const SERVICE_TYPE: &'static str = "compute";
 const VERSION_ID: &'static str = "v2.1";
 
-impl ComputeV2API for Session {
+impl V2API for Session {
     fn get_server<S: AsRef<str>>(&self, id: S) -> ApiResult<protocol::Server> {
         Ok(self.request::<V2>(Method::Get, &["servers", id.as_ref()])?
            .receive_json::<protocol::ServerRoot>()?.server)

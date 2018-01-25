@@ -19,11 +19,10 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 
 use chrono::{DateTime, FixedOffset};
 
-use super::super::super::{ApiResult, Sort};
-use super::super::super::session::Session;
-use super::super::super::utils::Query;
-use super::base::ComputeV2API;
-use super::protocol;
+use super::super::{ApiResult, Sort};
+use super::super::session::Session;
+use super::super::utils::Query;
+use super::v2::{V2API, protocol};
 
 
 /// A query to server list.
@@ -45,7 +44,7 @@ pub struct ServerQuery<'session> {
 /// let auth = openstack::auth::Identity::from_env()
 ///     .expect("Unable to authenticate");
 /// let session = openstack::Session::new(auth);
-/// let server_list = openstack::compute::v2::servers(&session).list()
+/// let server_list = openstack::compute::ServerManager::new(&session).list()
 ///     .expect("Unable to fetch servers");
 /// ```
 ///
@@ -57,8 +56,8 @@ pub struct ServerQuery<'session> {
 /// let auth = openstack::auth::Identity::from_env()
 ///     .expect("Unable to authenticate");
 /// let session = openstack::Session::new(auth);
-/// let sorting = openstack::compute::v2::ServerSortKey::AccessIpv4;
-/// let server_list = openstack::compute::v2::servers(&session).query()
+/// let sorting = openstack::compute::ServerSortKey::AccessIpv4;
+/// let server_list = openstack::compute::ServerManager::new(&session).query()
 ///     .sort_by(openstack::Sort::Asc(sorting)).with_limit(5)
 ///     .fetch().expect("Unable to fetch servers");
 /// ```
@@ -71,7 +70,7 @@ pub struct ServerQuery<'session> {
 /// let auth = openstack::auth::Identity::from_env()
 ///     .expect("Unable to authenticate");
 /// let session = openstack::Session::new(auth);
-/// let server = openstack::compute::v2::servers(&session)
+/// let server = openstack::compute::ServerManager::new(&session)
 ///     .get("8a1c355b-2e1e-440a-8aa8-f272df72bc32")
 ///     .expect("Unable to get a server");
 /// println!("Server name is {}, image ID is {}, flavor ID is {}",
@@ -365,9 +364,4 @@ impl<'session> ServerManager<'session> {
             inner: server
         })
     }
-}
-
-/// Create a server manager.
-pub fn servers<'session>(session: &'session Session) -> ServerManager<'session> {
-    ServerManager::new(session)
 }
