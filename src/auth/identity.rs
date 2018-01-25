@@ -269,7 +269,7 @@ impl PasswordAuth {
                    self.body.auth.identity.password.user.name,
                    self.token_endpoint);
             let resp = self.client.post(&self.token_endpoint).json(&self.body)
-                .header(ContentType::json()).send()?;
+                .header(ContentType::json()).send()?.error_for_status()?;
             self.token_from_response(resp)
         })
     }
