@@ -16,19 +16,25 @@
 
 use reqwest::{Method, Response, StatusCode, Url};
 use reqwest::header::Headers;
+use serde::Serialize;
 use serde_json;
 
 use super::super::super::{ApiResult, ApiVersion};
 use super::super::super::ApiError::{HttpError, EndpointNotFound};
 use super::super::super::auth::AuthMethod;
-use super::super::super::service::{ApiVersioning, ServiceInfo, ServiceType,
-                                   ServiceWrapper};
+use super::super::super::service::{ApiVersioning, ServiceInfo, ServiceType};
+use super::super::super::session::Session;
 use super::super::super::utils;
-use super::protocol::{VersionRoot, VersionsRoot};
+use super::protocol;
 
 
-/// Service wrapper for Compute API V2.
-pub type V2ServiceWrapper<'session> = ServiceWrapper<'session, V2>;
+/// Extensions for Session.
+pub trait ComputeV2API {
+    /// Get a server.
+    fn get_server<S: AsRef<str>>(&self, id: S) -> ApiResult<protocol::Server>;
+    /// List servers.
+    fn list_servers<Q: Serialize>(&self, query: &Q) -> ApiResult<Vec<protocol::ServerSummary>>;
+}
 
 /// Service type of Compute API V2.
 #[derive(Copy, Clone, Debug)]
@@ -38,15 +44,28 @@ pub struct V2;
 const SERVICE_TYPE: &'static str = "compute";
 const VERSION_ID: &'static str = "v2.1";
 
+impl ComputeV2API for Session {
+    fn get_server<S: AsRef<str>>(&self, id: S) -> ApiResult<protocol::Server> {
+        Ok(self.request::<V2>(Method::Get, &["servers", id.as_ref()])?
+           .receive_json::<protocol::ServerRoot>()?.server)
+    }
+
+    fn list_servers<Q: Serialize>(&self, query: &Q) -> ApiResult<Vec<protocol::ServerSummary>> {
+        Ok(self.request::<V2>(Method::Get, &["servers"])?
+           .query(query).receive_json::<protocol::ServersRoot>()?.servers)
+    }
+}
+
+
 fn extract_info(mut resp: Response, secure: bool) -> ApiResult<ServiceInfo> {
     let body = resp.text()?;
 
     // First, assume it's a versioned URL.
-    let mut info = match serde_json::from_str::<VersionRoot>(&body) {
+    let mut info = match serde_json::from_str::<protocol::VersionRoot>(&body) {
         Ok(ver) => ver.version.to_service_info(),
         Err(..) => {
             // Second, assume it's a root URL.
-            let vers: VersionsRoot = resp.json()?;
+            let vers: protocol::VersionsRoot = resp.json()?;
             match vers.versions.into_iter().find(|x| &x.id == VERSION_ID) {
                 Some(ver) => ver.to_service_info(),
                 None => Err(EndpointNotFound(String::from(SERVICE_TYPE)))

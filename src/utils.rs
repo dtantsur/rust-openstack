@@ -26,6 +26,10 @@ use serde::de::Error as DeserError;
 use super::ApiResult;
 
 
+/// Type of query parameters.
+#[derive(Clone, Debug)]
+pub struct Query(pub Vec<(String, String)>);
+
 /// Cached clone-able value.
 #[derive(Debug, Clone)]
 pub struct ValueCache<T: Clone>(RefCell<Option<T>>);
@@ -34,6 +38,25 @@ pub struct ValueCache<T: Clone>(RefCell<Option<T>>);
 #[derive(Debug, Clone)]
 pub struct MapCache<K: Hash + Eq, V: Clone>(RefCell<HashMap<K, V>>);
 
+
+impl Query {
+    /// Empty query.
+    pub fn new() -> Query {
+        Query(Vec::new())
+    }
+
+    /// Add an item to the query.
+    pub fn push<K, V>(&mut self, param: K, value: V)
+            where K: Into<String>, V: ToString {
+        self.0.push((param.into(), value.to_string()))
+    }
+
+    /// Add a strng item to the query.
+    pub fn push_str<K, V>(&mut self, param: K, value: V)
+            where K: Into<String>, V: Into<String> {
+        self.0.push((param.into(), value.into()))
+    }
+}
 
 impl<T: Clone> ValueCache<T> {
     /// Create a cache.

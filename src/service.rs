@@ -15,21 +15,13 @@
 //! Generic API bits for implementing new services.
 
 use std::cmp;
-use std::marker::PhantomData;
 
-use reqwest::{Method, Response, Url};
+use reqwest::Url;
 use reqwest::header::Headers;
-use serde::Serialize;
-use serde::de::DeserializeOwned;
 
 use super::{ApiResult, ApiVersion, ApiVersionRequest};
 use super::auth::AuthMethod;
-use super::session::Session;
 
-
-/// Type of query parameters.
-#[derive(Clone, Debug)]
-pub struct Query(pub Vec<(String, String)>);
 
 /// Information about API endpoint.
 #[derive(Clone, Debug)]
@@ -57,95 +49,6 @@ pub trait ServiceType {
 /// Trait representing a service with API version support.
 pub trait ApiVersioning {}
 
-/// A service-specific wrapper around Session.
-#[derive(Debug)]
-pub struct ServiceWrapper<'session, Srv: ServiceType> {
-    session: &'session Session,
-    service_type: PhantomData<Srv>,
-}
-
-
-impl Query {
-    /// Empty query.
-    pub fn new() -> Query {
-        Query(Vec::new())
-    }
-
-    /// Add an item to the query.
-    pub fn push<K, V>(&mut self, param: K, value: V)
-            where K: Into<String>, V: ToString {
-        self.0.push((param.into(), value.to_string()))
-    }
-
-    /// Add a strng item to the query.
-    pub fn push_str<K, V>(&mut self, param: K, value: V)
-            where K: Into<String>, V: Into<String> {
-        self.0.push((param.into(), value.into()))
-    }
-}
-
-impl<'session, Srv: ServiceType> ServiceWrapper<'session, Srv> {
-    /// Create a new wrapper for the specific service.
-    pub fn new(session: &'session Session) -> ServiceWrapper<'session, Srv> {
-        ServiceWrapper {
-            session: session,
-            service_type: PhantomData,
-        }
-    }
-
-    /// Reference to the session.
-    pub fn session(&self) -> &'session Session {
-        self.session
-    }
-
-    /// Make an HTTP request with JSON body and JSON response.
-    pub fn json<Req, Res>(&self, method: Method, path: &[&str], query: Query,
-                          body: &Req) -> ApiResult<Res>
-            where Req: Serialize, Res: DeserializeOwned {
-        let mut builder = self.session.request::<Srv>(method, path)?;
-        builder.json(body).query(&query.0).receive_json()
-    }
-
-    /// Make a GET request returning a JSON.
-    pub fn get_json<Res>(&self, path: &[&str], query: Query) -> ApiResult<Res>
-            where Res: DeserializeOwned {
-        self.session.request::<Srv>(Method::Get, path)?.query(&query.0)
-            .receive_json()
-    }
-
-    /// Make a POST request sending and returning a JSON.
-    pub fn post_json<Req, Res>(&self, path: &[&str], query: Query, body: &Req)
-            -> ApiResult<Res> where Req: Serialize, Res: DeserializeOwned {
-        self.json(Method::Post, path, query, body)
-    }
-
-    /// Make a POST request sending and returning a JSON.
-    pub fn put_json<Req, Res>(&self, path: &[&str], query: Query, body: &Req)
-            -> ApiResult<Res> where Req: Serialize, Res: DeserializeOwned {
-        self.json(Method::Put, path, query, body)
-    }
-
-    /// Make a PATCH request sending and returning a JSON.
-    pub fn patch_json<Req, Res>(&self, path: &[&str], query: Query, body: &Req)
-            -> ApiResult<Res> where Req: Serialize, Res: DeserializeOwned {
-        self.json(Method::Patch, path, query, body)
-    }
-
-    /// Make a DELETE request.
-    pub fn delete(&self, path: &[&str], query: Query) -> ApiResult<Response> {
-        self.session.request::<Srv>(Method::Delete, path)?.query(&query.0)
-            .send()
-    }
-}
-
-impl<'session, Srv: ServiceType> Clone for ServiceWrapper<'session, Srv> {
-    fn clone(&self) -> ServiceWrapper<'session, Srv> {
-        ServiceWrapper {
-            session: self.session,
-            service_type: PhantomData,
-        }
-    }
-}
 
 impl ServiceInfo {
     /// Pick an API version.

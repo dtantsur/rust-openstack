@@ -20,18 +20,17 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 use chrono::{DateTime, FixedOffset};
 
 use super::super::super::{ApiResult, Sort};
-use super::super::super::service::Query;
 use super::super::super::session::Session;
-use super::base::V2ServiceWrapper;
+use super::super::super::utils::Query;
+use super::base::ComputeV2API;
 use super::protocol;
 
 
 /// A query to server list.
 #[derive(Clone, Debug)]
 pub struct ServerQuery<'session> {
-    service: V2ServiceWrapper<'session>,
-    /// Underlying query.
-    pub query: Query,
+    session: &'session Session,
+    query: Query,
 }
 
 /// Server manager: working with virtual servers.
@@ -80,20 +79,20 @@ pub struct ServerQuery<'session> {
 /// ```
 #[derive(Clone, Debug)]
 pub struct ServerManager<'session> {
-    service: V2ServiceWrapper<'session>
+    session: &'session Session,
 }
 
 /// Structure representing a summary of a single server.
 #[derive(Clone, Debug)]
 pub struct Server<'session> {
-    service: V2ServiceWrapper<'session>,
+    session: &'session Session,
     inner: protocol::Server
 }
 
 /// Structure representing a summary of a single server.
 #[derive(Clone, Debug)]
 pub struct ServerSummary<'session> {
-    service: V2ServiceWrapper<'session>,
+    session: &'session Session,
     inner: protocol::ServerSummary
 }
 
@@ -205,15 +204,14 @@ impl<'session> ServerSummary<'session> {
 
     /// Get details.
     pub fn details(&self) -> ApiResult<Server<'session>> {
-        ServerManager::get_server(self.service.clone(), &self.inner.id)
+        ServerManager::get_server(self.session, &self.inner.id)
     }
 }
 
 impl<'session> ServerQuery<'session> {
-    fn new(service: V2ServiceWrapper<'session>)
-            -> ServerQuery<'session> {
+    fn new(session: &'session Session) -> ServerQuery<'session> {
         ServerQuery {
-            service: service,
+            session: session,
             query: Query::new(),
         }
     }
@@ -319,16 +317,12 @@ impl<'session> ServerQuery<'session> {
     /// Execute this request and return its result.
     #[allow(unused_results)]
     pub fn fetch(self) -> ApiResult<ServerList<'session>> {
-        let service = self.service;
-        let query = self.query;
-
-        trace!("Listing compute servers with {:?}", query);
-        let inner: protocol::ServersRoot = service.get_json(&["servers"],
-                                                            query)?;
-        debug!("Received {} compute servers", inner.servers.len());
-        trace!("Received servers: {:?}", inner.servers);
-        Ok(inner.servers.into_iter().map(|x| ServerSummary {
-            service: service.clone(),
+        trace!("Listing compute servers with {:?}", self.query);
+        let servers = self.session.list_servers(&self.query.0)?;
+        debug!("Received {} compute servers", servers.len());
+        trace!("Received servers: {:?}", servers);
+        Ok(servers.into_iter().map(|x| ServerSummary {
+            session: self.session,
             inner: x
         }).collect())
     }
@@ -338,7 +332,7 @@ impl<'session> ServerManager<'session> {
     /// Constructor for server manager.
     pub fn new(session: &'session Session) -> ServerManager<'session> {
         ServerManager {
-            service: V2ServiceWrapper::new(session)
+            session: session
         }
     }
 
@@ -348,7 +342,7 @@ impl<'session> ServerManager<'session> {
     /// a [ServerQuery](struct.ServerQuery.html) object that
     /// you can futher specify with e.g. filtering or sorting.
     pub fn query(&self) -> ServerQuery<'session> {
-        ServerQuery::new(self.service.clone())
+        ServerQuery::new(self.session)
     }
 
     /// List all servers.
@@ -358,18 +352,17 @@ impl<'session> ServerManager<'session> {
 
     /// Get a server.
     pub fn get<Id: AsRef<str>>(&self, id: Id) -> ApiResult<Server<'session>> {
-        ServerManager::get_server(self.service.clone(), id.as_ref())
+        ServerManager::get_server(self.session, id.as_ref())
     }
 
-    fn get_server(service: V2ServiceWrapper<'session>, id: &str)
+    fn get_server(session: &'session Session, id: &str)
             -> ApiResult<Server<'session>> {
         trace!("Get compute server {}", id);
-        let inner: protocol::ServerRoot = service.get_json(&["servers", id],
-                                                           Query::new())?;
-        trace!("Received {:?}", inner.server);
+        let server = session.get_server(id)?;
+        trace!("Received {:?}", server);
         Ok(Server {
-            service: service,
-            inner: inner.server
+            session: session,
+            inner: server
         })
     }
 }
