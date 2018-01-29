@@ -31,8 +31,13 @@ pub struct Cloud {
 impl Cloud {
     /// Create a new cloud object with a given authentication plugin.
     pub fn new<Auth: AuthMethod + 'static>(auth_method: Auth) -> Cloud {
+        Cloud::new_with_session(Session::new(auth_method))
+    }
+
+    /// Create a new cloud object with a given session.
+    pub fn new_with_session(session: Session) -> Cloud {
         Cloud {
-            session: Session::new(auth_method)
+            session: session
         }
     }
 
@@ -68,11 +73,8 @@ impl Cloud {
 
     /// List all servers with an optional limit.
     #[cfg(feature = "compute")]
-    pub fn list_servers(&self, limit: Option<usize>) -> ApiResult<Vec<ServerSummary>> {
-        let mut query = self.find_servers();
-        if let Some(l) = limit {
-            query = query.with_limit(l);
-        }
-        query.fetch()
+    pub fn list_servers(&self) -> ApiResult<Vec<ServerSummary>> {
+        // TODO(dtantsur): pagination
+        self.find_servers().fetch()
     }
 }
