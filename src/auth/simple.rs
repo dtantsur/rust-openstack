@@ -16,7 +16,7 @@
 
 use reqwest::{Client, IntoUrl, Method, Url, UrlError};
 
-use super::super::ApiResult;
+use super::super::Result;
 use super::super::session::RequestBuilder;
 use super::AuthMethod;
 
@@ -35,7 +35,8 @@ impl NoAuth {
     ///
     /// This endpoint will be returned in response to all get_endpoint calls
     /// of the [AuthMethod](trait.AuthMethod.html) trait.
-    pub fn new<U>(endpoint: U) -> Result<NoAuth, UrlError> where U: IntoUrl {
+    pub fn new<U>(endpoint: U) -> ::std::result::Result<NoAuth, UrlError>
+            where U: IntoUrl {
         Ok(NoAuth {
             client: Client::new(),
             endpoint: endpoint.into_url()?
@@ -45,13 +46,13 @@ impl NoAuth {
 
 impl AuthMethod for NoAuth {
     /// Create a request.
-    fn request(&self, method: Method, url: Url) -> ApiResult<RequestBuilder> {
+    fn request(&self, method: Method, url: Url) -> Result<RequestBuilder> {
         Ok(RequestBuilder::new(self.client.request(method, url)))
     }
 
     /// Get a predefined endpoint for all service types
     fn get_endpoint(&self, _service_type: String,
-                    _endpoint_interface: Option<String>) -> ApiResult<Url> {
+                    _endpoint_interface: Option<String>) -> Result<Url> {
         Ok(self.endpoint.clone())
     }
 }

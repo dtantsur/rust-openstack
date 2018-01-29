@@ -14,7 +14,6 @@
 
 //! Common code.
 
-use std::error::Error;
 use std::fmt;
 use std::str::FromStr;
 
@@ -24,9 +23,9 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde::de::{Error as DeserError, Visitor};
 
 
-/// Error from an OpenStack API call.
+/// Error from an OpenStack call.
 #[derive(Debug)]
-pub enum ApiError {
+pub enum Error {
     /// Requested service endpoint was not found.
     ///
     /// Contains the failed endpoint name.
@@ -64,8 +63,8 @@ pub enum ApiError {
     }
 }
 
-/// Result of an API call.
-pub type ApiResult<T> = Result<T, ApiError>;
+/// Result of an OpenStack call.
+pub type Result<T> = ::std::result::Result<T, Error>;
 
 /// API version (major, minor).
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
@@ -102,22 +101,22 @@ pub enum Sort<T: Into<String>> {
 }
 
 
-impl fmt::Display for ApiError {
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ApiError::EndpointNotFound(ref endp) =>
+            Error::EndpointNotFound(ref endp) =>
                 write!(f, "Requested endpoint {} was not found", endp),
-            ApiError::InvalidInput(ref msg) =>
+            Error::InvalidInput(ref msg) =>
                 write!(f, "Input value(s) are invalid: {}", msg),
-            ApiError::InvalidUrl(ref e) => fmt::Display::fmt(e, f),
-            ApiError::HttpError(status, ..) =>
+            Error::InvalidUrl(ref e) => fmt::Display::fmt(e, f),
+            Error::HttpError(status, ..) =>
                 write!(f, "HTTP error {}", status),
-            ApiError::ProtocolError(ref e) => fmt::Display::fmt(e, f),
-            ApiError::InvalidResponse(ref msg) =>
+            Error::ProtocolError(ref e) => fmt::Display::fmt(e, f),
+            Error::InvalidResponse(ref msg) =>
                 write!(f, "Response was invalid: {}", msg),
-            ApiError::InvalidApiVersion { value: ref val, message: ref msg } =>
+            Error::InvalidApiVersion { value: ref val, message: ref msg } =>
                 write!(f, "{} is not a valid API version: {}", val, msg),
-            ApiError::UnsupportedApiVersion {
+            Error::UnsupportedApiVersion {
                 requested: ref req, minimum: minv, maximum: maxv
             } => write!(f, "Unsupported version requested: {:?}, supported \
                 versions are {:?} to {:?}", req, minv, maxv)
@@ -125,42 +124,42 @@ impl fmt::Display for ApiError {
     }
 }
 
-impl Error for ApiError {
+impl ::std::error::Error for Error {
     fn description(&self) -> &str {
         match *self {
-            ApiError::EndpointNotFound(..) =>
+            Error::EndpointNotFound(..) =>
                 "Requested endpoint was not found",
-            ApiError::InvalidInput(..) => "Invalid value(s) provided",
-            ApiError::InvalidUrl(ref e) => e.description(),
-            ApiError::HttpError(..) => "HTTP error",
-            ApiError::ProtocolError(ref e) => e.description(),
-            ApiError::InvalidResponse(..) =>
+            Error::InvalidInput(..) => "Invalid value(s) provided",
+            Error::InvalidUrl(ref e) => e.description(),
+            Error::HttpError(..) => "HTTP error",
+            Error::ProtocolError(ref e) => e.description(),
+            Error::InvalidResponse(..) =>
                 "Invalid response received from the server",
-            ApiError::InvalidApiVersion { .. } =>
+            Error::InvalidApiVersion { .. } =>
                 "Invalid API version",
-            ApiError::UnsupportedApiVersion { .. } =>
+            Error::UnsupportedApiVersion { .. } =>
                 "Unsupported API version requested"
         }
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&::std::error::Error> {
         match *self {
-            ApiError::ProtocolError(ref e) => Some(e),
-            ApiError::InvalidUrl(ref e) => Some(e),
+            Error::ProtocolError(ref e) => Some(e),
+            Error::InvalidUrl(ref e) => Some(e),
             _ => None
         }
     }
 }
 
-impl From<HttpClientError> for ApiError {
-    fn from(value: HttpClientError) -> ApiError {
-        ApiError::ProtocolError(value)
+impl From<HttpClientError> for Error {
+    fn from(value: HttpClientError) -> Error {
+        Error::ProtocolError(value)
     }
 }
 
-impl From<UrlError> for ApiError {
-    fn from(value: UrlError) -> ApiError {
-        ApiError::InvalidUrl(value)
+impl From<UrlError> for Error {
+    fn from(value: UrlError) -> Error {
+        Error::InvalidUrl(value)
     }
 }
 
@@ -171,10 +170,10 @@ impl fmt::Display for ApiVersion {
 }
 
 fn parse_component(component: &str, value: &str, message: &str)
-        -> ApiResult<u16> {
+        -> Result<u16> {
     match component.parse() {
         Ok(val) => Ok(val),
-        Err(..) => Err(ApiError::InvalidApiVersion {
+        Err(..) => Err(Error::InvalidApiVersion {
             value: String::from(value),
             message: String::from(message)
         })
@@ -182,13 +181,13 @@ fn parse_component(component: &str, value: &str, message: &str)
 }
 
 impl FromStr for ApiVersion {
-    type Err = ApiError;
+    type Err = Error;
 
-    fn from_str(s: &str) -> ApiResult<ApiVersion> {
+    fn from_str(s: &str) -> Result<ApiVersion> {
         let parts: Vec<&str> = s.split('.').collect();
 
         if parts.len() != 2 {
-            return Err(ApiError::InvalidApiVersion {
+            return Err(Error::InvalidApiVersion {
                 value: String::from(s),
                 message: String::from("Expected format X.Y")
             });
@@ -205,7 +204,7 @@ impl FromStr for ApiVersion {
 }
 
 impl Serialize for ApiVersion {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
             where S: Serializer {
         serializer.serialize_str(&self.to_string())
     }
@@ -220,14 +219,14 @@ impl<'de> Visitor<'de> for ApiVersionVisitor {
         formatter.write_str("a string in format X.Y")
     }
 
-    fn visit_str<E>(self, value: &str) -> Result<ApiVersion, E>
+    fn visit_str<E>(self, value: &str) -> ::std::result::Result<ApiVersion, E>
             where E: DeserError {
         ApiVersion::from_str(value).map_err(DeserError::custom)
     }
 }
 
 impl<'de> Deserialize<'de> for ApiVersion {
-    fn deserialize<D>(deserializer: D) -> Result<ApiVersion, D::Error>
+    fn deserialize<D>(deserializer: D) -> ::std::result::Result<ApiVersion, D::Error>
             where D: Deserializer<'de> {
         deserializer.deserialize_str(ApiVersionVisitor)
     }

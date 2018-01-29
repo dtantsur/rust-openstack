@@ -15,7 +15,7 @@
 //! Cloud API.
 
 #[allow(unused_imports)]
-use super::ApiResult;
+use super::Result;
 use super::auth::AuthMethod;
 #[cfg(feature = "compute")]
 use super::compute::{Server, ServerQuery, ServerSummary};
@@ -99,7 +99,7 @@ impl Cloud {
     ///     .expect("Unable to get a server");
     /// ```
     #[cfg(feature = "compute")]
-    pub fn get_server_by_id<Id: AsRef<str>>(&self, id: Id) -> ApiResult<Server> {
+    pub fn get_server_by_id<Id: AsRef<str>>(&self, id: Id) -> Result<Server> {
         Server::new(&self.session, id)
     }
 
@@ -144,7 +144,7 @@ impl Cloud {
     /// let server_list = os.list_servers().expect("Unable to fetch servers");
     /// ```
     #[cfg(feature = "compute")]
-    pub fn list_servers(&self) -> ApiResult<Vec<ServerSummary>> {
+    pub fn list_servers(&self) -> Result<Vec<ServerSummary>> {
         // TODO(dtantsur): pagination
         self.find_servers().fetch()
     }

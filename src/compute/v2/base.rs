@@ -19,8 +19,8 @@ use reqwest::header::Headers;
 use serde::Serialize;
 use serde_json;
 
-use super::super::super::{ApiResult, ApiVersion};
-use super::super::super::ApiError::{HttpError, EndpointNotFound};
+use super::super::super::{Result, ApiVersion};
+use super::super::super::Error::{HttpError, EndpointNotFound};
 use super::super::super::auth::AuthMethod;
 use super::super::super::service::{ApiVersioning, ServiceInfo, ServiceType};
 use super::super::super::session::Session;
@@ -31,10 +31,10 @@ use super::protocol;
 /// Extensions for Session.
 pub trait V2API {
     /// Get a server.
-    fn get_server<S: AsRef<str>>(&self, id: S) -> ApiResult<protocol::Server>;
+    fn get_server<S: AsRef<str>>(&self, id: S) -> Result<protocol::Server>;
 
     /// List servers.
-    fn list_servers<Q: Serialize>(&self, query: &Q) -> ApiResult<Vec<protocol::ServerSummary>>;
+    fn list_servers<Q: Serialize>(&self, query: &Q) -> Result<Vec<protocol::ServerSummary>>;
 }
 
 /// Service type of Compute API V2.
@@ -46,7 +46,7 @@ const SERVICE_TYPE: &'static str = "compute";
 const VERSION_ID: &'static str = "v2.1";
 
 impl V2API for Session {
-    fn get_server<S: AsRef<str>>(&self, id: S) -> ApiResult<protocol::Server> {
+    fn get_server<S: AsRef<str>>(&self, id: S) -> Result<protocol::Server> {
         trace!("Get compute server {}", id.as_ref());
         let server = self.request::<V2>(Method::Get, &["servers", id.as_ref()])?
            .receive_json::<protocol::ServerRoot>()?.server;
@@ -54,14 +54,14 @@ impl V2API for Session {
         Ok(server)
     }
 
-    fn list_servers<Q: Serialize>(&self, query: &Q) -> ApiResult<Vec<protocol::ServerSummary>> {
+    fn list_servers<Q: Serialize>(&self, query: &Q) -> Result<Vec<protocol::ServerSummary>> {
         Ok(self.request::<V2>(Method::Get, &["servers"])?
            .query(query).receive_json::<protocol::ServersRoot>()?.servers)
     }
 }
 
 
-fn extract_info(mut resp: Response, secure: bool) -> ApiResult<ServiceInfo> {
+fn extract_info(mut resp: Response, secure: bool) -> Result<ServiceInfo> {
     let body = resp.text()?;
 
     // First, assume it's a versioned URL.
@@ -91,7 +91,7 @@ impl ServiceType for V2 {
     }
 
     fn service_info(endpoint: Url, auth: &AuthMethod)
-            -> ApiResult<ServiceInfo> {
+            -> Result<ServiceInfo> {
         debug!("Fetching compute service info from {}", endpoint);
         let secure = endpoint.scheme() == "https";
         let result = auth.request(Method::Get, endpoint.clone())?.send()

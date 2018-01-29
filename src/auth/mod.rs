@@ -83,8 +83,8 @@ pub use self::identity::{Identity, PasswordAuth};
 
 use std::env;
 
-use super::ApiResult;
-use super::ApiError::InvalidInput;
+use super::Result;
+use super::Error::InvalidInput;
 
 const MISSING_ENV_VARS: &'static str =
     "Not all required environment variables were provided";
@@ -92,13 +92,13 @@ const INVALID_ENV_AUTH_URL: &'static str =
     "Malformed authentication URL provided in the environment";
 
 #[inline]
-fn _get_env(name: &str) -> ApiResult<String> {
+fn _get_env(name: &str) -> Result<String> {
     env::var(name).or(Err(InvalidInput(String::from(MISSING_ENV_VARS))))
 }
 
 
 /// Create an authentication method from environment variables.
-pub fn from_env() -> ApiResult<PasswordAuth> {
+pub fn from_env() -> Result<PasswordAuth> {
     let auth_url = _get_env("OS_AUTH_URL")?;
     let id = Identity::new(&auth_url).map_err(|_| {
         InvalidInput(String::from(INVALID_ENV_AUTH_URL))

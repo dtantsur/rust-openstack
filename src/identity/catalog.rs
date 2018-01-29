@@ -16,7 +16,7 @@
 
 use reqwest::Url;
 
-use super::super::{ApiError, ApiResult};
+use super::super::{Error, Result};
 use super::super::utils;
 use super::protocol::{CatalogRecord, Endpoint};
 
@@ -34,10 +34,10 @@ pub fn get_url(auth_url: Url) -> Url {
 /// Find an endpoint in the service catalog.
 pub fn find_endpoint<'c>(catalog: &'c Vec<CatalogRecord>, service_type: &String,
                      endpoint_interface: &String, region: &Option<String>)
-        -> ApiResult<&'c Endpoint> {
+        -> Result<&'c Endpoint> {
     let svc = match catalog.iter().find(|x| x.service_type == *service_type) {
         Some(s) => s,
-        None => return Err(ApiError::EndpointNotFound(service_type.clone()))
+        None => return Err(Error::EndpointNotFound(service_type.clone()))
     };
 
     let maybe_endp: Option<&Endpoint>;
@@ -49,13 +49,13 @@ pub fn find_endpoint<'c>(catalog: &'c Vec<CatalogRecord>, service_type: &String,
             |x| x.interface == *endpoint_interface);
     }
 
-    maybe_endp.ok_or_else(|| ApiError::EndpointNotFound(service_type.clone()))
+    maybe_endp.ok_or_else(|| Error::EndpointNotFound(service_type.clone()))
 }
 
 
 #[cfg(test)]
 pub mod test {
-    use super::super::super::{ApiError, ApiResult};
+    use super::super::super::{Error, Result};
     use super::super::protocol::{CatalogRecord, Endpoint};
 
     fn demo_service1() -> CatalogRecord {
@@ -105,7 +105,7 @@ pub mod test {
 
     fn find_endpoint<'a>(cat: &'a Vec<CatalogRecord>,
                          service_type: &str, interface_type: &str,
-                         region: Option<&str>) -> ApiResult<&'a Endpoint> {
+                         region: Option<&str>) -> Result<&'a Endpoint> {
         super::find_endpoint(cat, &String::from(service_type),
                              &String::from(interface_type),
                              &region.map(String::from))
@@ -142,9 +142,9 @@ pub mod test {
         assert_eq!(&e3.url, "https://host.two:6385");
     }
 
-    fn assert_not_found(result: ApiResult<&Endpoint>) {
+    fn assert_not_found(result: Result<&Endpoint>) {
         match result.err().unwrap() {
-            ApiError::EndpointNotFound(..) => (),
+            Error::EndpointNotFound(..) => (),
             other => panic!("Unexpected error {}", other)
         }
     }

@@ -85,8 +85,8 @@ pub mod session;
 mod utils;
 
 pub use cloud::Cloud;
-pub use common::ApiError;
-pub use common::ApiResult;
+pub use common::Error;
+pub use common::Result;
 pub use common::ApiVersion;
 pub use common::ApiVersionRequest;
 pub use common::Sort;

@@ -19,7 +19,7 @@ use std::cmp;
 use reqwest::Url;
 use reqwest::header::Headers;
 
-use super::{ApiResult, ApiVersion, ApiVersionRequest};
+use super::{Result, ApiVersion, ApiVersionRequest};
 use super::auth::AuthMethod;
 
 
@@ -40,7 +40,7 @@ pub trait ServiceType {
     fn catalog_type() -> &'static str;
 
     /// Get basic service information.
-    fn service_info(endpoint: Url, auth: &AuthMethod) -> ApiResult<ServiceInfo>;
+    fn service_info(endpoint: Url, auth: &AuthMethod) -> Result<ServiceInfo>;
 
     /// Return headers to set for this API version.
     fn api_version_headers(_version: ApiVersion) -> Option<Headers> { None }

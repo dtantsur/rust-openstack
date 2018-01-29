@@ -19,7 +19,7 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 
 use chrono::{DateTime, FixedOffset};
 
-use super::super::{ApiResult, Sort};
+use super::super::{Result, Sort};
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::v2::{V2API, protocol};
@@ -66,7 +66,7 @@ pub struct ImageRef<'session> {
 impl<'session> Server<'session> {
     /// Load a Server object.
     pub(crate) fn new<Id: AsRef<str>>(session: &'session Session, id: Id)
-            -> ApiResult<Server<'session>> {
+            -> Result<Server<'session>> {
         let inner = session.get_server(id)?;
         Ok(Server {
             session: session,
@@ -140,7 +140,7 @@ impl<'session> FlavorRef<'session> {
         &self.server.inner.flavor.id
     }
 
-    // TODO: pub fn details(&self) -> ApiResult<Flavor>
+    // TODO: pub fn details(&self) -> Result<Flavor>
 }
 
 impl<'session> ImageRef<'session> {
@@ -149,7 +149,7 @@ impl<'session> ImageRef<'session> {
         &self.server.inner.image.id
     }
 
-    // TODO: #[cfg(feature = "image")] pub fn details(&self) -> ApiResult<Image>
+    // TODO: #[cfg(feature = "image")] pub fn details(&self) -> Result<Image>
 }
 
 impl<'session> ServerSummary<'session> {
@@ -164,7 +164,7 @@ impl<'session> ServerSummary<'session> {
     }
 
     /// Get details.
-    pub fn details(&self) -> ApiResult<Server<'session>> {
+    pub fn details(&self) -> Result<Server<'session>> {
         Server::new(self.session, &self.inner.id)
     }
 }
@@ -277,7 +277,7 @@ impl<'session> ServerQuery<'session> {
 
     /// Execute this request and return its result.
     #[allow(unused_results)]
-    pub fn fetch(self) -> ApiResult<ServerList<'session>> {
+    pub fn fetch(self) -> Result<ServerList<'session>> {
         trace!("Listing compute servers with {:?}", self.query);
         let servers = self.session.list_servers(&self.query.0)?;
         debug!("Received {} compute servers", servers.len());

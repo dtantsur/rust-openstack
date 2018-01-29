@@ -22,7 +22,7 @@ use reqwest::header::{Header, Headers};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-use super::{ApiError, ApiResult, ApiVersion, ApiVersionRequest, Cloud};
+use super::{Error, Result, ApiVersion, ApiVersionRequest, Cloud};
 use super::auth::AuthMethod;
 use super::service::{ApiVersioning, ServiceInfo, ServiceType};
 use super::utils;
@@ -84,12 +84,12 @@ impl RequestBuilder {
     }
 
     /// Construct the Request and sends it the target URL, returning a Response.
-    pub fn send(&mut self) -> ApiResult<Response> {
+    pub fn send(&mut self) -> Result<Response> {
         self.inner.send()?.error_for_status().map_err(From::from)
     }
 
     /// Construct the Request, send it and receive a JSON.
-    pub fn receive_json<T: DeserializeOwned>(&mut self) -> ApiResult<T> {
+    pub fn receive_json<T: DeserializeOwned>(&mut self) -> Result<T> {
         self.inner.send()?.error_for_status()?.json().map_err(From::from)
     }
 }
@@ -152,7 +152,7 @@ impl Session {
     }
 
     /// Get service info for the given service.
-    pub fn get_service_info<Srv>(&self) -> ApiResult<ServiceInfo>
+    pub fn get_service_info<Srv>(&self) -> Result<ServiceInfo>
             where Srv: ServiceType {
         let info = self.get_service_info_ref::<Srv>()?;
         Ok(info.clone())
@@ -160,14 +160,14 @@ impl Session {
 
     /// Construct and endpoint for the given service from the path.
     pub fn get_endpoint<Srv: ServiceType>(&self, path: &[&str])
-            -> ApiResult<Url> {
+            -> Result<Url> {
         let info = self.get_service_info_ref::<Srv>()?;
         Ok(utils::url::extend(info.root_url.clone(), path))
     }
 
     /// Make an HTTP request to the given service.
     pub fn request<Srv: ServiceType>(&self, method: Method, path: &[&str])
-            -> ApiResult<RequestBuilder> {
+            -> Result<RequestBuilder> {
         let url = self.get_endpoint::<Srv>(path)?;
         let maybe_headers = self.api_versions.get(Srv::catalog_type())
             .and_then(|ver| Srv::api_version_headers(*ver));
@@ -188,7 +188,7 @@ impl Session {
     ///
     /// The resulting API version is cached for this session.
     pub fn negotiate_api_version<Srv>(&mut self, requested: ApiVersionRequest)
-            -> ApiResult<ApiVersion>
+            -> Result<ApiVersion>
             where Srv: ServiceType + ApiVersioning {
         self.ensure_service_info::<Srv>()?;
         let info = self.cached_info.get_ref(&Srv::catalog_type()).unwrap();
@@ -201,7 +201,7 @@ impl Session {
                 Ok(ver)
             },
             None => {
-                let error = ApiError::UnsupportedApiVersion {
+                let error = Error::UnsupportedApiVersion {
                     requested: requested,
                     minimum: info.minimum_version.clone(),
                     maximum: info.current_version.clone()
@@ -213,7 +213,7 @@ impl Session {
         }
     }
 
-    fn ensure_service_info<Srv>(&self) -> ApiResult<()> where Srv: ServiceType {
+    fn ensure_service_info<Srv>(&self) -> Result<()> where Srv: ServiceType {
         self.cached_info.ensure_value(Srv::catalog_type(), |_| {
             self.get_catalog_endpoint(Srv::catalog_type())
                 .and_then(|ep| Srv::service_info(ep, self.auth_method()))
@@ -222,14 +222,14 @@ impl Session {
         Ok(())
     }
 
-    fn get_catalog_endpoint<S>(&self, service_type: S) -> ApiResult<Url>
+    fn get_catalog_endpoint<S>(&self, service_type: S) -> Result<Url>
             where S: Into<String> {
         self.auth.get_endpoint(service_type.into(),
                                Some(self.endpoint_interface.clone()))
     }
 
     fn get_service_info_ref<Srv>(&self)
-            -> ApiResult<Ref<ServiceInfo>> where Srv: ServiceType {
+            -> Result<Ref<ServiceInfo>> where Srv: ServiceType {
         self.ensure_service_info::<Srv>()?;
         Ok(self.cached_info.get_ref(&Srv::catalog_type()).unwrap())
     }

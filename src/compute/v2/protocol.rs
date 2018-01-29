@@ -24,7 +24,7 @@ use chrono::{DateTime, FixedOffset};
 use reqwest::Url;
 use serde::{Deserialize, Deserializer};
 
-use super::super::super::{ApiError, ApiResult, ApiVersion};
+use super::super::super::{Error, Result, ApiVersion};
 use super::super::super::service::ServiceInfo;
 use super::super::super::utils;
 
@@ -185,14 +185,14 @@ pub struct VersionRoot {
 
 
 impl Version {
-    pub fn to_service_info(&self) -> ApiResult<ServiceInfo> {
+    pub fn to_service_info(&self) -> Result<ServiceInfo> {
         let endpoint = match self.links.iter().find(|x| &x.rel == "self") {
             Some(link) => Url::parse(&link.href)?,
             None => {
                 error!("Received malformed version response: no self link \
                         in {:?}", self.links);
                 return Err(
-                    ApiError::InvalidResponse(String::from(
+                    Error::InvalidResponse(String::from(
                             "Invalid version - missing self link"))
                 );
             }
@@ -255,7 +255,7 @@ impl Default for AddressType {
     }
 }
 
-fn de_address_type<'de, D>(des: D) -> Result<AddressType, D::Error>
+fn de_address_type<'de, D>(des: D) -> ::std::result::Result<AddressType, D::Error>
         where D: Deserializer<'de> {
     Ok(match String::deserialize(des)?.as_ref() {
         "fixed" => AddressType::Fixed,
@@ -264,7 +264,7 @@ fn de_address_type<'de, D>(des: D) -> Result<AddressType, D::Error>
     })
 }
 
-fn de_server_status<'de, D>(des: D) -> Result<ServerStatus, D::Error>
+fn de_server_status<'de, D>(des: D) -> ::std::result::Result<ServerStatus, D::Error>
         where D: Deserializer<'de> {
     let s = String::deserialize(des)?;
     Ok(match s.as_ref() {

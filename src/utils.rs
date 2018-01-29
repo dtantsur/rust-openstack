@@ -25,7 +25,7 @@ use std::str::FromStr;
 use serde::{Deserialize, Deserializer};
 use serde::de::Error as DeserError;
 
-use super::ApiResult;
+use super::Result;
 
 
 /// Type of query parameters.
@@ -67,8 +67,8 @@ impl<T: Clone> ValueCache<T> {
     }
 
     /// Ensure the value is cached.
-    pub fn ensure_value<F>(&self, default: F) -> ApiResult<()>
-            where F: FnOnce() -> ApiResult<T> {
+    pub fn ensure_value<F>(&self, default: F) -> Result<()>
+            where F: FnOnce() -> Result<T> {
         if self.0.borrow().is_some() {
             return Ok(());
         };
@@ -91,8 +91,8 @@ impl<K: Hash + Eq, V: Clone> MapCache<K, V> {
     }
 
     /// Ensure the value is present in the cache.
-    pub fn ensure_value<F>(&self, key: K, default: F) -> ApiResult<()>
-            where F: FnOnce(&K) -> ApiResult<V> {
+    pub fn ensure_value<F>(&self, key: K, default: F) -> Result<()>
+            where F: FnOnce(&K) -> Result<V> {
         if self.0.borrow().contains_key(&key) {
             return Ok(());
         }
@@ -116,7 +116,7 @@ impl<K: Hash + Eq, V: Clone> MapCache<K, V> {
 }
 
 /// Deserialize value where empty string equals None.
-pub fn empty_as_none<'de, D, T>(des: D) -> Result<Option<T>, D::Error>
+pub fn empty_as_none<'de, D, T>(des: D) -> ::std::result::Result<Option<T>, D::Error>
         where D: Deserializer<'de>, T: FromStr, T::Err: Display {
     let s = String::deserialize(des)?;
     if s.is_empty() {
@@ -172,7 +172,7 @@ pub mod test {
     use reqwest::{IntoUrl, Url};
     use reqwest::header::Headers;
 
-    use super::super::{ApiError, ApiResult, ApiVersion};
+    use super::super::{Error, Result, ApiVersion};
     use super::super::auth::{AuthMethod, NoAuth};
     use super::super::service::{ServiceInfo, ServiceType};
     use super::super::session::Session;
@@ -191,7 +191,7 @@ pub mod test {
     impl ServiceType for FakeServiceType {
         fn catalog_type() -> &'static str { "fake" }
 
-        fn service_info(endpoint: Url, _auth: &AuthMethod) -> ApiResult<ServiceInfo> {
+        fn service_info(endpoint: Url, _auth: &AuthMethod) -> Result<ServiceInfo> {
             if endpoint.port() == Some(5000) {
                 Ok(ServiceInfo {
                     root_url: Url::parse(URL).unwrap(),
@@ -199,7 +199,7 @@ pub mod test {
                     minimum_version: Some(ApiVersion(1, 1)),
                 })
             } else {
-                Err(ApiError::EndpointNotFound(String::new()))
+                Err(Error::EndpointNotFound(String::new()))
             }
         }
 
