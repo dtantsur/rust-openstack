@@ -19,12 +19,10 @@
 //! ```rust,no_run
 //! use openstack;
 //!
-//! let auth = openstack::auth::from_env()
-//!     .expect("Unable to authenticate");
-//! let session = openstack::Session::new(auth);
-//! let servers = openstack::compute::ServerManager::new(&session);
+//! let auth = openstack::auth::from_env().expect("Unable to authenticate");
+//! let os = openstack::Cloud::new(auth);
 //!
-//! let server = servers.get("8a1c355b-2e1e-440a-8aa8-f272df72bc32")
+//! let server = os.get_server_by_id("8a1c355b-2e1e-440a-8aa8-f272df72bc32")
 //!     .expect("Unable to get a server");
 //! ```
 
@@ -34,5 +32,5 @@ mod v2;
 pub use self::v2::V2 as ServiceType;
 pub use self::v2::protocol::{AddressType, ServerAddress, ServerSortKey,
                              ServerStatus};
-pub use self::servers::{Server, ServerList, ServerManager,
-                        ServerQuery, ServerSummary, FlavorRef, ImageRef};
+pub use self::servers::{Server, ServerList, ServerQuery, ServerSummary,
+                        FlavorRef, ImageRef};

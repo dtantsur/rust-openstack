@@ -32,54 +32,6 @@ pub struct ServerQuery<'session> {
     query: Query,
 }
 
-/// Server manager: working with virtual servers.
-///
-/// # Examples
-///
-/// Listing summaries of all servers:
-///
-/// ```rust,no_run
-/// use openstack;
-///
-/// let auth = openstack::auth::from_env()
-///     .expect("Unable to authenticate");
-/// let session = openstack::Session::new(auth);
-/// let server_list = openstack::compute::ServerManager::new(&session).list()
-///     .expect("Unable to fetch servers");
-/// ```
-///
-/// Sorting servers by `access_ip_v4` and getting first 5 results:
-///
-/// ```rust,no_run
-/// use openstack;
-///
-/// let auth = openstack::auth::from_env()
-///     .expect("Unable to authenticate");
-/// let session = openstack::Session::new(auth);
-/// let sorting = openstack::compute::ServerSortKey::AccessIpv4;
-/// let server_list = openstack::compute::ServerManager::new(&session).query()
-///     .sort_by(openstack::Sort::Asc(sorting)).with_limit(5)
-///     .fetch().expect("Unable to fetch servers");
-/// ```
-///
-/// Fetching server details by its UUID:
-///
-/// ```rust,no_run
-/// use openstack;
-///
-/// let auth = openstack::auth::from_env()
-///     .expect("Unable to authenticate");
-/// let session = openstack::Session::new(auth);
-/// let server = openstack::compute::ServerManager::new(&session)
-///     .get("8a1c355b-2e1e-440a-8aa8-f272df72bc32")
-///     .expect("Unable to get a server");
-/// println!("Server name is {}, image ID is {}, flavor ID is {}",
-///          server.name(), server.image().id(), server.flavor().id());
-/// ```
-#[derive(Clone, Debug)]
-pub struct ServerManager<'session> {
-    session: &'session Session,
-}
 
 /// Structure representing a summary of a single server.
 #[derive(Clone, Debug)]
@@ -334,33 +286,5 @@ impl<'session> ServerQuery<'session> {
             session: self.session,
             inner: x
         }).collect())
-    }
-}
-
-impl<'session> ServerManager<'session> {
-    /// Constructor for server manager.
-    pub fn new(session: &'session Session) -> ServerManager<'session> {
-        ServerManager {
-            session: session
-        }
-    }
-
-    /// Run a query against server list.
-    ///
-    /// Note that this method does not return results immediately, but rather
-    /// a [ServerQuery](struct.ServerQuery.html) object that
-    /// you can futher specify with e.g. filtering or sorting.
-    pub fn query(&self) -> ServerQuery<'session> {
-        ServerQuery::new(self.session)
-    }
-
-    /// List all servers.
-    pub fn list(&self) -> ApiResult<ServerList<'session>> {
-        self.query().fetch()
-    }
-
-    /// Get a server.
-    pub fn get<Id: AsRef<str>>(&self, id: Id) -> ApiResult<Server<'session>> {
-        Server::new(self.session, id)
     }
 }

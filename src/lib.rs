@@ -17,10 +17,12 @@
 //! The goal of this project is to provide a simple API for working with
 //! OpenStack clouds.
 //!
-//! # Features
-//!
 //! * [Authentication](auth/index.html)
-//! * Basic [compute API support](compute/index.html)
+//! * [High-level API](struct.Cloud.html)
+//!
+//! API-specific notes:
+//!
+//! * [Compute API support](compute/index.html)
 
 #![crate_name = "openstack"]
 #![crate_type = "lib"]
@@ -88,4 +90,3 @@ pub use common::ApiResult;
 pub use common::ApiVersion;
 pub use common::ApiVersionRequest;
 pub use common::Sort;
-pub use session::Session;

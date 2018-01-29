@@ -22,9 +22,7 @@
 //!
 //! 1. Create a suitable authentication method.
 //! 2. Populate it with authentication data (credentials, etc).
-//! 3. Create a [Session](../session/struct.Session.html) by using the
-//!    [Session constructor](../session/struct.Session.html#method.new).
-//! 4. Pass a reference to the resulting session to various API managers.
+//! 3. Create a [Cloud](../struct.Cloud.html).
 //!
 //! # Using password authentication
 //!
@@ -42,35 +40,33 @@
 //! Creating an authentication method using project-scoped tokens:
 //!
 //! ```rust,no_run
-//! use openstack::auth::Identity;
-//! use openstack::Session;
+//! use openstack;
 //!
-//! let auth = Identity::new("https://my.cloud.com/identity").unwrap()
+//! let auth = openstack::auth::Identity::new("https://my.cloud.com/identity").unwrap()
 //!     .with_user("admin", "pa$$w0rd", "My Domain")
 //!     .with_project_scope("project1", "My Domain")
 //!     .create().expect("Failed to authenticate");
-//! let session = Session::new(auth);
+//! let os = openstack::Cloud::new(auth);
 //! ```
 //!
 //! Creating an authentication method from environment variables:
 //!
 //! ```rust,no_run
-//! use openstack::auth;
-//! use openstack::Session;
+//! use openstack;
 //!
-//! let auth = auth::from_env().expect("Failed to authenticate");
-//! let session = Session::new(auth);
+//! let auth = openstack::auth::from_env().expect("Failed to authenticate");
+//! let os = openstack::Cloud::new(auth);
 //! ```
 //!
 //! Creating a dummy authentication method for use against clouds that do not
 //! have actual authentication:
 //!
 //! ```
-//! use openstack::auth::NoAuth;
-//! use openstack::Session;
+//! use openstack;
 //!
-//! let auth = NoAuth::new("https://my.cloud.com/some-service").unwrap();
-//! let session = Session::new(auth);
+//! let auth = openstack::auth::NoAuth::new("https://my.cloud.com/some-service")
+//!     .unwrap();
+//! let os = openstack::Cloud::new(auth);
 //! ```
 //!
 //! # Limitations

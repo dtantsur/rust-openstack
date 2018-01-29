@@ -23,6 +23,8 @@ use super::session::Session;
 
 
 /// OpenStack cloud API.
+///
+/// Provides high-level API for working with OpenStack clouds.
 #[derive(Debug, Clone)]
 pub struct Cloud {
     session: Session
@@ -30,11 +32,36 @@ pub struct Cloud {
 
 impl Cloud {
     /// Create a new cloud object with a given authentication plugin.
+    ///
+    /// See (auth module)[auth/index.html) for details on how to authenticate
+    /// against OpenStack clouds.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
+    /// let os = openstack::Cloud::new(auth);
+    /// ```
     pub fn new<Auth: AuthMethod + 'static>(auth_method: Auth) -> Cloud {
         Cloud::new_with_session(Session::new(auth_method))
     }
 
     /// Create a new cloud object with a given session.
+    ///
+    /// This constructor can be used to modify `Session` parameters before
+    /// using it in the `Cloud` object. This is an advanced feature and
+    /// should generally be avoided.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
+    /// let session = openstack::session::Session::new(auth);
+    /// let os = openstack::Cloud::new_with_session(session);
     pub fn new_with_session(session: Session) -> Cloud {
         Cloud {
             session: session
@@ -49,29 +76,73 @@ impl Cloud {
         }
     }
 
-    /// Session object.
+    /// `Session` used with this `Cloud` object.
     pub fn session(&self) -> &Session {
         &self.session
     }
 
-    /// Extract the session object.
+    /// Extract the `Session` object, destroying this `Cloud`.
     pub fn into_session(self) -> Session {
         self.session
     }
 
     /// Find a server by its ID.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
+    /// let os = openstack::Cloud::new(auth);
+    /// let server = os.get_server_by_id("8a1c355b-2e1e-440a-8aa8-f272df72bc32")
+    ///     .expect("Unable to get a server");
+    /// ```
     #[cfg(feature = "compute")]
     pub fn get_server_by_id<Id: AsRef<str>>(&self, id: Id) -> ApiResult<Server> {
         Server::new(&self.session, id)
     }
 
     /// Build a query against server list.
+    ///
+    /// The returned object is a builder that should be used to construct
+    /// the query. The results can be received with a
+    /// [fetch](compute/struct.ServerQuery.html#method.fetch) call.
+    ///
+    /// # Example
+    ///
+    /// Sorting servers by `access_ip_v4` and getting first 5 results:
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
+    /// let os = openstack::Cloud::new(auth);
+    /// let sorting = openstack::compute::ServerSortKey::AccessIpv4;
+    /// let server_list = os.find_servers()
+    ///     .sort_by(openstack::Sort::Asc(sorting)).with_limit(5)
+    ///     .fetch().expect("Unable to fetch servers");
+    /// ```
     #[cfg(feature = "compute")]
     pub fn find_servers(&self) -> ServerQuery {
         ServerQuery::new(&self.session)
     }
 
-    /// List all servers with an optional limit.
+    /// List all servers.
+    ///
+    /// This call can yield a lot of results, use the
+    /// [find_servers](#method.find_servers) call to limit the number of
+    /// servers to receive.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
+    /// let os = openstack::Cloud::new(auth);
+    /// let server_list = os.list_servers().expect("Unable to fetch servers");
+    /// ```
     #[cfg(feature = "compute")]
     pub fn list_servers(&self) -> ApiResult<Vec<ServerSummary>> {
         // TODO(dtantsur): pagination
