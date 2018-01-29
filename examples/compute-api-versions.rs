@@ -42,7 +42,8 @@ fn main() {
         OCATA => println!("Ocata API detected"),
         _ => unreachable!()
     }
-    openstack::compute::ServerManager::new(&session).list()
+
+    openstack::Cloud::new_with_session(session).list_servers()
         .expect(&format!("Cannot list servers with API version {}", version));
 }
 

@@ -24,11 +24,11 @@ fn main() {
 
     let identity = openstack::auth::Identity::from_env()
         .expect("Failed to create an identity provider from the environment");
-    let session = openstack::session::Session::new(identity);
+    let os = openstack::Cloud::new(identity);
 
-    let manager = openstack::compute::ServerManager::new(&session);
-    let server = manager.get(env::args().nth(1).expect("Provide a server ID"))
-        .expect("Cannot get a server");
+    let id = env::args().nth(1).expect("Provide a server ID");
+    let server = os.get_server_by_id(id).expect("Cannot get a server");
+
     println!("ID = {}, Name = {}, Status = {:?}",
              server.id(), server.name(), server.status());
     println!("Links: flavor = {}, image = {}",
