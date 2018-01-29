@@ -149,3 +149,10 @@ impl Cloud {
         self.find_servers().fetch()
     }
 }
+
+
+impl From<Session> for Cloud {
+    fn from(value: Session) -> Cloud {
+        Cloud::new_with_session(value)
+    }
+}
