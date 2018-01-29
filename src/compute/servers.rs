@@ -41,7 +41,7 @@ pub struct ServerQuery<'session> {
 /// ```rust,no_run
 /// use openstack;
 ///
-/// let auth = openstack::auth::Identity::from_env()
+/// let auth = openstack::auth::from_env()
 ///     .expect("Unable to authenticate");
 /// let session = openstack::Session::new(auth);
 /// let server_list = openstack::compute::ServerManager::new(&session).list()
@@ -53,7 +53,7 @@ pub struct ServerQuery<'session> {
 /// ```rust,no_run
 /// use openstack;
 ///
-/// let auth = openstack::auth::Identity::from_env()
+/// let auth = openstack::auth::from_env()
 ///     .expect("Unable to authenticate");
 /// let session = openstack::Session::new(auth);
 /// let sorting = openstack::compute::ServerSortKey::AccessIpv4;
@@ -67,7 +67,7 @@ pub struct ServerQuery<'session> {
 /// ```rust,no_run
 /// use openstack;
 ///
-/// let auth = openstack::auth::Identity::from_env()
+/// let auth = openstack::auth::from_env()
 ///     .expect("Unable to authenticate");
 /// let session = openstack::Session::new(auth);
 /// let server = openstack::compute::ServerManager::new(&session)

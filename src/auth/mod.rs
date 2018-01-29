@@ -55,10 +55,10 @@
 //! Creating an authentication method from environment variables:
 //!
 //! ```rust,no_run
-//! use openstack::auth::Identity;
+//! use openstack::auth;
 //! use openstack::Session;
 //!
-//! let auth = Identity::from_env().expect("Failed to authenticate");
+//! let auth = auth::from_env().expect("Failed to authenticate");
 //! let session = Session::new(auth);
 //! ```
 //!
@@ -84,3 +84,40 @@ mod simple;
 pub use self::base::{AuthMethod, BoxedClone};
 pub use self::simple::NoAuth;
 pub use self::identity::{Identity, PasswordAuth};
+
+use std::env;
+
+use super::ApiResult;
+use super::ApiError::InvalidInput;
+
+const MISSING_ENV_VARS: &'static str =
+    "Not all required environment variables were provided";
+const INVALID_ENV_AUTH_URL: &'static str =
+    "Malformed authentication URL provided in the environment";
+
+#[inline]
+fn _get_env(name: &str) -> ApiResult<String> {
+    env::var(name).or(Err(InvalidInput(String::from(MISSING_ENV_VARS))))
+}
+
+
+/// Create an authentication method from environment variables.
+pub fn from_env() -> ApiResult<PasswordAuth> {
+    let auth_url = _get_env("OS_AUTH_URL")?;
+    let id = Identity::new(&auth_url).map_err(|_| {
+        InvalidInput(String::from(INVALID_ENV_AUTH_URL))
+    })?;
+
+    let user_name = _get_env("OS_USERNAME")?;
+    let password = _get_env("OS_PASSWORD")?;
+    let project_name = _get_env("OS_PROJECT_NAME")?;
+
+    let user_domain = env::var("OS_USER_DOMAIN_NAME")
+        .unwrap_or(String::from("Default"));
+    let project_domain = env::var("OS_PROJECT_DOMAIN_NAME")
+        .unwrap_or(String::from("Default"));
+
+    id.with_user(user_name, password, user_domain)
+        .with_project_scope(project_name, project_domain)
+        .create()
+}

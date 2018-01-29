@@ -25,7 +25,7 @@ const OCATA: openstack::ApiVersion = openstack::ApiVersion(2, 42);
 fn main() {
     env_logger::init();
 
-    let identity = openstack::auth::Identity::from_env()
+    let identity = openstack::auth::from_env()
         .expect("Failed to create an identity provider from the environment");
     let mut session = openstack::session::Session::new(identity);
 

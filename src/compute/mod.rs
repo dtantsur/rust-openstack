@@ -19,7 +19,7 @@
 //! ```rust,no_run
 //! use openstack;
 //!
-//! let auth = openstack::auth::Identity::from_env()
+//! let auth = openstack::auth::from_env()
 //!     .expect("Unable to authenticate");
 //! let session = openstack::Session::new(auth);
 //! let servers = openstack::compute::ServerManager::new(&session);
