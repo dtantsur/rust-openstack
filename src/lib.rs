@@ -31,7 +31,6 @@
 // Taken from https://github.com/rust-unofficial/patterns/
 #![deny(const_err,
         dead_code,
-        extra_requirement_in_impl,
         improper_ctypes,
         legacy_directory_ownership,
         missing_copy_implementations,
