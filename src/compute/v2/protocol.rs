@@ -21,11 +21,9 @@ use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 use chrono::{DateTime, FixedOffset};
-use reqwest::Url;
 use serde::{Deserialize, Deserializer};
 
-use super::super::super::{Error, Result, ApiVersion};
-use super::super::super::service::ServiceInfo;
+use super::super::super::common;
 use super::super::super::utils;
 
 
@@ -116,7 +114,7 @@ pub struct ServerAddress {
 #[derive(Clone, Debug, Deserialize)]
 pub struct Ref {
     pub id: String,
-    pub links: Vec<Link>
+    pub links: Vec<common::protocol::Link>
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -154,56 +152,6 @@ pub struct ServersRoot {
 #[derive(Clone, Debug, Deserialize)]
 pub struct ServerRoot {
     pub server: Server
-}
-
-#[derive(Clone, Debug, Deserialize)]
-pub struct Link {
-    pub href: String,
-    pub rel: String
-}
-
-#[derive(Clone, Debug, Deserialize)]
-pub struct Version {
-    pub id: String,
-    pub links: Vec<Link>,
-    pub status: String,
-    #[serde(deserialize_with = "utils::empty_as_none")]
-    pub version: Option<ApiVersion>,
-    #[serde(deserialize_with = "utils::empty_as_none")]
-    pub min_version: Option<ApiVersion>
-}
-
-#[derive(Clone, Debug, Deserialize)]
-pub struct VersionsRoot {
-    pub versions: Vec<Version>
-}
-
-#[derive(Clone, Debug, Deserialize)]
-pub struct VersionRoot {
-    pub version: Version
-}
-
-
-impl Version {
-    pub fn to_service_info(&self) -> Result<ServiceInfo> {
-        let endpoint = match self.links.iter().find(|x| &x.rel == "self") {
-            Some(link) => Url::parse(&link.href)?,
-            None => {
-                error!("Received malformed version response: no self link \
-                        in {:?}", self.links);
-                return Err(
-                    Error::InvalidResponse(String::from(
-                            "Invalid version - missing self link"))
-                );
-            }
-        };
-
-        Ok(ServiceInfo {
-            root_url: endpoint,
-            current_version: self.version,
-            minimum_version: self.min_version
-        })
-    }
 }
 
 impl Into<String> for ServerSortKey {

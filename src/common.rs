@@ -17,10 +17,15 @@
 use std::fmt;
 use std::str::FromStr;
 
-use reqwest::{Response, StatusCode, UrlError};
+use reqwest::{Method, Response, StatusCode, Url, UrlError};
 use reqwest::Error as HttpClientError;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde::de::{Error as DeserError, Visitor};
+use serde_json;
+
+use super::auth::AuthMethod;
+use super::service::ServiceInfo;
+use super::utils;
 
 
 /// Error from an OpenStack call.
@@ -240,6 +245,118 @@ impl<T: Into<String>> Into<(String, String)> for Sort<T> {
         }
     }
 }
+
+pub mod protocol {
+    #![allow(missing_docs)]
+
+    use reqwest::Url;
+
+    use super::super::{ApiVersion, Error, Result};
+    use super::super::service::ServiceInfo;
+    use super::super::utils;
+
+    #[derive(Clone, Debug, Deserialize)]
+    pub struct Link {
+        pub href: String,
+        pub rel: String
+    }
+
+    #[derive(Clone, Debug, Deserialize)]
+    pub struct Version {
+        pub id: String,
+        pub links: Vec<Link>,
+        pub status: String,
+        #[serde(deserialize_with = "utils::empty_as_none")]
+        pub version: Option<ApiVersion>,
+        #[serde(deserialize_with = "utils::empty_as_none")]
+        pub min_version: Option<ApiVersion>
+    }
+
+    #[derive(Clone, Debug, Deserialize)]
+    pub struct VersionsRoot {
+        pub versions: Vec<Version>
+    }
+
+    #[derive(Clone, Debug, Deserialize)]
+    pub struct VersionRoot {
+        pub version: Version
+    }
+
+    impl Version {
+        pub fn to_service_info(&self) -> Result<ServiceInfo> {
+            let endpoint = match self.links.iter().find(|x| &x.rel == "self") {
+                Some(link) => Url::parse(&link.href)?,
+                None => {
+                    error!("Received malformed version response: no self link \
+                            in {:?}", self.links);
+                    return Err(
+                        Error::InvalidResponse(String::from(
+                                "Invalid version - missing self link"))
+                    );
+                }
+            };
+
+            Ok(ServiceInfo {
+                root_url: endpoint,
+                current_version: self.version,
+                minimum_version: self.min_version
+            })
+        }
+    }
+}
+
+/// Generic code to extract a `ServiceInfo` from a URL.
+#[allow(dead_code)] // unused with --no-default-features
+pub fn fetch_service_info(endpoint: Url, auth: &AuthMethod,
+                          service_type: &str, major_version: &str)
+        -> Result<ServiceInfo> {
+    debug!("Fetching {} service info from {}", service_type, endpoint);
+
+    // Workaround for old version of Nova returning HTTP endpoints even if
+    // accessed via HTTP
+    let secure = endpoint.scheme() == "https";
+
+    let result = auth.request(Method::Get, endpoint.clone())?.send();
+    match result {
+        Ok(mut resp) => {
+            let body = resp.text()?;
+
+            // First, assume it's a versioned URL.
+            let mut info = match serde_json::from_str::<protocol::VersionRoot>(&body) {
+                Ok(ver) => ver.version.to_service_info(),
+                Err(..) => {
+                    // Second, assume it's a root URL.
+                    let vers = resp.json::<protocol::VersionsRoot>()?;
+                    match vers.versions.into_iter().find(|x| &x.id == major_version) {
+                        Some(ver) => ver.to_service_info(),
+                        None => Err(Error::EndpointNotFound(
+                            String::from(service_type)))
+                    }
+                }
+            }?;
+
+            // Older Nova returns insecure URLs even for secure protocol.
+            if secure {
+                let _ = info.root_url.set_scheme("https").unwrap();
+            }
+
+            info!("Received {:?} from {}", info, endpoint);
+            Ok(info)
+        },
+        Err(Error::HttpError(StatusCode::NotFound, ..)) => {
+            if utils::url::is_root(&endpoint) {
+                Err(Error::EndpointNotFound(String::from(service_type)))
+            } else {
+                debug!("Got HTTP 404 from {}, trying parent endpoint",
+                       endpoint);
+                fetch_service_info(utils::url::pop(endpoint, true), auth,
+                                   service_type, major_version)
+            }
+        },
+        Err(other) => Err(other)
+    }
+}
+
 
 #[cfg(test)]
 pub mod test {
