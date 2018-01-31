@@ -276,8 +276,7 @@ impl<'session> ServerQuery<'session> {
     }
 
     /// Execute this request and return its result.
-    #[allow(unused_results)]
-    pub fn fetch(self) -> Result<ServerList<'session>> {
+    pub fn fetch(&self) -> Result<ServerList<'session>> {
         trace!("Listing compute servers with {:?}", self.query);
         let servers = self.session.list_servers(&self.query.0)?;
         debug!("Received {} compute servers", servers.len());
