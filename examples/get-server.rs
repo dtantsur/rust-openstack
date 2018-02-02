@@ -27,7 +27,7 @@ fn main() {
     let os = openstack::Cloud::new(identity);
 
     let id = env::args().nth(1).expect("Provide a server ID");
-    let server = os.get_server_by_id(id).expect("Cannot get a server");
+    let server = os.get_server(id).expect("Cannot get a server");
 
     println!("ID = {}, Name = {}, Status = {:?}",
              server.id(), server.name(), server.status());

@@ -275,12 +275,13 @@ impl<'session> ServerQuery<'session> {
         self
     }
 
-    /// Execute this request and return its result.
-    pub fn fetch(&self) -> Result<ServerList<'session>> {
+    /// Execute this request and return all results.
+    pub fn all(&self) -> Result<ServerList<'session>> {
         trace!("Listing compute servers with {:?}", self.query);
         let servers = self.session.list_servers(&self.query.0)?;
         debug!("Received {} compute servers", servers.len());
         trace!("Received servers: {:?}", servers);
+        // TODO(dtantsur): pagination
         Ok(servers.into_iter().map(|x| ServerSummary {
             session: self.session,
             inner: x

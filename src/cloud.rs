@@ -95,12 +95,13 @@ impl Cloud {
     ///
     /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
     /// let os = openstack::Cloud::new(auth);
-    /// let server = os.get_server_by_id("8a1c355b-2e1e-440a-8aa8-f272df72bc32")
+    /// let server = os.get_server("8a1c355b-2e1e-440a-8aa8-f272df72bc32")
     ///     .expect("Unable to get a server");
     /// ```
     #[cfg(feature = "compute")]
-    pub fn get_server_by_id<Id: AsRef<str>>(&self, id: Id) -> Result<Server> {
-        Server::new(&self.session, id)
+    pub fn get_server<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Server> {
+        // TODO(dtantsur): lookup by name
+        Server::new(&self.session, id_or_name)
     }
 
     /// Build a query against server list.
@@ -121,7 +122,7 @@ impl Cloud {
     /// let sorting = openstack::compute::ServerSortKey::AccessIpv4;
     /// let server_list = os.find_servers()
     ///     .sort_by(openstack::Sort::Asc(sorting)).with_limit(5)
-    ///     .fetch().expect("Unable to fetch servers");
+    ///     .all().expect("Unable to fetch servers");
     /// ```
     #[cfg(feature = "compute")]
     pub fn find_servers(&self) -> ServerQuery {
@@ -145,8 +146,7 @@ impl Cloud {
     /// ```
     #[cfg(feature = "compute")]
     pub fn list_servers(&self) -> Result<Vec<ServerSummary>> {
-        // TODO(dtantsur): pagination
-        self.find_servers().fetch()
+        self.find_servers().all()
     }
 }
 

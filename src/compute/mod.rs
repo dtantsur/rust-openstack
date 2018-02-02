@@ -22,7 +22,7 @@
 //! let auth = openstack::auth::from_env().expect("Unable to authenticate");
 //! let os = openstack::Cloud::new(auth);
 //!
-//! let server = os.get_server_by_id("8a1c355b-2e1e-440a-8aa8-f272df72bc32")
+//! let server = os.get_server("8a1c355b-2e1e-440a-8aa8-f272df72bc32")
 //!     .expect("Unable to get a server");
 //! ```
 

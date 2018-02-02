@@ -27,7 +27,7 @@ fn main() {
 
     let servers = os.find_servers()
         .sort_by(openstack::Sort::Asc(sorting))
-        .fetch().expect("Cannot list servers");
+        .all().expect("Cannot list servers");
     println!("All servers:");
     for s in &servers {
         println!("ID = {}, Name = {}", s.id(), s.name());
@@ -35,7 +35,7 @@ fn main() {
 
     let active = os.find_servers()
         .sort_by(openstack::Sort::Asc(sorting)).with_status("ACTIVE")
-        .fetch().expect("Cannot list servers");
+        .all().expect("Cannot list servers");
     println!("Only active servers:");
     for s in &active {
         println!("ID = {}, Name = {}", s.id(), s.name());
