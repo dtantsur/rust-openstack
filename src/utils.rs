@@ -172,7 +172,7 @@ pub mod test {
     use reqwest::{IntoUrl, Url};
     use reqwest::header::Headers;
 
-    use super::super::{Error, Result, ApiVersion};
+    use super::super::{Error, ErrorKind, Result, ApiVersion};
     use super::super::auth::{AuthMethod, NoAuth};
     use super::super::service::{ServiceInfo, ServiceType};
     use super::super::session::Session;
@@ -199,7 +199,7 @@ pub mod test {
                     minimum_version: Some(ApiVersion(1, 1)),
                 })
             } else {
-                Err(Error::EndpointNotFound(String::new()))
+                Err(Error::new(ErrorKind::EndpointNotFound, String::new()))
             }
         }
 

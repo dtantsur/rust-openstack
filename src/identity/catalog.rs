@@ -37,7 +37,7 @@ pub fn find_endpoint<'c>(catalog: &'c Vec<CatalogRecord>, service_type: &String,
         -> Result<&'c Endpoint> {
     let svc = match catalog.iter().find(|x| x.service_type == *service_type) {
         Some(s) => s,
-        None => return Err(Error::EndpointNotFound(service_type.clone()))
+        None => return Err(Error::new_endpoint_not_found(service_type))
     };
 
     let maybe_endp: Option<&Endpoint>;
@@ -49,13 +49,13 @@ pub fn find_endpoint<'c>(catalog: &'c Vec<CatalogRecord>, service_type: &String,
             |x| x.interface == *endpoint_interface);
     }
 
-    maybe_endp.ok_or_else(|| Error::EndpointNotFound(service_type.clone()))
+    maybe_endp.ok_or_else(|| Error::new_endpoint_not_found(service_type))
 }
 
 
 #[cfg(test)]
 pub mod test {
-    use super::super::super::{Error, Result};
+    use super::super::super::{ErrorKind, Result};
     use super::super::protocol::{CatalogRecord, Endpoint};
 
     fn demo_service1() -> CatalogRecord {
@@ -143,9 +143,9 @@ pub mod test {
     }
 
     fn assert_not_found(result: Result<&Endpoint>) {
-        match result.err().unwrap() {
-            Error::EndpointNotFound(..) => (),
-            other => panic!("Unexpected error {}", other)
+        let err = result.err().unwrap();
+        if err.kind() != ErrorKind::EndpointNotFound {
+            panic!("Unexpected error {}", err);
         }
     }
 

@@ -17,7 +17,7 @@
 use std::fmt;
 use std::str::FromStr;
 
-use reqwest::{Method, Response, StatusCode, Url, UrlError};
+use reqwest::{Method, StatusCode, Url, UrlError};
 use reqwest::Error as HttpClientError;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde::de::{Error as DeserError, Visitor};
@@ -28,44 +28,61 @@ use super::service::ServiceInfo;
 use super::utils;
 
 
-/// Error from an OpenStack call.
-#[derive(Debug)]
-pub enum Error {
-    /// Requested service endpoint was not found.
+/// Kind of an error.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ErrorKind {
+    /// Authentication failure
     ///
-    /// Contains the failed endpoint name.
-    EndpointNotFound(String),
+    /// Maps to HTTP 401.
+    AuthenticationFailed,
+
+    /// Access denied.
+    ///
+    /// Maps to HTTP 403.
+    AccessDenied,
+
+    /// Requested resource was not found.
+    ///
+    /// Roughly maps to HTTP 404 and 410.
+    ResourceNotFound,
+
+    /// Requested service endpoint was not found.
+    EndpointNotFound,
 
     /// Invalid value passed to one of paremeters.
     ///
-    /// Contains the error message.
-    InvalidInput(String),
+    /// May be result of HTTP 400.
+    InvalidInput,
 
-    /// Invalid URL.
-    InvalidUrl(UrlError),
+    /// Unsupported or incompatible API version.
+    ///
+    /// May be a result of HTTP 406.
+    IncompatibleApiVersion,
 
-    /// Generic HTTP error.
-    HttpError(StatusCode, Response),
+    /// Conflict in the request.
+    Conflict,
 
     /// Protocol-level error reported by underlying HTTP library.
-    ProtocolError(HttpClientError),
+    ProtocolError,
 
     /// Response received from the server is malformed.
+    InvalidResponse,
+
+    /// Internal server error.
     ///
-    /// Contains the error message.
-    InvalidResponse(String),
+    /// Maps to HTTP 5xx codes.
+    InternalServerError,
 
-    /// Malformed API version.
     #[allow(missing_docs)]
-    InvalidApiVersion { value: String, message: String },
+    __Nonexhaustive,
+}
 
-    /// Unsupported API version.
-    #[allow(missing_docs)]
-    UnsupportedApiVersion {
-        requested: ApiVersionRequest,
-        minimum: Option<ApiVersion>,
-        maximum: Option<ApiVersion>
-    }
+/// Error from an OpenStack call.
+#[derive(Debug)]
+pub struct Error {
+    kind: ErrorKind,
+    status: Option<StatusCode>,
+    message: Option<String>
 }
 
 /// Result of an OpenStack call.
@@ -106,65 +123,118 @@ pub enum Sort<T: Into<String>> {
 }
 
 
+impl Error {
+    pub(crate) fn new<S: Into<String>>(kind: ErrorKind, message: S) -> Error {
+        Error {
+            kind: kind,
+            status: None,
+            message: Some(message.into())
+        }
+    }
+
+    /// Create with providing all details.
+    pub(crate) fn new_with_details(kind: ErrorKind, status: Option<StatusCode>,
+                                   message: Option<String>) -> Error {
+        Error {
+            kind: kind,
+            status: status,
+            message: message
+        }
+    }
+
+    /// Error kind.
+    pub fn kind(&self) -> ErrorKind {
+        self.kind
+    }
+
+    /// Helper - error of kind EndpointNotFound.
+    pub(crate) fn new_endpoint_not_found<D: fmt::Display>(service_type: D) -> Error {
+        Error::new(
+            ErrorKind::EndpointNotFound,
+            format!("Endpoint for service {} was not found", service_type)
+        )
+    }
+}
+
+impl ErrorKind {
+    /// Short description of the error kind.
+    pub fn description(&self) -> &'static str {
+        match self {
+            &ErrorKind::AuthenticationFailed =>
+                "Failed to authenticate",
+            &ErrorKind::AccessDenied =>
+                "Access to the resource is denied",
+            &ErrorKind::ResourceNotFound =>
+                "Requested resource was not found",
+            &ErrorKind::EndpointNotFound =>
+                "Requested endpoint was not found",
+            &ErrorKind::InvalidInput =>
+                "Input value(s) are invalid or missing",
+            &ErrorKind::IncompatibleApiVersion =>
+                "Incompatible or unsupported API version",
+            &ErrorKind::Conflict =>
+                "Requested cannot be fulfilled due to a conflict",
+            &ErrorKind::ProtocolError =>
+                "Error when accessing the server",
+            &ErrorKind::InvalidResponse =>
+                "Received invalid response",
+            &ErrorKind::InternalServerError =>
+                "Internal server error or bad gateway",
+            _ => unreachable!()
+        }
+    }
+}
+
+impl fmt::Display for ErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.description())
+    }
+}
+
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Error::EndpointNotFound(ref endp) =>
-                write!(f, "Requested endpoint {} was not found", endp),
-            Error::InvalidInput(ref msg) =>
-                write!(f, "Input value(s) are invalid: {}", msg),
-            Error::InvalidUrl(ref e) => fmt::Display::fmt(e, f),
-            Error::HttpError(status, ..) =>
-                write!(f, "HTTP error {}", status),
-            Error::ProtocolError(ref e) => fmt::Display::fmt(e, f),
-            Error::InvalidResponse(ref msg) =>
-                write!(f, "Response was invalid: {}", msg),
-            Error::InvalidApiVersion { value: ref val, message: ref msg } =>
-                write!(f, "{} is not a valid API version: {}", val, msg),
-            Error::UnsupportedApiVersion {
-                requested: ref req, minimum: minv, maximum: maxv
-            } => write!(f, "Unsupported version requested: {:?}, supported \
-                versions are {:?} to {:?}", req, minv, maxv)
+        write!(f, "{}", self.kind)?;
+
+        if let Some(ref msg) = self.message {
+            write!(f, ": {}", msg)
+        } else {
+            Ok(())
         }
     }
 }
 
 impl ::std::error::Error for Error {
     fn description(&self) -> &str {
-        match *self {
-            Error::EndpointNotFound(..) =>
-                "Requested endpoint was not found",
-            Error::InvalidInput(..) => "Invalid value(s) provided",
-            Error::InvalidUrl(ref e) => e.description(),
-            Error::HttpError(..) => "HTTP error",
-            Error::ProtocolError(ref e) => e.description(),
-            Error::InvalidResponse(..) =>
-                "Invalid response received from the server",
-            Error::InvalidApiVersion { .. } =>
-                "Invalid API version",
-            Error::UnsupportedApiVersion { .. } =>
-                "Unsupported API version requested"
-        }
+        self.kind.description()
     }
 
     fn cause(&self) -> Option<&::std::error::Error> {
-        match *self {
-            Error::ProtocolError(ref e) => Some(e),
-            Error::InvalidUrl(ref e) => Some(e),
-            _ => None
-        }
+        None
     }
 }
 
 impl From<HttpClientError> for Error {
     fn from(value: HttpClientError) -> Error {
-        Error::ProtocolError(value)
+        let msg = value.to_string();
+        let kind = match value.status() {
+            Some(StatusCode::Unauthorized) => ErrorKind::AuthenticationFailed,
+            Some(StatusCode::Forbidden) => ErrorKind::AccessDenied,
+            Some(StatusCode::NotFound) => ErrorKind::ResourceNotFound,
+            Some(StatusCode::NotAcceptable) => ErrorKind::IncompatibleApiVersion,
+            Some(StatusCode::Conflict) => ErrorKind::Conflict,
+            Some(c) if c.is_client_error() => ErrorKind::InvalidInput,
+            Some(c) if c.is_server_error() => ErrorKind::InternalServerError,
+            None => ErrorKind::ProtocolError,
+            _ => ErrorKind::InvalidResponse
+        };
+
+        Error::new_with_details(kind, value.status(), Some(msg))
     }
 }
 
 impl From<UrlError> for Error {
     fn from(value: UrlError) -> Error {
-        Error::InvalidUrl(value)
+        Error::new(ErrorKind::InvalidInput, value.to_string())
     }
 }
 
@@ -174,15 +244,10 @@ impl fmt::Display for ApiVersion {
     }
 }
 
-fn parse_component(component: &str, value: &str, message: &str)
-        -> Result<u16> {
-    match component.parse() {
-        Ok(val) => Ok(val),
-        Err(..) => Err(Error::InvalidApiVersion {
-            value: String::from(value),
-            message: String::from(message)
-        })
-    }
+fn parse_component(component: &str, message: &str) -> Result<u16> {
+    component.parse().map_err(|_| {
+        Error::new(ErrorKind::InvalidResponse, message)
+    })
 }
 
 impl FromStr for ApiVersion {
@@ -192,17 +257,15 @@ impl FromStr for ApiVersion {
         let parts: Vec<&str> = s.split('.').collect();
 
         if parts.len() != 2 {
-            return Err(Error::InvalidApiVersion {
-                value: String::from(s),
-                message: String::from("Expected format X.Y")
-            });
+            let msg = format!("Invalid API version: expected X.Y, got {}", s);
+            return Err(Error::new(ErrorKind::InvalidResponse, msg))
         }
 
-        let major = parse_component(parts[0], s,
-                                    "First component is not a number")?;
+        let major = parse_component(parts[0],
+                                    "First version component is not a number")?;
 
-        let minor = parse_component(parts[1], s,
-                                    "Second component is not a number")?;
+        let minor = parse_component(parts[1],
+                                    "Second version component is not a number")?;
 
         Ok(ApiVersion(major, minor))
     }
@@ -251,7 +314,7 @@ pub mod protocol {
 
     use reqwest::Url;
 
-    use super::super::{ApiVersion, Error, Result};
+    use super::super::{ApiVersion, Error, ErrorKind, Result};
     use super::super::service::ServiceInfo;
     use super::super::utils;
 
@@ -289,10 +352,9 @@ pub mod protocol {
                 None => {
                     error!("Received malformed version response: no self link \
                             in {:?}", self.links);
-                    return Err(
-                        Error::InvalidResponse(String::from(
-                                "Invalid version - missing self link"))
-                    );
+                    return Err(Error::new(
+                        ErrorKind::InvalidResponse,
+                        "Invalid version - missing self link"));
                 }
             };
 
@@ -329,8 +391,7 @@ pub fn fetch_service_info(endpoint: Url, auth: &AuthMethod,
                     let vers = resp.json::<protocol::VersionsRoot>()?;
                     match vers.versions.into_iter().find(|x| &x.id == major_version) {
                         Some(ver) => ver.to_service_info(),
-                        None => Err(Error::EndpointNotFound(
-                            String::from(service_type)))
+                        None => Err(Error::new_endpoint_not_found(service_type))
                     }
                 }
             }?;
@@ -343,9 +404,9 @@ pub fn fetch_service_info(endpoint: Url, auth: &AuthMethod,
             info!("Received {:?} from {}", info, endpoint);
             Ok(info)
         },
-        Err(Error::HttpError(StatusCode::NotFound, ..)) => {
+        Err(ref e) if e.kind() == ErrorKind::ResourceNotFound => {
             if utils::url::is_root(&endpoint) {
-                Err(Error::EndpointNotFound(String::from(service_type)))
+                Err(Error::new_endpoint_not_found(service_type))
             } else {
                 debug!("Got HTTP 404 from {}, trying parent endpoint",
                        endpoint);

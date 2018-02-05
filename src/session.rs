@@ -22,7 +22,7 @@ use reqwest::header::{Header, Headers};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-use super::{Error, Result, ApiVersion, ApiVersionRequest, Cloud};
+use super::{Error, ErrorKind, Result, ApiVersion, ApiVersionRequest, Cloud};
 use super::auth::AuthMethod;
 use super::service::{ApiVersioning, ServiceInfo, ServiceType};
 use super::utils;
@@ -201,14 +201,11 @@ impl Session {
                 Ok(ver)
             },
             None => {
-                let error = Error::UnsupportedApiVersion {
-                    requested: requested,
-                    minimum: info.minimum_version.clone(),
-                    maximum: info.current_version.clone()
-                };
-                warn!("API negotiation failed for {} API: {}",
-                      Srv::catalog_type(), error);
-                Err(error)
+                let msg = format!(
+                    "API negotiation failed for {} API: requested {:?} supported range is {:?} to {:?}",
+                    Srv::catalog_type(), requested, info.minimum_version, info.current_version);
+                warn!("Unable to pick API version: {}", msg);
+                Err(Error::new(ErrorKind::IncompatibleApiVersion, msg))
             }
         }
     }

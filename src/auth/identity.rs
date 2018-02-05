@@ -21,13 +21,11 @@ use std::hash::{Hash, Hasher};
 use reqwest::{Client, IntoUrl, Method, Response, StatusCode, Url, UrlError};
 use reqwest::header::{ContentType, Headers};
 
-use super::super::{Error, Result};
+use super::super::{Error, ErrorKind, Result};
 use super::super::identity::{catalog, protocol};
 use super::super::session::RequestBuilder;
 use super::super::utils::ValueCache;
 use super::AuthMethod;
-
-use Error::InvalidInput;
 
 
 const MISSING_USER: &'static str = "User information required";
@@ -142,18 +140,14 @@ impl Identity {
         let password_identity = match self.password_identity {
             Some(p) => p,
             None =>
-                return Err(
-                    InvalidInput(String::from(MISSING_USER))
-                )
+                return Err(Error::new(ErrorKind::InvalidInput, MISSING_USER))
         };
 
         // TODO: support unscoped tokens
         let project_scope = match self.project_scope {
             Some(p) => p,
             None =>
-                return Err(
-                    InvalidInput(String::from(MISSING_SCOPE))
-                )
+                return Err(Error::new(ErrorKind::InvalidInput, MISSING_SCOPE))
         };
 
         Ok(PasswordAuth::new(self.auth_url, self.region, password_identity,
@@ -205,21 +199,29 @@ impl PasswordAuth {
                     None => {
                         error!("No X-Subject-Token header received from {}",
                                self.token_endpoint);
-                        return Err(
-                            Error::InvalidResponse(
-                                String::from(MISSING_SUBJECT_HEADER)))
+                        return Err(Error::new(ErrorKind::InvalidResponse,
+                                              MISSING_SUBJECT_HEADER));
                     }
                 }
             },
             StatusCode::Unauthorized => {
                 error!("Invalid credentials for user {}",
                        self.body.auth.identity.password.user.name);
-                return Err(Error::HttpError(resp.status(), resp));
+                return Err(Error::new_with_details(
+                    ErrorKind::AuthenticationFailed,
+                    Some(resp.status()),
+                    Some(String::from("Unable to authenticate"))
+                ));
             },
             other => {
                 error!("Unexpected HTTP error {} when getting a token for {}",
                        other, self.body.auth.identity.password.user.name);
-                return Err(Error::HttpError(resp.status(), resp));
+                return Err(Error::new_with_details(
+                    ErrorKind::AuthenticationFailed,
+                    Some(resp.status()),
+                    Some(format!("Unexpected HTTP code {} when authenticating",
+                                 resp.status()))
+                ));
             }
         };
 
@@ -294,9 +296,9 @@ impl AuthMethod for PasswordAuth {
             error!("Invalid URL {} received from service catalog for service \
                    '{}', interface '{}' from region {:?}: {}",
                    endp.url, service_type, real_interface, self.region, e);
-            Error::InvalidResponse(
-                format!("Invalid URL {} for {} - {}",
-                        endp.url, service_type, e))
+            Error::new(ErrorKind::InvalidResponse,
+                       format!("Invalid URL {} for {} - {}",
+                               endp.url, service_type, e))
         })
     }
 }

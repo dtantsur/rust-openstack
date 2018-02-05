@@ -83,8 +83,7 @@ pub use self::identity::{Identity, PasswordAuth};
 
 use std::env;
 
-use super::Result;
-use super::Error::InvalidInput;
+use super::{Error, ErrorKind, Result};
 
 const MISSING_ENV_VARS: &'static str =
     "Not all required environment variables were provided";
@@ -93,7 +92,10 @@ const INVALID_ENV_AUTH_URL: &'static str =
 
 #[inline]
 fn _get_env(name: &str) -> Result<String> {
-    env::var(name).or(Err(InvalidInput(String::from(MISSING_ENV_VARS))))
+    env::var(name).map_err(|_| {
+        Error::new(ErrorKind::InvalidInput,
+                                MISSING_ENV_VARS)
+    })
 }
 
 
@@ -101,7 +103,8 @@ fn _get_env(name: &str) -> Result<String> {
 pub fn from_env() -> Result<PasswordAuth> {
     let auth_url = _get_env("OS_AUTH_URL")?;
     let id = Identity::new(&auth_url).map_err(|_| {
-        InvalidInput(String::from(INVALID_ENV_AUTH_URL))
+        Error::new(ErrorKind::InvalidInput,
+                                INVALID_ENV_AUTH_URL)
     })?;
 
     let user_name = _get_env("OS_USERNAME")?;
