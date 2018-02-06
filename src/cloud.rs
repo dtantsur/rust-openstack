@@ -15,11 +15,16 @@
 //! Cloud API.
 
 #[allow(unused_imports)]
-use super::Result;
+use fallible_iterator::FallibleIterator;
+
+#[allow(unused_imports)]
+use super::{Error, ErrorKind, Result};
 use super::auth::AuthMethod;
 #[cfg(feature = "compute")]
 use super::compute::{Server, ServerQuery, ServerSummary};
 use super::session::Session;
+#[allow(unused_imports)]
+use super::utils::ResultExt;
 
 
 /// OpenStack cloud API.
@@ -86,7 +91,7 @@ impl Cloud {
         self.session
     }
 
-    /// Find a server by its ID.
+    /// Find a server by its name or ID.
     ///
     /// # Example
     ///
@@ -99,9 +104,25 @@ impl Cloud {
     ///     .expect("Unable to get a server");
     /// ```
     #[cfg(feature = "compute")]
-    pub fn get_server<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Server> {
-        // TODO(dtantsur): lookup by name
-        Server::new(&self.session, id_or_name)
+    pub fn get_server<Id: Into<String>>(&self, id_or_name: Id) -> Result<Server> {
+        let s = id_or_name.into();
+        Server::new(&self.session, &s).if_not_found_then(|| {
+            self.find_servers().with_name(s.clone()).into_iter()
+                .filter(|srv| srv.name() == &s).take(2)
+                .collect::<Vec<ServerSummary>>().and_then(|mut srvs| {
+                    if srvs.len() > 1 {
+                        Err(Error::new(ErrorKind::TooManyItems,
+                                       "Too many servers with this name"))
+                    } else {
+                        match srvs.pop() {
+                            Some(srv) => srv.details(),
+                            None => Err(Error::new(
+                                ErrorKind::ResourceNotFound,
+                                "No servers with this name or ID"))
+                        }
+                    }
+                })
+        })
     }
 
     /// Build a query against server list.

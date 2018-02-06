@@ -25,7 +25,7 @@ use std::str::FromStr;
 use serde::{Deserialize, Deserializer};
 use serde::de::Error as DeserError;
 
-use super::Result;
+use super::{ErrorKind, Result};
 
 
 /// Type of query parameters.
@@ -123,6 +123,26 @@ pub fn empty_as_none<'de, D, T>(des: D) -> ::std::result::Result<Option<T>, D::E
         Ok(None)
     } else {
         T::from_str(&s).map(Some).map_err(DeserError::custom)
+    }
+}
+
+/// Extensions for Result type.
+pub trait ResultExt<T> {
+    /// Process result if the error was ResourceNotFound.
+    fn if_not_found_then<F>(self, f: F) -> Result<T>
+        where F: FnOnce() -> Result<T>;
+}
+
+impl<T> ResultExt<T> for Result<T> {
+    fn if_not_found_then<F>(self, f: F) -> Result<T>
+            where F: FnOnce() -> Result<T> {
+        self.or_else(|err| {
+            if err.kind() == ErrorKind::ResourceNotFound {
+                f()
+            } else {
+                Err(err)
+            }
+        })
     }
 }
 
