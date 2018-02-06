@@ -15,13 +15,15 @@
 //! Server management via Compute API.
 
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::net::{Ipv4Addr, Ipv6Addr};
-use std::vec;
 
 use chrono::{DateTime, FixedOffset};
 use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
+use serde::Serialize;
 
 use super::super::{Error, ErrorKind, Result, Sort};
+use super::super::service::{ListResources, ResourceId, ResourceIterator};
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::v2::{V2API, protocol};
@@ -33,14 +35,6 @@ pub struct ServerQuery<'session> {
     session: &'session Session,
     query: Query,
     can_paginate: bool,
-}
-
-/// An iterator over server summaries.
-#[derive(Clone, Debug)]
-pub struct ServerSummaryIterator<'session> {
-    original_query: ServerQuery<'session>,
-    cache: Option<vec::IntoIter<protocol::ServerSummary>>,
-    marker: Option<String>,
 }
 
 /// Structure representing a summary of a single server.
@@ -296,8 +290,8 @@ impl<'session> ServerQuery<'session> {
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_iter(self) -> ServerSummaryIterator<'session> {
-        ServerSummaryIterator::new(self)
+    pub fn into_iter(self) -> ResourceIterator<'session, ServerSummary<'session>> {
+        ResourceIterator::new(self.session, self.query)
     }
 
     /// Execute this request and return all results.
@@ -332,13 +326,21 @@ impl<'session> ServerQuery<'session> {
     }
 }
 
-impl<'session> ServerSummaryIterator<'session> {
-    pub(crate) fn new(query: ServerQuery<'session>) -> ServerSummaryIterator<'session> {
-        ServerSummaryIterator {
-            original_query: query,
-            cache: None,
-            marker: None,
-        }
+impl<'session> ResourceId for ServerSummary<'session> {
+    fn resource_id(&self) -> String {
+        self.id().clone()
+    }
+}
+
+impl<'session> ListResources<'session> for ServerSummary<'session> {
+    const DEFAULT_LIMIT: usize = 50;
+
+    fn list_resources<Q: Serialize + Debug>(session: &'session Session, query: Q)
+            -> Result<Vec<ServerSummary<'session>>> {
+        Ok(session.list_servers(&query)?.into_iter().map(|srv| ServerSummary {
+            session: session,
+            inner: srv
+        }).collect())
     }
 }
 
@@ -347,54 +349,9 @@ impl<'session> IntoFallibleIterator for ServerQuery<'session> {
 
     type Error = Error;
 
-    type IntoIter = ServerSummaryIterator<'session>;
+    type IntoIter = ResourceIterator<'session, ServerSummary<'session>>;
 
-    fn into_fallible_iterator(self) -> ServerSummaryIterator<'session> {
+    fn into_fallible_iterator(self) -> ResourceIterator<'session, ServerSummary<'session>> {
         self.into_iter()
-    }
-}
-
-
-const DEFAULT_LIMIT: usize = 50;
-
-impl<'session> FallibleIterator for ServerSummaryIterator<'session> {
-    type Item = ServerSummary<'session>;
-
-    type Error = Error;
-
-    fn next(&mut self) -> Result<Option<ServerSummary<'session>>> {
-        let maybe_next = self.cache.as_mut().and_then(|cache| cache.next());
-        Ok(if maybe_next.is_some() {
-            maybe_next
-        } else {
-            if self.cache.is_some() && ! self.original_query.can_paginate {
-                // We have exhausted the results and pagination is not possible
-                None
-            } else {
-                let mut query = self.original_query.query.clone();
-
-                if self.original_query.can_paginate {
-                    // can_paginate=true implies no limit was provided
-                    query.push("limit", DEFAULT_LIMIT);
-                    if let Some(marker) = self.marker.take() {
-                        query.push_str("marker", marker);
-                    }
-                }
-
-                let mut servers_iter = self.original_query.session.list_servers(
-                    &query.0)?.into_iter();
-                let maybe_next = servers_iter.next();
-                self.cache = Some(servers_iter);
-
-                maybe_next
-            }
-        }.map(|next| {
-            self.marker = Some(next.id.clone());
-
-            ServerSummary {
-                session: self.original_query.session,
-                inner: next
-            }
-        }))
     }
 }

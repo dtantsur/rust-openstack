@@ -15,12 +15,18 @@
 //! Generic API bits for implementing new services.
 
 use std::cmp;
+use std::fmt::Debug;
+use std::vec;
 
+use fallible_iterator::FallibleIterator;
 use reqwest::Url;
 use reqwest::header::Headers;
+use serde::Serialize;
 
-use super::{Result, ApiVersion, ApiVersionRequest};
+use super::{Error, Result, ApiVersion, ApiVersionRequest};
 use super::auth::AuthMethod;
+use super::session::Session;
+use super::utils::Query;
 
 
 /// Information about API endpoint.
@@ -92,6 +98,90 @@ impl ServiceInfo {
                 })
             }
         }
+    }
+}
+
+/// Trait representing something that has an ID.
+pub trait ResourceId {
+    /// Identifier of the current resource.
+    fn resource_id(&self) -> String;
+}
+
+/// Trait representing something that can be listed from a session.
+pub trait ListResources<'a> {
+    /// Default limit to use with this resource.
+    const DEFAULT_LIMIT: usize;
+
+    /// List the resources from the session.
+    fn list_resources<Q: Serialize + Debug>(session: &'a Session, query: Q)
+        -> Result<Vec<Self>> where Self: Sized;
+}
+
+/// Generic implementation of a `FallibleIterator` over resources.
+#[derive(Debug)]
+pub struct ResourceIterator<'session, T> {
+    session: &'session Session,
+    query: Query,
+    cache: Option<vec::IntoIter<T>>,
+    marker: Option<String>,
+    can_paginate: bool,
+}
+
+impl<'session, T> ResourceIterator<'session, T> {
+    #[allow(dead_code)]  // unused with --no-default-features
+    pub(crate) fn new(session: &'session Session, query: Query)
+            -> ResourceIterator<'session, T> {
+        let can_paginate = query.0.iter().all(|pair| {
+            pair.0 != "limit" && pair.0 != "marker"
+        });
+
+        ResourceIterator {
+            session: session,
+            query: query,
+            cache: None,
+            marker: None,
+            can_paginate: can_paginate
+        }
+    }
+}
+
+impl<'session, T> FallibleIterator for ResourceIterator<'session, T>
+        where T: ListResources<'session> + ResourceId {
+    type Item = T;
+
+    type Error = Error;
+
+    fn next(&mut self) -> Result<Option<T>> {
+        let maybe_next = self.cache.as_mut().and_then(|cache| cache.next());
+        Ok(if maybe_next.is_some() {
+            maybe_next
+        } else {
+            if self.cache.is_some() && ! self.can_paginate {
+                // We have exhausted the results and pagination is not possible
+                None
+            } else {
+                let mut query = self.query.clone();
+
+                if self.can_paginate {
+                    // can_paginate=true implies no limit was provided
+                    query.push("limit", T::DEFAULT_LIMIT);
+                    if let Some(marker) = self.marker.take() {
+                        query.push_str("marker", marker);
+                    }
+                }
+
+                let mut servers_iter = T::list_resources(self.session,
+                                                         &query.0)?
+                    .into_iter();
+                let maybe_next = servers_iter.next();
+                self.cache = Some(servers_iter);
+
+                maybe_next
+            }
+        }.map(|next| {
+            self.marker = Some(next.resource_id());
+            next
+        }))
     }
 }
 
