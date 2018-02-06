@@ -46,6 +46,9 @@ pub enum ErrorKind {
     /// Roughly maps to HTTP 404 and 410.
     ResourceNotFound,
 
+    /// Request returned more items than expected.
+    TooManyItems,
+
     /// Requested service endpoint was not found.
     EndpointNotFound,
 
@@ -166,6 +169,8 @@ impl ErrorKind {
                 "Access to the resource is denied",
             &ErrorKind::ResourceNotFound =>
                 "Requested resource was not found",
+            &ErrorKind::TooManyItems =>
+                "Request returned too many items",
             &ErrorKind::EndpointNotFound =>
                 "Requested endpoint was not found",
             &ErrorKind::InvalidInput =>

@@ -21,7 +21,7 @@ use std::vec;
 use chrono::{DateTime, FixedOffset};
 use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
 
-use super::super::{Error, Result, Sort};
+use super::super::{Error, ErrorKind, Result, Sort};
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::v2::{V2API, protocol};
@@ -305,6 +305,30 @@ impl<'session> ServerQuery<'session> {
     /// A convenience shortcut for `self.into_iter().collect()`.
     pub fn all(self) -> Result<Vec<ServerSummary<'session>>> {
         self.into_iter().collect()
+    }
+
+    /// Return one and exactly one result.
+    ///
+    /// Fails with `ResourceNotFound` if the query produces no results and
+    /// with `TooManyItems` if the query produces more than one result.
+    pub fn one(mut self) -> Result<ServerSummary<'session>> {
+        if self.can_paginate {
+            // We need only one result. We fetch maximum two to be able
+            // to check if the query yieled more than one result.
+            self.query.push("limit", 2);
+        }
+
+        let mut iter = self.into_iter();
+        match iter.next()? {
+            Some(result) => if iter.next()?.is_some() {
+                Err(Error::new(ErrorKind::TooManyItems,
+                               "Query returned more than one result"))
+            } else {
+                Ok(result)
+            },
+            None => Err(Error::new(ErrorKind::ResourceNotFound,
+                                   "Query returned no results"))
+        }
     }
 }
 
