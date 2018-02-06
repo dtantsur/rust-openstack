@@ -118,7 +118,7 @@ pub trait ListResources<'a> {
 }
 
 /// Generic implementation of a `FallibleIterator` over resources.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ResourceIterator<'session, T> {
     session: &'session Session,
     query: Query,
