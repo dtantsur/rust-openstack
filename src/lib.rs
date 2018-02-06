@@ -62,8 +62,10 @@
         unused_results,
         while_true)]
 
-#[cfg(feature = "compute")]
+#[allow(unused_extern_crates)]
 extern crate chrono;
+#[allow(unused_extern_crates)]
+extern crate fallible_iterator;
 #[macro_use]
 extern crate log;
 extern crate reqwest;

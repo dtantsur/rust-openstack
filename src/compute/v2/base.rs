@@ -14,6 +14,8 @@
 
 //! Foundation bits exposing the Compute API.
 
+use std::fmt::Debug;
+
 use reqwest::{Method, Url};
 use reqwest::header::Headers;
 use serde::Serialize;
@@ -32,7 +34,7 @@ pub trait V2API {
     fn get_server<S: AsRef<str>>(&self, id: S) -> Result<protocol::Server>;
 
     /// List servers.
-    fn list_servers<Q: Serialize>(&self, query: &Q) -> Result<Vec<protocol::ServerSummary>>;
+    fn list_servers<Q: Serialize + Debug>(&self, query: &Q) -> Result<Vec<protocol::ServerSummary>>;
 }
 
 /// Service type of Compute API V2.
@@ -52,9 +54,12 @@ impl V2API for Session {
         Ok(server)
     }
 
-    fn list_servers<Q: Serialize>(&self, query: &Q) -> Result<Vec<protocol::ServerSummary>> {
-        Ok(self.request::<V2>(Method::Get, &["servers"])?
-           .query(query).receive_json::<protocol::ServersRoot>()?.servers)
+    fn list_servers<Q: Serialize + Debug>(&self, query: &Q) -> Result<Vec<protocol::ServerSummary>> {
+        trace!("Listing compute servers with {:?}", query);
+        let result = self.request::<V2>(Method::Get, &["servers"])?
+           .query(query).receive_json::<protocol::ServersRoot>()?.servers;
+        trace!("Received servers: {:?}", result);
+        Ok(result)
     }
 }
 
