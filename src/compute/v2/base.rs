@@ -34,7 +34,12 @@ pub trait V2API {
     fn get_server<S: AsRef<str>>(&self, id: S) -> Result<protocol::Server>;
 
     /// List servers.
-    fn list_servers<Q: Serialize + Debug>(&self, query: &Q) -> Result<Vec<protocol::ServerSummary>>;
+    fn list_servers<Q: Serialize + Debug>(&self, query: &Q)
+        -> Result<Vec<protocol::ServerSummary>>;
+
+    /// List servers with details.
+    fn list_servers_detail<Q: Serialize + Debug>(&self, query: &Q)
+        -> Result<Vec<protocol::Server>>;
 }
 
 /// Service type of Compute API V2.
@@ -54,10 +59,20 @@ impl V2API for Session {
         Ok(server)
     }
 
-    fn list_servers<Q: Serialize + Debug>(&self, query: &Q) -> Result<Vec<protocol::ServerSummary>> {
+    fn list_servers<Q: Serialize + Debug>(&self, query: &Q)
+            -> Result<Vec<protocol::ServerSummary>> {
         trace!("Listing compute servers with {:?}", query);
         let result = self.request::<V2>(Method::Get, &["servers"])?
            .query(query).receive_json::<protocol::ServersRoot>()?.servers;
+        trace!("Received servers: {:?}", result);
+        Ok(result)
+    }
+
+    fn list_servers_detail<Q: Serialize + Debug>(&self, query: &Q)
+            -> Result<Vec<protocol::Server>> {
+        trace!("Listing compute servers with {:?}", query);
+        let result = self.request::<V2>(Method::Get, &["servers", "detail"])?
+           .query(query).receive_json::<protocol::ServersDetailRoot>()?.servers;
         trace!("Received servers: {:?}", result);
         Ok(result)
     }

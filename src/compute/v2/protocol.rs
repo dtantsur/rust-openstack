@@ -144,9 +144,15 @@ pub struct ServerSummary {
     pub id: String,
     pub name: String,
 }
+
 #[derive(Clone, Debug, Deserialize)]
 pub struct ServersRoot {
     pub servers: Vec<ServerSummary>
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct ServersDetailRoot {
+    pub servers: Vec<Server>
 }
 
 #[derive(Clone, Debug, Deserialize)]

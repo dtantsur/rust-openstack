@@ -286,11 +286,27 @@ impl<'session> ServerQuery<'session> {
 
     /// Convert this query into an iterator executing the request.
     ///
+    /// This iterator yields only `ServerSummary` objects, containing
+    /// IDs and names. Use `into_iter_detailed` for full `Server` objects.
+    ///
     /// Returns a `FallibleIterator`, which is an iterator with each `next`
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
     pub fn into_iter(self) -> ResourceIterator<'session, ServerSummary<'session>> {
+        ResourceIterator::new(self.session, self.query)
+    }
+
+    /// Convert this query into an iterator executing the request.
+    ///
+    /// This iterator yields full `Server` objects. If you only need IDs
+    /// and/or names, use `into_iter` to save bandwidth.
+    ///
+    /// Returns a `FallibleIterator`, which is an iterator with each `next`
+    /// call returning a `Result`.
+    ///
+    /// Note that no requests are done until you start iterating.
+    pub fn into_iter_detailed(self) -> ResourceIterator<'session, Server<'session>> {
         ResourceIterator::new(self.session, self.query)
     }
 
@@ -338,6 +354,24 @@ impl<'session> ListResources<'session> for ServerSummary<'session> {
     fn list_resources<Q: Serialize + Debug>(session: &'session Session, query: Q)
             -> Result<Vec<ServerSummary<'session>>> {
         Ok(session.list_servers(&query)?.into_iter().map(|srv| ServerSummary {
+            session: session,
+            inner: srv
+        }).collect())
+    }
+}
+
+impl<'session> ResourceId for Server<'session> {
+    fn resource_id(&self) -> String {
+        self.id().clone()
+    }
+}
+
+impl<'session> ListResources<'session> for Server<'session> {
+    const DEFAULT_LIMIT: usize = 50;
+
+    fn list_resources<Q: Serialize + Debug>(session: &'session Session, query: Q)
+            -> Result<Vec<Server<'session>>> {
+        Ok(session.list_servers_detail(&query)?.into_iter().map(|srv| Server {
             session: session,
             inner: srv
         }).collect())

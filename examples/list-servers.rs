@@ -13,7 +13,10 @@
 // limitations under the License.
 
 extern crate env_logger;
+extern crate fallible_iterator;
 extern crate openstack;
+
+use fallible_iterator::FallibleIterator;
 
 
 #[cfg(feature = "compute")]
@@ -25,10 +28,11 @@ fn main() {
     let os = openstack::Cloud::new(identity);
     let sorting = openstack::compute::ServerSortKey::AccessIpv4;
 
-    let servers = os.find_servers()
+    let servers: Vec<openstack::compute::Server> = os.find_servers()
         .sort_by(openstack::Sort::Asc(sorting))
-        .all().expect("Cannot list servers");
-    println!("All servers:");
+        .into_iter_detailed().take(10).collect()
+        .expect("Cannot list servers");
+    println!("First 10 servers:");
     for s in &servers {
         println!("ID = {}, Name = {}", s.id(), s.name());
     }
@@ -36,7 +40,7 @@ fn main() {
     let active = os.find_servers()
         .sort_by(openstack::Sort::Asc(sorting)).with_status("ACTIVE")
         .all().expect("Cannot list servers");
-    println!("Only active servers:");
+    println!("All active servers:");
     for s in &active {
         println!("ID = {}, Name = {}", s.id(), s.name());
     }
