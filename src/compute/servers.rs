@@ -52,19 +52,6 @@ pub struct ServerSummary<'session> {
 }
 
 
-/// A reference to a flavor.
-#[derive(Clone, Copy, Debug)]
-pub struct FlavorRef<'session> {
-    server: &'session Server<'session>
-}
-
-/// A reference to an image.
-#[derive(Clone, Copy, Debug)]
-pub struct ImageRef<'session> {
-    server: &'session Server<'session>
-}
-
-
 impl<'session> Server<'session> {
     /// Load a Server object.
     pub(crate) fn new<Id: AsRef<str>>(session: &'session Session, id: Id)
@@ -101,23 +88,24 @@ impl<'session> Server<'session> {
         &self.inner.created
     }
 
-    /// Get a reference to the flavor.
-    pub fn flavor(&'session self) -> FlavorRef<'session> {
-        FlavorRef {
-            server: self
-        }
-    }
-
     /// Get a reference to server unique ID.
     pub fn id(&self) -> &String {
         &self.inner.id
     }
 
     /// Get a reference to the image.
-    pub fn image(&'session self) -> ImageRef<'session> {
-        ImageRef {
-            server: self
+    pub fn image_id(&self) -> Option<&String> {
+        match self.inner.image {
+            Some(ref image) => Some(&image.id),
+            None => None
         }
+    }
+
+    /// Whether the server has an image.
+    ///
+    /// May return `false` if the server was created from a volume.
+    pub fn has_image(&self) -> bool {
+        self.inner.image.is_some()
     }
 
     /// Get a reference to server name.
@@ -134,24 +122,6 @@ impl<'session> Server<'session> {
     pub fn updated_at(&self) -> &DateTime<FixedOffset> {
         &self.inner.updated
     }
-}
-
-impl<'session> FlavorRef<'session> {
-    /// Get a reference to flavor unique ID.
-    pub fn id(&self) -> &'session String {
-        &self.server.inner.flavor.id
-    }
-
-    // TODO: pub fn details(&self) -> Result<Flavor>
-}
-
-impl<'session> ImageRef<'session> {
-    /// Get a reference to image unique ID.
-    pub fn id(&self) -> &'session String {
-        &self.server.inner.image.id
-    }
-
-    // TODO: #[cfg(feature = "image")] pub fn details(&self) -> Result<Image>
 }
 
 impl<'session> ServerSummary<'session> {

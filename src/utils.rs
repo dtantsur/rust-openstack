@@ -18,12 +18,11 @@
 
 use std::cell::{Ref, RefCell};
 use std::collections::HashMap;
-use std::fmt::Display;
 use std::hash::Hash;
-use std::str::FromStr;
 
 use serde::{Deserialize, Deserializer};
-use serde::de::Error as DeserError;
+use serde::de::{DeserializeOwned, Error as DeserError};
+use serde_json;
 
 use super::{ErrorKind, Result};
 
@@ -117,12 +116,16 @@ impl<K: Hash + Eq, V: Clone> MapCache<K, V> {
 
 /// Deserialize value where empty string equals None.
 pub fn empty_as_none<'de, D, T>(des: D) -> ::std::result::Result<Option<T>, D::Error>
-        where D: Deserializer<'de>, T: FromStr, T::Err: Display {
-    let s = String::deserialize(des)?;
-    if s.is_empty() {
-        Ok(None)
-    } else {
-        T::from_str(&s).map(Some).map_err(DeserError::custom)
+        where D: Deserializer<'de>, T: DeserializeOwned {
+    let value = serde_json::Value::deserialize(des)?;
+    match &value {
+        &serde_json::Value::String(ref s) if s == "" => return Ok(None),
+        _ => ()
+    };
+
+    match serde_json::from_value(value) {
+        Ok(value) => Ok(Some(value)),
+        Err(e) => Err(DeserError::custom(e))
     }
 }
 

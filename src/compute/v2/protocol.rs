@@ -128,9 +128,10 @@ pub struct Server {
     #[serde(rename = "OS-EXT-AZ:availability_zone")]
     pub availability_zone: String,
     pub created: DateTime<FixedOffset>,
-    pub flavor: Ref,
+    // TODO(dtantsur): flavor
     pub id: String,
-    pub image: Ref,
+    #[serde(deserialize_with = "utils::empty_as_none")]
+    pub image: Option<Ref>,
     pub name: String,
     #[serde(deserialize_with = "de_server_status", default)]
     pub status: ServerStatus,

@@ -31,8 +31,7 @@ fn main() {
 
     println!("ID = {}, Name = {}, Status = {:?}",
              server.id(), server.name(), server.status());
-    println!("Links: flavor = {}, image = {}",
-             server.flavor().id(), server.image().id());
+    println!("Links: image = {:?}", server.image_id());
 }
 
 #[cfg(not(feature = "compute"))]
