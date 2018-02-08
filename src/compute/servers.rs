@@ -51,6 +51,18 @@ pub struct ServerSummary<'session> {
     inner: protocol::ServerSummary
 }
 
+/// Trait for something that can be used as a flavor ID.
+pub trait ToFlavorId {
+    /// Get flavor ID as a string.
+    fn to_flavor_id(&self) -> String;
+}
+
+/// Trait for something that can be used as an image ID.
+pub trait ToImageId {
+    /// Get flavor ID as a string.
+    fn to_image_id(&self) -> String;
+}
+
 
 impl<'session> Server<'session> {
     /// Load a Server object.
@@ -203,8 +215,8 @@ impl<'session> ServerQuery<'session> {
     }
 
     /// Filter by flavor.
-    pub fn with_flavor<T: Into<String>>(mut self, value: T) -> Self {
-        self.query.push_str("flavor", value);
+    pub fn with_flavor<T: ToFlavorId>(mut self, value: T) -> Self {
+        self.query.push_str("flavor", value.to_flavor_id());
         self
     }
 
@@ -215,8 +227,8 @@ impl<'session> ServerQuery<'session> {
     }
 
     /// Filter by image ID.
-    pub fn with_image<T: Into<String>>(mut self, value: T) -> Self {
-        self.query.push_str("image", value);
+    pub fn with_image<T: ToImageId>(mut self, value: T) -> Self {
+        self.query.push_str("image", value.to_image_id());
         self
     }
 
@@ -365,5 +377,29 @@ impl<'session> IntoFallibleIterator for ServerQuery<'session> {
 
     fn into_fallible_iterator(self) -> ResourceIterator<'session, ServerSummary<'session>> {
         self.into_iter()
+    }
+}
+
+impl ToFlavorId for String {
+    fn to_flavor_id(&self) -> String {
+        self.clone()
+    }
+}
+
+impl ToFlavorId for str {
+    fn to_flavor_id(&self) -> String {
+        String::from(self)
+    }
+}
+
+impl ToImageId for String {
+    fn to_image_id(&self) -> String {
+        self.clone()
+    }
+}
+
+impl ToImageId for str {
+    fn to_image_id(&self) -> String {
+        String::from(self)
     }
 }
