@@ -64,11 +64,17 @@ impl<'session> Server<'session> {
     }
 
     /// Get a reference to IPv4 address.
+    ///
+    /// If not None, this address should be used to access the server instead
+    /// of one from the `addresses` method.
     pub fn access_ipv4(&self) -> &Option<Ipv4Addr> {
         &self.inner.accessIPv4
     }
 
     /// Get a reference to IPv6 address.
+    ///
+    /// If not None, this address should be used to access the server instead
+    /// of one from the `addresses` method.
     pub fn access_ipv6(&self) -> &Option<Ipv6Addr> {
         &self.inner.accessIPv6
     }
@@ -94,6 +100,8 @@ impl<'session> Server<'session> {
     }
 
     /// Get a reference to the image.
+    ///
+    /// May be None if the server was created from a volume.
     pub fn image_id(&self) -> Option<&String> {
         match self.inner.image {
             Some(ref image) => Some(&image.id),
