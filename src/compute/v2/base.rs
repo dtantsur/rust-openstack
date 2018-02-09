@@ -46,6 +46,9 @@ pub trait V2API {
     /// Run an action on the server.
     fn server_simple_action<S1, S2>(&self, id: S1, action: S2) -> Result<()>
             where S1: AsRef<str>, S2: AsRef<str>;
+
+    /// Delete a server.
+    fn delete_server<S: AsRef<str>>(&self, id: S) -> Result<()>;
 }
 
 /// Service type of Compute API V2.
@@ -92,6 +95,14 @@ impl V2API for Session {
                                    &["servers", id.as_ref(), "action"])?
             .json(&body).send()?;
         debug!("Successfully ran {} on server {}", action.as_ref(), id.as_ref());
+        Ok(())
+    }
+
+    fn delete_server<S: AsRef<str>>(&self, id: S) -> Result<()> {
+        trace!("Deleting server {}", id.as_ref());
+        let _ = self.request::<V2>(Method::Delete, &["servers", id.as_ref()])?
+            .send()?;
+        debug!("Deleted server {}", id.as_ref());
         Ok(())
     }
 }

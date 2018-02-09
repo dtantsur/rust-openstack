@@ -35,6 +35,8 @@ fn main() {
             .expect("Cannot power on the server"),
         "stop" => server.stop(openstack::DefaultWait)
             .expect("Cannot power off the server"),
+        "delete" => server.delete(openstack::DefaultWait)
+            .expect("Cannot delete the server"),
         _ => panic!("Unknown action, supported are 'start' and 'stop'")
     }
 }

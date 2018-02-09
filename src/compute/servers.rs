@@ -154,6 +154,12 @@ impl<'session> Server<'session> {
         // TODO(dtantsur): implement wait
         self.session.server_simple_action(&self.inner.id, "os-stop")
     }
+
+    /// Delete the server.
+    pub fn delete(self, _wait: Wait) -> Result<()> {
+        // TODO(dtantsur): implement wait
+        self.session.delete_server(&self.inner.id)
+    }
 }
 
 impl<'session> ServerSummary<'session> {
@@ -170,6 +176,12 @@ impl<'session> ServerSummary<'session> {
     /// Get details.
     pub fn details(&self) -> Result<Server<'session>> {
         Server::new(self.session, &self.inner.id)
+    }
+
+    /// Delete the server.
+    pub fn delete(self, _wait: Wait) -> Result<()> {
+        // TODO(dtantsur): implement wait
+        self.session.delete_server(&self.inner.id)
     }
 }
 
