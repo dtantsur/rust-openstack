@@ -22,7 +22,7 @@ use chrono::{DateTime, FixedOffset};
 use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
 use serde::Serialize;
 
-use super::super::{Error, ErrorKind, Result, Sort};
+use super::super::{Error, ErrorKind, Result, Sort, Wait};
 use super::super::service::{ListResources, ResourceId, ResourceIterator};
 use super::super::session::Session;
 use super::super::utils::Query;
@@ -141,6 +141,18 @@ impl<'session> Server<'session> {
     /// Get a reference to last update date and time.
     pub fn updated_at(&self) -> &DateTime<FixedOffset> {
         &self.inner.updated
+    }
+
+    /// Start the server, optionally wait for it to be active.
+    pub fn start(&mut self, _wait: Wait) -> Result<()> {
+        // TODO(dtantsur): implement wait
+        self.session.server_simple_action(&self.inner.id, "os-start")
+    }
+
+    /// Stop the server, optionally wait for it to be powered off.
+    pub fn stop(&mut self, _wait: Wait) -> Result<()> {
+        // TODO(dtantsur): implement wait
+        self.session.server_simple_action(&self.inner.id, "os-stop")
     }
 }
 

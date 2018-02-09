@@ -14,11 +14,13 @@
 
 //! Foundation bits exposing the Compute API.
 
+use std::collections::HashMap;
 use std::fmt::Debug;
 
 use reqwest::{Method, Url};
 use reqwest::header::Headers;
 use serde::Serialize;
+use serde_json;
 
 use super::super::super::{Result, ApiVersion};
 use super::super::super::auth::AuthMethod;
@@ -40,6 +42,10 @@ pub trait V2API {
     /// List servers with details.
     fn list_servers_detail<Q: Serialize + Debug>(&self, query: &Q)
         -> Result<Vec<protocol::Server>>;
+
+    /// Run an action on the server.
+    fn server_simple_action<S1, S2>(&self, id: S1, action: S2) -> Result<()>
+            where S1: AsRef<str>, S2: AsRef<str>;
 }
 
 /// Service type of Compute API V2.
@@ -75,6 +81,18 @@ impl V2API for Session {
            .query(query).receive_json::<protocol::ServersDetailRoot>()?.servers;
         trace!("Received servers: {:?}", result);
         Ok(result)
+    }
+
+    fn server_simple_action<S1, S2>(&self, id: S1, action: S2) -> Result<()>
+            where S1: AsRef<str>, S2: AsRef<str> {
+        trace!("Running {} on server {}", action.as_ref(), id.as_ref());
+        let mut body = HashMap::new();
+        let _ = body.insert(action.as_ref(), serde_json::Value::Null);
+        let _ = self.request::<V2>(Method::Post,
+                                   &["servers", id.as_ref(), "action"])?
+            .json(&body).send()?;
+        debug!("Successfully ran {} on server {}", action.as_ref(), id.as_ref());
+        Ok(())
     }
 }
 

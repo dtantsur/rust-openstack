@@ -16,6 +16,7 @@
 
 use std::fmt;
 use std::str::FromStr;
+use std::time::Duration;
 
 use reqwest::{Method, StatusCode, Url, UrlError};
 use reqwest::Error as HttpClientError;
@@ -123,6 +124,25 @@ pub enum Sort<T: Into<String>> {
     Asc(T),
     /// Sorting by given field in descendant order.
     Desc(T)
+}
+
+/// Whether to wait for the result of an asynchronous action.
+#[derive(Debug, Copy, Clone)]
+pub enum Wait {
+    /// Wait the default (action-specific) amount of time.
+    DefaultWait,
+
+    /// Wait the specified amount of time.
+    WaitFor(Duration),
+
+    /// Do not wait, return immediately.
+    NoWait
+}
+
+impl Default for Wait {
+    fn default() -> Wait {
+        Wait::DefaultWait
+    }
 }
 
 
