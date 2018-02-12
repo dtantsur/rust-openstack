@@ -17,12 +17,13 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::net::{Ipv4Addr, Ipv6Addr};
+use std::time::Duration;
 
 use chrono::{DateTime, FixedOffset};
 use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
 use serde::Serialize;
 
-use super::super::{Error, ErrorKind, Result, Sort, Wait};
+use super::super::{Error, ErrorKind, Result, Sort, Waiter};
 use super::super::service::{ListResources, ResourceId, ResourceIterator};
 use super::super::session::Session;
 use super::super::utils::Query;
@@ -63,6 +64,13 @@ pub trait ToImageId {
     fn to_image_id(&self) -> String;
 }
 
+/// Waiter for server status to change.
+#[derive(Debug)]
+pub struct ServerStatusWaiter<'server> {
+    server: &'server mut Server<'server>,
+    target: protocol::ServerStatus
+}
+
 
 impl<'session> Server<'session> {
     /// Load a Server object.
@@ -73,6 +81,12 @@ impl<'session> Server<'session> {
             session: session,
             inner: inner
         })
+    }
+
+    /// Refresh the server.
+    pub fn refresh(&mut self) -> Result<()> {
+        self.inner = self.session.get_server(&self.inner.id)?;
+        Ok(())
     }
 
     /// Get a reference to IPv4 address.
@@ -144,21 +158,70 @@ impl<'session> Server<'session> {
     }
 
     /// Start the server, optionally wait for it to be active.
-    pub fn start(&mut self, _wait: Wait) -> Result<()> {
-        // TODO(dtantsur): implement wait
-        self.session.server_simple_action(&self.inner.id, "os-start")
+    pub fn start(&'session mut self) -> Result<ServerStatusWaiter<'session>> {
+        self.session.server_simple_action(&self.inner.id, "os-start")?;
+        Ok(ServerStatusWaiter {
+            server: self,
+            target: protocol::ServerStatus::Active
+        })
     }
 
     /// Stop the server, optionally wait for it to be powered off.
-    pub fn stop(&mut self, _wait: Wait) -> Result<()> {
-        // TODO(dtantsur): implement wait
-        self.session.server_simple_action(&self.inner.id, "os-stop")
+    pub fn stop(&'session mut self) -> Result<ServerStatusWaiter<'session>> {
+        self.session.server_simple_action(&self.inner.id, "os-stop")?;
+        Ok(ServerStatusWaiter {
+            server: self,
+            target: protocol::ServerStatus::ShutOff
+        })
     }
 
     /// Delete the server.
-    pub fn delete(self, _wait: Wait) -> Result<()> {
+    pub fn delete(self) -> Result<()> {
         // TODO(dtantsur): implement wait
         self.session.delete_server(&self.inner.id)
+    }
+}
+
+impl<'server> ServerStatusWaiter<'server> {
+    /// Current state of the server.
+    ///
+    /// Valid as of the last poll.
+    pub fn current(&self) -> &Server<'server> {
+        self.server
+    }
+}
+
+impl<'server> Waiter<()> for ServerStatusWaiter<'server> {
+    fn default_wait_timeout(&self) -> Option<Duration> {
+        // TODO(dtantsur): vary depending on target?
+        Some(Duration::new(600, 0))
+    }
+
+    fn default_delay(&self) -> Duration {
+        Duration::new(1, 0)
+    }
+
+    fn timeout_error_message(&self) -> String {
+        format!("Timeout waiting for server {} to reach state {}",
+                self.server.id(), self.target)
+    }
+
+    fn poll(&mut self) -> Result<Option<()>> {
+        self.server.refresh()?;
+        if self.server.status() == self.target {
+            debug!("Server {} reached state {}", self.server.id(), self.target);
+            Ok(Some(()))
+        } else if self.server.status() == protocol::ServerStatus::Error {
+            debug!("Failed to move server {} to {} - status is ERROR",
+                   self.server.id(), self.target);
+            Err(Error::new(ErrorKind::OperationFailed,
+                           format!("Server {} got into ERROR state",
+                                   self.server.id())))
+        } else {
+            trace!("Still waiting for server {} to get to state {}, current is {}",
+                   self.server.id(), self.server.status(), self.target);
+            Ok(None)
+        }
     }
 }
 
@@ -179,7 +242,7 @@ impl<'session> ServerSummary<'session> {
     }
 
     /// Delete the server.
-    pub fn delete(self, _wait: Wait) -> Result<()> {
+    pub fn delete(self) -> Result<()> {
         // TODO(dtantsur): implement wait
         self.session.delete_server(&self.inner.id)
     }

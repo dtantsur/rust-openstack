@@ -16,7 +16,8 @@
 
 use std::fmt;
 use std::str::FromStr;
-use std::time::Duration;
+use std::time::{Duration, Instant};
+use std::thread::sleep;
 
 use reqwest::{Method, StatusCode, Url, UrlError};
 use reqwest::Error as HttpClientError;
@@ -65,6 +66,12 @@ pub enum ErrorKind {
 
     /// Conflict in the request.
     Conflict,
+
+    /// Operation has reached the specified time out.
+    OperationTimedOut,
+
+    /// Operation failed to complete.
+    OperationFailed,
 
     /// Protocol-level error reported by underlying HTTP library.
     ProtocolError,
@@ -126,22 +133,83 @@ pub enum Sort<T: Into<String>> {
     Desc(T)
 }
 
-/// Whether to wait for the result of an asynchronous action.
-#[derive(Debug, Copy, Clone)]
-pub enum Wait {
-    /// Wait the default (action-specific) amount of time.
-    DefaultWait,
+/// Trait representing a waiter for some asynchronous action to finish.
+///
+/// The type `T` is the final type of the action, while type `P` represents
+/// an intermediate state.
+pub trait Waiter<T, P=T> {
+    /// Update the current state of the action.
+    ///
+    /// Returns `T` if the action is finished, `None` if it is not. All errors
+    /// are propagated via the `Result`.
+    ///
+    /// This method should not be called again after it returned the final
+    /// result.
+    fn poll(&mut self) -> Result<Option<T>>;
 
-    /// Wait the specified amount of time.
-    WaitFor(Duration),
+    /// Default timeout for this action.
+    ///
+    /// This timeout is used in the `wait` method.
+    /// If `None, wait forever by default.
+    fn default_wait_timeout(&self) -> Option<Duration> { None }
+    /// Default delay between two retries.
+    ///
+    /// The default is 0.1 seconds and should be changed by implementations.
+    fn default_delay(&self) -> Duration {
+        Duration::from_millis(100)
+    }
+    /// Error message to return on time out.
+    fn timeout_error_message(&self) -> String {
+        "Timeout while waiting for operation to finish".to_string()
+    }
 
-    /// Do not wait, return immediately.
-    NoWait
-}
-
-impl Default for Wait {
-    fn default() -> Wait {
-        Wait::DefaultWait
+    /// Wait for the default amount of time.
+    ///
+    /// Returns `OperationTimedOut` if the timeout is reached.
+    fn wait(self) -> Result<T> where Self: Sized {
+        match self.default_wait_timeout() {
+            Some(duration) => self.wait_for(duration),
+            None => self.wait_forever()
+        }
+    }
+    /// Wait for specified amount of time.
+    ///
+    /// Returns `OperationTimedOut` if the timeout is reached.
+    fn wait_for(self, duration: Duration) -> Result<T> where Self: Sized{
+        let delay = self.default_delay();
+        self.wait_for_with_delay(duration, delay)
+    }
+    /// Wait for specified amount of time.
+    ///
+    /// Returns `OperationTimedOut` if the timeout is reached.
+    fn wait_for_with_delay(mut self, duration: Duration, delay: Duration)
+            -> Result<T> where Self: Sized {
+        let start = Instant::now();
+        while Instant::now().duration_since(start) <= duration {
+            match self.poll()? {
+                Some(result) => return Ok(result),
+                None => ()  // continue
+            };
+            sleep(delay);
+        };
+        Err(Error::new(ErrorKind::OperationTimedOut,
+                       self.timeout_error_message()))
+    }
+    /// Wait forever.
+    fn wait_forever(self) -> Result<T> where Self: Sized {
+        let delay = self.default_delay();
+        self.wait_forever_with_delay(delay)
+    }
+    /// Wait forever with given delay between attempts.
+    fn wait_forever_with_delay(mut self, delay: Duration)
+            -> Result<T> where Self: Sized {
+        loop {
+            match self.poll()? {
+                Some(result) => return Ok(result),
+                None => ()  // continue
+            };
+            sleep(delay);
+        }
     }
 }
 
@@ -199,6 +267,10 @@ impl ErrorKind {
                 "Incompatible or unsupported API version",
             &ErrorKind::Conflict =>
                 "Requested cannot be fulfilled due to a conflict",
+            &ErrorKind::OperationTimedOut =>
+                "Time out reached while waiting for the operation",
+            &ErrorKind::OperationFailed =>
+                "Requested operation has failed",
             &ErrorKind::ProtocolError =>
                 "Error when accessing the server",
             &ErrorKind::InvalidResponse =>

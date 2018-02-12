@@ -16,6 +16,7 @@ extern crate env_logger;
 extern crate openstack;
 
 use std::env;
+use openstack::Waiter;
 
 
 #[cfg(feature = "compute")]
@@ -31,12 +32,11 @@ fn main() {
 
     let mut server = os.get_server(id).expect("Cannot get a server");
     match action.as_ref() {
-        "start" => server.start(openstack::DefaultWait)
-            .expect("Cannot power on the server"),
-        "stop" => server.stop(openstack::DefaultWait)
-            .expect("Cannot power off the server"),
-        "delete" => server.delete(openstack::DefaultWait)
-            .expect("Cannot delete the server"),
+        "start" => server.start().expect("Cannot power on the server")
+            .wait().expect("Failed to reach ACTIVE"),
+        "stop" => server.stop().expect("Cannot power off the server")
+            .wait().expect("Failed to reach SHUTOFF"),
+        "delete" => server.delete().expect("Cannot delete the server"),
         _ => panic!("Unknown action, supported are 'start' and 'stop'")
     }
 }

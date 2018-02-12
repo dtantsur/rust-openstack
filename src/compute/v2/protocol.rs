@@ -18,6 +18,7 @@
 #![allow(missing_docs)]
 
 use std::collections::HashMap;
+use std::fmt;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 use chrono::{DateTime, FixedOffset};
@@ -28,7 +29,7 @@ use super::super::super::utils;
 
 
 /// Available sort keys.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ServerSortKey {
     AccessIpv4,
     AccessIpv6,
@@ -64,7 +65,7 @@ pub enum ServerSortKey {
 }
 
 /// All possible server statuses.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ServerStatus {
     Active,
     Building,
@@ -246,4 +247,34 @@ fn de_server_status<'de, D>(des: D) -> ::std::result::Result<ServerStatus, D::Er
             Default::default()
         }
     })
+}
+
+impl fmt::Display for ServerStatus {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        let s = match *self {
+            ServerStatus::Active => "ACTIVE",
+            ServerStatus::Building => "BUILD",
+            ServerStatus::Deleted => "DELETED",
+            ServerStatus::Error => "ERROR",
+            ServerStatus::HardRebooting => "HARD_REBOOT",
+            ServerStatus::Migrating => "MIGRATING",
+            ServerStatus::Paused => "PAUSED",
+            ServerStatus::Rebooting => "REBOOT",
+            ServerStatus::Resizing => "RESIZE",
+            ServerStatus::RevertingResize => "REVERT_RESIZE",
+            ServerStatus::ShutOff => "SHUTOFF",
+            ServerStatus::Suspended => "SUSPENDED",
+            ServerStatus::Rescuing => "RESCUE",
+            ServerStatus::Shelved => "SHELVED",
+            ServerStatus::ShelvedOffloaded => "SHELVED_OFFLOADED",
+            ServerStatus::SoftDeleted => "SOFT_DELETED",
+            ServerStatus::UpdatingPassword => "PASSWORD",
+            ServerStatus::VerifyingResize => "VERIFY_RESIZE",
+            status => {
+                warn!("Unknown server status {}", status);
+                "<UNKNOWN>"
+            }
+        };
+        f.write_str(s)
+    }
 }
