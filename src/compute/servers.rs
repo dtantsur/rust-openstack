@@ -27,7 +27,8 @@ use super::super::{Error, ErrorKind, Result, Sort, Waiter};
 use super::super::service::{ListResources, ResourceId, ResourceIterator};
 use super::super::session::Session;
 use super::super::utils::Query;
-use super::v2::{V2API, protocol};
+use super::base::V2API;
+use super::protocol;
 
 
 /// A query to server list.

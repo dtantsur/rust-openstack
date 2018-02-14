@@ -22,11 +22,11 @@ use reqwest::header::Headers;
 use serde::Serialize;
 use serde_json;
 
-use super::super::super::{Result, ApiVersion};
-use super::super::super::auth::AuthMethod;
-use super::super::super::common;
-use super::super::super::service::{ApiVersioning, ServiceInfo, ServiceType};
-use super::super::super::session::Session;
+use super::super::{Result, ApiVersion};
+use super::super::auth::AuthMethod;
+use super::super::common;
+use super::super::service::{ApiVersioning, ServiceInfo, ServiceType};
+use super::super::session::Session;
 use super::protocol;
 
 

@@ -24,8 +24,8 @@ use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Deserializer};
 
-use super::super::super::common;
-use super::super::super::utils;
+use super::super::common;
+use super::super::utils;
 
 
 /// Available sort keys.

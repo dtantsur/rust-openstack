@@ -26,11 +26,12 @@
 //!     .expect("Unable to get a server");
 //! ```
 
+mod base;
+mod protocol;
 mod servers;
-mod v2;
 
-pub use self::v2::V2 as ServiceType;
-pub use self::v2::protocol::{AddressType, ServerAddress, ServerSortKey,
-                             ServerStatus};
+pub use self::base::V2 as ServiceType;
+pub use self::protocol::{AddressType, ServerAddress, ServerSortKey,
+                         ServerStatus};
 pub use self::servers::{Server, ServerQuery, ServerStatusWaiter, ServerSummary,
                         ToFlavorId, ToImageId};
