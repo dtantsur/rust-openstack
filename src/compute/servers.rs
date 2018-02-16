@@ -148,6 +148,11 @@ impl<'session> Server<'session> {
         &self.inner.name
     }
 
+    /// Get server power state.
+    pub fn power_state(&self) -> protocol::ServerPowerState {
+        self.inner.power_state
+    }
+
     /// Get server status.
     pub fn status(&self) -> protocol::ServerStatus {
         self.inner.status

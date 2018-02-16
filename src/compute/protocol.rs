@@ -90,6 +90,19 @@ pub enum ServerStatus {
     __Nonexhaustive,
 }
 
+/// All possible power states.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum ServerPowerState {
+    NoState,
+    Running,
+    Paused,
+    Shutdown,
+    Crashed,
+    Suspended,
+    #[doc(hidden)]
+    __Nonexhaustive,
+}
+
 /// Address of a server.
 #[derive(Clone, Copy, Debug)]
 pub enum AddressType {
@@ -136,6 +149,9 @@ pub struct Server {
     pub name: String,
     #[serde(deserialize_with = "de_server_status", default)]
     pub status: ServerStatus,
+    #[serde(rename = "OS-EXT-STS:power_state",
+            deserialize_with = "de_power_state", default)]
+    pub power_state: ServerPowerState,
     pub tenant_id: String,
     pub updated: DateTime<FixedOffset>,
     pub user_id: String
@@ -205,6 +221,12 @@ impl Default for ServerStatus {
     }
 }
 
+impl Default for ServerPowerState {
+    fn default() -> ServerPowerState {
+        ServerPowerState::NoState
+    }
+}
+
 impl Default for AddressType {
     fn default() -> AddressType {
         AddressType::Unknown
@@ -246,6 +268,19 @@ fn de_server_status<'de, D>(des: D) -> ::std::result::Result<ServerStatus, D::Er
             warn!("Got unknown server status {}", s);
             Default::default()
         }
+    })
+}
+
+fn de_power_state<'de, D>(des: D) -> ::std::result::Result<ServerPowerState, D::Error>
+        where D: Deserializer<'de> {
+    let value = u8::deserialize(des)?;
+    Ok(match value {
+        1 => ServerPowerState::Running,
+        3 => ServerPowerState::Paused,
+        4 => ServerPowerState::Shutdown,
+        6 => ServerPowerState::Crashed,
+        7 => ServerPowerState::Suspended,
+        _ => ServerPowerState::NoState
     })
 }
 

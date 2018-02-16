@@ -32,6 +32,6 @@ mod servers;
 
 pub use self::base::V2 as ServiceType;
 pub use self::protocol::{AddressType, ServerAddress, ServerSortKey,
-                         ServerStatus};
+                         ServerPowerState, ServerStatus};
 pub use self::servers::{Server, ServerQuery, ServerStatusWaiter, ServerSummary,
                         ToFlavorId, ToImageId};

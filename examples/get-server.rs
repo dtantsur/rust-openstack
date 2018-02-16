@@ -29,8 +29,8 @@ fn main() {
     let id = env::args().nth(1).expect("Provide a server ID");
     let server = os.get_server(id).expect("Cannot get a server");
 
-    println!("ID = {}, Name = {}, Status = {:?}",
-             server.id(), server.name(), server.status());
+    println!("ID = {}, Name = {}, Status = {:?}, Power = {:?}",
+             server.id(), server.name(), server.status(), server.power_state());
     println!("Links: image = {:?}", server.image_id());
 }
 
