@@ -45,10 +45,21 @@ pub trait V2API {
 
     /// Run an action on the server.
     fn server_simple_action<S1, S2>(&self, id: S1, action: S2) -> Result<()>
-            where S1: AsRef<str>, S2: AsRef<str>;
+        where S1: AsRef<str>, S2: AsRef<str>;
 
     /// Delete a server.
     fn delete_server<S: AsRef<str>>(&self, id: S) -> Result<()>;
+
+    /// Get a flavor.
+    fn get_flavor<S: AsRef<str>>(&self, id: S) -> Result<protocol::Flavor>;
+
+    /// List flavors.
+    fn list_flavors<Q: Serialize + Debug>(&self, query: &Q)
+        -> Result<Vec<protocol::FlavorSummary>>;
+
+    /// List flavors with details.
+    fn list_flavors_detail<Q: Serialize + Debug>(&self, query: &Q)
+        -> Result<Vec<protocol::Flavor>>;
 }
 
 /// Service type of Compute API V2.
@@ -104,6 +115,32 @@ impl V2API for Session {
             .send()?;
         debug!("Deleted server {}", id.as_ref());
         Ok(())
+    }
+
+    fn get_flavor<S: AsRef<str>>(&self, id: S) -> Result<protocol::Flavor> {
+        trace!("Get compute flavor {}", id.as_ref());
+        let flavor = self.request::<V2>(Method::Get, &["flavors", id.as_ref()])?
+           .receive_json::<protocol::FlavorRoot>()?.flavor;
+        trace!("Received {:?}", flavor);
+        Ok(flavor)
+    }
+
+    fn list_flavors<Q: Serialize + Debug>(&self, query: &Q)
+            -> Result<Vec<protocol::FlavorSummary>> {
+        trace!("Listing compute flavors with {:?}", query);
+        let result = self.request::<V2>(Method::Get, &["flavors"])?
+           .query(query).receive_json::<protocol::FlavorsRoot>()?.flavors;
+        trace!("Received flavors: {:?}", result);
+        Ok(result)
+    }
+
+    fn list_flavors_detail<Q: Serialize + Debug>(&self, query: &Q)
+            -> Result<Vec<protocol::Flavor>> {
+        trace!("Listing compute flavors with {:?}", query);
+        let result = self.request::<V2>(Method::Get, &["flavors", "detail"])?
+           .query(query).receive_json::<protocol::FlavorsDetailRoot>()?.flavors;
+        trace!("Received flavors: {:?}", result);
+        Ok(result)
     }
 }
 

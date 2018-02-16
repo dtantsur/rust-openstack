@@ -129,6 +129,19 @@ pub fn empty_as_none<'de, D, T>(des: D) -> ::std::result::Result<Option<T>, D::E
     }
 }
 
+/// Deserialize value where empty string equals None.
+pub fn empty_as_default<'de, D, T>(des: D) -> ::std::result::Result<T, D::Error>
+        where D: Deserializer<'de>, T: DeserializeOwned + Default {
+    let value = serde_json::Value::deserialize(des)?;
+    match &value {
+        &serde_json::Value::String(ref s) if s == "" =>
+            return Ok(Default::default()),
+        _ => ()
+    };
+
+    serde_json::from_value(value).map_err(DeserError::custom)
+}
+
 /// Extensions for Result type.
 pub trait ResultExt<T> {
     /// Process result if the error was ResourceNotFound.

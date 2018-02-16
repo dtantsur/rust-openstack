@@ -28,6 +28,7 @@ use super::super::service::{ListResources, ResourceId, ResourceIterator};
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::base::V2API;
+use super::flavors::ToFlavorId;
 use super::protocol;
 
 
@@ -39,7 +40,7 @@ pub struct ServerQuery<'session> {
     can_paginate: bool,
 }
 
-/// Structure representing a summary of a single server.
+/// Structure representing a single server.
 #[derive(Clone, Debug)]
 pub struct Server<'session> {
     session: &'session Session,
@@ -51,12 +52,6 @@ pub struct Server<'session> {
 pub struct ServerSummary<'session> {
     session: &'session Session,
     inner: protocol::ServerSummary
-}
-
-/// Trait for something that can be used as a flavor ID.
-pub trait ToFlavorId {
-    /// Get flavor ID as a string.
-    fn to_flavor_id(&self) -> String;
 }
 
 /// Trait for something that can be used as an image ID.
@@ -470,18 +465,6 @@ impl<'session> IntoFallibleIterator for ServerQuery<'session> {
 
     fn into_fallible_iterator(self) -> ResourceIterator<'session, ServerSummary<'session>> {
         self.into_iter()
-    }
-}
-
-impl ToFlavorId for String {
-    fn to_flavor_id(&self) -> String {
-        self.clone()
-    }
-}
-
-impl ToFlavorId for str {
-    fn to_flavor_id(&self) -> String {
-        String::from(self)
     }
 }
 

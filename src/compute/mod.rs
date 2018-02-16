@@ -27,11 +27,13 @@
 //! ```
 
 mod base;
+mod flavors;
 mod protocol;
 mod servers;
 
 pub use self::base::V2 as ServiceType;
+pub use self::flavors::{Flavor, FlavorSummary, FlavorQuery, ToFlavorId};
 pub use self::protocol::{AddressType, ServerAddress, ServerSortKey,
                          ServerPowerState, ServerStatus};
 pub use self::servers::{Server, ServerQuery, ServerStatusWaiter, ServerSummary,
-                        ToFlavorId, ToImageId};
+                        ToImageId};

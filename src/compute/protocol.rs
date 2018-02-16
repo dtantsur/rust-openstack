@@ -178,6 +178,44 @@ pub struct ServerRoot {
     pub server: Server
 }
 
+#[derive(Clone, Debug, Deserialize)]
+pub struct FlavorSummary {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct Flavor {
+    #[serde(rename = "OS-FLV-EXT-DATA:ephemeral", default)]
+    pub ephemeral: u64,
+    pub disk: u64,
+    pub id: String,
+    #[serde(rename = "os-flavor-access:is_public",
+            default = "default_flavor_is_public")]
+    pub is_public: bool,
+    pub name: String,
+    pub ram: u64,
+    pub rxtx_factor: f32,
+    #[serde(deserialize_with = "utils::empty_as_default")]
+    pub swap: u64,
+    pub vcpus: u32,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct FlavorsRoot {
+    pub flavors: Vec<FlavorSummary>
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct FlavorsDetailRoot {
+    pub flavors: Vec<Flavor>
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct FlavorRoot {
+    pub flavor: Flavor
+}
+
 impl Into<String> for ServerSortKey {
     fn into(self) -> String {
         String::from(match self {
@@ -313,3 +351,6 @@ impl fmt::Display for ServerStatus {
         f.write_str(s)
     }
 }
+
+#[inline]
+fn default_flavor_is_public() -> bool { true }

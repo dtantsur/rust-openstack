@@ -21,7 +21,8 @@ use fallible_iterator::FallibleIterator;
 use super::{Error, ErrorKind, Result};
 use super::auth::AuthMethod;
 #[cfg(feature = "compute")]
-use super::compute::{Server, ServerQuery, ServerSummary};
+use super::compute::{Flavor, FlavorQuery, FlavorSummary,
+                     Server, ServerQuery, ServerSummary};
 use super::session::Session;
 #[allow(unused_imports)]
 use super::utils::ResultExt;
@@ -128,8 +129,7 @@ impl Cloud {
     /// Build a query against server list.
     ///
     /// The returned object is a builder that should be used to construct
-    /// the query. The results can be received with a
-    /// [fetch](compute/struct.ServerQuery.html#method.fetch) call.
+    /// the query.
     ///
     /// # Example
     ///
@@ -168,6 +168,68 @@ impl Cloud {
     #[cfg(feature = "compute")]
     pub fn list_servers(&self) -> Result<Vec<ServerSummary>> {
         self.find_servers().all()
+    }
+
+    /// Find a flavor by its name or ID.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
+    /// let os = openstack::Cloud::new(auth);
+    /// let server = os.get_flavor("m1.medium").expect("Unable to get a flavor");
+    /// ```
+    #[cfg(feature = "compute")]
+    pub fn get_flavor<Id: Into<String>>(&self, id_or_name: Id) -> Result<Flavor> {
+        let s = id_or_name.into();
+        Flavor::new(&self.session, &s).if_not_found_then(|| {
+            self.find_flavors().into_iter()
+                .filter(|item| item.name() == &s).take(2)
+                .collect::<Vec<FlavorSummary>>().and_then(|mut items| {
+                    if items.len() > 1 {
+                        Err(Error::new(ErrorKind::TooManyItems,
+                                       "Too many flavors with this name"))
+                    } else {
+                        match items.pop() {
+                            Some(item) => item.details(),
+                            None => Err(Error::new(
+                                ErrorKind::ResourceNotFound,
+                                "No flavors with this name or ID"))
+                        }
+                    }
+                })
+        })
+    }
+
+    /// Build a query against flavor list.
+    ///
+    /// The returned object is a builder that should be used to construct
+    /// the query.
+    #[cfg(feature = "compute")]
+    pub fn find_flavors(&self) -> FlavorQuery {
+        FlavorQuery::new(&self.session)
+    }
+
+    /// List all flavors.
+    ///
+    /// This call can yield a lot of results, use the
+    /// [find_flavors](#method.find_flavors) call to limit the number of
+    /// flavors to receive.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
+    /// let os = openstack::Cloud::new(auth);
+    /// let server_list = os.list_flavors().expect("Unable to fetch flavors");
+    /// ```
+    #[cfg(feature = "compute")]
+    pub fn list_flavors(&self) -> Result<Vec<FlavorSummary>> {
+        self.find_flavors().all()
     }
 }
 
