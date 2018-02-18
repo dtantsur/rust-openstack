@@ -26,7 +26,7 @@ use serde::Serialize;
 use super::super::{Error, ErrorKind, Result, Sort, Waiter};
 use super::super::service::{ListResources, ResourceId, ResourceIterator};
 use super::super::session::Session;
-use super::super::utils::Query;
+use super::super::utils::{self, Query};
 use super::base::V2API;
 use super::flavors::ToFlavorId;
 use super::protocol;
@@ -406,17 +406,7 @@ impl<'session> ServerQuery<'session> {
             self.query.push("limit", 2);
         }
 
-        let mut iter = self.into_iter();
-        match iter.next()? {
-            Some(result) => if iter.next()?.is_some() {
-                Err(Error::new(ErrorKind::TooManyItems,
-                               "Query returned more than one result"))
-            } else {
-                Ok(result)
-            },
-            None => Err(Error::new(ErrorKind::ResourceNotFound,
-                                   "Query returned no results"))
-        }
+        utils::fetch_one(self)
     }
 }
 

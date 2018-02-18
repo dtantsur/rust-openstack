@@ -22,7 +22,7 @@ use serde::Serialize;
 use super::super::{Error, Result};
 use super::super::service::{ListResources, ResourceId, ResourceIterator};
 use super::super::session::Session;
-use super::super::utils::Query;
+use super::super::utils::{self, Query};
 use super::base::V2API;
 use super::protocol;
 
@@ -193,6 +193,20 @@ impl<'session> FlavorQuery<'session> {
     /// A convenience shortcut for `self.into_iter().collect()`.
     pub fn all(self) -> Result<Vec<FlavorSummary<'session>>> {
         self.into_iter().collect()
+    }
+
+    /// Return one and exactly one result.
+    ///
+    /// Fails with `ResourceNotFound` if the query produces no results and
+    /// with `TooManyItems` if the query produces more than one result.
+    pub fn one(mut self) -> Result<FlavorSummary<'session>> {
+        if self.can_paginate {
+            // We need only one result. We fetch maximum two to be able
+            // to check if the query yieled more than one result.
+            self.query.push("limit", 2);
+        }
+
+        utils::fetch_one(self)
     }
 }
 

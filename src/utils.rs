@@ -20,11 +20,12 @@ use std::cell::{Ref, RefCell};
 use std::collections::HashMap;
 use std::hash::Hash;
 
+use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
 use serde::{Deserialize, Deserializer};
 use serde::de::{DeserializeOwned, Error as DeserError};
 use serde_json;
 
-use super::{ErrorKind, Result};
+use super::{Error, ErrorKind, Result};
 
 
 /// Type of query parameters.
@@ -159,6 +160,22 @@ impl<T> ResultExt<T> for Result<T> {
                 Err(err)
             }
         })
+    }
+}
+
+/// Helper - fetch exactly one resource.
+pub fn fetch_one<T, R>(source: T) -> Result<R>
+        where T: IntoFallibleIterator<Item=R, Error=Error> {
+    let mut iter = source.into_fallible_iterator();
+    match iter.next()? {
+        Some(result) => if iter.next()?.is_some() {
+            Err(Error::new(ErrorKind::TooManyItems,
+                           "Query returned more than one result"))
+        } else {
+            Ok(result)
+        },
+        None => Err(Error::new(ErrorKind::ResourceNotFound,
+                               "Query returned no results"))
     }
 }
 
