@@ -338,12 +338,6 @@ impl<'session> ServerQuery<'session> {
         self
     }
 
-    /// Filter by power state.
-    pub fn with_power_state<T: Into<String>>(mut self, value: T) -> Self {
-        self.query.push_str("power_state", value);
-        self
-    }
-
     /// Filter by project ID (also commonly known as tenant ID).
     pub fn with_project_id<T: Into<String>>(mut self, value: T) -> Self {
         self.query.push_str("project_id", value);
@@ -351,8 +345,8 @@ impl<'session> ServerQuery<'session> {
     }
 
     /// Filter by server status.
-    pub fn with_status<T: Into<String>>(mut self, value: T) -> Self {
-        self.query.push_str("status", value);
+    pub fn with_status(mut self, value: protocol::ServerStatus) -> Self {
+        self.query.push_str("status", value.to_string());
         self
     }
 

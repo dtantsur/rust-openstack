@@ -38,7 +38,8 @@ fn main() {
     }
 
     let active = os.find_servers()
-        .sort_by(openstack::Sort::Asc(sorting)).with_status("ACTIVE")
+        .sort_by(openstack::Sort::Asc(sorting))
+        .with_status(openstack::compute::ServerStatus::Active)
         .all().expect("Cannot list servers");
     println!("All active servers:");
     for s in &active {
