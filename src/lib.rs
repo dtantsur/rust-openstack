@@ -75,7 +75,6 @@ extern crate serde_derive;
 #[allow(unused_extern_crates)]
 extern crate serde_json;
 
-pub mod adapters;
 pub mod auth;
 mod cloud;
 mod common;
@@ -84,6 +83,7 @@ pub mod compute;
 mod identity;
 pub mod service;
 pub mod session;
+pub mod types;
 mod utils;
 
 pub use cloud::Cloud;

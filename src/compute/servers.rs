@@ -24,9 +24,9 @@ use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
 use serde::Serialize;
 
 use super::super::{Error, ErrorKind, Result, Sort, Waiter};
-use super::super::adapters::{ToFlavorId, ToImageId};
 use super::super::service::{ListResources, ResourceId, ResourceIterator};
 use super::super::session::Session;
+use super::super::types;
 use super::super::utils::{self, Query};
 use super::base::V2API;
 use super::protocol;
@@ -297,8 +297,8 @@ impl<'session> ServerQuery<'session> {
     }
 
     /// Filter by flavor.
-    pub fn with_flavor<T: ToFlavorId>(mut self, value: T) -> Self {
-        self.query.push_str("flavor", value.to_flavor_id());
+    pub fn with_flavor<T: Into<types::FlavorId>>(mut self, value: T) -> Self {
+        self.query.push_str("flavor", value.into());
         self
     }
 
@@ -309,8 +309,8 @@ impl<'session> ServerQuery<'session> {
     }
 
     /// Filter by image ID.
-    pub fn with_image<T: ToImageId>(mut self, value: T) -> Self {
-        self.query.push_str("image", value.to_image_id());
+    pub fn with_image<T: Into<types::ImageId>>(mut self, value: T) -> Self {
+        self.query.push_str("image", value.into());
         self
     }
 
@@ -333,8 +333,8 @@ impl<'session> ServerQuery<'session> {
     }
 
     /// Filter by project ID (also commonly known as tenant ID).
-    pub fn with_project_id<T: Into<String>>(mut self, value: T) -> Self {
-        self.query.push_str("project_id", value);
+    pub fn with_project<T: Into<types::ProjectId>>(mut self, value: T) -> Self {
+        self.query.push_str("project_id", value.into());
         self
     }
 
@@ -345,8 +345,8 @@ impl<'session> ServerQuery<'session> {
     }
 
     /// Filter by user ID.
-    pub fn with_user_id<T: Into<String>>(mut self, value: T) -> Self {
-        self.query.push_str("user_id", value);
+    pub fn with_user<T: Into<types::UserId>>(mut self, value: T) -> Self {
+        self.query.push_str("user_id", value.into());
         self
     }
 
