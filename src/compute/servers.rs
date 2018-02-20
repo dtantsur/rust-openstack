@@ -279,14 +279,14 @@ impl<'session> ServerQuery<'session> {
     }
 
     /// Filter by IPv4 address that should be used to access the server.
-    pub fn with_access_ip_v4(mut self, value: Ipv4Addr) -> Self {
-        self.query.push("access_ip_v4", value);
+    pub fn with_access_ip_v4<T: Into<Ipv4Addr>>(mut self, value: T) -> Self {
+        self.query.push("access_ip_v4", value.into());
         self
     }
 
     /// Filter by IPv6 address that should be used to access the server.
-    pub fn with_access_ip_v6(mut self, value: Ipv6Addr) -> Self {
-        self.query.push("access_ipv6", value);
+    pub fn with_access_ip_v6<T: Into<Ipv6Addr>>(mut self, value: T) -> Self {
+        self.query.push("access_ipv6", value.into());
         self
     }
 
@@ -315,14 +315,14 @@ impl<'session> ServerQuery<'session> {
     }
 
     /// Filter by an IPv4 address.
-    pub fn with_ip_v4(mut self, value: Ipv4Addr) -> Self {
-        self.query.push("ip", value);
+    pub fn with_ip_v4<T: Into<Ipv4Addr>>(mut self, value: T) -> Self {
+        self.query.push("ip", value.into());
         self
     }
 
     /// Filter by an IPv6 address.
-    pub fn with_ip_v6(mut self, value: Ipv6Addr) -> Self {
-        self.query.push("ip6", value);
+    pub fn with_ip_v6<T: Into<Ipv6Addr>>(mut self, value: T) -> Self {
+        self.query.push("ip6", value.into());
         self
     }
 
