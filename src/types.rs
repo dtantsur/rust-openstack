@@ -53,13 +53,13 @@ macro_rules! opaque_resource_type {
     )
 }
 
-opaque_resource_type!(#[doc = "An ID of a `Flavor`"] FlavorId);
+opaque_resource_type!(#[doc = "An ID of a `Flavor`"] FlavorRef);
 
-opaque_resource_type!(#[doc = "An ID of an `Image`"] ImageId);
+opaque_resource_type!(#[doc = "An ID of an `Image`"] ImageRef);
 
-opaque_resource_type!(#[doc = "An ID of a `Project`"] ProjectId);
+opaque_resource_type!(#[doc = "An ID of a `Project`"] ProjectRef);
 
-opaque_resource_type!(#[doc = "An ID of a `User`"] UserId);
+opaque_resource_type!(#[doc = "An ID of a `User`"] UserRef);
 
 
 #[cfg(test)]

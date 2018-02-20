@@ -297,7 +297,7 @@ impl<'session> ServerQuery<'session> {
     }
 
     /// Filter by flavor.
-    pub fn with_flavor<T: Into<types::FlavorId>>(mut self, value: T) -> Self {
+    pub fn with_flavor<T: Into<types::FlavorRef>>(mut self, value: T) -> Self {
         self.query.push_str("flavor", value.into());
         self
     }
@@ -309,7 +309,7 @@ impl<'session> ServerQuery<'session> {
     }
 
     /// Filter by image ID.
-    pub fn with_image<T: Into<types::ImageId>>(mut self, value: T) -> Self {
+    pub fn with_image<T: Into<types::ImageRef>>(mut self, value: T) -> Self {
         self.query.push_str("image", value.into());
         self
     }
@@ -333,7 +333,7 @@ impl<'session> ServerQuery<'session> {
     }
 
     /// Filter by project ID (also commonly known as tenant ID).
-    pub fn with_project<T: Into<types::ProjectId>>(mut self, value: T) -> Self {
+    pub fn with_project<T: Into<types::ProjectRef>>(mut self, value: T) -> Self {
         self.query.push_str("project_id", value.into());
         self
     }
@@ -345,7 +345,7 @@ impl<'session> ServerQuery<'session> {
     }
 
     /// Filter by user ID.
-    pub fn with_user<T: Into<types::UserId>>(mut self, value: T) -> Self {
+    pub fn with_user<T: Into<types::UserRef>>(mut self, value: T) -> Self {
         self.query.push_str("user_id", value.into());
         self
     }

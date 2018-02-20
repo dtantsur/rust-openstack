@@ -22,7 +22,7 @@ use serde::Serialize;
 use super::super::{Error, Result};
 use super::super::service::{ListResources, ResourceId, ResourceIterator};
 use super::super::session::Session;
-use super::super::types::FlavorId;
+use super::super::types::FlavorRef;
 use super::super::utils::{self, Query};
 use super::base::V2API;
 use super::protocol;
@@ -254,14 +254,14 @@ impl<'session> IntoFallibleIterator for FlavorQuery<'session> {
     }
 }
 
-impl<'session> From<Flavor<'session>> for FlavorId {
-    fn from(value: Flavor<'session>) -> FlavorId {
-        FlavorId::from(value.inner.id)
+impl<'session> From<Flavor<'session>> for FlavorRef {
+    fn from(value: Flavor<'session>) -> FlavorRef {
+        FlavorRef::from(value.inner.id)
     }
 }
 
-impl<'session> From<FlavorSummary<'session>> for FlavorId {
-    fn from(value: FlavorSummary<'session>) -> FlavorId {
-        FlavorId::from(value.inner.id)
+impl<'session> From<FlavorSummary<'session>> for FlavorRef {
+    fn from(value: FlavorSummary<'session>) -> FlavorRef {
+        FlavorRef::from(value.inner.id)
     }
 }
