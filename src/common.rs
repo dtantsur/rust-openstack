@@ -422,6 +422,18 @@ pub mod protocol {
     }
 
     #[derive(Clone, Debug, Deserialize)]
+    pub struct Ref {
+        pub id: String,
+        pub links: Vec<Link>
+    }
+
+    #[derive(Clone, Debug, Deserialize)]
+    pub struct IdAndName {
+        pub id: String,
+        pub name: String
+    }
+
+    #[derive(Clone, Debug, Deserialize)]
     pub struct Version {
         pub id: String,
         pub links: Vec<Link>,

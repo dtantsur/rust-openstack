@@ -24,6 +24,7 @@ use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
 use serde::Serialize;
 
 use super::super::{Error, ErrorKind, Result, Sort, Waiter};
+use super::super::common;
 use super::super::service::{ListResources, ResourceId, ResourceIterator};
 use super::super::session::Session;
 use super::super::types;
@@ -51,7 +52,7 @@ pub struct Server<'session> {
 #[derive(Clone, Debug)]
 pub struct ServerSummary<'session> {
     session: &'session Session,
-    inner: protocol::ServerSummary
+    inner: common::protocol::IdAndName
 }
 
 /// Waiter for server status to change.

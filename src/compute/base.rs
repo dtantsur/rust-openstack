@@ -37,7 +37,7 @@ pub trait V2API {
 
     /// List servers.
     fn list_servers<Q: Serialize + Debug>(&self, query: &Q)
-        -> Result<Vec<protocol::ServerSummary>>;
+        -> Result<Vec<common::protocol::IdAndName>>;
 
     /// List servers with details.
     fn list_servers_detail<Q: Serialize + Debug>(&self, query: &Q)
@@ -55,7 +55,7 @@ pub trait V2API {
 
     /// List flavors.
     fn list_flavors<Q: Serialize + Debug>(&self, query: &Q)
-        -> Result<Vec<protocol::FlavorSummary>>;
+        -> Result<Vec<common::protocol::IdAndName>>;
 
     /// List flavors with details.
     fn list_flavors_detail<Q: Serialize + Debug>(&self, query: &Q)
@@ -80,7 +80,7 @@ impl V2API for Session {
     }
 
     fn list_servers<Q: Serialize + Debug>(&self, query: &Q)
-            -> Result<Vec<protocol::ServerSummary>> {
+            -> Result<Vec<common::protocol::IdAndName>> {
         trace!("Listing compute servers with {:?}", query);
         let result = self.request::<V2>(Method::Get, &["servers"])?
            .query(query).receive_json::<protocol::ServersRoot>()?.servers;
@@ -126,7 +126,7 @@ impl V2API for Session {
     }
 
     fn list_flavors<Q: Serialize + Debug>(&self, query: &Q)
-            -> Result<Vec<protocol::FlavorSummary>> {
+            -> Result<Vec<common::protocol::IdAndName>> {
         trace!("Listing compute flavors with {:?}", query);
         let result = self.request::<V2>(Method::Get, &["flavors"])?
            .query(query).receive_json::<protocol::FlavorsRoot>()?.flavors;

@@ -20,6 +20,7 @@ use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
 use serde::Serialize;
 
 use super::super::{Error, Result};
+use super::super::common;
 use super::super::service::{ListResources, ResourceId, ResourceIterator};
 use super::super::session::Session;
 use super::super::types::FlavorRef;
@@ -39,7 +40,7 @@ pub struct Flavor<'session> {
 #[derive(Clone, Debug)]
 pub struct FlavorSummary<'session> {
     session: &'session Session,
-    inner: protocol::FlavorSummary
+    inner: common::protocol::IdAndName,
 }
 
 /// A query to server list.
