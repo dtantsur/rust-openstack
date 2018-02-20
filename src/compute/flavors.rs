@@ -20,6 +20,7 @@ use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
 use serde::Serialize;
 
 use super::super::{Error, Result};
+use super::super::adapters::ToFlavorId;
 use super::super::service::{ListResources, ResourceId, ResourceIterator};
 use super::super::session::Session;
 use super::super::utils::{self, Query};
@@ -47,12 +48,6 @@ pub struct FlavorQuery<'session> {
     session: &'session Session,
     query: Query,
     can_paginate: bool,
-}
-
-/// Trait for something that can be used as a flavor ID.
-pub trait ToFlavorId {
-    /// Get flavor ID as a string.
-    fn to_flavor_id(&self) -> String;
 }
 
 
@@ -256,18 +251,6 @@ impl<'session> IntoFallibleIterator for FlavorQuery<'session> {
 
     fn into_fallible_iterator(self) -> ResourceIterator<'session, FlavorSummary<'session>> {
         self.into_iter()
-    }
-}
-
-impl ToFlavorId for String {
-    fn to_flavor_id(&self) -> String {
-        self.clone()
-    }
-}
-
-impl ToFlavorId for str {
-    fn to_flavor_id(&self) -> String {
-        String::from(self)
     }
 }
 

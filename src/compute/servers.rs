@@ -24,11 +24,11 @@ use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
 use serde::Serialize;
 
 use super::super::{Error, ErrorKind, Result, Sort, Waiter};
+use super::super::adapters::{ToFlavorId, ToImageId};
 use super::super::service::{ListResources, ResourceId, ResourceIterator};
 use super::super::session::Session;
 use super::super::utils::{self, Query};
 use super::base::V2API;
-use super::flavors::ToFlavorId;
 use super::protocol;
 
 
@@ -52,12 +52,6 @@ pub struct Server<'session> {
 pub struct ServerSummary<'session> {
     session: &'session Session,
     inner: protocol::ServerSummary
-}
-
-/// Trait for something that can be used as an image ID.
-pub trait ToImageId {
-    /// Get flavor ID as a string.
-    fn to_image_id(&self) -> String;
 }
 
 /// Waiter for server status to change.
@@ -449,17 +443,5 @@ impl<'session> IntoFallibleIterator for ServerQuery<'session> {
 
     fn into_fallible_iterator(self) -> ResourceIterator<'session, ServerSummary<'session>> {
         self.into_iter()
-    }
-}
-
-impl ToImageId for String {
-    fn to_image_id(&self) -> String {
-        self.clone()
-    }
-}
-
-impl ToImageId for str {
-    fn to_image_id(&self) -> String {
-        String::from(self)
     }
 }
