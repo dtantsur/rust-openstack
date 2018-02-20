@@ -36,19 +36,17 @@ const MISSING_SUBJECT_HEADER: &'static str =
 
 /// Plain authentication token without additional details.
 #[derive(Clone)]
-struct Token(pub String);
+struct Token {
+    value: String,
+    body: protocol::Token
+}
 
 impl fmt::Debug for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut hasher = DefaultHasher::new();
-        self.hash(&mut hasher);
-        write!(f, "Token {{ hash: {} }}", hasher.finish())
-    }
-}
-
-impl Hash for Token {
-    fn hash<H>(&self, state: &mut H) where H: Hasher {
-        self.0.hash(state);
+        self.value.hash(&mut hasher);
+        write!(f, "Token {{ value: {}, body: {:?} }}",
+               hasher.finish(), self.body)
     }
 }
 
@@ -191,7 +189,7 @@ impl PasswordAuth {
         }
     }
 
-    fn token_from_response(&self, resp: Response) -> Result<Token> {
+    fn token_from_response(&self, mut resp: Response) -> Result<Token> {
         let token_value = match resp.status() {
             StatusCode::Ok | StatusCode::Created => {
                 match extract_subject_token(resp.headers()) {
@@ -225,13 +223,17 @@ impl PasswordAuth {
             }
         };
 
-        info!("Received a token for user {} from {}",
-               self.body.auth.identity.password.user.name,
-               self.token_endpoint);
+        let body = resp.json::<protocol::TokenRoot>()?.token;
 
-        // TODO: detect expiration time
-        // TODO: do something useful about the body
-        Ok(Token(token_value))
+        info!("Received a token for user {} from {} expiring at {}",
+               self.body.auth.identity.password.user.name,
+               self.token_endpoint, body.expires_at);
+        trace!("Received catalog: {:?}", body.catalog);
+
+        Ok(Token {
+            value: token_value,
+            body: body
+        })
     }
 
     fn refresh_token(&self) -> Result<()> {
@@ -248,17 +250,12 @@ impl PasswordAuth {
 
     fn get_token(&self) -> Result<String> {
         self.refresh_token()?;
-        Ok(self.cached_token.get().unwrap().0)
+        Ok(self.cached_token.get().unwrap().value)
     }
 
     fn get_catalog(&self) -> Result<Vec<protocol::CatalogRecord>> {
-        // TODO: catalog caching
-        let catalog_url = catalog::get_url(self.auth_url.clone());
-        trace!("Requesting a service catalog from {}", catalog_url);
-        let mut req = self.request(Method::Get, catalog_url)?;
-        let body: protocol::CatalogRoot = req.send()?.json()?;
-        trace!("Received catalog: {:?}", body.catalog);
-        Ok(body.catalog)
+        self.refresh_token()?;
+        Ok(self.cached_token.get().unwrap().body.catalog)
     }
 }
 

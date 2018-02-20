@@ -16,6 +16,9 @@
 
 #![allow(missing_docs)]
 
+use chrono::{DateTime, FixedOffset};
+use super::super::common;
+
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Domain {
@@ -62,23 +65,35 @@ pub struct ProjectScopedAuthRoot {
     pub auth: ProjectScopedAuth
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Endpoint {
     pub interface: String,
     pub region: String,
     pub url: String
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct CatalogRecord {
     #[serde(rename = "type")]
     pub service_type: String,
     pub endpoints: Vec<Endpoint>
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct CatalogRoot {
     pub catalog: Vec<CatalogRecord>
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct Token {
+    pub roles: Vec<common::protocol::IdAndName>,
+    pub expires_at: DateTime<FixedOffset>,
+    pub catalog: Vec<CatalogRecord>
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct TokenRoot {
+    pub token: Token
 }
 
 const PASSWORD_METHOD: &'static str = "password";

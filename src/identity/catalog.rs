@@ -14,22 +14,9 @@
 
 //! Low-level code to work with the service catalog.
 
-use reqwest::Url;
-
 use super::super::{Error, Result};
-use super::super::utils;
 use super::protocol::{CatalogRecord, Endpoint};
 
-
-/// Build a catalog URI.
-pub fn get_url(auth_url: Url) -> Url {
-    // TODO: more robust v3 detection?
-    if auth_url.path().ends_with("/v3") {
-        utils::url::extend(auth_url, &["auth", "catalog"])
-    } else {
-        utils::url::extend(auth_url, &["v3", "auth", "catalog"])
-    }
-}
 
 /// Find an endpoint in the service catalog.
 pub fn find_endpoint<'c>(catalog: &'c Vec<CatalogRecord>, service_type: &String,
