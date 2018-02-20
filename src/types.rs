@@ -14,12 +14,11 @@
 
 //! Types shared between services and used for conversion.
 
-use std::fmt;
 
 macro_rules! opaque_resource_type {
     ($(#[$attr:meta])* $name:ident) => (
         $(#[$attr])*
-        #[derive(Debug, Clone, PartialEq, Eq)]
+        #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
         pub struct $name(String);
 
         impl From<String> for $name {
@@ -46,8 +45,8 @@ macro_rules! opaque_resource_type {
             }
         }
 
-        impl fmt::Display for $name {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl ::std::fmt::Display for $name {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                 self.0.fmt(f)
             }
         }
@@ -61,3 +60,29 @@ opaque_resource_type!(#[doc = "An ID of an `Image`"] ImageId);
 opaque_resource_type!(#[doc = "An ID of a `Project`"] ProjectId);
 
 opaque_resource_type!(#[doc = "An ID of a `User`"] UserId);
+
+
+#[cfg(test)]
+mod test {
+    use serde_json;
+
+    opaque_resource_type!(TestId);
+
+    #[test]
+    fn test_opaque_type_basics() {
+        let id = TestId::from("foo");
+        assert_eq!(id.as_ref(), "foo");
+        assert_eq!(&id.to_string(), "foo");
+        assert_eq!(id, TestId::from("foo"));
+        assert!(id != TestId::from("bar"));
+        let s: String = id.into();
+        assert_eq!(&s, "foo");
+    }
+
+    #[test]
+    fn test_opaque_type_serde() {
+        let id: TestId = serde_json::from_str("\"foo\"").unwrap();
+        assert_eq!(id.as_ref(), "foo");
+        assert_eq!(serde_json::to_string(&id).unwrap(), "\"foo\"");
+    }
+}
