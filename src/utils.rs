@@ -77,10 +77,15 @@ impl<T: Clone> ValueCache<T> {
         Ok(())
     }
 
-    /// Get the cached value.
-    #[inline]
-    pub fn get(&self) -> Option<T> {
-        self.0.borrow().clone()
+    /// Extract a part of the value.
+    pub fn extract<F, R>(&self, filter: F) -> Option<R>
+            where F: FnOnce(&T) -> R {
+        let b = self.0.borrow();
+        if b.is_none() {
+            return None;
+        }
+
+        b.as_ref().map(filter)
     }
 }
 

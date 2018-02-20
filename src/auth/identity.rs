@@ -250,12 +250,12 @@ impl PasswordAuth {
 
     fn get_token(&self) -> Result<String> {
         self.refresh_token()?;
-        Ok(self.cached_token.get().unwrap().value)
+        Ok(self.cached_token.extract(|t| t.value.clone()).unwrap())
     }
 
     fn get_catalog(&self) -> Result<Vec<protocol::CatalogRecord>> {
         self.refresh_token()?;
-        Ok(self.cached_token.get().unwrap().body.catalog)
+        Ok(self.cached_token.extract(|t| t.body.catalog.clone()).unwrap())
     }
 }
 
