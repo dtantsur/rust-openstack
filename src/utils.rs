@@ -77,15 +77,39 @@ impl<T: Clone> ValueCache<T> {
         Ok(())
     }
 
+    /// Ensure that the cached value is valid.
+    ///
+    /// Returns `true` if the value exists and passes the check.
+    pub fn validate<F>(&self, check: F) -> bool
+            where F: FnOnce(&T) -> bool {
+        let valid = match self.0.borrow().as_ref() {
+            Some(v) => check(v),
+            None => false
+        };
+
+        if ! valid {
+            *self.0.borrow_mut() = None;
+            false
+        } else {
+            true
+        }
+    }
+
+    /// Validate value and set it if it is not valid.
+    pub fn validate_and_ensure_value<V, F>(&self, check: V, default: F) -> Result<()>
+            where V: FnOnce(&T) -> bool,
+                  F: FnOnce() -> Result<T> {
+        if self.validate(check) {
+            Ok(())
+        } else {
+            self.ensure_value(default)
+        }
+    }
+
     /// Extract a part of the value.
     pub fn extract<F, R>(&self, filter: F) -> Option<R>
             where F: FnOnce(&T) -> R {
-        let b = self.0.borrow();
-        if b.is_none() {
-            return None;
-        }
-
-        b.as_ref().map(filter)
+        self.0.borrow().as_ref().map(filter)
     }
 }
 
