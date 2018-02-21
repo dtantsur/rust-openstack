@@ -45,6 +45,9 @@ pub trait AuthMethod: BoxedClone + Debug {
 
     /// Create an authenticated request.
     fn request(&self, method: Method, url: Url) -> Result<RequestBuilder>;
+
+    /// Refresh the authentication (renew the token, etc).
+    fn refresh(&mut self) -> Result<()>;
 }
 
 

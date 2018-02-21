@@ -306,6 +306,11 @@ impl AuthMethod for PasswordAuth {
                                endp.url, service_type, e))
         })
     }
+
+    fn refresh(&mut self) -> Result<()> {
+        self.cached_token = ValueCache::new(None);
+        self.refresh_token()
+    }
 }
 
 #[cfg(test)]

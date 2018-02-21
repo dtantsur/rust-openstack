@@ -55,6 +55,8 @@ impl AuthMethod for NoAuth {
                     _endpoint_interface: Option<String>) -> Result<Url> {
         Ok(self.endpoint.clone())
     }
+
+    fn refresh(&mut self) -> Result<()> { Ok(()) }
 }
 
 #[cfg(test)]

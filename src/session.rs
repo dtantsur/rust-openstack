@@ -152,6 +152,11 @@ impl Session {
         self.auth.as_ref()
     }
 
+    /// Get a mutable reference to the authentication method in use.
+    pub fn auth_method_mut(&mut self) -> &mut AuthMethod {
+        self.auth.as_mut()
+    }
+
     /// Get an API version used for given service.
     pub fn api_version<Srv: ServiceType>(&self) -> Option<ApiVersion> {
         self.api_versions.get(Srv::catalog_type()).cloned()
