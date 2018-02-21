@@ -85,13 +85,19 @@ impl RequestBuilder {
 
     /// Construct the Request and sends it the target URL, returning a Response.
     pub fn send(&mut self) -> Result<Response> {
-        self.inner.send()?.error_for_status().map_err(From::from)
+        _log(self.inner.send()?).error_for_status().map_err(From::from)
     }
 
     /// Construct the Request, send it and receive a JSON.
     pub fn receive_json<T: DeserializeOwned>(&mut self) -> Result<T> {
-        self.inner.send()?.error_for_status()?.json().map_err(From::from)
+        _log(self.inner.send()?).error_for_status()?.json().map_err(From::from)
     }
+}
+
+#[inline]
+fn _log(resp: Response) -> Response {
+    trace!("HTTP request to {} returned {}", resp.url(), resp.status());
+    resp
 }
 
 
