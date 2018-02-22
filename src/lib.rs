@@ -75,12 +75,65 @@ extern crate serde_derive;
 #[allow(unused_extern_crates)]
 extern crate serde_json;
 
+
+#[allow(unused_macros)]
+macro_rules! protocol_enum {
+    {$(#[$attr:meta])* enum $name:ident {
+        $($item:ident = $val:expr),+
+    }} => (
+        $(#[$attr])*
+        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        pub enum $name {
+            $($item),+,
+            #[doc(hidden)]
+            __Nonexhaustive,
+        }
+
+        impl<'de> ::serde::de::Deserialize<'de> for $name {
+            fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+                    where D: ::serde::de::Deserializer<'de> {
+                match String::deserialize(deserializer)?.as_ref() {
+                    $($val => Ok($name::$item)),+,
+                    other => {
+                        use ::serde::de::Error;
+                        let err = format!("Unexpected {}: {}",
+                                          stringify!($name), other);
+                        Err(D::Error::custom(err))
+                    }
+                }
+            }
+        }
+
+        impl ::std::fmt::Display for $name {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                f.write_str(match *self {
+                    $($name::$item => $val),+,
+                    _ => unreachable!()
+                })
+            }
+        }
+
+        impl ::serde::ser::Serialize for $name {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                    where S: ::serde::ser::Serializer {
+                serializer.serialize_str(match *self {
+                    $($name::$item => $val),+,
+                    _ => unreachable!()
+                })
+            }
+        }
+    )
+}
+
+
 pub mod auth;
 mod cloud;
 mod common;
 #[cfg(feature = "compute")]
 pub mod compute;
 mod identity;
+#[cfg(feature = "image")]
+pub mod image;
 pub mod service;
 pub mod session;
 pub mod types;

@@ -21,6 +21,7 @@ use std::collections::HashMap;
 use std::hash::Hash;
 
 use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
+use reqwest::Url;
 use serde::{Deserialize, Deserializer};
 use serde::de::{DeserializeOwned, Error as DeserError};
 use serde_json;
@@ -171,6 +172,24 @@ pub fn empty_as_default<'de, D, T>(des: D) -> ::std::result::Result<T, D::Error>
 
     serde_json::from_value(value).map_err(DeserError::custom)
 }
+
+/// Deserialize a URL.
+pub fn deser_url<'de, D>(des: D) -> ::std::result::Result<Url, D::Error>
+        where D: Deserializer<'de> {
+    Url::parse(&String::deserialize(des)?).map_err(DeserError::custom)
+}
+
+/// Deserialize a URL.
+pub fn deser_optional_url<'de, D>(des: D)
+        -> ::std::result::Result<Option<Url>, D::Error>
+        where D: Deserializer<'de> {
+    let value: Option<String> = Deserialize::deserialize(des)?;
+    match value {
+        Some(s) => Url::parse(&s).map_err(DeserError::custom).map(Some),
+        None => Ok(None)
+    }
+}
+
 
 /// Extensions for Result type.
 pub trait ResultExt<T> {
