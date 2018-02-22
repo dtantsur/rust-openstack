@@ -78,6 +78,44 @@ extern crate serde_json;
 
 #[allow(unused_macros)]
 macro_rules! protocol_enum {
+    {$(#[$attr:meta])* enum $name:ident: $carrier:ty {
+        $($item:ident = $val:expr),+
+    }} => (
+        $(#[$attr])*
+        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        pub enum $name {
+            $($item),+,
+            #[doc(hidden)]
+            __Nonexhaustive,
+        }
+
+        impl<'de> ::serde::de::Deserialize<'de> for $name {
+            fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+                    where D: ::serde::de::Deserializer<'de> {
+                let value: $carrier = ::serde::de::Deserialize::deserialize(
+                    deserializer)?;
+                match value {
+                    $($val => Ok($name::$item)),+,
+                    other => {
+                        use ::serde::de::Error;
+                        let err = format!("Unexpected {}: {}",
+                                          stringify!($name), other);
+                        Err(D::Error::custom(err))
+                    }
+                }
+            }
+        }
+
+        impl From<$name> for $carrier {
+            fn from(value: $name) -> $carrier {
+                match value {
+                    $($name::$item => $val),+,
+                    _ => unreachable!()
+                }
+            }
+        }
+    );
+
     {$(#[$attr:meta])* enum $name:ident {
         $($item:ident = $val:expr),+
     }} => (
@@ -87,6 +125,15 @@ macro_rules! protocol_enum {
             $($item),+,
             #[doc(hidden)]
             __Nonexhaustive,
+        }
+
+        impl $name {
+            fn as_ref(&self) -> &'static str {
+                match *self {
+                    $($name::$item => $val),+,
+                    _ => unreachable!()
+                }
+            }
         }
 
         impl<'de> ::serde::de::Deserialize<'de> for $name {
@@ -106,23 +153,23 @@ macro_rules! protocol_enum {
 
         impl ::std::fmt::Display for $name {
             fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                f.write_str(match *self {
-                    $($name::$item => $val),+,
-                    _ => unreachable!()
-                })
+                f.write_str(self.as_ref())
             }
         }
 
         impl ::serde::ser::Serialize for $name {
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
                     where S: ::serde::ser::Serializer {
-                serializer.serialize_str(match *self {
-                    $($name::$item => $val),+,
-                    _ => unreachable!()
-                })
+                serializer.serialize_str(self.as_ref())
             }
         }
-    )
+
+        impl From<$name> for String {
+            fn from(value: $name) -> String {
+                String::from(value.as_ref())
+            }
+        }
+    );
 }
 
 

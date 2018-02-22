@@ -417,7 +417,8 @@ pub mod protocol {
 
     #[derive(Clone, Debug, Deserialize)]
     pub struct Link {
-        pub href: String,
+        #[serde(deserialize_with = "utils::deser_url")]
+        pub href: Url,
         pub rel: String
     }
 
@@ -455,12 +456,10 @@ pub mod protocol {
     }
 
     impl Version {
-        pub fn to_service_info(&self) -> Result<ServiceInfo> {
-            let endpoint = match self.links.iter().find(|x| &x.rel == "self") {
-                Some(link) => Url::parse(&link.href)?,
+        pub fn into_service_info(self) -> Result<ServiceInfo> {
+            let endpoint = match self.links.into_iter().find(|x| &x.rel == "self") {
+                Some(link) => link.href,
                 None => {
-                    error!("Received malformed version response: no self link \
-                            in {:?}", self.links);
                     return Err(Error::new(
                         ErrorKind::InvalidResponse,
                         "Invalid version - missing self link"));
@@ -494,12 +493,12 @@ pub fn fetch_service_info(endpoint: Url, auth: &AuthMethod,
 
             // First, assume it's a versioned URL.
             let mut info = match serde_json::from_str::<protocol::VersionRoot>(&body) {
-                Ok(ver) => ver.version.to_service_info(),
+                Ok(ver) => ver.version.into_service_info(),
                 Err(..) => {
                     // Second, assume it's a root URL.
                     let vers = resp.json::<protocol::VersionsRoot>()?;
                     match vers.versions.into_iter().find(|x| &x.id == major_version) {
-                        Some(ver) => ver.to_service_info(),
+                        Some(ver) => ver.into_service_info(),
                         None => Err(Error::new_endpoint_not_found(service_type))
                     }
                 }
