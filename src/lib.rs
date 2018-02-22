@@ -191,6 +191,5 @@ pub use common::Error;
 pub use common::ErrorKind;
 pub use common::Result;
 pub use common::ApiVersion;
-pub use common::ApiVersionRequest;
 pub use common::Sort;
 pub use common::Waiter;

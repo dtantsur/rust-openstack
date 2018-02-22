@@ -103,27 +103,6 @@ pub type Result<T> = ::std::result::Result<T, Error>;
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
 pub struct ApiVersion(pub u16, pub u16);
 
-/// A request for negotiating an API version.
-#[derive(Debug, Clone)]
-pub enum ApiVersionRequest {
-    /// Minimum possible version (usually the default).
-    Minimum,
-    /// Latest version.
-    ///
-    /// This may result in an incompatible version, so it is always recommended
-    /// to use LatestFrom or Choice instead.
-    Latest,
-    /// Latest version from the given range.
-    LatestFrom(ApiVersion, ApiVersion),
-    /// Specified version.
-    ///
-    /// This is a very inflexible approach, and is only recommended when the
-    /// application can work with one and only one version.
-    Exact(ApiVersion),
-    /// Choice between several versions.
-    Choice(Vec<ApiVersion>)
-}
-
 /// Sorting request.
 #[derive(Debug, Clone)]
 pub enum Sort<T: Into<String>> {

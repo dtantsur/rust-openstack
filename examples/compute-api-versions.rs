@@ -31,7 +31,7 @@ fn main() {
 
     let version_choice = vec![KILO, LIBERTY, MITAKA, NEWTON, OCATA];
     let version = session.negotiate_api_version::<openstack::compute::ServiceType>(
-        openstack::ApiVersionRequest::Choice(version_choice)
+        openstack::session::ApiVersionRequest::Choice(version_choice)
     ).expect("Unable to negotiation any Compute API version");
 
     match version {

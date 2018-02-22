@@ -23,9 +23,9 @@ use reqwest::Url;
 use reqwest::header::Headers;
 use serde::Serialize;
 
-use super::{Error, Result, ApiVersion, ApiVersionRequest};
+use super::{Error, Result, ApiVersion};
 use super::auth::AuthMethod;
-use super::session::Session;
+use super::session::{ApiVersionRequest, Session};
 use super::utils::Query;
 
 
@@ -190,7 +190,8 @@ impl<'session, T> FallibleIterator for ResourceIterator<'session, T>
 pub mod test {
     use reqwest::Url;
 
-    use super::super::{ApiVersion, ApiVersionRequest};
+    use super::super::ApiVersion;
+    use super::super::session::ApiVersionRequest;
     use super::ServiceInfo;
 
     fn service_info(min: Option<u16>, max: Option<u16>) -> ServiceInfo {

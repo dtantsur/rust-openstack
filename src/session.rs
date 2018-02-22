@@ -22,7 +22,7 @@ use reqwest::header::{Header, Headers};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-use super::{Error, ErrorKind, Result, ApiVersion, ApiVersionRequest, Cloud};
+use super::{Error, ErrorKind, Result, ApiVersion, Cloud};
 use super::auth::AuthMethod;
 use super::service::{ApiVersioning, ServiceInfo, ServiceType};
 use super::utils;
@@ -115,6 +115,27 @@ pub struct Session {
     cached_info: utils::MapCache<&'static str, ServiceInfo>,
     api_versions: HashMap<&'static str, ApiVersion>,
     endpoint_interface: String
+}
+
+/// A request for negotiating an API version.
+#[derive(Debug, Clone)]
+pub enum ApiVersionRequest {
+    /// Minimum possible version (usually the default).
+    Minimum,
+    /// Latest version.
+    ///
+    /// This may result in an incompatible version, so it is always recommended
+    /// to use LatestFrom or Choice instead.
+    Latest,
+    /// Latest version from the given range.
+    LatestFrom(ApiVersion, ApiVersion),
+    /// Specified version.
+    ///
+    /// This is a very inflexible approach, and is only recommended when the
+    /// application can work with one and only one version.
+    Exact(ApiVersion),
+    /// Choice between several versions.
+    Choice(Vec<ApiVersion>)
 }
 
 
