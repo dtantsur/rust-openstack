@@ -57,6 +57,8 @@ opaque_resource_type!(#[doc = "An ID of a `Flavor`"] FlavorRef);
 
 opaque_resource_type!(#[doc = "An ID of an `Image`"] ImageRef);
 
+opaque_resource_type!(#[doc = "An ID of a `Network`"] NetworkRef);
+
 opaque_resource_type!(#[doc = "An ID of a `Project`"] ProjectRef);
 
 opaque_resource_type!(#[doc = "An ID of a `User`"] UserRef);

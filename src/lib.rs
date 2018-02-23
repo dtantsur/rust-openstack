@@ -181,6 +181,8 @@ pub mod compute;
 mod identity;
 #[cfg(feature = "image")]
 pub mod image;
+#[cfg(feature = "network")]
+pub mod network;
 pub mod service;
 pub mod session;
 pub mod types;

@@ -25,6 +25,8 @@ use super::compute::{Flavor, FlavorQuery, FlavorSummary,
                      Server, ServerQuery, ServerSummary};
 #[cfg(feature = "image")]
 use super::image::{Image, ImageQuery};
+#[cfg(feature = "network")]
+use super::network::{Network, NetworkQuery};
 use super::session::Session;
 #[allow(unused_imports)]
 use super::utils::ResultExt;
@@ -92,6 +94,15 @@ impl Cloud {
     #[cfg(feature = "image")]
     pub fn find_images(&self) -> ImageQuery {
         ImageQuery::new(&self.session)
+    }
+
+    /// Build a query against network list.
+    ///
+    /// The returned object is a builder that should be used to construct
+    /// the query.
+    #[cfg(feature = "network")]
+    pub fn find_networks(&self) -> NetworkQuery {
+        NetworkQuery::new(&self.session)
     }
 
     /// Build a query against server list.
@@ -170,6 +181,25 @@ impl Cloud {
         })
     }
 
+    /// Find an network by its name or ID.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
+    /// let os = openstack::Cloud::new(auth);
+    /// let server = os.get_network("centos7").expect("Unable to get a network");
+    /// ```
+    #[cfg(feature = "network")]
+    pub fn get_network<Id: Into<String>>(&self, id_or_name: Id) -> Result<Network> {
+        let s = id_or_name.into();
+        Network::new(&self.session, &s).if_not_found_then(|| {
+            self.find_networks().with_name(s).one()
+        })
+    }
+
     /// Find a server by its name or ID.
     ///
     /// # Example
@@ -242,6 +272,26 @@ impl Cloud {
     #[cfg(feature = "image")]
     pub fn list_images(&self) -> Result<Vec<Image>> {
         self.find_images().all()
+    }
+
+    /// List all networks.
+    ///
+    /// This call can yield a lot of results, use the
+    /// [find_networks](#method.find_networks) call to limit the number of
+    /// networks to receive.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
+    /// let os = openstack::Cloud::new(auth);
+    /// let server_list = os.list_networks().expect("Unable to fetch networks");
+    /// ```
+    #[cfg(feature = "network")]
+    pub fn list_networks(&self) -> Result<Vec<Network>> {
+        self.find_networks().all()
     }
 
     /// List all servers.

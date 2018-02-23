@@ -14,9 +14,10 @@ categories = ["api-bindings"]
 
 [features]
 
-default = ["compute", "image"]
+default = ["compute", "image", "network"]
 compute = []
 image = []
+network = []
 
 [dependencies]
 
