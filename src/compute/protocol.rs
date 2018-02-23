@@ -121,9 +121,9 @@ pub struct ServerAddress {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Server {
-    #[serde(deserialize_with = "utils::empty_as_none")]
+    #[serde(deserialize_with = "utils::empty_as_none", default)]
     pub accessIPv4: Option<Ipv4Addr>,
-    #[serde(deserialize_with = "utils::empty_as_none")]
+    #[serde(deserialize_with = "utils::empty_as_none", default)]
     pub accessIPv6: Option<Ipv6Addr>,
     #[serde(default)]
     pub addresses: HashMap<String, Vec<ServerAddress>>,
@@ -132,7 +132,7 @@ pub struct Server {
     pub created: DateTime<FixedOffset>,
     // TODO(dtantsur): flavor
     pub id: String,
-    #[serde(deserialize_with = "utils::empty_as_none")]
+    #[serde(deserialize_with = "utils::empty_as_none", default)]
     pub image: Option<common::protocol::Ref>,
     pub name: String,
     pub status: ServerStatus,

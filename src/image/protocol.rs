@@ -95,19 +95,26 @@ impl Default for ImageSortKey {
 /// An image.
 #[derive(Debug, Clone, Deserialize)]
 pub struct Image {
+    #[serde(default)]
     pub architecture: Option<String>,
+    #[serde(default)]
     pub checksum: Option<String>,
+    #[serde(default)]
     pub container_format: Option<ImageContainerFormat>,
     pub created_at: DateTime<FixedOffset>,
-    #[serde(deserialize_with = "utils::deser_optional_url")]
+    #[serde(deserialize_with = "utils::deser_optional_url", default)]
     pub direct_url: Option<Url>,
+    #[serde(default)]
     pub disk_format: Option<ImageDiskFormat>,
     pub id: String,
     pub name: String,
+    #[serde(default)]
     pub size: Option<u64>,
     pub status: ImageStatus,
     pub updated_at: DateTime<FixedOffset>,
+    #[serde(default)]
     pub virtual_size: Option<u64>,
+    #[serde(default)]
     pub visibility: Option<ImageVisibility>
 }
 
