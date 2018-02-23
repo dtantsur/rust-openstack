@@ -418,9 +418,9 @@ pub mod protocol {
         pub id: String,
         pub links: Vec<Link>,
         pub status: String,
-        #[serde(deserialize_with = "utils::empty_as_none")]
+        #[serde(deserialize_with = "utils::empty_as_none", default)]
         pub version: Option<ApiVersion>,
-        #[serde(deserialize_with = "utils::empty_as_none")]
+        #[serde(deserialize_with = "utils::empty_as_none", default)]
         pub min_version: Option<ApiVersion>
     }
 
@@ -475,7 +475,12 @@ pub fn fetch_service_info(endpoint: Url, auth: &AuthMethod,
                 Ok(ver) => ver.version.into_service_info(),
                 Err(..) => {
                     // Second, assume it's a root URL.
-                    let vers = resp.json::<protocol::VersionsRoot>()?;
+                    let vers = serde_json::from_str::<protocol::VersionsRoot>(&body)
+                        .map_err(|e| {
+                            let msg = format!("Malformed version root of the {} service: {}",
+                                              service_type, e);
+                            Error::new(ErrorKind::InvalidResponse, msg)
+                        })?;
                     match vers.versions.into_iter().find(|x| &x.id == major_version) {
                         Some(ver) => ver.into_service_info(),
                         None => Err(Error::new_endpoint_not_found(service_type))
