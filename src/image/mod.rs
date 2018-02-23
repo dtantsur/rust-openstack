@@ -15,7 +15,9 @@
 //! Image API implementation bits.
 
 mod base;
+mod images;
 mod protocol;
 
 pub use self::protocol::{ImageContainerFormat, ImageDiskFormat,
-                         ImageVisibility, ImageStatus};
+                         ImageVisibility, ImageSortKey, ImageStatus};
+pub use self::images::{Image, ImageQuery};

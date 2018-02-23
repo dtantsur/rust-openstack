@@ -76,9 +76,24 @@ protocol_enum! {
     }
 }
 
+protocol_enum! {
+    #[doc = "Available sort keys."]
+    enum ImageSortKey {
+        CreatedAt = "created_at",
+        Id = "id",
+        Name = "name",
+        UpdatedAt = "updated_at"
+    }
+}
+
+impl Default for ImageSortKey {
+    fn default() -> ImageSortKey {
+        ImageSortKey::CreatedAt
+    }
+}
 
 /// An image.
-#[derive(Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Image {
     pub architecture: Option<String>,
     pub checksum: Option<String>,
@@ -94,4 +109,10 @@ pub struct Image {
     pub updated_at: DateTime<FixedOffset>,
     pub virtual_size: Option<u64>,
     pub visibility: Option<ImageVisibility>
+}
+
+/// A list of images.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ImagesRoot {
+    pub images: Vec<Image>
 }

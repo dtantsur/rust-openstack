@@ -23,6 +23,8 @@ use super::auth::AuthMethod;
 #[cfg(feature = "compute")]
 use super::compute::{Flavor, FlavorQuery, FlavorSummary,
                      Server, ServerQuery, ServerSummary};
+#[cfg(feature = "image")]
+use super::image::{Image, ImageQuery};
 use super::session::Session;
 #[allow(unused_imports)]
 use super::utils::ResultExt;
@@ -235,6 +237,54 @@ impl Cloud {
     #[cfg(feature = "compute")]
     pub fn list_flavors(&self) -> Result<Vec<FlavorSummary>> {
         self.find_flavors().all()
+    }
+
+    /// Find an image by its name or ID.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
+    /// let os = openstack::Cloud::new(auth);
+    /// let server = os.get_image("centos7").expect("Unable to get a image");
+    /// ```
+    #[cfg(feature = "image")]
+    pub fn get_image<Id: Into<String>>(&self, id_or_name: Id) -> Result<Image> {
+        let s = id_or_name.into();
+        Image::new(&self.session, &s).if_not_found_then(|| {
+            self.find_images().with_name(s).one()
+        })
+    }
+
+    /// Build a query against image list.
+    ///
+    /// The returned object is a builder that should be used to construct
+    /// the query.
+    #[cfg(feature = "image")]
+    pub fn find_images(&self) -> ImageQuery {
+        ImageQuery::new(&self.session)
+    }
+
+    /// List all images.
+    ///
+    /// This call can yield a lot of results, use the
+    /// [find_images](#method.find_images) call to limit the number of
+    /// images to receive.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
+    /// let os = openstack::Cloud::new(auth);
+    /// let server_list = os.list_images().expect("Unable to fetch images");
+    /// ```
+    #[cfg(feature = "image")]
+    pub fn list_images(&self) -> Result<Vec<Image>> {
+        self.find_images().all()
     }
 }
 

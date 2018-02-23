@@ -14,12 +14,28 @@
 
 //! Foundation bits exposing the Image API.
 
-use reqwest::Url;
+use std::fmt::Debug;
+
+use reqwest::{Method, Url};
+use serde::Serialize;
 
 use super::super::Result;
 use super::super::auth::AuthMethod;
 use super::super::common;
 use super::super::service::{ServiceInfo, ServiceType};
+use super::super::session::Session;
+use super::protocol;
+
+
+/// Extensions for Session.
+pub trait V2API {
+    /// Get a image.
+    fn get_image<S: AsRef<str>>(&self, id: S) -> Result<protocol::Image>;
+
+    /// List images.
+    fn list_images<Q: Serialize + Debug>(&self, query: &Q)
+        -> Result<Vec<protocol::Image>>;
+}
 
 
 /// Service type of Image API V2.
@@ -30,6 +46,26 @@ pub struct V2;
 const SERVICE_TYPE: &'static str = "image";
 // FIXME(dtantsur): detect versions instead of hardcoding Kilo.
 const VERSION_ID: &'static str = "v2.3";
+
+
+impl V2API for Session {
+    fn get_image<S: AsRef<str>>(&self, id: S) -> Result<protocol::Image> {
+        trace!("Get image {}", id.as_ref());
+        let image = self.request::<V2>(Method::Get, &["images", id.as_ref()])?
+           .receive_json::<protocol::Image>()?;
+        trace!("Received {:?}", image);
+        Ok(image)
+    }
+
+    fn list_images<Q: Serialize + Debug>(&self, query: &Q)
+            -> Result<Vec<protocol::Image>> {
+        trace!("Listing images with {:?}", query);
+        let result = self.request::<V2>(Method::Get, &["images"])?
+           .query(query).receive_json::<protocol::ImagesRoot>()?.images;
+        trace!("Received images: {:?}", result);
+        Ok(result)
+    }
+}
 
 
 impl ServiceType for V2 {
