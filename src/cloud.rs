@@ -89,14 +89,108 @@ impl Cloud {
         &self.session
     }
 
+    /// Extract the `Session` object, destroying this `Cloud`.
+    pub fn into_session(self) -> Session {
+        self.session
+    }
+
     /// Refresh this `Cloud` object (renew token, refetch service catalog, etc).
     pub fn refresh(&mut self) -> Result<()> {
         self.session.auth_method_mut().refresh()
     }
 
-    /// Extract the `Session` object, destroying this `Cloud`.
-    pub fn into_session(self) -> Session {
-        self.session
+    /// Build a query against flavor list.
+    ///
+    /// The returned object is a builder that should be used to construct
+    /// the query.
+    #[cfg(feature = "compute")]
+    pub fn find_flavors(&self) -> FlavorQuery {
+        FlavorQuery::new(&self.session)
+    }
+
+    /// Build a query against image list.
+    ///
+    /// The returned object is a builder that should be used to construct
+    /// the query.
+    #[cfg(feature = "image")]
+    pub fn find_images(&self) -> ImageQuery {
+        ImageQuery::new(&self.session)
+    }
+
+    /// Build a query against server list.
+    ///
+    /// The returned object is a builder that should be used to construct
+    /// the query.
+    ///
+    /// # Example
+    ///
+    /// Sorting servers by `access_ip_v4` and getting first 5 results:
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
+    /// let os = openstack::Cloud::new(auth);
+    /// let sorting = openstack::compute::ServerSortKey::AccessIpv4;
+    /// let server_list = os.find_servers()
+    ///     .sort_by(openstack::Sort::Asc(sorting)).with_limit(5)
+    ///     .all().expect("Unable to fetch servers");
+    /// ```
+    #[cfg(feature = "compute")]
+    pub fn find_servers(&self) -> ServerQuery {
+        ServerQuery::new(&self.session)
+    }
+
+    /// Find a flavor by its name or ID.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
+    /// let os = openstack::Cloud::new(auth);
+    /// let server = os.get_flavor("m1.medium").expect("Unable to get a flavor");
+    /// ```
+    #[cfg(feature = "compute")]
+    pub fn get_flavor<Id: Into<String>>(&self, id_or_name: Id) -> Result<Flavor> {
+        let s = id_or_name.into();
+        Flavor::new(&self.session, &s).if_not_found_then(|| {
+            self.find_flavors().into_iter()
+                .filter(|item| item.name() == &s).take(2)
+                .collect::<Vec<FlavorSummary>>().and_then(|mut items| {
+                    if items.len() > 1 {
+                        Err(Error::new(ErrorKind::TooManyItems,
+                                       "Too many flavors with this name"))
+                    } else {
+                        match items.pop() {
+                            Some(item) => item.details(),
+                            None => Err(Error::new(
+                                ErrorKind::ResourceNotFound,
+                                "No flavors with this name or ID"))
+                        }
+                    }
+                })
+        })
+    }
+
+    /// Find an image by its name or ID.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
+    /// let os = openstack::Cloud::new(auth);
+    /// let server = os.get_image("centos7").expect("Unable to get a image");
+    /// ```
+    #[cfg(feature = "image")]
+    pub fn get_image<Id: Into<String>>(&self, id_or_name: Id) -> Result<Image> {
+        let s = id_or_name.into();
+        Image::new(&self.session, &s).if_not_found_then(|| {
+            self.find_images().with_name(s).one()
+        })
     }
 
     /// Find a server by its name or ID.
@@ -133,92 +227,6 @@ impl Cloud {
         })
     }
 
-    /// Build a query against server list.
-    ///
-    /// The returned object is a builder that should be used to construct
-    /// the query.
-    ///
-    /// # Example
-    ///
-    /// Sorting servers by `access_ip_v4` and getting first 5 results:
-    ///
-    /// ```rust,no_run
-    /// use openstack;
-    ///
-    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
-    /// let os = openstack::Cloud::new(auth);
-    /// let sorting = openstack::compute::ServerSortKey::AccessIpv4;
-    /// let server_list = os.find_servers()
-    ///     .sort_by(openstack::Sort::Asc(sorting)).with_limit(5)
-    ///     .all().expect("Unable to fetch servers");
-    /// ```
-    #[cfg(feature = "compute")]
-    pub fn find_servers(&self) -> ServerQuery {
-        ServerQuery::new(&self.session)
-    }
-
-    /// List all servers.
-    ///
-    /// This call can yield a lot of results, use the
-    /// [find_servers](#method.find_servers) call to limit the number of
-    /// servers to receive.
-    ///
-    /// # Example
-    ///
-    /// ```rust,no_run
-    /// use openstack;
-    ///
-    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
-    /// let os = openstack::Cloud::new(auth);
-    /// let server_list = os.list_servers().expect("Unable to fetch servers");
-    /// ```
-    #[cfg(feature = "compute")]
-    pub fn list_servers(&self) -> Result<Vec<ServerSummary>> {
-        self.find_servers().all()
-    }
-
-    /// Find a flavor by its name or ID.
-    ///
-    /// # Example
-    ///
-    /// ```rust,no_run
-    /// use openstack;
-    ///
-    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
-    /// let os = openstack::Cloud::new(auth);
-    /// let server = os.get_flavor("m1.medium").expect("Unable to get a flavor");
-    /// ```
-    #[cfg(feature = "compute")]
-    pub fn get_flavor<Id: Into<String>>(&self, id_or_name: Id) -> Result<Flavor> {
-        let s = id_or_name.into();
-        Flavor::new(&self.session, &s).if_not_found_then(|| {
-            self.find_flavors().into_iter()
-                .filter(|item| item.name() == &s).take(2)
-                .collect::<Vec<FlavorSummary>>().and_then(|mut items| {
-                    if items.len() > 1 {
-                        Err(Error::new(ErrorKind::TooManyItems,
-                                       "Too many flavors with this name"))
-                    } else {
-                        match items.pop() {
-                            Some(item) => item.details(),
-                            None => Err(Error::new(
-                                ErrorKind::ResourceNotFound,
-                                "No flavors with this name or ID"))
-                        }
-                    }
-                })
-        })
-    }
-
-    /// Build a query against flavor list.
-    ///
-    /// The returned object is a builder that should be used to construct
-    /// the query.
-    #[cfg(feature = "compute")]
-    pub fn find_flavors(&self) -> FlavorQuery {
-        FlavorQuery::new(&self.session)
-    }
-
     /// List all flavors.
     ///
     /// This call can yield a lot of results, use the
@@ -239,34 +247,6 @@ impl Cloud {
         self.find_flavors().all()
     }
 
-    /// Find an image by its name or ID.
-    ///
-    /// # Example
-    ///
-    /// ```rust,no_run
-    /// use openstack;
-    ///
-    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
-    /// let os = openstack::Cloud::new(auth);
-    /// let server = os.get_image("centos7").expect("Unable to get a image");
-    /// ```
-    #[cfg(feature = "image")]
-    pub fn get_image<Id: Into<String>>(&self, id_or_name: Id) -> Result<Image> {
-        let s = id_or_name.into();
-        Image::new(&self.session, &s).if_not_found_then(|| {
-            self.find_images().with_name(s).one()
-        })
-    }
-
-    /// Build a query against image list.
-    ///
-    /// The returned object is a builder that should be used to construct
-    /// the query.
-    #[cfg(feature = "image")]
-    pub fn find_images(&self) -> ImageQuery {
-        ImageQuery::new(&self.session)
-    }
-
     /// List all images.
     ///
     /// This call can yield a lot of results, use the
@@ -285,6 +265,26 @@ impl Cloud {
     #[cfg(feature = "image")]
     pub fn list_images(&self) -> Result<Vec<Image>> {
         self.find_images().all()
+    }
+
+    /// List all servers.
+    ///
+    /// This call can yield a lot of results, use the
+    /// [find_servers](#method.find_servers) call to limit the number of
+    /// servers to receive.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
+    /// let os = openstack::Cloud::new(auth);
+    /// let server_list = os.list_servers().expect("Unable to fetch servers");
+    /// ```
+    #[cfg(feature = "compute")]
+    pub fn list_servers(&self) -> Result<Vec<ServerSummary>> {
+        self.find_servers().all()
     }
 }
 
