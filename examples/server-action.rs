@@ -36,6 +36,9 @@ fn main() {
             .wait().expect("Failed to reach ACTIVE"),
         "stop" => server.stop().expect("Cannot power off the server")
             .wait().expect("Failed to reach SHUTOFF"),
+        "reboot" => server.reboot(openstack::compute::RebootType::Soft)
+            .expect("Cannot reboot the server")
+            .wait().expect("Failed to reach ACTIVE"),
         "delete" => server.delete().expect("Cannot delete the server")
             .wait().expect("Failed to delete the server"),
         _ => panic!("Unknown action, supported are 'start' and 'stop'")

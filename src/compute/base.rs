@@ -45,7 +45,12 @@ pub trait V2API {
 
     /// Run an action on the server.
     fn server_simple_action<S1, S2>(&self, id: S1, action: S2) -> Result<()>
-        where S1: AsRef<str>, S2: AsRef<str>;
+            where S1: AsRef<str>, S2: AsRef<str> {
+        self.server_action_with_args(id, action, serde_json::Value::Null)
+    }
+
+    fn server_action_with_args<S1, S2, Q>(&self, id: S1, action: S2, args: Q)
+        -> Result<()> where S1: AsRef<str>, S2: AsRef<str>, Q: Serialize + Debug;
 
     /// Delete a server.
     fn delete_server<S: AsRef<str>>(&self, id: S) -> Result<()>;
@@ -97,11 +102,13 @@ impl V2API for Session {
         Ok(result)
     }
 
-    fn server_simple_action<S1, S2>(&self, id: S1, action: S2) -> Result<()>
-            where S1: AsRef<str>, S2: AsRef<str> {
-        trace!("Running {} on server {}", action.as_ref(), id.as_ref());
+    fn server_action_with_args<S1, S2, Q>(&self, id: S1, action: S2, args: Q)
+            -> Result<()>
+            where S1: AsRef<str>, S2: AsRef<str>, Q: Serialize + Debug {
+        trace!("Running {} on server {} with args {:?}",
+               action.as_ref(), id.as_ref(), args);
         let mut body = HashMap::new();
-        let _ = body.insert(action.as_ref(), serde_json::Value::Null);
+        let _ = body.insert(action.as_ref(), args);
         let _ = self.request::<V2>(Method::Post,
                                    &["servers", id.as_ref(), "action"])?
             .json(&body).send()?;

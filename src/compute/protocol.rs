@@ -99,6 +99,14 @@ protocol_enum! {
 }
 
 protocol_enum! {
+    #[doc = "Reboot type."]
+    enum RebootType {
+        Hard = "HARD",
+        Soft = "SOFT"
+    }
+}
+
+protocol_enum! {
     #[doc = "Type of a server address."]
     enum AddressType {
         Fixed = "fixed",

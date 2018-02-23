@@ -159,6 +159,25 @@ impl<'session> Server<'session> {
         &self.inner.updated
     }
 
+    /// Delete the server.
+    pub fn delete(self) -> Result<ServerDeletionWaiter<'session>> {
+        self.session.delete_server(&self.inner.id)?;
+        Ok(ServerDeletionWaiter {
+            server: self
+        })
+    }
+
+    /// Reboot the server.
+    pub fn reboot(&'session mut self, reboot_type: protocol::RebootType) -> Result<ServerStatusWaiter<'session>> {
+        let mut args = HashMap::new();
+        let _ = args.insert("type", reboot_type);
+        self.session.server_action_with_args(&self.inner.id, "reboot", args)?;
+        Ok(ServerStatusWaiter {
+            server: self,
+            target: protocol::ServerStatus::Active
+        })
+    }
+
     /// Start the server, optionally wait for it to be active.
     pub fn start(&'session mut self) -> Result<ServerStatusWaiter<'session>> {
         self.session.server_simple_action(&self.inner.id, "os-start")?;
@@ -174,14 +193,6 @@ impl<'session> Server<'session> {
         Ok(ServerStatusWaiter {
             server: self,
             target: protocol::ServerStatus::ShutOff
-        })
-    }
-
-    /// Delete the server.
-    pub fn delete(self) -> Result<ServerDeletionWaiter<'session>> {
-        self.session.delete_server(&self.inner.id)?;
-        Ok(ServerDeletionWaiter {
-            server: self
         })
     }
 }
@@ -223,7 +234,7 @@ impl<'server> Waiter<()> for ServerStatusWaiter<'server> {
                                    self.server.id())))
         } else {
             trace!("Still waiting for server {} to get to state {}, current is {}",
-                   self.server.id(), self.server.status(), self.target);
+                   self.server.id(), self.target, self.server.status());
             Ok(None)
         }
     }
