@@ -43,7 +43,7 @@ fn main() {
         _ => unreachable!()
     }
 
-    openstack::Cloud::new_with_session(session).list_servers()
+    openstack::Cloud::from(session).list_servers()
         .expect(&format!("Cannot list servers with API version {}", version));
 }
 

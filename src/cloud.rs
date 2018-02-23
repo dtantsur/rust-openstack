@@ -53,26 +53,8 @@ impl Cloud {
     /// let os = openstack::Cloud::new(auth);
     /// ```
     pub fn new<Auth: AuthMethod + 'static>(auth_method: Auth) -> Cloud {
-        Cloud::new_with_session(Session::new(auth_method))
-    }
-
-    /// Create a new cloud object with a given session.
-    ///
-    /// This constructor can be used to modify `Session` parameters before
-    /// using it in the `Cloud` object. This is an advanced feature and
-    /// should generally be avoided.
-    ///
-    /// # Example
-    ///
-    /// ```rust,no_run
-    /// use openstack;
-    ///
-    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
-    /// let session = openstack::session::Session::new(auth);
-    /// let os = openstack::Cloud::new_with_session(session);
-    pub fn new_with_session(session: Session) -> Cloud {
         Cloud {
-            session: session
+            session: Session::new(auth_method)
         }
     }
 
@@ -84,14 +66,14 @@ impl Cloud {
         }
     }
 
-    /// `Session` used with this `Cloud` object.
-    pub fn session(&self) -> &Session {
-        &self.session
-    }
-
     /// Refresh this `Cloud` object (renew token, refetch service catalog, etc).
     pub fn refresh(&mut self) -> Result<()> {
         self.session.auth_method_mut().refresh()
+    }
+
+    /// `Session` used with this `Cloud` object.
+    pub fn session(&self) -> &Session {
+        &self.session
     }
 
     /// Build a query against flavor list.
@@ -286,7 +268,9 @@ impl Cloud {
 
 impl From<Session> for Cloud {
     fn from(value: Session) -> Cloud {
-        Cloud::new_with_session(value)
+        Cloud {
+            session: value
+        }
     }
 }
 
