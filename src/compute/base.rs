@@ -113,7 +113,7 @@ impl V2API for Session {
         trace!("Deleting server {}", id.as_ref());
         let _ = self.request::<V2>(Method::Delete, &["servers", id.as_ref()])?
             .send()?;
-        debug!("Deleted server {}", id.as_ref());
+        trace!("Successfully requested deletion of server {}", id.as_ref());
         Ok(())
     }
 
