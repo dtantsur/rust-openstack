@@ -22,7 +22,7 @@ use reqwest::header::{Header, Headers};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-use super::{Error, ErrorKind, Result, ApiVersion, Cloud};
+use super::{Error, ErrorKind, Result, ApiVersion};
 use super::auth::AuthMethod;
 use super::service::{ApiVersioning, ServiceInfo, ServiceType};
 use super::utils;
@@ -261,12 +261,6 @@ impl Session {
             -> Result<Ref<ServiceInfo>> where Srv: ServiceType {
         self.ensure_service_info::<Srv>()?;
         Ok(self.cached_info.get_ref(&Srv::catalog_type()).unwrap())
-    }
-}
-
-impl From<Cloud> for Session {
-    fn from(value: Cloud) -> Session {
-        value.into_session()
     }
 }
 

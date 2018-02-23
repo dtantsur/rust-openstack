@@ -89,11 +89,6 @@ impl Cloud {
         &self.session
     }
 
-    /// Extract the `Session` object, destroying this `Cloud`.
-    pub fn into_session(self) -> Session {
-        self.session
-    }
-
     /// Refresh this `Cloud` object (renew token, refetch service catalog, etc).
     pub fn refresh(&mut self) -> Result<()> {
         self.session.auth_method_mut().refresh()
@@ -292,5 +287,11 @@ impl Cloud {
 impl From<Session> for Cloud {
     fn from(value: Session) -> Cloud {
         Cloud::new_with_session(value)
+    }
+}
+
+impl From<Cloud> for Session {
+    fn from(value: Cloud) -> Session {
+        value.session
     }
 }
