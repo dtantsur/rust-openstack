@@ -32,6 +32,7 @@ fn main() {
     println!("ID = {}, Name = {}, Status = {:?}, Power = {:?}",
              server.id(), server.name(), server.status(), server.power_state());
     println!("Links: image = {:?}", server.image_id());
+    println!("Floating IP: {:?}", server.floating_ip());
 }
 
 #[cfg(not(feature = "compute"))]

@@ -16,7 +16,7 @@
 
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::net::{Ipv4Addr, Ipv6Addr};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::time::Duration;
 
 use chrono::{DateTime, FixedOffset};
@@ -115,6 +115,16 @@ impl<'session> Server<'session> {
     /// Get a reference to creation date and time.
     pub fn created_at(&self) -> &DateTime<FixedOffset> {
         &self.inner.created
+    }
+
+    /// Find a floating IP, if it exists.
+    ///
+    /// If multiple floating IPs exist, the first is returned.
+    pub fn floating_ip(&self) -> Option<IpAddr> {
+        self.inner.addresses.values()
+            .flat_map(|l| l.iter())
+            .filter(|a| a.addr_type == Some(protocol::AddressType::Floating))
+            .map(|a| a.addr).next()
     }
 
     /// Get a reference to server unique ID.
