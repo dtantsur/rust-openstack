@@ -168,6 +168,7 @@ impl<'session> FlavorQuery<'session> {
     ///
     /// Note that no requests are done until you start iterating.
     pub fn into_iter(self) -> ResourceIterator<'session, FlavorSummary<'session>> {
+        debug!("Fetching flavors with {:?}", self.query);
         ResourceIterator::new(self.session, self.query)
     }
 
@@ -181,6 +182,7 @@ impl<'session> FlavorQuery<'session> {
     ///
     /// Note that no requests are done until you start iterating.
     pub fn into_iter_detailed(self) -> ResourceIterator<'session, Flavor<'session>> {
+        debug!("Fetching flavor details with {:?}", self.query);
         ResourceIterator::new(self.session, self.query)
     }
 
@@ -196,6 +198,7 @@ impl<'session> FlavorQuery<'session> {
     /// Fails with `ResourceNotFound` if the query produces no results and
     /// with `TooManyItems` if the query produces more than one result.
     pub fn one(mut self) -> Result<FlavorSummary<'session>> {
+        debug!("Fetching one flavor with {:?}", self.query);
         if self.can_paginate {
             // We need only one result. We fetch maximum two to be able
             // to check if the query yieled more than one result.

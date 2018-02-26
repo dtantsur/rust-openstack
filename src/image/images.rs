@@ -197,6 +197,7 @@ impl<'session> ImageQuery<'session> {
         if ! self.sort.is_empty() {
             self.query.push_str("sort", self.sort.join(","));
         }
+        debug!("Fetching images with {:?}", self.query);
         ResourceIterator::new(self.session, self.query)
     }
 
@@ -212,6 +213,7 @@ impl<'session> ImageQuery<'session> {
     /// Fails with `ResourceNotFound` if the query produces no results and
     /// with `TooManyItems` if the query produces more than one result.
     pub fn one(mut self) -> Result<Image<'session>> {
+        debug!("Fetching one image with {:?}", self.query);
         if self.can_paginate {
             // We need only one result. We fetch maximum two to be able
             // to check if the query yieled more than one result.

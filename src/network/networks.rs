@@ -130,6 +130,7 @@ impl<'session> NetworkQuery<'session> {
     ///
     /// Note that no requests are done until you start iterating.
     pub fn into_iter(self) -> ResourceIterator<'session, Network<'session>> {
+        debug!("Fetching networks with {:?}", self.query);
         ResourceIterator::new(self.session, self.query)
     }
 
@@ -145,6 +146,7 @@ impl<'session> NetworkQuery<'session> {
     /// Fails with `ResourceNotFound` if the query produces no results and
     /// with `TooManyItems` if the query produces more than one result.
     pub fn one(mut self) -> Result<Network<'session>> {
+        debug!("Fetching one network with {:?}", self.query);
         if self.can_paginate {
             // We need only one result. We fetch maximum two to be able
             // to check if the query yieled more than one result.

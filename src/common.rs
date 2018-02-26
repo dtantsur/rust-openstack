@@ -493,7 +493,8 @@ pub fn fetch_service_info(endpoint: Url, auth: &AuthMethod,
                 let _ = info.root_url.set_scheme("https").unwrap();
             }
 
-            info!("Received {:?} from {}", info, endpoint);
+            debug!("Received {:?} for {} service from {}",
+                   info, service_type, endpoint);
             Ok(info)
         },
         Err(ref e) if e.kind() == ErrorKind::ResourceNotFound => {

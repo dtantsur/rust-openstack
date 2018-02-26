@@ -421,6 +421,7 @@ impl<'session> ServerQuery<'session> {
     ///
     /// Note that no requests are done until you start iterating.
     pub fn into_iter(self) -> ResourceIterator<'session, ServerSummary<'session>> {
+        debug!("Fetching servers with {:?}", self.query);
         ResourceIterator::new(self.session, self.query)
     }
 
@@ -434,6 +435,7 @@ impl<'session> ServerQuery<'session> {
     ///
     /// Note that no requests are done until you start iterating.
     pub fn into_iter_detailed(self) -> ResourceIterator<'session, Server<'session>> {
+        debug!("Fetching server details with {:?}", self.query);
         ResourceIterator::new(self.session, self.query)
     }
 
@@ -449,6 +451,7 @@ impl<'session> ServerQuery<'session> {
     /// Fails with `ResourceNotFound` if the query produces no results and
     /// with `TooManyItems` if the query produces more than one result.
     pub fn one(mut self) -> Result<ServerSummary<'session>> {
+        debug!("Fetching one server with {:?}", self.query);
         if self.can_paginate {
             // We need only one result. We fetch maximum two to be able
             // to check if the query yieled more than one result.

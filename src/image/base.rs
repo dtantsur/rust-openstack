@@ -50,7 +50,7 @@ const VERSION_ID: &'static str = "v2.3";
 
 impl V2API for Session {
     fn get_image<S: AsRef<str>>(&self, id: S) -> Result<protocol::Image> {
-        trace!("Get image {}", id.as_ref());
+        trace!("Fetching image {}", id.as_ref());
         let image = self.request::<V2>(Method::Get, &["images", id.as_ref()])?
            .receive_json::<protocol::Image>()?;
         trace!("Received {:?}", image);

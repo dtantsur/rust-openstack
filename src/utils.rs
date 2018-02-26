@@ -18,6 +18,7 @@
 
 use std::cell::{Ref, RefCell};
 use std::collections::HashMap;
+use std::fmt;
 use std::hash::Hash;
 
 use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
@@ -30,7 +31,7 @@ use super::{Error, ErrorKind, Result};
 
 
 /// Type of query parameters.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Query(pub Vec<(String, String)>);
 
 /// Cached clone-able value.
@@ -41,6 +42,12 @@ pub struct ValueCache<T: Clone>(RefCell<Option<T>>);
 #[derive(Debug, Clone)]
 pub struct MapCache<K: Hash + Eq, V: Clone>(RefCell<HashMap<K, V>>);
 
+
+impl fmt::Debug for Query {
+    fn fmt(&self, f: &mut fmt::Formatter) -> ::std::result::Result<(), fmt::Error> {
+        write!(f, "{:?}", self.0)
+    }
+}
 
 impl Query {
     /// Empty query.

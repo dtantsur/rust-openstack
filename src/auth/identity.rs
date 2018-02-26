@@ -229,7 +229,7 @@ impl PasswordAuth {
 
         let body = resp.json::<protocol::TokenRoot>()?.token;
 
-        info!("Received a token for user {} from {} expiring at {}",
+        debug!("Received a token for user {} from {} expiring at {}",
                self.body.auth.identity.password.user.name,
                self.token_endpoint, body.expires_at);
         trace!("Received catalog: {:?}", body.catalog);
@@ -296,7 +296,7 @@ impl AuthMethod for PasswordAuth {
         let endp = catalog::find_endpoint(&cat, &service_type,
                                           &real_interface,
                                           &self.region)?;
-        info!("Received {:?}", endp);
+        debug!("Received {:?} for {}", endp, service_type);
         Url::parse(&endp.url).map_err(|e| {
             error!("Invalid URL {} received from service catalog for service \
                    '{}', interface '{}' from region {:?}: {}",
