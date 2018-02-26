@@ -107,6 +107,10 @@ pub struct Image {
     #[serde(default)]
     pub disk_format: Option<ImageDiskFormat>,
     pub id: String,
+    #[serde(default)]
+    pub min_disk: u32,
+    #[serde(default)]
+    pub min_ram: u32,
     pub name: String,
     #[serde(default)]
     pub size: Option<u64>,
@@ -114,8 +118,7 @@ pub struct Image {
     pub updated_at: DateTime<FixedOffset>,
     #[serde(default)]
     pub virtual_size: Option<u64>,
-    #[serde(default)]
-    pub visibility: Option<ImageVisibility>
+    pub visibility: ImageVisibility
 }
 
 /// A list of images.

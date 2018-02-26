@@ -62,24 +62,78 @@ impl<'session> Image<'session> {
         Ok(())
     }
 
-    /// Get a reference to creation date and time.
-    pub fn created_at(&self) -> &DateTime<FixedOffset> {
-        &self.inner.created_at
+    transparent_property! {
+        #[doc = "Image architecture."]
+        architecture: ref Option<String>
     }
 
-    /// Get a reference to image unique ID.
-    pub fn id(&self) -> &String {
-        &self.inner.id
+    transparent_property! {
+        #[doc = "Checksum of the image."]
+        checksum: ref Option<String>
     }
 
-    /// Get a reference to image name.
-    pub fn name(&self) -> &String {
-        &self.inner.name
+    transparent_property! {
+        #[doc = "Container format."]
+        container_format: Option<protocol::ImageContainerFormat>
     }
 
-    /// Get a reference to last update date and time.
-    pub fn updated_at(&self) -> &DateTime<FixedOffset> {
-        &self.inner.updated_at
+    transparent_property! {
+        #[doc = "Creating date and time."]
+        created_at: ref DateTime<FixedOffset>
+    }
+
+    transparent_property! {
+        #[doc = "Disk format."]
+        disk_format: Option<protocol::ImageDiskFormat>
+    }
+
+    transparent_property! {
+        #[doc = "Unique ID."]
+        id: ref String
+    }
+
+    /// Minimum required disk size in GiB.
+    ///
+    /// Can be zero, if no requirements are known.
+    pub fn minimum_required_disk(&self) -> u32 {
+        self.inner.min_disk
+    }
+
+    /// Minimum required disk size in GiB, if set.
+    ///
+    /// Can be zero, if no requirements are known.
+    pub fn minimum_required_ram(&self) -> u32 {
+        self.inner.min_ram
+    }
+
+    transparent_property! {
+        #[doc = "Image name."]
+        name: ref String
+    }
+
+    transparent_property! {
+        #[doc = "Image size in bytes."]
+        size: Option<u64>
+    }
+
+    transparent_property! {
+        #[doc = "Image status."]
+        status: protocol::ImageStatus
+    }
+
+    transparent_property! {
+        #[doc = "Last update date and time."]
+        updated_at: ref DateTime<FixedOffset>
+    }
+
+    transparent_property! {
+        #[doc = "Virtual size of the image."]
+        virtual_size: Option<u64>
+    }
+
+    transparent_property! {
+        #[doc = "Image visibility."]
+        visibility: protocol::ImageVisibility
     }
 }
 
@@ -91,6 +145,13 @@ impl<'session> ImageQuery<'session> {
             can_paginate: true,
             sort: Vec::new()
         }
+    }
+
+    /// Add sorting to the request.
+    pub fn sort_by(mut self, sort: Sort<protocol::ImageSortKey>) -> Self {
+        let (field, direction) = sort.into();
+        self.sort.push(format!("{}:{}", field, direction));
+        self
     }
 
     /// Add marker to the request.
@@ -111,17 +172,19 @@ impl<'session> ImageQuery<'session> {
         self
     }
 
-    /// Add sorting to the request.
-    pub fn sort_by(mut self, sort: Sort<protocol::ImageSortKey>) -> Self {
-        let (field, direction) = sort.into();
-        self.sort.push(format!("{}:{}", field, direction));
-        self
+    query_filter! {
+        #[doc = "Filter by image name."]
+        with_name -> name
     }
 
-    /// Filter by image name (a database regular expression).
-    pub fn with_name<T: Into<String>>(mut self, value: T) -> Self {
-        self.query.push_str("name", value);
-        self
+    query_filter! {
+        #[doc = "Filter by image status."]
+        with_status -> status: protocol::ImageStatus
+    }
+
+    query_filter! {
+        #[doc = "Filter by visibility."]
+        with_visibility -> visibility: protocol::ImageVisibility
     }
 
     /// Convert this query into an iterator executing the request.

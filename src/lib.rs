@@ -77,6 +77,44 @@ extern crate serde_json;
 
 
 #[allow(unused_macros)]
+macro_rules! transparent_property {
+    ($(#[$attr:meta])* $name:ident: ref $type:ty) => (
+        $(#[$attr])*
+        pub fn $name(&self) -> &$type {
+            &self.inner.$name
+        }
+    );
+
+    ($(#[$attr:meta])* $name:ident: $type:ty) => (
+        $(#[$attr])*
+        pub fn $name(&self) -> $type {
+            self.inner.$name
+        }
+    );
+}
+
+
+#[allow(unused_macros)]
+macro_rules! query_filter {
+    ($(#[$attr:meta])* $func:ident -> $name:ident) => (
+        $(#[$attr])*
+        pub fn $func<T: Into<String>>(mut self, value: T) -> Self {
+            self.query.push_str(stringify!($name), value);
+            self
+        }
+    );
+
+    ($(#[$attr:meta])* $func:ident -> $name:ident: $type:ty) => (
+        $(#[$attr])*
+        pub fn $func(mut self, value: $type) -> Self {
+            self.query.push(stringify!($name), value);
+            self
+        }
+    );
+}
+
+
+#[allow(unused_macros)]
 macro_rules! protocol_enum {
     {$(#[$attr:meta])* enum $name:ident: $carrier:ty {
         $($item:ident = $val:expr),+

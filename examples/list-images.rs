@@ -26,15 +26,25 @@ fn main() {
     let identity = openstack::auth::from_env()
         .expect("Failed to create an identity provider from the environment");
     let os = openstack::Cloud::new(identity);
-    let sorting = openstack::image::ImageSortKey::Name;
 
-    let servers: Vec<openstack::image::Image> = os.find_images()
-        .sort_by(openstack::Sort::Asc(sorting))
+    let images: Vec<openstack::image::Image> = os.find_images()
+        .sort_by(openstack::Sort::Asc(openstack::image::ImageSortKey::Id))
         .into_iter().take(10).collect()
         .expect("Cannot list images");
     println!("First 10 images:");
-    for s in &servers {
-        println!("ID = {}, Name = {}", s.id(), s.name());
+    for img in &images {
+        println!("ID = {}, Name = {}, Status = {}, Visibility = {}",
+                 img.id(), img.name(), img.status(), img.visibility());
+    }
+
+    let mut public = os.find_images()
+        .sort_by(openstack::Sort::Asc(openstack::image::ImageSortKey::Name))
+        .with_visibility(openstack::image::ImageVisibility::Public)
+        .into_iter();
+    println!("All public images:");
+    while let Some(img) = public.next().unwrap() {
+        println!("ID = {}, Name = {}, Status = {}, Visibility = {}",
+                 img.id(), img.name(), img.status(), img.visibility());
     }
 }
 
