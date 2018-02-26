@@ -21,7 +21,7 @@ use serde::Serialize;
 
 use super::super::{Error, Result};
 use super::super::common;
-use super::super::service::{ListResources, ResourceId, ResourceIterator};
+use super::super::service::{ListResources, Refresh, ResourceId, ResourceIterator};
 use super::super::session::Session;
 use super::super::types::FlavorRef;
 use super::super::utils::{self, Query};
@@ -61,12 +61,6 @@ impl<'session> Flavor<'session> {
             session: session,
             inner: inner
         })
-    }
-
-    /// Refresh the server.
-    pub fn refresh(&mut self) -> Result<()> {
-        self.inner = self.session.get_flavor(&self.inner.id)?;
-        Ok(())
     }
 
     /// Get ephemeral disk size in GiB.
@@ -111,6 +105,14 @@ impl<'session> Flavor<'session> {
     /// Get VCPU count.
     pub fn vcpu_count(&self) -> u32 {
         self.inner.vcpus
+    }
+}
+
+impl<'session> Refresh for Flavor<'session> {
+    /// Refresh the flavor.
+    fn refresh(&mut self) -> Result<()> {
+        self.inner = self.session.get_flavor(&self.inner.id)?;
+        Ok(())
     }
 }
 

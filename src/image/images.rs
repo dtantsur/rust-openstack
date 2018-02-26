@@ -21,7 +21,7 @@ use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
 use serde::Serialize;
 
 use super::super::{Error, Result, Sort};
-use super::super::service::{ListResources, ResourceId, ResourceIterator};
+use super::super::service::{ListResources, Refresh, ResourceId, ResourceIterator};
 use super::super::session::Session;
 use super::super::types;
 use super::super::utils::{self, Query};
@@ -54,12 +54,6 @@ impl<'session> Image<'session> {
             session: session,
             inner: inner
         })
-    }
-
-    /// Refresh the image.
-    pub fn refresh(&mut self) -> Result<()> {
-        self.inner = self.session.get_image(&self.inner.id)?;
-        Ok(())
     }
 
     transparent_property! {
@@ -134,6 +128,14 @@ impl<'session> Image<'session> {
     transparent_property! {
         #[doc = "Image visibility."]
         visibility: protocol::ImageVisibility
+    }
+}
+
+impl<'session> Refresh for Image<'session> {
+    /// Refresh the image.
+    fn refresh(&mut self) -> Result<()> {
+        self.inner = self.session.get_image(&self.inner.id)?;
+        Ok(())
     }
 }
 

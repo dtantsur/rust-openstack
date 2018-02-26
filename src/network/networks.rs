@@ -21,7 +21,7 @@ use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
 use serde::Serialize;
 
 use super::super::{Error, Result, Sort};
-use super::super::service::{ListResources, ResourceId, ResourceIterator};
+use super::super::service::{ListResources, Refresh, ResourceId, ResourceIterator};
 use super::super::session::Session;
 use super::super::types;
 use super::super::utils::{self, Query};
@@ -55,12 +55,6 @@ impl<'session> Network<'session> {
         })
     }
 
-    /// Refresh the network.
-    pub fn refresh(&mut self) -> Result<()> {
-        self.inner = self.session.get_network(&self.inner.id)?;
-        Ok(())
-    }
-
     /// Get a reference to creation date and time.
     pub fn created_at(&self) -> &DateTime<FixedOffset> {
         &self.inner.created_at
@@ -79,6 +73,14 @@ impl<'session> Network<'session> {
     /// Get a reference to last update date and time.
     pub fn updated_at(&self) -> &DateTime<FixedOffset> {
         &self.inner.updated_at
+    }
+}
+
+impl<'session> Refresh for Network<'session> {
+    /// Refresh the network.
+    fn refresh(&mut self) -> Result<()> {
+        self.inner = self.session.get_network(&self.inner.id)?;
+        Ok(())
     }
 }
 
