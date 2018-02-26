@@ -16,6 +16,7 @@
 
 use std::cmp;
 use std::fmt::Debug;
+use std::time::Duration;
 use std::vec;
 
 use fallible_iterator::FallibleIterator;
@@ -23,7 +24,7 @@ use reqwest::Url;
 use reqwest::header::Headers;
 use serde::Serialize;
 
-use super::{Error, Result, ApiVersion};
+use super::{Error, ErrorKind, Result, ApiVersion, Waiter};
 use super::auth::AuthMethod;
 use super::session::{ApiVersionRequest, Session};
 use super::utils::Query;
@@ -101,6 +102,12 @@ impl ServiceInfo {
     }
 }
 
+/// Trait representing something that can be refreshed.
+pub trait Refresh {
+    /// Refresh the resource representation.
+    fn refresh(&mut self) -> Result<()>;
+}
+
 /// Trait representing something that has an ID.
 pub trait ResourceId {
     /// Identifier of the current resource.
@@ -125,6 +132,60 @@ pub struct ResourceIterator<'session, T> {
     cache: Option<vec::IntoIter<T>>,
     marker: Option<String>,
     can_paginate: bool,
+}
+
+/// Wait for resource deletion.
+#[derive(Debug)]
+pub struct DeletionWaiter<T> {
+    inner: T,
+    wait_timeout: Duration,
+    delay: Duration,
+}
+
+impl<T> DeletionWaiter<T> {
+    #[allow(dead_code)]  // unused with --no-default-features
+    pub(crate) fn new(inner: T, wait_timeout: Duration, delay: Duration)
+            -> DeletionWaiter<T> {
+        DeletionWaiter {
+            inner: inner,
+            wait_timeout: wait_timeout,
+            delay: delay,
+        }
+    }
+}
+
+impl<T: ResourceId + Refresh> Waiter<()> for DeletionWaiter<T> {
+    fn default_wait_timeout(&self) -> Option<Duration> {
+        Some(self.wait_timeout)
+    }
+
+    fn default_delay(&self) -> Duration {
+        self.delay
+    }
+
+    fn timeout_error_message(&self) -> String {
+        format!("Timeout waiting for resource {} to be deleted",
+                self.inner.resource_id())
+    }
+
+    fn poll(&mut self) -> Result<Option<()>> {
+        match self.inner.refresh() {
+            Ok(..) => {
+                trace!("Still waiting for resource {} to be deleted",
+                       self.inner.resource_id());
+                Ok(None)
+            },
+            Err(ref e) if e.kind() == ErrorKind::ResourceNotFound => {
+                debug!("Resource {} was deleted", self.inner.resource_id());
+                Ok(Some(()))
+            },
+            Err(e) => {
+                debug!("Failed to delete resource {} - {}",
+                       self.inner.resource_id(), e);
+                Err(e)
+            }
+        }
+    }
 }
 
 impl<'session, T> ResourceIterator<'session, T> {

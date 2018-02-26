@@ -25,7 +25,8 @@ use serde::Serialize;
 
 use super::super::{Error, ErrorKind, Result, Sort, Waiter};
 use super::super::common;
-use super::super::service::{ListResources, ResourceId, ResourceIterator};
+use super::super::service::{DeletionWaiter, ListResources, Refresh, ResourceId,
+                            ResourceIterator};
 use super::super::session::Session;
 use super::super::types;
 use super::super::utils::{self, Query};
@@ -62,12 +63,14 @@ pub struct ServerStatusWaiter<'server> {
     target: protocol::ServerStatus
 }
 
-/// Waiter for server deletion to happen.
-#[derive(Debug)]
-pub struct ServerDeletionWaiter<'session> {
-    server: Server<'session>
-}
 
+impl<'session> Refresh for Server<'session> {
+    /// Refresh the server.
+    fn refresh(&mut self) -> Result<()> {
+        self.inner = self.session.get_server(&self.inner.id)?;
+        Ok(())
+    }
+}
 
 impl<'session> Server<'session> {
     /// Load a Server object.
@@ -78,12 +81,6 @@ impl<'session> Server<'session> {
             session: session,
             inner: inner
         })
-    }
-
-    /// Refresh the server.
-    pub fn refresh(&mut self) -> Result<()> {
-        self.inner = self.session.get_server(&self.inner.id)?;
-        Ok(())
     }
 
     /// Get a reference to IPv4 address.
@@ -170,11 +167,9 @@ impl<'session> Server<'session> {
     }
 
     /// Delete the server.
-    pub fn delete(self) -> Result<ServerDeletionWaiter<'session>> {
+    pub fn delete(self) -> Result<DeletionWaiter<Server<'session>>> {
         self.session.delete_server(&self.inner.id)?;
-        Ok(ServerDeletionWaiter {
-            server: self
-        })
+        Ok(DeletionWaiter::new(self, Duration::new(120, 0), Duration::new(1, 0)))
     }
 
     /// Reboot the server.
@@ -250,37 +245,6 @@ impl<'server> Waiter<()> for ServerStatusWaiter<'server> {
     }
 }
 
-impl<'session> Waiter<()> for ServerDeletionWaiter<'session> {
-    fn default_wait_timeout(&self) -> Option<Duration> {
-        Some(Duration::new(120, 0))
-    }
-
-    fn default_delay(&self) -> Duration {
-        Duration::new(1, 0)
-    }
-
-    fn timeout_error_message(&self) -> String {
-        format!("Timeout waiting for server {} to be deleted", self.server.id())
-    }
-
-    fn poll(&mut self) -> Result<Option<()>> {
-        match self.server.refresh() {
-            Ok(..) => {
-                trace!("Still waiting for server {} to be deleted, current state is {}",
-                       self.server.id(), self.server.status());
-                Ok(None)
-            },
-            Err(ref e) if e.kind() == ErrorKind::ResourceNotFound => {
-                debug!("Server {} was deleted", self.server.id());
-                Ok(Some(()))
-            },
-            Err(e) => {
-                debug!("Failed to delete server {} - {}", self.server.id(), e);
-                Err(e)
-            }
-        }
-    }
-}
 impl<'session> ServerSummary<'session> {
     /// Get a reference to server unique ID.
     pub fn id(&self) -> &String {

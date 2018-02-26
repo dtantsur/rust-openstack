@@ -35,5 +35,5 @@ pub use self::base::V2 as ServiceType;
 pub use self::flavors::{Flavor, FlavorSummary, FlavorQuery};
 pub use self::protocol::{AddressType, RebootType, ServerAddress, ServerSortKey,
                          ServerPowerState, ServerStatus};
-pub use self::servers::{Server, ServerDeletionWaiter, ServerQuery,
+pub use self::servers::{Server, ServerQuery,
                         ServerStatusWaiter, ServerSummary};
