@@ -14,9 +14,12 @@
 
 //! Common protocol bits.
 
+#![allow(dead_code)] // various things are unused with --no-default-features
 #![allow(missing_docs)]
 
 use reqwest::{Method, Url};
+use serde::{Deserialize, Deserializer};
+use serde::de::{DeserializeOwned, Error as DeserError};
 use serde_json;
 
 use super::super::{Error, ErrorKind, Result};
@@ -27,7 +30,7 @@ use super::ApiVersion;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Link {
-    #[serde(deserialize_with = "utils::deser_url")]
+    #[serde(deserialize_with = "deser_url")]
     pub href: Url,
     pub rel: String
 }
@@ -49,9 +52,9 @@ pub struct Version {
     pub id: String,
     pub links: Vec<Link>,
     pub status: String,
-    #[serde(deserialize_with = "utils::empty_as_none", default)]
+    #[serde(deserialize_with = "empty_as_none", default)]
     pub version: Option<ApiVersion>,
-    #[serde(deserialize_with = "utils::empty_as_none", default)]
+    #[serde(deserialize_with = "empty_as_none", default)]
     pub min_version: Option<ApiVersion>
 }
 
@@ -85,7 +88,6 @@ impl Version {
 }
 
 /// Generic code to extract a `ServiceInfo` from a URL.
-#[allow(dead_code)] // unused with --no-default-features
 pub fn fetch_service_info(endpoint: Url, auth: &AuthMethod,
                           service_type: &str, major_version: &str)
         -> Result<ServiceInfo> {
@@ -138,5 +140,50 @@ pub fn fetch_service_info(endpoint: Url, auth: &AuthMethod,
             }
         },
         Err(other) => Err(other)
+    }
+}
+
+/// Deserialize value where empty string equals None.
+pub fn empty_as_none<'de, D, T>(des: D) -> ::std::result::Result<Option<T>, D::Error>
+        where D: Deserializer<'de>, T: DeserializeOwned {
+    let value = serde_json::Value::deserialize(des)?;
+    match &value {
+        &serde_json::Value::String(ref s) if s == "" => return Ok(None),
+        _ => ()
+    };
+
+    match serde_json::from_value(value) {
+        Ok(value) => Ok(Some(value)),
+        Err(e) => Err(DeserError::custom(e))
+    }
+}
+
+/// Deserialize value where empty string equals None.
+pub fn empty_as_default<'de, D, T>(des: D) -> ::std::result::Result<T, D::Error>
+        where D: Deserializer<'de>, T: DeserializeOwned + Default {
+    let value = serde_json::Value::deserialize(des)?;
+    match &value {
+        &serde_json::Value::String(ref s) if s == "" =>
+            return Ok(Default::default()),
+        _ => ()
+    };
+
+    serde_json::from_value(value).map_err(DeserError::custom)
+}
+
+/// Deserialize a URL.
+pub fn deser_url<'de, D>(des: D) -> ::std::result::Result<Url, D::Error>
+        where D: Deserializer<'de> {
+    Url::parse(&String::deserialize(des)?).map_err(DeserError::custom)
+}
+
+/// Deserialize a URL.
+pub fn deser_optional_url<'de, D>(des: D)
+        -> ::std::result::Result<Option<Url>, D::Error>
+        where D: Deserializer<'de> {
+    let value: Option<String> = Deserialize::deserialize(des)?;
+    match value {
+        Some(s) => Url::parse(&s).map_err(DeserError::custom).map(Some),
+        None => Ok(None)
     }
 }

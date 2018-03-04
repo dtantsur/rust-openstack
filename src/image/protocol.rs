@@ -20,7 +20,7 @@
 use chrono::{DateTime, FixedOffset};
 use reqwest::Url;
 
-use super::super::utils;
+use super::super::common;
 
 
 protocol_enum! {
@@ -102,7 +102,7 @@ pub struct Image {
     #[serde(default)]
     pub container_format: Option<ImageContainerFormat>,
     pub created_at: DateTime<FixedOffset>,
-    #[serde(deserialize_with = "utils::deser_optional_url", default)]
+    #[serde(deserialize_with = "common::protocol::deser_optional_url", default)]
     pub direct_url: Option<Url>,
     #[serde(default)]
     pub disk_format: Option<ImageDiskFormat>,

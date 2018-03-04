@@ -23,7 +23,6 @@ use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use chrono::{DateTime, FixedOffset};
 
 use super::super::common;
-use super::super::utils;
 
 
 protocol_enum! {
@@ -129,9 +128,9 @@ pub struct ServerAddress {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Server {
-    #[serde(deserialize_with = "utils::empty_as_none", default)]
+    #[serde(deserialize_with = "common::protocol::empty_as_none", default)]
     pub accessIPv4: Option<Ipv4Addr>,
-    #[serde(deserialize_with = "utils::empty_as_none", default)]
+    #[serde(deserialize_with = "common::protocol::empty_as_none", default)]
     pub accessIPv6: Option<Ipv6Addr>,
     #[serde(default)]
     pub addresses: HashMap<String, Vec<ServerAddress>>,
@@ -140,7 +139,7 @@ pub struct Server {
     pub created: DateTime<FixedOffset>,
     // TODO(dtantsur): flavor
     pub id: String,
-    #[serde(deserialize_with = "utils::empty_as_none", default)]
+    #[serde(deserialize_with = "common::protocol::empty_as_none", default)]
     pub image: Option<common::protocol::Ref>,
     pub name: String,
     pub status: ServerStatus,
@@ -178,7 +177,7 @@ pub struct Flavor {
     pub name: String,
     pub ram: u64,
     pub rxtx_factor: f32,
-    #[serde(deserialize_with = "utils::empty_as_default")]
+    #[serde(deserialize_with = "common::protocol::empty_as_default")]
     pub swap: u64,
     pub vcpus: u32,
 }

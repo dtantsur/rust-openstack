@@ -22,10 +22,6 @@ use std::fmt;
 use std::hash::Hash;
 
 use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
-use reqwest::Url;
-use serde::{Deserialize, Deserializer};
-use serde::de::{DeserializeOwned, Error as DeserError};
-use serde_json;
 
 use super::{Error, ErrorKind, Result};
 
@@ -149,51 +145,6 @@ impl<K: Hash + Eq, V: Clone> MapCache<K, V> {
         } else {
             None
         }
-    }
-}
-
-/// Deserialize value where empty string equals None.
-pub fn empty_as_none<'de, D, T>(des: D) -> ::std::result::Result<Option<T>, D::Error>
-        where D: Deserializer<'de>, T: DeserializeOwned {
-    let value = serde_json::Value::deserialize(des)?;
-    match &value {
-        &serde_json::Value::String(ref s) if s == "" => return Ok(None),
-        _ => ()
-    };
-
-    match serde_json::from_value(value) {
-        Ok(value) => Ok(Some(value)),
-        Err(e) => Err(DeserError::custom(e))
-    }
-}
-
-/// Deserialize value where empty string equals None.
-pub fn empty_as_default<'de, D, T>(des: D) -> ::std::result::Result<T, D::Error>
-        where D: Deserializer<'de>, T: DeserializeOwned + Default {
-    let value = serde_json::Value::deserialize(des)?;
-    match &value {
-        &serde_json::Value::String(ref s) if s == "" =>
-            return Ok(Default::default()),
-        _ => ()
-    };
-
-    serde_json::from_value(value).map_err(DeserError::custom)
-}
-
-/// Deserialize a URL.
-pub fn deser_url<'de, D>(des: D) -> ::std::result::Result<Url, D::Error>
-        where D: Deserializer<'de> {
-    Url::parse(&String::deserialize(des)?).map_err(DeserError::custom)
-}
-
-/// Deserialize a URL.
-pub fn deser_optional_url<'de, D>(des: D)
-        -> ::std::result::Result<Option<Url>, D::Error>
-        where D: Deserializer<'de> {
-    let value: Option<String> = Deserialize::deserialize(des)?;
-    match value {
-        Some(s) => Url::parse(&s).map_err(DeserError::custom).map(Some),
-        None => Ok(None)
     }
 }
 
