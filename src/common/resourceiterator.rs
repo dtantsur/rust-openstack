@@ -18,7 +18,7 @@ use std::vec;
 
 use fallible_iterator::FallibleIterator;
 
-use super::super::{Error, Result};
+use super::super::{Error, ErrorKind, Result};
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::{ListResources, ResourceId};
@@ -48,6 +48,26 @@ impl<'session, T> ResourceIterator<'session, T> {
             cache: None,
             marker: None,
             can_paginate: can_paginate
+        }
+    }
+}
+
+impl<'session, T> ResourceIterator<'session, T>
+        where T: ListResources<'session> + ResourceId {
+    /// Assert that only one item is left and fetch it.
+    ///
+    /// Fails with `ResourceNotFound` if no items are left and with
+    /// `TooManyItems` if there is more than one item left.
+    pub fn one(mut self) -> Result<T> {
+        match self.next()? {
+            Some(result) => if self.next()?.is_some() {
+                Err(Error::new(ErrorKind::TooManyItems,
+                               "Query returned more than one result"))
+            } else {
+                Ok(result)
+            },
+            None => Err(Error::new(ErrorKind::ResourceNotFound,
+                                   "Query returned no results"))
         }
     }
 }

@@ -24,7 +24,7 @@ use super::super::{Error, Result, Sort};
 use super::super::common::{ImageRef, ListResources, Refresh, ResourceId,
                            ResourceIterator};
 use super::super::session::Session;
-use super::super::utils::{self, Query};
+use super::super::utils::Query;
 use super::base::V2API;
 use super::protocol;
 
@@ -222,7 +222,7 @@ impl<'session> ImageQuery<'session> {
             self.query.push("limit", 2);
         }
 
-        utils::fetch_one(self)
+        self.into_iter().one()
     }
 }
 
