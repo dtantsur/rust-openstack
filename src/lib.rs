@@ -12,17 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! OpenStack Client in Rust.
+//! OpenStack SDK in Rust.
 //!
 //! The goal of this project is to provide a simple API for working with
 //! OpenStack clouds.
 //!
-//! * [Authentication](auth/index.html)
-//! * [High-level API](struct.Cloud.html)
+//! # Usage
 //!
-//! API-specific notes:
+//! Start with [authentication](auth/index.html), then create a
+//! [Cloud](struct.Cloud.html) object that contains all necessary calls.
 //!
-//! * [Compute API support](compute/index.html)
+//! # API
+//!
+//! * [Compute API](compute/index.html)
+//! * [Image API](image/index.html)
+//! * [Network API](network/index.html)
 
 #![crate_name = "openstack"]
 #![crate_type = "lib"]

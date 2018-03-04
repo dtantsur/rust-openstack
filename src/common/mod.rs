@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Common code.
+//! Types and traits shared by all API parts.
 
 mod apiversion;
 pub(crate) mod protocol;
