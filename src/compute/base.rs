@@ -25,7 +25,7 @@ use serde_json;
 use super::super::{Result, ApiVersion};
 use super::super::auth::AuthMethod;
 use super::super::common;
-use super::super::service::{ApiVersioning, ServiceInfo, ServiceType};
+use super::super::service::{ServiceInfo, ServiceType};
 use super::super::session::Session;
 use super::protocol;
 
@@ -78,7 +78,9 @@ const VERSION_ID: &'static str = "v2.1";
 impl V2API for Session {
     fn get_server<S: AsRef<str>>(&self, id: S) -> Result<protocol::Server> {
         trace!("Get compute server {}", id.as_ref());
-        let server = self.request::<V2>(Method::Get, &["servers", id.as_ref()])?
+        let server = self.request::<V2>(Method::Get,
+                                        &["servers", id.as_ref()],
+                                        None)?
            .receive_json::<protocol::ServerRoot>()?.server;
         trace!("Received {:?}", server);
         Ok(server)
@@ -87,7 +89,7 @@ impl V2API for Session {
     fn list_servers<Q: Serialize + Debug>(&self, query: &Q)
             -> Result<Vec<common::protocol::IdAndName>> {
         trace!("Listing compute servers with {:?}", query);
-        let result = self.request::<V2>(Method::Get, &["servers"])?
+        let result = self.request::<V2>(Method::Get, &["servers"], None)?
            .query(query).receive_json::<protocol::ServersRoot>()?.servers;
         trace!("Received servers: {:?}", result);
         Ok(result)
@@ -96,7 +98,9 @@ impl V2API for Session {
     fn list_servers_detail<Q: Serialize + Debug>(&self, query: &Q)
             -> Result<Vec<protocol::Server>> {
         trace!("Listing compute servers with {:?}", query);
-        let result = self.request::<V2>(Method::Get, &["servers", "detail"])?
+        let result = self.request::<V2>(Method::Get,
+                                        &["servers", "detail"],
+                                        None)?
            .query(query).receive_json::<protocol::ServersDetailRoot>()?.servers;
         trace!("Received servers: {:?}", result);
         Ok(result)
@@ -110,7 +114,8 @@ impl V2API for Session {
         let mut body = HashMap::new();
         let _ = body.insert(action.as_ref(), args);
         let _ = self.request::<V2>(Method::Post,
-                                   &["servers", id.as_ref(), "action"])?
+                                   &["servers", id.as_ref(), "action"],
+                                   None)?
             .json(&body).send()?;
         debug!("Successfully ran {} on server {}", action.as_ref(), id.as_ref());
         Ok(())
@@ -118,7 +123,9 @@ impl V2API for Session {
 
     fn delete_server<S: AsRef<str>>(&self, id: S) -> Result<()> {
         trace!("Deleting server {}", id.as_ref());
-        let _ = self.request::<V2>(Method::Delete, &["servers", id.as_ref()])?
+        let _ = self.request::<V2>(Method::Delete,
+                                   &["servers", id.as_ref()],
+                                   None)?
             .send()?;
         debug!("Successfully requested deletion of server {}", id.as_ref());
         Ok(())
@@ -126,7 +133,9 @@ impl V2API for Session {
 
     fn get_flavor<S: AsRef<str>>(&self, id: S) -> Result<protocol::Flavor> {
         trace!("Get compute flavor {}", id.as_ref());
-        let flavor = self.request::<V2>(Method::Get, &["flavors", id.as_ref()])?
+        let flavor = self.request::<V2>(Method::Get,
+                                        &["flavors", id.as_ref()],
+                                        None)?
            .receive_json::<protocol::FlavorRoot>()?.flavor;
         trace!("Received {:?}", flavor);
         Ok(flavor)
@@ -135,7 +144,7 @@ impl V2API for Session {
     fn list_flavors<Q: Serialize + Debug>(&self, query: &Q)
             -> Result<Vec<common::protocol::IdAndName>> {
         trace!("Listing compute flavors with {:?}", query);
-        let result = self.request::<V2>(Method::Get, &["flavors"])?
+        let result = self.request::<V2>(Method::Get, &["flavors"], None)?
            .query(query).receive_json::<protocol::FlavorsRoot>()?.flavors;
         trace!("Received flavors: {:?}", result);
         Ok(result)
@@ -144,7 +153,9 @@ impl V2API for Session {
     fn list_flavors_detail<Q: Serialize + Debug>(&self, query: &Q)
             -> Result<Vec<protocol::Flavor>> {
         trace!("Listing compute flavors with {:?}", query);
-        let result = self.request::<V2>(Method::Get, &["flavors", "detail"])?
+        let result = self.request::<V2>(Method::Get,
+                                        &["flavors", "detail"],
+                                        None)?
            .query(query).receive_json::<protocol::FlavorsDetailRoot>()?.flavors;
         trace!("Received flavors: {:?}", result);
         Ok(result)
@@ -168,5 +179,3 @@ impl ServiceType for V2 {
         Some(hdrs)
     }
 }
-
-impl ApiVersioning for V2 {}

@@ -51,7 +51,9 @@ const VERSION_ID: &'static str = "v2.3";
 impl V2API for Session {
     fn get_image<S: AsRef<str>>(&self, id: S) -> Result<protocol::Image> {
         trace!("Fetching image {}", id.as_ref());
-        let image = self.request::<V2>(Method::Get, &["images", id.as_ref()])?
+        let image = self.request::<V2>(Method::Get,
+                                       &["images", id.as_ref()],
+                                       None)?
            .receive_json::<protocol::Image>()?;
         trace!("Received {:?}", image);
         Ok(image)
@@ -60,7 +62,7 @@ impl V2API for Session {
     fn list_images<Q: Serialize + Debug>(&self, query: &Q)
             -> Result<Vec<protocol::Image>> {
         trace!("Listing images with {:?}", query);
-        let result = self.request::<V2>(Method::Get, &["images"])?
+        let result = self.request::<V2>(Method::Get, &["images"], None)?
            .query(query).receive_json::<protocol::ImagesRoot>()?.images;
         trace!("Received images: {:?}", result);
         Ok(result)

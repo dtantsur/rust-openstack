@@ -15,16 +15,15 @@
 //! Session structure definition.
 
 use std::cell::Ref;
-use std::collections::HashMap;
 
 use reqwest::{Body, Method, RequestBuilder as ReqwestRB, Response, Url};
 use reqwest::header::{Header, Headers};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-use super::{Error, ErrorKind, Result, ApiVersion};
+use super::{Result, ApiVersion};
 use super::auth::AuthMethod;
-use super::service::{ApiVersioning, ServiceInfo, ServiceType};
+use super::service::{ServiceInfo, ServiceType};
 use super::utils;
 
 /// An HTTP request builder.
@@ -106,36 +105,12 @@ fn _log(resp: Response) -> Response {
 /// The session object serves as a wrapper around an HTTP(s) client, handling
 /// authentication, accessing the service catalog and token refresh.
 ///
-/// The session object also owns region and endpoint interface to use.
-///
-/// Finally, the session object is responsible for API version negotiation.
+/// The session object also owns the endpoint interface to use.
 #[derive(Debug, Clone)]
 pub struct Session {
     auth: Box<AuthMethod>,
     cached_info: utils::MapCache<&'static str, ServiceInfo>,
-    api_versions: HashMap<&'static str, ApiVersion>,
     endpoint_interface: String
-}
-
-/// A request for negotiating an API version.
-#[derive(Debug, Clone)]
-pub enum ApiVersionRequest {
-    /// Minimum possible version (usually the default).
-    Minimum,
-    /// Latest version.
-    ///
-    /// This may result in an incompatible version, so it is always recommended
-    /// to use LatestFrom or Choice instead.
-    Latest,
-    /// Latest version from the given range.
-    LatestFrom(ApiVersion, ApiVersion),
-    /// Specified version.
-    ///
-    /// This is a very inflexible approach, and is only recommended when the
-    /// application can work with one and only one version.
-    Exact(ApiVersion),
-    /// Choice between several versions.
-    Choice(Vec<ApiVersion>)
 }
 
 
@@ -143,27 +118,23 @@ impl Session {
     /// Create a new session with a given authentication plugin.
     ///
     /// The resulting session will use the default endpoint interface (usually,
-    /// public) and the first available region.
+    /// public).
     pub fn new<Auth: AuthMethod + 'static>(auth_method: Auth) -> Session {
         let ep = auth_method.default_endpoint_interface();
         Session {
             auth: Box::new(auth_method),
             cached_info: utils::MapCache::new(),
-            api_versions: HashMap::new(),
             endpoint_interface: ep
         }
     }
 
     /// Convert this session into one using the given endpoint interface.
-    ///
-    /// Negotiated API versions are kept in the new object.
     pub fn with_endpoint_interface<S>(self, endpoint_interface: S)
             -> Session where S: Into<String> {
         Session {
             auth: self.auth,
             // ServiceInfo has to be refreshed
             cached_info: utils::MapCache::new(),
-            api_versions: self.api_versions,
             endpoint_interface: endpoint_interface.into()
         }
     }
@@ -176,11 +147,6 @@ impl Session {
     /// Get a mutable reference to the authentication method in use.
     pub fn auth_method_mut(&mut self) -> &mut AuthMethod {
         self.auth.as_mut()
-    }
-
-    /// Get an API version used for given service.
-    pub fn api_version<Srv: ServiceType>(&self) -> Option<ApiVersion> {
-        self.api_versions.get(Srv::catalog_type()).cloned()
     }
 
     /// Get service info for the given service.
@@ -198,48 +164,20 @@ impl Session {
     }
 
     /// Make an HTTP request to the given service.
-    pub fn request<Srv: ServiceType>(&self, method: Method, path: &[&str])
+    pub fn request<Srv: ServiceType>(&self, method: Method, path: &[&str],
+                                     api_version: Option<ApiVersion>)
             -> Result<RequestBuilder> {
         let url = self.get_endpoint::<Srv>(path)?;
-        let maybe_headers = self.api_versions.get(Srv::catalog_type())
-            .and_then(|ver| Srv::api_version_headers(*ver));
-        trace!("Sending HTTP {} request to {} with headers {:?}",
-               method, url, maybe_headers);
+        trace!("Sending HTTP {} request to {} with API version {:?}",
+               method, url, api_version);
+        let maybe_headers = api_version.and_then(|ver| {
+            Srv::api_version_headers(ver)
+        });
         let mut builder = self.auth.request(method, url)?;
         if let Some(headers) = maybe_headers {
             let _unused = builder.headers(headers);
         }
         Ok(builder)
-    }
-
-    /// Negotiate an API version with the service.
-    ///
-    /// Negotiation is based on version information returned from the root
-    /// endpoint. If no minimum version is returned, the current version is
-    /// assumed to be the only supported version.
-    ///
-    /// The resulting API version is cached for this session.
-    pub fn negotiate_api_version<Srv>(&mut self, requested: ApiVersionRequest)
-            -> Result<ApiVersion>
-            where Srv: ServiceType + ApiVersioning {
-        self.ensure_service_info::<Srv>()?;
-        let info = self.cached_info.get_ref(&Srv::catalog_type()).unwrap();
-
-        match info.pick_api_version(requested.clone()) {
-            Some(ver) => {
-                let _ = self.api_versions.insert(Srv::catalog_type(), ver);
-                info!("Negotiated API version {} for {} API",
-                      ver, Srv::catalog_type());
-                Ok(ver)
-            },
-            None => {
-                let msg = format!(
-                    "API negotiation failed for {} API: requested {:?} supported range is {:?} to {:?}",
-                    Srv::catalog_type(), requested, info.minimum_version, info.current_version);
-                warn!("Unable to pick API version: {}", msg);
-                Err(Error::new(ErrorKind::IncompatibleApiVersion, msg))
-            }
-        }
     }
 
     fn ensure_service_info<Srv>(&self) -> Result<()> where Srv: ServiceType {

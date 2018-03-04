@@ -50,7 +50,9 @@ const VERSION_ID: &'static str = "v2.0";
 impl V2API for Session {
     fn get_network<S: AsRef<str>>(&self, id: S) -> Result<protocol::Network> {
         trace!("Get network {}", id.as_ref());
-        let network = self.request::<V2>(Method::Get, &["networks", id.as_ref()])?
+        let network = self.request::<V2>(Method::Get,
+                                         &["networks", id.as_ref()],
+                                         None)?
            .receive_json::<protocol::NetworkRoot>()?.network;
         trace!("Received {:?}", network);
         Ok(network)
@@ -59,7 +61,7 @@ impl V2API for Session {
     fn list_networks<Q: Serialize + Debug>(&self, query: &Q)
             -> Result<Vec<protocol::Network>> {
         trace!("Listing networks with {:?}", query);
-        let result = self.request::<V2>(Method::Get, &["networks"])?
+        let result = self.request::<V2>(Method::Get, &["networks"], None)?
            .query(query).receive_json::<protocol::NetworksRoot>()?.networks;
         trace!("Received networks: {:?}", result);
         Ok(result)
