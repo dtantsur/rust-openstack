@@ -21,9 +21,9 @@ use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
 use serde::Serialize;
 
 use super::super::{Error, Result, Sort};
-use super::super::service::{ListResources, Refresh, ResourceId, ResourceIterator};
+use super::super::common::{ListResources, NetworkRef, Refresh, ResourceId,
+                           ResourceIterator};
 use super::super::session::Session;
-use super::super::types;
 use super::super::utils::{self, Query};
 use super::base::V2API;
 use super::protocol;
@@ -189,8 +189,8 @@ impl<'session> IntoFallibleIterator for NetworkQuery<'session> {
     }
 }
 
-impl<'session> From<Network<'session>> for types::NetworkRef {
-    fn from(value: Network<'session>) -> types::NetworkRef {
-        types::NetworkRef::from(value.inner.id)
+impl<'session> From<Network<'session>> for NetworkRef {
+    fn from(value: Network<'session>) -> NetworkRef {
+        NetworkRef::from(value.inner.id)
     }
 }

@@ -20,10 +20,9 @@ use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
 use serde::Serialize;
 
 use super::super::{Error, Result};
-use super::super::common;
-use super::super::service::{ListResources, Refresh, ResourceId, ResourceIterator};
+use super::super::common::{self, FlavorRef, ListResources, Refresh, ResourceId,
+                           ResourceIterator};
 use super::super::session::Session;
-use super::super::types::FlavorRef;
 use super::super::utils::{self, Query};
 use super::base::V2API;
 use super::protocol;

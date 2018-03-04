@@ -21,9 +21,9 @@ use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
 use serde::Serialize;
 
 use super::super::{Error, Result, Sort};
-use super::super::service::{ListResources, Refresh, ResourceId, ResourceIterator};
+use super::super::common::{ImageRef, ListResources, Refresh, ResourceId,
+                           ResourceIterator};
 use super::super::session::Session;
-use super::super::types;
 use super::super::utils::{self, Query};
 use super::base::V2API;
 use super::protocol;
@@ -256,8 +256,8 @@ impl<'session> IntoFallibleIterator for ImageQuery<'session> {
     }
 }
 
-impl<'session> From<Image<'session>> for types::ImageRef {
-    fn from(value: Image<'session>) -> types::ImageRef {
-        types::ImageRef::from(value.inner.id)
+impl<'session> From<Image<'session>> for ImageRef {
+    fn from(value: Image<'session>) -> ImageRef {
+        ImageRef::from(value.inner.id)
     }
 }

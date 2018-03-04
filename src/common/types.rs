@@ -12,8 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Types shared between services and used for conversion.
+//! Types and traits shared between services.
 
+use serde::Serialize;
+
+use super::super::Result;
+use super::super::session::Session;
+
+
+/// Trait representing something that can be listed from a session.
+pub trait ListResources<'a> {
+    /// Default limit to use with this resource.
+    const DEFAULT_LIMIT: usize;
+
+    /// List the resources from the session.
+    fn list_resources<Q>(session: &'a Session, query: Q) -> Result<Vec<Self>>
+        where Self: Sized, Q: Serialize + ::std::fmt::Debug;
+}
+
+/// Trait representing something that can be refreshed.
+pub trait Refresh {
+    /// Refresh the resource representation.
+    fn refresh(&mut self) -> Result<()>;
+}
+
+/// Trait representing something that has an ID.
+pub trait ResourceId {
+    /// Identifier of the current resource.
+    fn resource_id(&self) -> String;
+}
 
 macro_rules! opaque_resource_type {
     ($(#[$attr:meta])* $name:ident) => (

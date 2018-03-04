@@ -22,11 +22,10 @@ use reqwest::header::Headers;
 use serde::Serialize;
 use serde_json;
 
-use super::super::{Result, ApiVersion};
+use super::super::Result;
 use super::super::auth::AuthMethod;
-use super::super::common;
-use super::super::service::{ServiceInfo, ServiceType};
-use super::super::session::Session;
+use super::super::common::{self, ApiVersion};
+use super::super::session::{Session, ServiceInfo, ServiceType};
 use super::protocol;
 
 
@@ -169,7 +168,7 @@ impl ServiceType for V2 {
     }
 
     fn service_info(endpoint: Url, auth: &AuthMethod) -> Result<ServiceInfo> {
-        common::fetch_service_info(endpoint, auth, SERVICE_TYPE, VERSION_ID)
+        common::protocol::fetch_service_info(endpoint, auth, SERVICE_TYPE, VERSION_ID)
     }
 
     fn api_version_headers(version: ApiVersion) -> Option<Headers> {

@@ -280,10 +280,10 @@ pub mod test {
     use reqwest::{IntoUrl, Url};
     use reqwest::header::Headers;
 
-    use super::super::{Error, ErrorKind, Result, ApiVersion};
+    use super::super::{Error, ErrorKind, Result};
     use super::super::auth::{AuthMethod, NoAuth};
-    use super::super::service::{ServiceInfo, ServiceType};
-    use super::super::session::Session;
+    use super::super::common::ApiVersion;
+    use super::super::session::{Session, ServiceInfo, ServiceType};
 
     /// Create a session with fake authentication.
     pub fn new_session<U: IntoUrl>(endpoint: U) -> Session {

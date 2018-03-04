@@ -22,8 +22,7 @@ use serde::Serialize;
 use super::super::Result;
 use super::super::auth::AuthMethod;
 use super::super::common;
-use super::super::service::{ServiceInfo, ServiceType};
-use super::super::session::Session;
+use super::super::session::{Session, ServiceInfo, ServiceType};
 use super::protocol;
 
 
@@ -75,6 +74,6 @@ impl ServiceType for V2 {
     }
 
     fn service_info(endpoint: Url, auth: &AuthMethod) -> Result<ServiceInfo> {
-        common::fetch_service_info(endpoint, auth, SERVICE_TYPE, VERSION_ID)
+        common::protocol::fetch_service_info(endpoint, auth, SERVICE_TYPE, VERSION_ID)
     }
 }

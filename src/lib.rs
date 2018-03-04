@@ -213,23 +213,37 @@ macro_rules! protocol_enum {
 
 pub mod auth;
 mod cloud;
-mod common;
+pub mod common;
 #[cfg(feature = "compute")]
 pub mod compute;
+mod error;
 mod identity;
 #[cfg(feature = "image")]
 pub mod image;
 #[cfg(feature = "network")]
 pub mod network;
-pub mod service;
 pub mod session;
-pub mod types;
 mod utils;
 
 pub use cloud::Cloud;
-pub use common::Error;
-pub use common::ErrorKind;
-pub use common::Result;
-pub use common::ApiVersion;
-pub use common::Sort;
-pub use common::Waiter;
+pub use common::{Refresh, Waiter};
+pub use error::{Error, ErrorKind, Result};
+
+
+/// Sorting request.
+#[derive(Debug, Clone)]
+pub enum Sort<T: Into<String>> {
+    /// Sorting by given field in ascendant order.
+    Asc(T),
+    /// Sorting by given field in descendant order.
+    Desc(T)
+}
+
+impl<T: Into<String>> Into<(String, String)> for Sort<T> {
+    fn into(self) -> (String, String) {
+        match self {
+            Sort::Asc(val) => (val.into(), String::from("asc")),
+            Sort::Desc(val) => (val.into(), String::from("desc"))
+        }
+    }
+}

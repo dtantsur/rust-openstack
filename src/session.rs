@@ -1,4 +1,4 @@
-// Copyright 2017 Dmitry Tantsur <divius.inside@gmail.com>
+// Copyright 2018 Dmitry Tantsur <divius.inside@gmail.com>
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,33 @@ use reqwest::header::{Header, Headers};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-use super::{Result, ApiVersion};
+use super::Result;
 use super::auth::AuthMethod;
-use super::service::{ServiceInfo, ServiceType};
+use super::common::ApiVersion;
 use super::utils;
+
+/// Information about API endpoint.
+#[derive(Clone, Debug)]
+pub struct ServiceInfo {
+    /// Root endpoint.
+    pub root_url: Url,
+    /// Current API version (if supported).
+    pub current_version: Option<ApiVersion>,
+    /// Minimum API version (if supported).
+    pub minimum_version: Option<ApiVersion>
+}
+
+/// Trait representing a service type.
+pub trait ServiceType {
+    /// Service type to pass to the catalog.
+    fn catalog_type() -> &'static str;
+
+    /// Get basic service information.
+    fn service_info(endpoint: Url, auth: &AuthMethod) -> Result<ServiceInfo>;
+
+    /// Return headers to set for this API version.
+    fn api_version_headers(_version: ApiVersion) -> Option<Headers> { None }
+}
 
 /// An HTTP request builder.
 ///
