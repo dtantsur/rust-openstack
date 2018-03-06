@@ -22,6 +22,6 @@ mod waiter;
 
 pub use self::apiversion::ApiVersion;
 pub use self::resourceiterator::ResourceIterator;
-pub use self::types::{FlavorRef, ImageRef, ListResources, NetworkRef,
+pub use self::types::{FlavorRef, ImageRef, ListResources, NetworkRef, PortRef,
                       ProjectRef, Refresh, ResourceId, UserRef};
 pub use self::waiter::DeletionWaiter;

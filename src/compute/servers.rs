@@ -26,8 +26,8 @@ use waiter::{Waiter, WaiterCurrentState};
 
 use super::super::{Error, ErrorKind, Result, Sort};
 use super::super::common::{self, DeletionWaiter, FlavorRef, ImageRef,
-                           ListResources, ProjectRef, Refresh, ResourceId,
-                           ResourceIterator, UserRef};
+                           ListResources, NetworkRef, PortRef, ProjectRef,
+                           Refresh, ResourceId, ResourceIterator, UserRef};
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::base::V2API;
@@ -61,6 +61,13 @@ pub struct ServerSummary<'session> {
 pub struct ServerStatusWaiter<'server> {
     server: &'server mut Server<'server>,
     target: protocol::ServerStatus
+}
+
+/// A request to create a server.
+#[derive(Debug)]
+pub struct NewServer<'session> {
+    session: &'session Session,
+    inner: protocol::ServerCreate
 }
 
 
@@ -421,6 +428,56 @@ impl<'session> ServerQuery<'session> {
         }
 
         self.into_iter().one()
+    }
+}
+
+impl<'session> NewServer<'session> {
+    /// Start creating a server.
+    pub(crate) fn new(session: &'session Session, name: String, flavor: FlavorRef)
+            -> NewServer<'session> {
+        NewServer {
+            session: session,
+            inner: protocol::ServerCreate {
+                flavorRef: flavor.into(),
+                imageRef: None,
+                key_name: None,
+                name: name,
+                networks: Vec::new()
+            }
+        }
+    }
+
+    /// Add a virtual NIC with given fixed IP to the new server.
+    pub fn with_fixed_ip(mut self, fixed_ip: Ipv4Addr) -> NewServer<'session> {
+        self.inner.networks.push(protocol::ServerNetwork::FixedIp {
+            fixed_ip: fixed_ip
+        });
+        self
+    }
+
+    /// Use this image as a source for the new server.
+    pub fn with_image<I>(mut self, image: I) -> NewServer<'session>
+            where I: Into<ImageRef> {
+        self.inner.imageRef = Some(image.into().into());
+        self
+    }
+
+    /// Add a virtual NIC from this network to the new server.
+    pub fn with_network<N>(mut self, network: N) -> NewServer<'session>
+            where N: Into<NetworkRef> {
+        self.inner.networks.push(protocol::ServerNetwork::Network {
+            uuid: network.into().into()
+        });
+        self
+    }
+
+    /// Add a virtual NIC with this port to the new server.
+    pub fn with_port<P>(mut self, port: P) -> NewServer<'session>
+            where P: Into<PortRef> {
+        self.inner.networks.push(protocol::ServerNetwork::Port {
+            port: port.into().into()
+        });
+        self
     }
 }
 

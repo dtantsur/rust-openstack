@@ -20,9 +20,11 @@ use fallible_iterator::FallibleIterator;
 #[allow(unused_imports)]
 use super::{Error, ErrorKind, Result};
 use super::auth::AuthMethod;
+#[allow(unused_imports)]
+use super::common::FlavorRef;
 #[cfg(feature = "compute")]
 use super::compute::{Flavor, FlavorQuery, FlavorSummary,
-                     Server, ServerQuery, ServerSummary};
+                     NewServer, Server, ServerQuery, ServerSummary};
 #[cfg(feature = "image")]
 use super::image::{Image, ImageQuery};
 #[cfg(feature = "network")]
@@ -312,6 +314,16 @@ impl Cloud {
     #[cfg(feature = "compute")]
     pub fn list_servers(&self) -> Result<Vec<ServerSummary>> {
         self.find_servers().all()
+    }
+
+    /// Prepare a new server for creation.
+    ///
+    /// This call returns a `NewServer` object, which is a builder to populate
+    /// server fields.
+    #[cfg(feature = "compute")]
+    pub fn new_server<S, F>(&self, name: S, flavor: F) -> NewServer
+            where S: Into<String>, F: Into<FlavorRef> {
+        NewServer::new(&self.session, name.into(), flavor.into())
     }
 }
 

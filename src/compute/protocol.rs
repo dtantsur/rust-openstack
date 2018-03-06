@@ -165,6 +165,25 @@ pub struct ServerRoot {
     pub server: Server
 }
 
+#[derive(Clone, Debug, Serialize)]
+#[serde(untagged)]
+pub enum ServerNetwork {
+    Network { uuid: String },
+    Port { port: String },
+    FixedIp { fixed_ip: Ipv4Addr }
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct ServerCreate {
+    pub flavorRef: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub imageRef: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub key_name: Option<String>,
+    pub name: String,
+    pub networks: Vec<ServerNetwork>
+}
+
 #[derive(Clone, Debug, Deserialize)]
 pub struct Flavor {
     #[serde(rename = "OS-FLV-EXT-DATA:ephemeral", default)]

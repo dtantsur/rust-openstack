@@ -88,6 +88,8 @@ opaque_resource_type!(#[doc = "An ID of a `Network`"] NetworkRef);
 
 opaque_resource_type!(#[doc = "An ID of a `Project`"] ProjectRef);
 
+opaque_resource_type!(#[doc = "An ID of a `Port`"] PortRef);
+
 opaque_resource_type!(#[doc = "An ID of a `User`"] UserRef);
 
 
