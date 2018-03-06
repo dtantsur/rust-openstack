@@ -59,13 +59,10 @@ pub struct Version {
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct VersionsRoot {
-    pub versions: Vec<Version>
-}
-
-#[derive(Clone, Debug, Deserialize)]
-pub struct VersionRoot {
-    pub version: Version
+#[serde(untagged)]
+pub enum Root {
+    Versions { versions: Vec<Version> },
+    Version { version: Version }
 }
 
 impl Version {
@@ -100,20 +97,10 @@ pub fn fetch_service_info(endpoint: Url, auth: &AuthMethod,
     let result = auth.request(Method::Get, endpoint.clone())?.send();
     match result {
         Ok(mut resp) => {
-            let body = resp.text()?;
-
-            // First, assume it's a versioned URL.
-            let mut info = match serde_json::from_str::<VersionRoot>(&body) {
-                Ok(ver) => ver.version.into_service_info(),
-                Err(..) => {
-                    // Second, assume it's a root URL.
-                    let vers = serde_json::from_str::<VersionsRoot>(&body)
-                        .map_err(|e| {
-                            let msg = format!("Malformed version root of the {} service: {}",
-                                              service_type, e);
-                            Error::new(ErrorKind::InvalidResponse, msg)
-                        })?;
-                    match vers.versions.into_iter().find(|x| &x.id == major_version) {
+            let mut info = match resp.json()? {
+                Root::Version { version: ver } => ver.into_service_info(),
+                Root::Versions { versions: vers } => {
+                    match vers.into_iter().find(|x| &x.id == major_version) {
                         Some(ver) => ver.into_service_info(),
                         None => Err(Error::new_endpoint_not_found(service_type))
                     }
