@@ -78,6 +78,7 @@ extern crate serde;
 extern crate serde_derive;
 #[allow(unused_extern_crates)]
 extern crate serde_json;
+extern crate waiter;
 
 
 #[allow(unused_macros)]
@@ -230,7 +231,7 @@ pub mod session;
 mod utils;
 
 pub use cloud::Cloud;
-pub use common::{Refresh, Waiter};
+pub use common::Refresh;
 pub use error::{Error, ErrorKind, Result};
 
 

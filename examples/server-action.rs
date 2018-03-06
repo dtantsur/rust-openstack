@@ -14,9 +14,10 @@
 
 extern crate env_logger;
 extern crate openstack;
+extern crate waiter;
 
 use std::env;
-use openstack::Waiter;
+use waiter::Waiter;
 
 
 #[cfg(feature = "compute")]

@@ -22,8 +22,9 @@ use std::time::Duration;
 use chrono::{DateTime, FixedOffset};
 use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
 use serde::Serialize;
+use waiter::{Waiter, WaiterCurrentState};
 
-use super::super::{Error, ErrorKind, Result, Sort, Waiter};
+use super::super::{Error, ErrorKind, Result, Sort};
 use super::super::common::{self, DeletionWaiter, FlavorRef, ImageRef,
                            ListResources, ProjectRef, Refresh, ResourceId,
                            ResourceIterator, UserRef};
@@ -201,16 +202,7 @@ impl<'session> Server<'session> {
     }
 }
 
-impl<'server> ServerStatusWaiter<'server> {
-    /// Current state of the server.
-    ///
-    /// Valid as of the last poll.
-    pub fn current(&self) -> &Server<'server> {
-        self.server
-    }
-}
-
-impl<'server> Waiter<()> for ServerStatusWaiter<'server> {
+impl<'server> Waiter<(), Error> for ServerStatusWaiter<'server> {
     fn default_wait_timeout(&self) -> Option<Duration> {
         // TODO(dtantsur): vary depending on target?
         Some(Duration::new(600, 0))
@@ -220,9 +212,10 @@ impl<'server> Waiter<()> for ServerStatusWaiter<'server> {
         Duration::new(1, 0)
     }
 
-    fn timeout_error_message(&self) -> String {
-        format!("Timeout waiting for server {} to reach state {}",
-                self.server.id(), self.target)
+    fn timeout_error(&self) -> Error {
+        Error::new(ErrorKind::OperationTimedOut,
+                   format!("Timeout waiting for server {} to reach state {}",
+                           self.server.id(), self.target))
     }
 
     fn poll(&mut self) -> Result<Option<()>> {
@@ -241,6 +234,12 @@ impl<'server> Waiter<()> for ServerStatusWaiter<'server> {
                    self.server.id(), self.target, self.server.status());
             Ok(None)
         }
+    }
+}
+
+impl<'server> WaiterCurrentState<Server<'server>> for ServerStatusWaiter<'server> {
+    fn waiter_current_state(&self) -> &Server<'server> {
+        &self.server
     }
 }
 
