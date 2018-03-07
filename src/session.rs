@@ -16,6 +16,7 @@
 
 use std::cell::Ref;
 
+use log;
 use reqwest::{Body, Method, RequestBuilder as ReqwestRB, Response, Url};
 use reqwest::header::{Header, Headers};
 use serde::Serialize;
@@ -116,9 +117,18 @@ impl RequestBuilder {
     }
 }
 
-#[inline]
-fn _log(resp: Response) -> Response {
-    trace!("HTTP request to {} returned {}", resp.url(), resp.status());
+fn _log(mut resp: Response) -> Response {
+    if log_enabled!(log::Level::Trace) {
+        let details = if resp.status().is_client_error() || resp.status().is_server_error() {
+            resp.text().ok()
+        } else {
+            None
+        };
+
+        // TODO(dtantsur): proper error parsing
+        trace!("HTTP request to {} returned {}; error: {:?}",
+               resp.url(), resp.status(), details);
+    }
     resp
 }
 
