@@ -25,12 +25,16 @@ use serde_json;
 use super::super::Result;
 use super::super::auth::AuthMethod;
 use super::super::common::{self, ApiVersion};
+use super::super::common::protocol::Ref;
 use super::super::session::{Session, ServiceInfo, ServiceType};
 use super::protocol;
 
 
 /// Extensions for Session.
 pub trait V2API {
+    /// Create a server.
+    fn create_server(&self, request: protocol::ServerCreate) -> Result<Ref>;
+
     /// Get a server.
     fn get_server<S: AsRef<str>>(&self, id: S) -> Result<protocol::Server>;
 
@@ -75,6 +79,15 @@ const SERVICE_TYPE: &'static str = "compute";
 const VERSION_ID: &'static str = "v2.1";
 
 impl V2API for Session {
+    fn create_server(&self, request: protocol::ServerCreate) -> Result<Ref> {
+        debug!("Creating a server with {:?}", request);
+        let body = protocol::ServerCreateRoot { server: request };
+        let server = self.request::<V2>(Method::Post, &["servers"], None)?
+            .json(&body).receive_json::<protocol::CreatedServerRoot>()?.server;
+        trace!("Requested creation of server {:?}", server);
+        Ok(server)
+    }
+
     fn get_server<S: AsRef<str>>(&self, id: S) -> Result<protocol::Server> {
         trace!("Get compute server {}", id.as_ref());
         let server = self.request::<V2>(Method::Get,

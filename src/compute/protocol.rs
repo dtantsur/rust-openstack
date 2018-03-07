@@ -184,6 +184,16 @@ pub struct ServerCreate {
     pub networks: Vec<ServerNetwork>
 }
 
+#[derive(Clone, Debug, Serialize)]
+pub struct ServerCreateRoot {
+    pub server: ServerCreate
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct CreatedServerRoot {
+    pub server: common::protocol::Ref
+}
+
 #[derive(Clone, Debug, Deserialize)]
 pub struct Flavor {
     #[serde(rename = "OS-FLV-EXT-DATA:ephemeral", default)]

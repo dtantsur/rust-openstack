@@ -70,6 +70,12 @@ pub struct NewServer<'session> {
     inner: protocol::ServerCreate
 }
 
+/// Waiter for server to be created.
+#[derive(Debug)]
+pub struct ServerCreationWaiter<'server> {
+    server: Server<'server>
+}
+
 
 impl<'session> Refresh for Server<'session> {
     /// Refresh the server.
@@ -447,37 +453,106 @@ impl<'session> NewServer<'session> {
         }
     }
 
+    /// Request creation of the server.
+    pub fn create(self) -> Result<ServerCreationWaiter<'session>> {
+        let server_ref = self.session.create_server(self.inner)?;
+        Ok(ServerCreationWaiter {
+            server: Server::new(self.session, server_ref.id)?
+        })
+    }
+
     /// Add a virtual NIC with given fixed IP to the new server.
-    pub fn with_fixed_ip(mut self, fixed_ip: Ipv4Addr) -> NewServer<'session> {
+    pub fn add_fixed_ip(&mut self, fixed_ip: Ipv4Addr) {
         self.inner.networks.push(protocol::ServerNetwork::FixedIp {
             fixed_ip: fixed_ip
         });
+    }
+
+    /// Add a virtual NIC from this network to the new server.
+    pub fn add_network<N>(&mut self, network: N) where N: Into<NetworkRef> {
+        self.inner.networks.push(protocol::ServerNetwork::Network {
+            uuid: network.into().into()
+        });
+    }
+
+    /// Add a virtual NIC with this port to the new server.
+    pub fn add_port<P>(&mut self, port: P) where P: Into<PortRef> {
+        self.inner.networks.push(protocol::ServerNetwork::Port {
+            port: port.into().into()
+        });
+    }
+
+    /// Use this image as a source for the new server.
+    pub fn set_image<I>(&mut self, image: I) where I: Into<ImageRef> {
+        self.inner.imageRef = Some(image.into().into());
+    }
+
+    /// Add a virtual NIC with given fixed IP to the new server.
+    pub fn with_fixed_ip(mut self, fixed_ip: Ipv4Addr) -> NewServer<'session> {
+        self.add_fixed_ip(fixed_ip);
         self
     }
 
     /// Use this image as a source for the new server.
     pub fn with_image<I>(mut self, image: I) -> NewServer<'session>
             where I: Into<ImageRef> {
-        self.inner.imageRef = Some(image.into().into());
+        self.set_image(image);
         self
     }
 
     /// Add a virtual NIC from this network to the new server.
     pub fn with_network<N>(mut self, network: N) -> NewServer<'session>
             where N: Into<NetworkRef> {
-        self.inner.networks.push(protocol::ServerNetwork::Network {
-            uuid: network.into().into()
-        });
+        self.add_network(network);
         self
     }
 
     /// Add a virtual NIC with this port to the new server.
     pub fn with_port<P>(mut self, port: P) -> NewServer<'session>
             where P: Into<PortRef> {
-        self.inner.networks.push(protocol::ServerNetwork::Port {
-            port: port.into().into()
-        });
+        self.add_port(port);
         self
+    }
+}
+
+impl<'server> Waiter<Server<'server>, Error> for ServerCreationWaiter<'server> {
+    fn default_wait_timeout(&self) -> Option<Duration> {
+        Some(Duration::new(1800, 0))
+    }
+
+    fn default_delay(&self) -> Duration {
+        Duration::new(5, 0)
+    }
+
+    fn timeout_error(&self) -> Error {
+        Error::new(ErrorKind::OperationTimedOut,
+                   format!("Timeout waiting for server {} to become ACTIVE",
+                           self.server.id()))
+    }
+
+    fn poll(&mut self) -> Result<Option<Server<'server>>> {
+        self.server.refresh()?;
+        if self.server.status() == protocol::ServerStatus::Active {
+            debug!("Server {} successfully created", self.server.id());
+            // TODO(dtantsur): get rid of clone?
+            Ok(Some(self.server.clone()))
+        } else if self.server.status() == protocol::ServerStatus::Error {
+            debug!("Failed create server {} - status is ERROR",
+                   self.server.id());
+            Err(Error::new(ErrorKind::OperationFailed,
+                           format!("Server {} got into ERROR state",
+                                   self.server.id())))
+        } else {
+            trace!("Still waiting for server {} to become ACTIVE, current is {}",
+                   self.server.id(), self.server.status());
+            Ok(None)
+        }
+    }
+}
+
+impl<'server> WaiterCurrentState<Server<'server>> for ServerCreationWaiter<'server> {
+    fn waiter_current_state(&self) -> &Server<'server> {
+        &self.server
     }
 }
 
