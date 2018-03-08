@@ -36,26 +36,6 @@ pub trait V2API {
     /// Create a server.
     fn create_server(&self, request: protocol::ServerCreate) -> Result<Ref>;
 
-    /// Get a server.
-    fn get_server<S: AsRef<str>>(&self, id: S) -> Result<protocol::Server>;
-
-    /// List servers.
-    fn list_servers<Q: Serialize + Debug>(&self, query: &Q)
-        -> Result<Vec<common::protocol::IdAndName>>;
-
-    /// List servers with details.
-    fn list_servers_detail<Q: Serialize + Debug>(&self, query: &Q)
-        -> Result<Vec<protocol::Server>>;
-
-    /// Run an action on the server.
-    fn server_simple_action<S1, S2>(&self, id: S1, action: S2) -> Result<()>
-            where S1: AsRef<str>, S2: AsRef<str> {
-        self.server_action_with_args(id, action, serde_json::Value::Null)
-    }
-
-    fn server_action_with_args<S1, S2, Q>(&self, id: S1, action: S2, args: Q)
-        -> Result<()> where S1: AsRef<str>, S2: AsRef<str>, Q: Serialize + Debug;
-
     /// Delete a server.
     fn delete_server<S: AsRef<str>>(&self, id: S) -> Result<()>;
 
@@ -66,7 +46,13 @@ pub trait V2API {
     fn get_flavor_by_name<S: AsRef<str>>(&self, name: S) -> Result<protocol::Flavor>;
 
     /// Get a flavor.
-    fn get_flavor<S: AsRef<str>>(&self, id_or_name: S) -> Result<protocol::Flavor>;
+    fn get_flavor<S: AsRef<str>>(&self, id_or_name: S) -> Result<protocol::Flavor> {
+        let s = id_or_name.as_ref();
+        self.get_flavor_by_id(s).if_not_found_then(|| self.get_flavor_by_name(s))
+    }
+
+    /// Get a server.
+    fn get_server<S: AsRef<str>>(&self, id: S) -> Result<protocol::Server>;
 
     /// List flavors.
     fn list_flavors<Q: Serialize + Debug>(&self, query: &Q)
@@ -75,6 +61,24 @@ pub trait V2API {
     /// List flavors with details.
     fn list_flavors_detail<Q: Serialize + Debug>(&self, query: &Q)
         -> Result<Vec<protocol::Flavor>>;
+
+    /// List servers.
+    fn list_servers<Q: Serialize + Debug>(&self, query: &Q)
+        -> Result<Vec<common::protocol::IdAndName>>;
+
+    /// List servers with details.
+    fn list_servers_detail<Q: Serialize + Debug>(&self, query: &Q)
+        -> Result<Vec<protocol::Server>>;
+
+    /// Run an action while providing some arguments.
+    fn server_action_with_args<S1, S2, Q>(&self, id: S1, action: S2, args: Q)
+        -> Result<()> where S1: AsRef<str>, S2: AsRef<str>, Q: Serialize + Debug;
+
+    /// Run an action on the server.
+    fn server_simple_action<S1, S2>(&self, id: S1, action: S2) -> Result<()>
+            where S1: AsRef<str>, S2: AsRef<str> {
+        self.server_action_with_args(id, action, serde_json::Value::Null)
+    }
 }
 
 /// Service type of Compute API V2.
@@ -95,6 +99,37 @@ impl V2API for Session {
         Ok(server)
     }
 
+    fn delete_server<S: AsRef<str>>(&self, id: S) -> Result<()> {
+        trace!("Deleting server {}", id.as_ref());
+        let _ = self.request::<V2>(Method::Delete,
+                                   &["servers", id.as_ref()],
+                                   None)?
+            .send()?;
+        debug!("Successfully requested deletion of server {}", id.as_ref());
+        Ok(())
+    }
+
+
+    fn get_flavor_by_id<S: AsRef<str>>(&self, id: S) -> Result<protocol::Flavor> {
+        trace!("Get compute flavor by ID {}", id.as_ref());
+        let flavor = self.request::<V2>(Method::Get,
+                                        &["flavors", id.as_ref()],
+                                        None)?
+           .receive_json::<protocol::FlavorRoot>()?.flavor;
+        trace!("Received {:?}", flavor);
+        Ok(flavor)
+    }
+
+    fn get_flavor_by_name<S: AsRef<str>>(&self, name: S) -> Result<protocol::Flavor> {
+        trace!("Get compute flavor by name {}", name.as_ref());
+        let items = self.request::<V2>(Method::Get, &["flavors"], None)?
+            .receive_json::<protocol::FlavorsRoot>()?.flavors
+            .into_iter().filter(|item| item.name == name.as_ref());
+        utils::one(items, "Flavor with given name or ID not found",
+                   "Too many flavors found with given name")
+            .and_then(|item| self.get_flavor(item.id))
+    }
+
     fn get_server<S: AsRef<str>>(&self, id: S) -> Result<protocol::Server> {
         trace!("Get compute server with ID {}", id.as_ref());
         let server = self.request::<V2>(Method::Get,
@@ -103,6 +138,26 @@ impl V2API for Session {
            .receive_json::<protocol::ServerRoot>()?.server;
         trace!("Received {:?}", server);
         Ok(server)
+    }
+
+    fn list_flavors<Q: Serialize + Debug>(&self, query: &Q)
+            -> Result<Vec<common::protocol::IdAndName>> {
+        trace!("Listing compute flavors with {:?}", query);
+        let result = self.request::<V2>(Method::Get, &["flavors"], None)?
+           .query(query).receive_json::<protocol::FlavorsRoot>()?.flavors;
+        trace!("Received flavors: {:?}", result);
+        Ok(result)
+    }
+
+    fn list_flavors_detail<Q: Serialize + Debug>(&self, query: &Q)
+            -> Result<Vec<protocol::Flavor>> {
+        trace!("Listing compute flavors with {:?}", query);
+        let result = self.request::<V2>(Method::Get,
+                                        &["flavors", "detail"],
+                                        None)?
+           .query(query).receive_json::<protocol::FlavorsDetailRoot>()?.flavors;
+        trace!("Received flavors: {:?}", result);
+        Ok(result)
     }
 
     fn list_servers<Q: Serialize + Debug>(&self, query: &Q)
@@ -138,61 +193,6 @@ impl V2API for Session {
             .json(&body).send()?;
         debug!("Successfully ran {} on server {}", action.as_ref(), id.as_ref());
         Ok(())
-    }
-
-    fn delete_server<S: AsRef<str>>(&self, id: S) -> Result<()> {
-        trace!("Deleting server {}", id.as_ref());
-        let _ = self.request::<V2>(Method::Delete,
-                                   &["servers", id.as_ref()],
-                                   None)?
-            .send()?;
-        debug!("Successfully requested deletion of server {}", id.as_ref());
-        Ok(())
-    }
-
-    fn get_flavor_by_id<S: AsRef<str>>(&self, id: S) -> Result<protocol::Flavor> {
-        trace!("Get compute flavor by ID {}", id.as_ref());
-        let flavor = self.request::<V2>(Method::Get,
-                                        &["flavors", id.as_ref()],
-                                        None)?
-           .receive_json::<protocol::FlavorRoot>()?.flavor;
-        trace!("Received {:?}", flavor);
-        Ok(flavor)
-    }
-
-    fn get_flavor_by_name<S: AsRef<str>>(&self, name: S) -> Result<protocol::Flavor> {
-        trace!("Get compute flavor by name {}", name.as_ref());
-        let items = self.request::<V2>(Method::Get, &["flavors"], None)?
-            .receive_json::<protocol::FlavorsRoot>()?.flavors
-            .into_iter().filter(|item| item.name == name.as_ref());
-        utils::one(items, "Flavor with given name or ID not found",
-                   "Too many flavors found with given name")
-            .and_then(|item| self.get_flavor(item.id))
-    }
-
-    fn get_flavor<S: AsRef<str>>(&self, id_or_name: S) -> Result<protocol::Flavor> {
-        let s = id_or_name.as_ref();
-        self.get_flavor_by_id(s).if_not_found_then(|| self.get_flavor_by_name(s))
-    }
-
-    fn list_flavors<Q: Serialize + Debug>(&self, query: &Q)
-            -> Result<Vec<common::protocol::IdAndName>> {
-        trace!("Listing compute flavors with {:?}", query);
-        let result = self.request::<V2>(Method::Get, &["flavors"], None)?
-           .query(query).receive_json::<protocol::FlavorsRoot>()?.flavors;
-        trace!("Received flavors: {:?}", result);
-        Ok(result)
-    }
-
-    fn list_flavors_detail<Q: Serialize + Debug>(&self, query: &Q)
-            -> Result<Vec<protocol::Flavor>> {
-        trace!("Listing compute flavors with {:?}", query);
-        let result = self.request::<V2>(Method::Get,
-                                        &["flavors", "detail"],
-                                        None)?
-           .query(query).receive_json::<protocol::FlavorsDetailRoot>()?.flavors;
-        trace!("Received flavors: {:?}", result);
-        Ok(result)
     }
 }
 
