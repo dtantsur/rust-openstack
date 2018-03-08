@@ -21,7 +21,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::hash::Hash;
 
-use super::{ErrorKind, Result};
+use super::{Error, ErrorKind, Result};
 
 
 /// Type of query parameters.
@@ -164,6 +164,21 @@ impl<T> ResultExt<T> for Result<T> {
                 Err(err)
             }
         })
+    }
+}
+
+/// Get one and only one item from an iterator.
+pub fn one<T, I, S>(collection: I, not_found_msg: S, too_many_msg: S)
+        -> Result<T> where I: IntoIterator<Item = T>, S: Into<String> {
+    let mut iter = collection.into_iter();
+    let result = iter.next().ok_or_else(|| {
+        Error::new(ErrorKind::ResourceNotFound, not_found_msg.into())
+    })?;
+
+    if iter.next().is_some() {
+        Err(Error::new(ErrorKind::TooManyItems, too_many_msg.into()))
+    } else {
+        Ok(result)
     }
 }
 

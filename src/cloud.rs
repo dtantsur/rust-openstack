@@ -143,25 +143,8 @@ impl Cloud {
     /// let server = os.get_flavor("m1.medium").expect("Unable to get a flavor");
     /// ```
     #[cfg(feature = "compute")]
-    pub fn get_flavor<Id: Into<String>>(&self, id_or_name: Id) -> Result<Flavor> {
-        let s = id_or_name.into();
-        Flavor::new(&self.session, &s).if_not_found_then(|| {
-            self.find_flavors().into_iter()
-                .filter(|item| item.name() == &s).take(2)
-                .collect::<Vec<FlavorSummary>>().and_then(|mut items| {
-                    if items.len() > 1 {
-                        Err(Error::new(ErrorKind::TooManyItems,
-                                       "Too many flavors with this name"))
-                    } else {
-                        match items.pop() {
-                            Some(item) => item.details(),
-                            None => Err(Error::new(
-                                ErrorKind::ResourceNotFound,
-                                "No flavors with this name or ID"))
-                        }
-                    }
-                })
-        })
+    pub fn get_flavor<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Flavor> {
+        Flavor::new(&self.session, id_or_name)
     }
 
     /// Find an image by its name or ID.

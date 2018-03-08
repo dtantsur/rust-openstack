@@ -27,6 +27,7 @@ use super::super::auth::AuthMethod;
 use super::super::common::{self, ApiVersion};
 use super::super::common::protocol::Ref;
 use super::super::session::{Session, ServiceInfo, ServiceType};
+use super::super::utils::{self, ResultExt};
 use super::protocol;
 
 
@@ -58,8 +59,14 @@ pub trait V2API {
     /// Delete a server.
     fn delete_server<S: AsRef<str>>(&self, id: S) -> Result<()>;
 
+    /// Get a flavor by its ID.
+    fn get_flavor_by_id<S: AsRef<str>>(&self, id: S) -> Result<protocol::Flavor>;
+
+    /// Get a flavor by its name.
+    fn get_flavor_by_name<S: AsRef<str>>(&self, name: S) -> Result<protocol::Flavor>;
+
     /// Get a flavor.
-    fn get_flavor<S: AsRef<str>>(&self, id: S) -> Result<protocol::Flavor>;
+    fn get_flavor<S: AsRef<str>>(&self, id_or_name: S) -> Result<protocol::Flavor>;
 
     /// List flavors.
     fn list_flavors<Q: Serialize + Debug>(&self, query: &Q)
@@ -89,7 +96,7 @@ impl V2API for Session {
     }
 
     fn get_server<S: AsRef<str>>(&self, id: S) -> Result<protocol::Server> {
-        trace!("Get compute server {}", id.as_ref());
+        trace!("Get compute server with ID {}", id.as_ref());
         let server = self.request::<V2>(Method::Get,
                                         &["servers", id.as_ref()],
                                         None)?
@@ -143,14 +150,29 @@ impl V2API for Session {
         Ok(())
     }
 
-    fn get_flavor<S: AsRef<str>>(&self, id: S) -> Result<protocol::Flavor> {
-        trace!("Get compute flavor {}", id.as_ref());
+    fn get_flavor_by_id<S: AsRef<str>>(&self, id: S) -> Result<protocol::Flavor> {
+        trace!("Get compute flavor by ID {}", id.as_ref());
         let flavor = self.request::<V2>(Method::Get,
                                         &["flavors", id.as_ref()],
                                         None)?
            .receive_json::<protocol::FlavorRoot>()?.flavor;
         trace!("Received {:?}", flavor);
         Ok(flavor)
+    }
+
+    fn get_flavor_by_name<S: AsRef<str>>(&self, name: S) -> Result<protocol::Flavor> {
+        trace!("Get compute flavor by name {}", name.as_ref());
+        let items = self.request::<V2>(Method::Get, &["flavors"], None)?
+            .receive_json::<protocol::FlavorsRoot>()?.flavors
+            .into_iter().filter(|item| item.name == name.as_ref());
+        utils::one(items, "Flavor with given name or ID not found",
+                   "Too many flavors found with given name")
+            .and_then(|item| self.get_flavor(item.id))
+    }
+
+    fn get_flavor<S: AsRef<str>>(&self, id_or_name: S) -> Result<protocol::Flavor> {
+        let s = id_or_name.as_ref();
+        self.get_flavor_by_id(s).if_not_found_then(|| self.get_flavor_by_name(s))
     }
 
     fn list_flavors<Q: Serialize + Debug>(&self, query: &Q)
