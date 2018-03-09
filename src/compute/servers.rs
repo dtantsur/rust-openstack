@@ -63,11 +63,25 @@ pub struct ServerStatusWaiter<'server> {
     target: protocol::ServerStatus
 }
 
+/// A virtual NIC of a new server.
+#[derive(Clone, Debug)]
+pub enum ServerNIC {
+    /// A NIC from the given network.
+    FromNetwork(NetworkRef),
+    /// A NIC with the given port.
+    WithPort(PortRef),
+    /// A NIC with the given fixed IP.
+    WithFixedIp(Ipv4Addr)
+}
+
 /// A request to create a server.
 #[derive(Debug)]
 pub struct NewServer<'session> {
     session: &'session Session,
-    inner: protocol::ServerCreate
+    flavor: FlavorRef,
+    image: Option<ImageRef>,
+    name: String,
+    networks: Vec<ServerNIC>,
 }
 
 /// Waiter for server to be created.
@@ -443,48 +457,66 @@ impl<'session> NewServer<'session> {
             -> NewServer<'session> {
         NewServer {
             session: session,
-            inner: protocol::ServerCreate {
-                flavorRef: flavor.into(),
-                imageRef: None,
-                key_name: None,
-                name: name,
-                networks: Vec::new()
-            }
+            flavor: flavor,
+            image: None,
+            name: name,
+            networks: Vec::new(),
         }
     }
 
     /// Request creation of the server.
     pub fn create(self) -> Result<ServerCreationWaiter<'session>> {
-        let server_ref = self.session.create_server(self.inner)?;
+        // TODO(dtantsur): validate/convert name<->ID
+        let request = protocol::ServerCreate {
+            flavorRef: self.flavor.into(),
+            imageRef: self.image.map(From::from),
+            key_name: None,  // TODO
+            name: self.name,
+            networks: self.networks.into_iter().map(|x| match x {
+                ServerNIC::FromNetwork(n) =>
+                    protocol::ServerNetwork::Network { uuid: n.into() },
+                ServerNIC::WithPort(p) =>
+                    protocol::ServerNetwork::Port { port: p.into() },
+                ServerNIC::WithFixedIp(ip) =>
+                    protocol::ServerNetwork::FixedIp{ fixed_ip: ip }
+            }).collect()
+        };
+
+        let server_ref = self.session.create_server(request)?;
         Ok(ServerCreationWaiter {
             server: Server::new(self.session, server_ref.id)?
         })
     }
 
     /// Add a virtual NIC with given fixed IP to the new server.
+    ///
+    /// A shorthand for `add_nic`.
     pub fn add_fixed_ip(&mut self, fixed_ip: Ipv4Addr) {
-        self.inner.networks.push(protocol::ServerNetwork::FixedIp {
-            fixed_ip: fixed_ip
-        });
+        self.add_nic(ServerNIC::WithFixedIp(fixed_ip));
     }
 
     /// Add a virtual NIC from this network to the new server.
+    ///
+    /// A shorthand for `add_nic`.
     pub fn add_network<N>(&mut self, network: N) where N: Into<NetworkRef> {
-        self.inner.networks.push(protocol::ServerNetwork::Network {
-            uuid: network.into().into()
-        });
+        self.add_nic(ServerNIC::FromNetwork(network.into()));
+    }
+
+    /// Add a virtual NIC to the new server.
+    pub fn add_nic(&mut self, nic: ServerNIC) {
+        self.networks.push(nic);
     }
 
     /// Add a virtual NIC with this port to the new server.
+    ///
+    /// A shorthand for `add_nic`.
     pub fn add_port<P>(&mut self, port: P) where P: Into<PortRef> {
-        self.inner.networks.push(protocol::ServerNetwork::Port {
-            port: port.into().into()
-        });
+        self.add_nic(ServerNIC::WithPort(port.into()));
     }
 
     /// Use this image as a source for the new server.
     pub fn set_image<I>(&mut self, image: I) where I: Into<ImageRef> {
-        self.inner.imageRef = Some(image.into().into());
+        self.image = Some(image.into());
     }
 
     /// Add a virtual NIC with given fixed IP to the new server.
