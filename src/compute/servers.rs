@@ -468,7 +468,7 @@ impl<'session> NewServer<'session> {
     pub fn create(self) -> Result<ServerCreationWaiter<'session>> {
         // TODO(dtantsur): validate/convert name<->ID
         let request = protocol::ServerCreate {
-            flavorRef: self.flavor.into(),
+            flavorRef: self.flavor.into_verified(self.session)?,
             imageRef: self.image.map(From::from),
             key_name: None,  // TODO
             name: self.name,

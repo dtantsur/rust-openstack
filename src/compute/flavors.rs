@@ -270,3 +270,15 @@ impl<'session> From<FlavorSummary<'session>> for FlavorRef {
         FlavorRef::new_verified(value.inner.id)
     }
 }
+
+impl FlavorRef {
+    /// Verify this reference and convert to an ID, if possible.
+    #[cfg(feature = "compute")]
+    pub(crate) fn into_verified(self, session: &Session) -> Result<String> {
+        Ok(if self.verified {
+            self.value
+        } else {
+            session.get_flavor(&self.value)?.id
+        })
+    }
+}
