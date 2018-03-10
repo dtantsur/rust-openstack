@@ -39,17 +39,17 @@ pub trait V2API {
     /// Delete a server.
     fn delete_server<S: AsRef<str>>(&self, id: S) -> Result<()>;
 
-    /// Get a flavor by its ID.
-    fn get_flavor_by_id<S: AsRef<str>>(&self, id: S) -> Result<protocol::Flavor>;
-
-    /// Get a flavor by its name.
-    fn get_flavor_by_name<S: AsRef<str>>(&self, name: S) -> Result<protocol::Flavor>;
-
     /// Get a flavor.
     fn get_flavor<S: AsRef<str>>(&self, id_or_name: S) -> Result<protocol::Flavor> {
         let s = id_or_name.as_ref();
         self.get_flavor_by_id(s).if_not_found_then(|| self.get_flavor_by_name(s))
     }
+
+    /// Get a flavor by its ID.
+    fn get_flavor_by_id<S: AsRef<str>>(&self, id: S) -> Result<protocol::Flavor>;
+
+    /// Get a flavor by its name.
+    fn get_flavor_by_name<S: AsRef<str>>(&self, name: S) -> Result<protocol::Flavor>;
 
     /// Get a server.
     fn get_server<S: AsRef<str>>(&self, id: S) -> Result<protocol::Server>;
@@ -127,7 +127,7 @@ impl V2API for Session {
             .into_iter().filter(|item| item.name == name.as_ref());
         utils::one(items, "Flavor with given name or ID not found",
                    "Too many flavors found with given name")
-            .and_then(|item| self.get_flavor(item.id))
+            .and_then(|item| self.get_flavor_by_id(item.id))
     }
 
     fn get_server<S: AsRef<str>>(&self, id: S) -> Result<protocol::Server> {
