@@ -23,13 +23,23 @@ use super::super::Result;
 use super::super::auth::AuthMethod;
 use super::super::common;
 use super::super::session::{Session, ServiceInfo, ServiceType};
+use super::super::utils::{self, ResultExt};
 use super::protocol;
 
 
 /// Extensions for Session.
 pub trait V2API {
     /// Get a network.
-    fn get_network<S: AsRef<str>>(&self, id: S) -> Result<protocol::Network>;
+    fn get_network<S: AsRef<str>>(&self, id_or_name: S) -> Result<protocol::Network> {
+        let s = id_or_name.as_ref();
+        self.get_network_by_id(s).if_not_found_then(|| self.get_network_by_name(s))
+    }
+
+    /// Get a network by its ID.
+    fn get_network_by_id<S: AsRef<str>>(&self, id: S) -> Result<protocol::Network>;
+
+    /// Get a network by its name.
+    fn get_network_by_name<S: AsRef<str>>(&self, name: S) -> Result<protocol::Network>;
 
     /// List networks.
     fn list_networks<Q: Serialize + Debug>(&self, query: &Q)
@@ -47,8 +57,8 @@ const VERSION_ID: &'static str = "v2.0";
 
 
 impl V2API for Session {
-    fn get_network<S: AsRef<str>>(&self, id: S) -> Result<protocol::Network> {
-        trace!("Get network {}", id.as_ref());
+    fn get_network_by_id<S: AsRef<str>>(&self, id: S) -> Result<protocol::Network> {
+        trace!("Get network by ID {}", id.as_ref());
         let network = self.request::<V2>(Method::Get,
                                          &["networks", id.as_ref()],
                                          None)?
@@ -56,6 +66,18 @@ impl V2API for Session {
         trace!("Received {:?}", network);
         Ok(network)
     }
+
+    fn get_network_by_name<S: AsRef<str>>(&self, name: S) -> Result<protocol::Network> {
+        trace!("Get network by name {}", name.as_ref());
+        let items = self.request::<V2>(Method::Get, &["networks"], None)?
+            .query(&[("name", name.as_ref())])
+            .receive_json::<protocol::NetworksRoot>()?.networks;
+        let result = utils::one(items, "Network with given name or ID not found",
+                                "Too many networks found with given name")?;
+        trace!("Received {:?}", result);
+        Ok(result)
+    }
+
 
     fn list_networks<Q: Serialize + Debug>(&self, query: &Q)
             -> Result<Vec<protocol::Network>> {

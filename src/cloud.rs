@@ -178,11 +178,8 @@ impl Cloud {
     /// let server = os.get_network("centos7").expect("Unable to get a network");
     /// ```
     #[cfg(feature = "network")]
-    pub fn get_network<Id: Into<String>>(&self, id_or_name: Id) -> Result<Network> {
-        let s = id_or_name.into();
-        Network::new(&self.session, &s).if_not_found_then(|| {
-            self.find_networks().with_name(s).one()
-        })
+    pub fn get_network<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Network> {
+        Network::new(&self.session, id_or_name)
     }
 
     /// Find a server by its name or ID.

@@ -451,6 +451,23 @@ impl<'session> ServerQuery<'session> {
     }
 }
 
+fn convert_networks(session: &Session, networks: Vec<ServerNIC>)
+        -> Result<Vec<protocol::ServerNetwork>> {
+    let mut result = Vec::with_capacity(networks.len());
+    for item in networks {
+        result.push(match item {
+            ServerNIC::FromNetwork(n) => protocol::ServerNetwork::Network {
+                uuid: n.into_verified(session)?
+            },
+            ServerNIC::WithPort(p) =>
+                protocol::ServerNetwork::Port { port: p.into() },
+            ServerNIC::WithFixedIp(ip) =>
+                protocol::ServerNetwork::FixedIp{ fixed_ip: ip }
+        });
+    }
+    Ok(result)
+}
+
 impl<'session> NewServer<'session> {
     /// Start creating a server.
     pub(crate) fn new(session: &'session Session, name: String, flavor: FlavorRef)
@@ -472,14 +489,7 @@ impl<'session> NewServer<'session> {
             imageRef: self.image.map(From::from),
             key_name: None,  // TODO
             name: self.name,
-            networks: self.networks.into_iter().map(|x| match x {
-                ServerNIC::FromNetwork(n) =>
-                    protocol::ServerNetwork::Network { uuid: n.into() },
-                ServerNIC::WithPort(p) =>
-                    protocol::ServerNetwork::Port { port: p.into() },
-                ServerNIC::WithFixedIp(ip) =>
-                    protocol::ServerNetwork::FixedIp{ fixed_ip: ip }
-            }).collect()
+            networks: convert_networks(self.session, self.networks)?
         };
 
         let server_ref = self.session.create_server(request)?;

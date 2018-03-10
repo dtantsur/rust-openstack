@@ -194,3 +194,15 @@ impl<'session> From<Network<'session>> for NetworkRef {
         NetworkRef::new_verified(value.inner.id)
     }
 }
+
+impl NetworkRef {
+    /// Verify this reference and convert to an ID, if possible.
+    #[cfg(feature = "network")]
+    pub(crate) fn into_verified(self, session: &Session) -> Result<String> {
+        Ok(if self.verified {
+            self.value
+        } else {
+            session.get_network(&self.value)?.id
+        })
+    }
+}
