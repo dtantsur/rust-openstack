@@ -258,6 +258,6 @@ impl<'session> IntoFallibleIterator for ImageQuery<'session> {
 
 impl<'session> From<Image<'session>> for ImageRef {
     fn from(value: Image<'session>) -> ImageRef {
-        ImageRef::from(value.inner.id)
+        ImageRef::new_verified(value.inner.id)
     }
 }

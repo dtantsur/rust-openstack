@@ -191,6 +191,6 @@ impl<'session> IntoFallibleIterator for NetworkQuery<'session> {
 
 impl<'session> From<Network<'session>> for NetworkRef {
     fn from(value: Network<'session>) -> NetworkRef {
-        NetworkRef::from(value.inner.id)
+        NetworkRef::new_verified(value.inner.id)
     }
 }

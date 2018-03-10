@@ -261,12 +261,12 @@ impl<'session> IntoFallibleIterator for FlavorQuery<'session> {
 
 impl<'session> From<Flavor<'session>> for FlavorRef {
     fn from(value: Flavor<'session>) -> FlavorRef {
-        FlavorRef::from(value.inner.id)
+        FlavorRef::new_verified(value.inner.id)
     }
 }
 
 impl<'session> From<FlavorSummary<'session>> for FlavorRef {
     fn from(value: FlavorSummary<'session>) -> FlavorRef {
-        FlavorRef::from(value.inner.id)
+        FlavorRef::new_verified(value.inner.id)
     }
 }
