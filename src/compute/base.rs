@@ -52,7 +52,16 @@ pub trait V2API {
     fn get_flavor_by_name<S: AsRef<str>>(&self, name: S) -> Result<protocol::Flavor>;
 
     /// Get a server.
-    fn get_server<S: AsRef<str>>(&self, id: S) -> Result<protocol::Server>;
+    fn get_server<S: AsRef<str>>(&self, id_or_name: S) -> Result<protocol::Server> {
+        let s = id_or_name.as_ref();
+        self.get_server_by_id(s).if_not_found_then(|| self.get_server_by_name(s))
+    }
+
+    /// Get a server by its ID.
+    fn get_server_by_id<S: AsRef<str>>(&self, id: S) -> Result<protocol::Server>;
+
+    /// Get a server by its ID.
+    fn get_server_by_name<S: AsRef<str>>(&self, id: S) -> Result<protocol::Server>;
 
     /// List flavors.
     fn list_flavors<Q: Serialize + Debug>(&self, query: &Q)
@@ -130,7 +139,7 @@ impl V2API for Session {
             .and_then(|item| self.get_flavor_by_id(item.id))
     }
 
-    fn get_server<S: AsRef<str>>(&self, id: S) -> Result<protocol::Server> {
+    fn get_server_by_id<S: AsRef<str>>(&self, id: S) -> Result<protocol::Server> {
         trace!("Get compute server with ID {}", id.as_ref());
         let server = self.request::<V2>(Method::Get,
                                         &["servers", id.as_ref()],
@@ -138,6 +147,17 @@ impl V2API for Session {
            .receive_json::<protocol::ServerRoot>()?.server;
         trace!("Received {:?}", server);
         Ok(server)
+    }
+
+    fn get_server_by_name<S: AsRef<str>>(&self, name: S) -> Result<protocol::Server> {
+        trace!("Get compute server with name {}", name.as_ref());
+        let items = self.request::<V2>(Method::Get, &["servers"], None)?
+            .query(&[("name", name.as_ref())])
+            .receive_json::<protocol::ServersRoot>()?.servers
+            .into_iter().filter(|item| item.name == name.as_ref());
+        utils::one(items, "Server with given name or ID not found",
+                   "Too many servers found with given name")
+            .and_then(|item| self.get_server_by_id(item.id))
     }
 
     fn list_flavors<Q: Serialize + Debug>(&self, query: &Q)

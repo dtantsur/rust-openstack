@@ -195,25 +195,8 @@ impl Cloud {
     ///     .expect("Unable to get a server");
     /// ```
     #[cfg(feature = "compute")]
-    pub fn get_server<Id: Into<String>>(&self, id_or_name: Id) -> Result<Server> {
-        let s = id_or_name.into();
-        Server::new(&self.session, &s).if_not_found_then(|| {
-            self.find_servers().with_name(s.clone()).into_iter()
-                .filter(|srv| srv.name() == &s).take(2)
-                .collect::<Vec<ServerSummary>>().and_then(|mut srvs| {
-                    if srvs.len() > 1 {
-                        Err(Error::new(ErrorKind::TooManyItems,
-                                       "Too many servers with this name"))
-                    } else {
-                        match srvs.pop() {
-                            Some(srv) => srv.details(),
-                            None => Err(Error::new(
-                                ErrorKind::ResourceNotFound,
-                                "No servers with this name or ID"))
-                        }
-                    }
-                })
-        })
+    pub fn get_server<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Server> {
+        Server::new(&self.session, id_or_name)
     }
 
     /// List all flavors.
