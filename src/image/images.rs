@@ -261,3 +261,15 @@ impl<'session> From<Image<'session>> for ImageRef {
         ImageRef::new_verified(value.inner.id)
     }
 }
+
+impl ImageRef {
+    /// Verify this reference and convert to an ID, if possible.
+    #[cfg(feature = "image")]
+    pub(crate) fn into_verified(self, session: &Session) -> Result<String> {
+        Ok(if self.verified {
+            self.value
+        } else {
+            session.get_image(&self.value)?.id
+        })
+    }
+}

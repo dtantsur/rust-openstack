@@ -23,13 +23,23 @@ use super::super::Result;
 use super::super::auth::AuthMethod;
 use super::super::common;
 use super::super::session::{Session, ServiceInfo, ServiceType};
+use super::super::utils::{self, ResultExt};
 use super::protocol;
 
 
 /// Extensions for Session.
 pub trait V2API {
-    /// Get a image.
-    fn get_image<S: AsRef<str>>(&self, id: S) -> Result<protocol::Image>;
+    /// Get an image.
+    fn get_image<S: AsRef<str>>(&self, id_or_name: S) -> Result<protocol::Image> {
+        let s = id_or_name.as_ref();
+        self.get_image_by_id(s).if_not_found_then(|| self.get_image_by_name(s))
+    }
+
+    /// Get an image by its ID.
+    fn get_image_by_id<S: AsRef<str>>(&self, id: S) -> Result<protocol::Image>;
+
+    /// Get an image by its name.
+    fn get_image_by_name<S: AsRef<str>>(&self, id: S) -> Result<protocol::Image>;
 
     /// List images.
     fn list_images<Q: Serialize + Debug>(&self, query: &Q)
@@ -48,7 +58,7 @@ const VERSION_ID: &'static str = "v2.3";
 
 
 impl V2API for Session {
-    fn get_image<S: AsRef<str>>(&self, id: S) -> Result<protocol::Image> {
+    fn get_image_by_id<S: AsRef<str>>(&self, id: S) -> Result<protocol::Image> {
         trace!("Fetching image {}", id.as_ref());
         let image = self.request::<V2>(Method::Get,
                                        &["images", id.as_ref()],
@@ -56,6 +66,17 @@ impl V2API for Session {
            .receive_json::<protocol::Image>()?;
         trace!("Received {:?}", image);
         Ok(image)
+    }
+
+    fn get_image_by_name<S: AsRef<str>>(&self, name: S) -> Result<protocol::Image> {
+        trace!("Get image by name {}", name.as_ref());
+        let items = self.request::<V2>(Method::Get, &["images"], None)?
+            .query(&[("name", name.as_ref())])
+            .receive_json::<protocol::ImagesRoot>()?.images;
+        let result = utils::one(items, "Image with given name or ID not found",
+                                "Too many images found with given name")?;
+        trace!("Received {:?}", result);
+        Ok(result)
     }
 
     fn list_images<Q: Serialize + Debug>(&self, query: &Q)

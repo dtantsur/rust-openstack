@@ -14,11 +14,7 @@
 
 //! Cloud API.
 
-#[allow(unused_imports)]
-use fallible_iterator::FallibleIterator;
-
-#[allow(unused_imports)]
-use super::{Error, ErrorKind, Result};
+use super::Result;
 use super::auth::AuthMethod;
 #[allow(unused_imports)]
 use super::common::FlavorRef;
@@ -30,8 +26,6 @@ use super::image::{Image, ImageQuery};
 #[cfg(feature = "network")]
 use super::network::{Network, NetworkQuery};
 use super::session::Session;
-#[allow(unused_imports)]
-use super::utils::ResultExt;
 
 
 /// OpenStack cloud API.
@@ -159,11 +153,8 @@ impl Cloud {
     /// let server = os.get_image("centos7").expect("Unable to get a image");
     /// ```
     #[cfg(feature = "image")]
-    pub fn get_image<Id: Into<String>>(&self, id_or_name: Id) -> Result<Image> {
-        let s = id_or_name.into();
-        Image::new(&self.session, &s).if_not_found_then(|| {
-            self.find_images().with_name(s).one()
-        })
+    pub fn get_image<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Image> {
+        Image::new(&self.session, id_or_name)
     }
 
     /// Find an network by its name or ID.

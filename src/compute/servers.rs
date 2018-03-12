@@ -483,10 +483,12 @@ impl<'session> NewServer<'session> {
 
     /// Request creation of the server.
     pub fn create(self) -> Result<ServerCreationWaiter<'session>> {
-        // TODO(dtantsur): validate/convert name<->ID
         let request = protocol::ServerCreate {
             flavorRef: self.flavor.into_verified(self.session)?,
-            imageRef: self.image.map(From::from),
+            imageRef: match self.image {
+                Some(img) => Some(img.into_verified(self.session)?),
+                None => None
+            },
             key_name: None,  // TODO
             name: self.name,
             networks: convert_networks(self.session, self.networks)?
