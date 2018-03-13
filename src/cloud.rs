@@ -15,7 +15,7 @@
 //! Cloud API.
 
 use super::Result;
-use super::auth::AuthMethod;
+use super::auth::{self, AuthMethod};
 #[allow(unused_imports)]
 use super::common::FlavorRef;
 #[cfg(feature = "compute")]
@@ -54,6 +54,21 @@ impl Cloud {
         Cloud {
             session: Session::new(auth_method)
         }
+    }
+
+    /// Create a new cloud object from environment variables.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
+    /// ```
+    pub fn from_env() -> Result<Cloud> {
+        Ok(Cloud {
+            session: Session::new(auth::from_env()?)
+        })
     }
 
     /// Convert this cloud into one using the given endpoint interface.
@@ -113,8 +128,7 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
-    /// let os = openstack::Cloud::new(auth);
+    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
     /// let sorting = openstack::compute::ServerSortKey::AccessIpv4;
     /// let server_list = os.find_servers()
     ///     .sort_by(openstack::Sort::Asc(sorting)).with_limit(5)
@@ -132,8 +146,7 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
-    /// let os = openstack::Cloud::new(auth);
+    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
     /// let server = os.get_flavor("m1.medium").expect("Unable to get a flavor");
     /// ```
     #[cfg(feature = "compute")]
@@ -148,8 +161,7 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
-    /// let os = openstack::Cloud::new(auth);
+    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
     /// let server = os.get_image("centos7").expect("Unable to get a image");
     /// ```
     #[cfg(feature = "image")]
@@ -164,8 +176,7 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
-    /// let os = openstack::Cloud::new(auth);
+    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
     /// let server = os.get_network("centos7").expect("Unable to get a network");
     /// ```
     #[cfg(feature = "network")]
@@ -180,8 +191,7 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
-    /// let os = openstack::Cloud::new(auth);
+    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
     /// let server = os.get_server("8a1c355b-2e1e-440a-8aa8-f272df72bc32")
     ///     .expect("Unable to get a server");
     /// ```
@@ -201,8 +211,7 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
-    /// let os = openstack::Cloud::new(auth);
+    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
     /// let server_list = os.list_flavors().expect("Unable to fetch flavors");
     /// ```
     #[cfg(feature = "compute")]
@@ -221,8 +230,7 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
-    /// let os = openstack::Cloud::new(auth);
+    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
     /// let server_list = os.list_images().expect("Unable to fetch images");
     /// ```
     #[cfg(feature = "image")]
@@ -241,8 +249,7 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
-    /// let os = openstack::Cloud::new(auth);
+    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
     /// let server_list = os.list_networks().expect("Unable to fetch networks");
     /// ```
     #[cfg(feature = "network")]
@@ -261,8 +268,7 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
-    /// let os = openstack::Cloud::new(auth);
+    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
     /// let server_list = os.list_servers().expect("Unable to fetch servers");
     /// ```
     #[cfg(feature = "compute")]

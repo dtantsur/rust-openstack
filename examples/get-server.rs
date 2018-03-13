@@ -22,9 +22,8 @@ use std::env;
 fn main() {
     env_logger::init();
 
-    let identity = openstack::auth::from_env()
+    let os = openstack::Cloud::from_env()
         .expect("Failed to create an identity provider from the environment");
-    let os = openstack::Cloud::new(identity);
 
     let id = env::args().nth(1).expect("Provide a server ID");
     let server = os.get_server(id).expect("Cannot get a server");

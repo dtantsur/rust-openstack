@@ -24,9 +24,8 @@ use waiter::{Waiter, WaiterCurrentState};
 fn main() {
     env_logger::init();
 
-    let identity = openstack::auth::from_env()
+    let os = openstack::Cloud::from_env()
         .expect("Failed to create an identity provider from the environment");
-    let os = openstack::Cloud::new(identity);
 
     let name = env::args().nth(1).expect("Provide a server name");
     let flavor = env::args().nth(2).expect("Provide a flavor");

@@ -23,9 +23,8 @@ use fallible_iterator::FallibleIterator;
 fn main() {
     env_logger::init();
 
-    let identity = openstack::auth::from_env()
+    let os = openstack::Cloud::from_env()
         .expect("Failed to create an identity provider from the environment");
-    let os = openstack::Cloud::new(identity);
     let sorting = openstack::compute::ServerSortKey::AccessIpv4;
 
     let servers: Vec<openstack::compute::Server> = os.find_servers()

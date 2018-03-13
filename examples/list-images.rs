@@ -23,9 +23,8 @@ use fallible_iterator::FallibleIterator;
 fn main() {
     env_logger::init();
 
-    let identity = openstack::auth::from_env()
+    let os = openstack::Cloud::from_env()
         .expect("Failed to create an identity provider from the environment");
-    let os = openstack::Cloud::new(identity);
 
     let images: Vec<openstack::image::Image> = os.find_images()
         .sort_by(openstack::Sort::Asc(openstack::image::ImageSortKey::Id))
