@@ -39,17 +39,21 @@ pub struct Cloud {
 impl Cloud {
     /// Create a new cloud object with a given authentication plugin.
     ///
-    /// See (auth module)[auth/index.html) for details on how to authenticate
+    /// See [`auth` module](auth/index.html) for details on how to authenticate
     /// against OpenStack clouds.
     ///
     /// # Example
     ///
     /// ```rust,no_run
-    /// use openstack;
+    /// fn cloud_from_env() -> openstack::Result<openstack::Cloud> {
+    ///     openstack::auth::from_env().map(openstack::Cloud::new)
+    /// }
     ///
-    /// let auth = openstack::auth::from_env().expect("Unable to authenticate");
-    /// let os = openstack::Cloud::new(auth);
+    /// # fn main() { cloud_from_env().unwrap(); }
     /// ```
+    ///
+    /// Note: in this particular case it's better to use
+    /// [from_env](#method.from_env).
     pub fn new<Auth: AuthMethod + 'static>(auth_method: Auth) -> Cloud {
         Cloud {
             session: Session::new(auth_method)
@@ -61,9 +65,10 @@ impl Cloud {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use openstack;
-    ///
-    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
+    /// # fn cloud_from_env() -> openstack::Result<()> {
+    /// let os = openstack::Cloud::from_env()?;
+    /// # Ok(()) }
+    /// # fn main() { cloud_from_env().unwrap(); }
     /// ```
     pub fn from_env() -> Result<Cloud> {
         Ok(Cloud {
@@ -72,6 +77,17 @@ impl Cloud {
     }
 
     /// Convert this cloud into one using the given endpoint interface.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// fn cloud_from_env() -> openstack::Result<openstack::Cloud> {
+    ///     openstack::Cloud::from_env()
+    ///         .map(|os| os.with_endpoint_interface("internal"))
+    /// }
+    ///
+    /// # fn main() { cloud_from_env().unwrap(); }
+    /// ```
     pub fn with_endpoint_interface<S>(self, endpoint_interface: S)
             -> Cloud where S: Into<String> {
         Cloud {

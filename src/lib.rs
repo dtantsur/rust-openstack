@@ -20,13 +20,25 @@
 //! # Usage
 //!
 //! Start with [authentication](auth/index.html), then create a
-//! [Cloud](struct.Cloud.html) object that contains all necessary calls.
+//! [Cloud](struct.Cloud.html) object and use it for OpenStack API calls.
 //!
-//! # API
+//! # Example
 //!
-//! * [Compute API](compute/index.html)
-//! * [Image API](image/index.html)
-//! * [Network API](network/index.html)
+//! Get authentication parameters from the environment and get UUIDs of all
+//! servers.
+//!
+//! ```rust,no_run
+//! extern crate openstack;
+//!
+//! fn get_server_uuids() -> openstack::Result<Vec<String>> {
+//!     let os = openstack::Cloud::from_env()?;
+//!     let servers = os.list_servers()?;
+//!     Ok(servers.into_iter().map(|server| server.id().clone()).collect())
+//! }
+//! # fn main() { get_server_uuids().unwrap(); }
+//! ```
+//!
+//! See [Cloud struct](struct.Cloud.html) for more examples.
 
 #![crate_name = "openstack"]
 #![crate_type = "lib"]

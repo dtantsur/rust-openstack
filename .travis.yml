@@ -1,7 +1,7 @@
 language: rust
 script:
 - cargo test --verbose
-- cargo test --verbose --no-default-features
+- cargo test --verbose --no-default-features --lib
 after_success: |
   echo "$TRAVIS_EVENT_TYPE -> $TRAVIS_BRANCH"
   if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_EVENT_TYPE" = "push" ]; then
