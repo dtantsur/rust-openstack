@@ -86,6 +86,9 @@ pub trait V2API {
     fn list_servers_detail<Q: Serialize + Debug>(&self, query: &Q)
         -> Result<Vec<protocol::Server>>;
 
+    /// Pick the highest API version or None if neither is supported.
+    fn pick_compute_api_version(&self, versions: &[ApiVersion]) -> Result<Option<ApiVersion>>;
+
     /// Run an action while providing some arguments.
     fn server_action_with_args<S1, S2, Q>(&self, id: S1, action: S2, args: Q)
         -> Result<()> where S1: AsRef<str>, S2: AsRef<str>, Q: Serialize + Debug;
@@ -104,6 +107,7 @@ pub struct V2;
 
 const SERVICE_TYPE: &'static str = "compute";
 const VERSION_ID: &'static str = "v2.1";
+const API_VERSION_KEYPAIR_TYPE: ApiVersion = ApiVersion(2, 2);
 
 impl V2API for Session {
     fn create_server(&self, request: protocol::ServerCreate) -> Result<Ref> {
@@ -148,9 +152,10 @@ impl V2API for Session {
 
     fn get_keypair<S: AsRef<str>>(&self, name: S) -> Result<protocol::KeyPair> {
         trace!("Get compute key pair by name {}", name.as_ref());
+        let ver = self.pick_compute_api_version(&[API_VERSION_KEYPAIR_TYPE])?;
         let keypair = self.request::<V2>(Method::Get,
                                         &["os-keypairs", name.as_ref()],
-                                        None)?
+                                        ver)?
            .receive_json::<protocol::KeyPairRoot>()?.keypair;
         trace!("Received {:?}", keypair);
         Ok(keypair)
@@ -200,7 +205,8 @@ impl V2API for Session {
     fn list_keypairs<Q: Serialize + Debug>(&self, query: &Q)
             -> Result<Vec<protocol::KeyPair>> {
         trace!("Listing compute key pairs with {:?}", query);
-        let result = self.request::<V2>(Method::Get, &["os-keypairs"], None)?
+        let ver = self.pick_compute_api_version(&[API_VERSION_KEYPAIR_TYPE])?;
+        let result = self.request::<V2>(Method::Get, &["os-keypairs"], ver)?
            .query(query).receive_json::<protocol::KeyPairsRoot>()?.keypairs;
         trace!("Received key pairs: {:?}", result);
         Ok(result)
@@ -224,6 +230,13 @@ impl V2API for Session {
            .query(query).receive_json::<protocol::ServersDetailRoot>()?.servers;
         trace!("Received servers: {:?}", result);
         Ok(result)
+    }
+
+    fn pick_compute_api_version(&self, versions: &[ApiVersion]) -> Result<Option<ApiVersion>> {
+        let info = self.get_service_info_ref::<V2>()?;
+        Ok(versions.into_iter().map(|item| *item).filter(|item| {
+            info.supports_api_version(*item)
+        }).max())
     }
 
     fn server_action_with_args<S1, S2, Q>(&self, id: S1, action: S2, args: Q)

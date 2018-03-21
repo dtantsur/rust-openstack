@@ -228,13 +228,26 @@ impl Session {
                                Some(self.endpoint_interface.clone()))
     }
 
-    fn get_service_info_ref<Srv>(&self)
+    pub(crate) fn get_service_info_ref<Srv>(&self)
             -> Result<Ref<ServiceInfo>> where Srv: ServiceType {
         self.ensure_service_info::<Srv>()?;
         Ok(self.cached_info.get_ref(&Srv::catalog_type()).unwrap())
     }
 }
 
+impl ServiceInfo {
+    /// Whether this service supports the given API version.
+    ///
+    /// Defaults to false if cannot be determined.
+    pub fn supports_api_version(&self, version: ApiVersion) -> bool {
+        match (self.minimum_version, self.current_version) {
+            (Some(min), Some(max)) => min <= version && max >= version,
+            (None, Some(current)) => current == version,
+            (Some(min), None) => version >= min,
+            _ => false
+        }
+    }
+}
 
 #[cfg(test)]
 mod test {
