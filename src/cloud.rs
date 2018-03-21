@@ -19,7 +19,7 @@ use super::auth::{self, AuthMethod};
 #[allow(unused_imports)]
 use super::common::FlavorRef;
 #[cfg(feature = "compute")]
-use super::compute::{Flavor, FlavorQuery, FlavorSummary,
+use super::compute::{Flavor, FlavorQuery, FlavorSummary, KeyPair, KeyPairQuery,
                      NewServer, Server, ServerQuery, ServerSummary};
 #[cfg(feature = "image")]
 use super::image::{Image, ImageQuery};
@@ -123,6 +123,15 @@ impl Cloud {
         ImageQuery::new(&self.session)
     }
 
+    /// Build a query against key pairs list.
+    ///
+    /// The returned object is a builder that should be used to construct
+    /// the query.
+    #[cfg(feature = "compute")]
+    pub fn find_keypairs(&self) -> KeyPairQuery {
+        KeyPairQuery::new(&self.session)
+    }
+
     /// Build a query against network list.
     ///
     /// The returned object is a builder that should be used to construct
@@ -183,6 +192,21 @@ impl Cloud {
     #[cfg(feature = "image")]
     pub fn get_image<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Image> {
         Image::new(&self.session, id_or_name)
+    }
+
+    /// Find a key pair by its name or ID.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
+    /// let server = os.get_keypair("default").expect("Unable to get a key pair");
+    /// ```
+    #[cfg(feature = "compute")]
+    pub fn get_keypair<Id: AsRef<str>>(&self, name: Id) -> Result<KeyPair> {
+        KeyPair::new(&self.session, name)
     }
 
     /// Find an network by its name or ID.
@@ -252,6 +276,21 @@ impl Cloud {
     #[cfg(feature = "image")]
     pub fn list_images(&self) -> Result<Vec<Image>> {
         self.find_images().all()
+    }
+
+    /// List all key pairs.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
+    /// let result = os.list_keypairs().expect("Unable to fetch key pairs");
+    /// ```
+    #[cfg(feature = "compute")]
+    pub fn list_keypairs(&self) -> Result<Vec<KeyPair>> {
+        self.find_keypairs().all()
     }
 
     /// List all networks.

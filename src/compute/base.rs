@@ -51,6 +51,9 @@ pub trait V2API {
     /// Get a flavor by its name.
     fn get_flavor_by_name<S: AsRef<str>>(&self, name: S) -> Result<protocol::Flavor>;
 
+    /// Get a key pair by its nam.e
+    fn get_keypair<S: AsRef<str>>(&self, name: S) -> Result<protocol::KeyPair>;
+
     /// Get a server.
     fn get_server<S: AsRef<str>>(&self, id_or_name: S) -> Result<protocol::Server> {
         let s = id_or_name.as_ref();
@@ -70,6 +73,10 @@ pub trait V2API {
     /// List flavors with details.
     fn list_flavors_detail<Q: Serialize + Debug>(&self, query: &Q)
         -> Result<Vec<protocol::Flavor>>;
+
+    /// List key pairs.
+    fn list_keypairs<Q: Serialize + Debug>(&self, query: &Q)
+        -> Result<Vec<protocol::KeyPair>>;
 
     /// List servers.
     fn list_servers<Q: Serialize + Debug>(&self, query: &Q)
@@ -139,6 +146,16 @@ impl V2API for Session {
             .and_then(|item| self.get_flavor_by_id(item.id))
     }
 
+    fn get_keypair<S: AsRef<str>>(&self, name: S) -> Result<protocol::KeyPair> {
+        trace!("Get compute key pair by name {}", name.as_ref());
+        let keypair = self.request::<V2>(Method::Get,
+                                        &["os-keypairs", name.as_ref()],
+                                        None)?
+           .receive_json::<protocol::KeyPairRoot>()?.keypair;
+        trace!("Received {:?}", keypair);
+        Ok(keypair)
+    }
+
     fn get_server_by_id<S: AsRef<str>>(&self, id: S) -> Result<protocol::Server> {
         trace!("Get compute server with ID {}", id.as_ref());
         let server = self.request::<V2>(Method::Get,
@@ -177,6 +194,15 @@ impl V2API for Session {
                                         None)?
            .query(query).receive_json::<protocol::FlavorsDetailRoot>()?.flavors;
         trace!("Received flavors: {:?}", result);
+        Ok(result)
+    }
+
+    fn list_keypairs<Q: Serialize + Debug>(&self, query: &Q)
+            -> Result<Vec<protocol::KeyPair>> {
+        trace!("Listing compute key pairs with {:?}", query);
+        let result = self.request::<V2>(Method::Get, &["os-keypairs"], None)?
+           .query(query).receive_json::<protocol::KeyPairsRoot>()?.keypairs;
+        trace!("Received key pairs: {:?}", result);
         Ok(result)
     }
 

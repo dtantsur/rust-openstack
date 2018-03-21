@@ -113,6 +113,14 @@ protocol_enum! {
     }
 }
 
+protocol_enum! {
+    #[doc = "Type of a key pair."]
+    enum KeyPairType {
+        SSH = "ssh",
+        X509 = "x509"
+    }
+}
+
 /// Address of a server.
 #[derive(Clone, Debug, Deserialize)]
 pub struct ServerAddress {
@@ -224,6 +232,25 @@ pub struct FlavorsDetailRoot {
 #[derive(Clone, Debug, Deserialize)]
 pub struct FlavorRoot {
     pub flavor: Flavor
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct KeyPair {
+    pub fingerprint: String,
+    #[serde(rename = "type", default)]
+    pub key_type: Option<KeyPairType>,
+    pub name: String,
+    pub public_key: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct KeyPairsRoot {
+    pub keypairs: Vec<KeyPair>
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct KeyPairRoot {
+    pub keypair: KeyPair
 }
 
 impl Default for ServerStatus {
