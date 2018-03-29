@@ -31,6 +31,10 @@ use super::super::utils::{self, ResultExt};
 use super::protocol;
 
 
+const API_VERSION_KEYPAIR_TYPE: ApiVersion = ApiVersion(2, 2);
+const API_VERSION_KEYPAIR_PAGINATION: ApiVersion = ApiVersion(2, 35);
+
+
 /// Extensions for Session.
 pub trait V2API {
     /// Create a server.
@@ -98,6 +102,14 @@ pub trait V2API {
             where S1: AsRef<str>, S2: AsRef<str> {
         self.server_action_with_args(id, action, serde_json::Value::Null)
     }
+
+    /// Whether the given compute API version is supported by the server.
+    fn supports_compute_api_version(&self, version: ApiVersion) -> Result<bool>;
+
+    /// Whether key pair pagination is supported.
+    fn supports_keypair_pagination(&self) -> Result<bool> {
+        self.supports_compute_api_version(API_VERSION_KEYPAIR_PAGINATION)
+    }
 }
 
 /// Service type of Compute API V2.
@@ -107,7 +119,6 @@ pub struct V2;
 
 const SERVICE_TYPE: &'static str = "compute";
 const VERSION_ID: &'static str = "v2.1";
-const API_VERSION_KEYPAIR_TYPE: ApiVersion = ApiVersion(2, 2);
 
 impl V2API for Session {
     fn create_server(&self, request: protocol::ServerCreate) -> Result<Ref> {
@@ -205,9 +216,11 @@ impl V2API for Session {
     fn list_keypairs<Q: Serialize + Debug>(&self, query: &Q)
             -> Result<Vec<protocol::KeyPair>> {
         trace!("Listing compute key pairs with {:?}", query);
-        let ver = self.pick_compute_api_version(&[API_VERSION_KEYPAIR_TYPE])?;
+        let ver = self.pick_compute_api_version(&[API_VERSION_KEYPAIR_TYPE,
+                                                  API_VERSION_KEYPAIR_PAGINATION])?;
         let result = self.request::<V2>(Method::Get, &["os-keypairs"], ver)?
-           .query(query).receive_json::<protocol::KeyPairsRoot>()?.keypairs;
+           .query(query).receive_json::<protocol::KeyPairsRoot>()?.keypairs
+           .into_iter().map(|item| item.keypair).collect::<Vec<_>>();
         trace!("Received key pairs: {:?}", result);
         Ok(result)
     }
@@ -252,6 +265,11 @@ impl V2API for Session {
             .json(&body).send()?;
         debug!("Successfully ran {} on server {}", action.as_ref(), id.as_ref());
         Ok(())
+    }
+
+    fn supports_compute_api_version(&self, version: ApiVersion) -> Result<bool> {
+        let info = self.get_service_info_ref::<V2>()?;
+        Ok(info.supports_api_version(version))
     }
 }
 

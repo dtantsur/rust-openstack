@@ -31,7 +31,7 @@ pub struct ResourceIterator<'session, T> {
     query: Query,
     cache: Option<vec::IntoIter<T>>,
     marker: Option<String>,
-    can_paginate: bool,
+    can_paginate: Option<bool>,
 }
 
 impl<'session, T> ResourceIterator<'session, T> {
@@ -47,7 +47,11 @@ impl<'session, T> ResourceIterator<'session, T> {
             query: query,
             cache: None,
             marker: None,
-            can_paginate: can_paginate
+            can_paginate: if can_paginate {
+                None  // ask the service later
+            } else {
+                Some(false)
+            }
         }
     }
 }
@@ -79,17 +83,21 @@ impl<'session, T> FallibleIterator for ResourceIterator<'session, T>
     type Error = Error;
 
     fn next(&mut self) -> Result<Option<T>> {
+        if self.can_paginate.is_none() {
+            self.can_paginate = Some(T::can_paginate(self.session)?);
+        }
+
         let maybe_next = self.cache.as_mut().and_then(|cache| cache.next());
         Ok(if maybe_next.is_some() {
             maybe_next
         } else {
-            if self.cache.is_some() && ! self.can_paginate {
+            if self.cache.is_some() && self.can_paginate == Some(false) {
                 // We have exhausted the results and pagination is not possible
                 None
             } else {
                 let mut query = self.query.clone();
 
-                if self.can_paginate {
+                if self.can_paginate == Some(true) {
                     // can_paginate=true implies no limit was provided
                     query.push("limit", T::DEFAULT_LIMIT);
                     if let Some(marker) = self.marker.take() {

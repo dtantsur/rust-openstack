@@ -25,6 +25,9 @@ pub trait ListResources<'a> {
     /// Default limit to use with this resource.
     const DEFAULT_LIMIT: usize;
 
+    /// Whether pagination is supported for this resource.
+    fn can_paginate(_session: &'a Session) -> Result<bool> { Ok(true) }
+
     /// List the resources from the session.
     fn list_resources<Q>(session: &'a Session, query: Q) -> Result<Vec<Self>>
         where Self: Sized, Q: Serialize + ::std::fmt::Debug;

@@ -244,13 +244,13 @@ pub struct KeyPair {
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct KeyPairsRoot {
-    pub keypairs: Vec<KeyPair>
+pub struct KeyPairRoot {
+    pub keypair: KeyPair
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct KeyPairRoot {
-    pub keypair: KeyPair
+pub struct KeyPairsRoot {
+    pub keypairs: Vec<KeyPairRoot>
 }
 
 impl Default for ServerStatus {

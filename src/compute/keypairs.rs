@@ -149,6 +149,10 @@ impl<'session> ResourceId for KeyPair<'session> {
 impl<'session> ListResources<'session> for KeyPair<'session> {
     const DEFAULT_LIMIT: usize = 50;
 
+    fn can_paginate(session: &'session Session) -> Result<bool> {
+        session.supports_keypair_pagination()
+    }
+
     fn list_resources<Q: Serialize + Debug>(session: &'session Session, query: Q)
             -> Result<Vec<KeyPair<'session>>> {
         Ok(session.list_keypairs(&query)?.into_iter().map(|item| KeyPair {
