@@ -119,3 +119,98 @@ impl<'session, T> FallibleIterator for ResourceIterator<'session, T>
         }))
     }
 }
+
+
+#[cfg(test)]
+mod test {
+    use fallible_iterator::FallibleIterator;
+    use serde_json::{self, Value};
+
+    use super::super::super::Result;
+    use super::super::super::session::Session;
+    use super::super::super::utils::{self, Query};
+    use super::super::{ListResources, ResourceId};
+    use super::ResourceIterator;
+
+    #[derive(Debug, PartialEq, Eq)]
+    struct Test(u8);
+
+    impl ResourceId for Test {
+        fn resource_id(&self) -> String {
+            self.0.to_string()
+        }
+    }
+
+    fn array_to_map(value: Vec<Value>) -> serde_json::Map<String, Value> {
+        value.into_iter().map(|arr| {
+           match arr {
+               Value::Array(v) => match v[0] {
+                   Value::String(ref s) => (s.clone(), v[1].clone()),
+                   ref y => panic!("unexpected query key {:?}", y)
+               },
+               x => panic!("unexpected query component {:?}", x)
+           }
+        }).collect()
+    }
+
+    impl<'a> ListResources<'a> for Test {
+        const DEFAULT_LIMIT: usize = 2;
+
+        fn list_resources<Q>(_session: &'a Session, query: Q) -> Result<Vec<Self>>
+                where Q: ::serde::Serialize + ::std::fmt::Debug {
+            let map = match serde_json::to_value(query).unwrap() {
+                Value::Array(arr) => array_to_map(arr),
+                x => panic!("unexpected query {:?}", x)
+            };
+            assert_eq!(*map.get("limit").unwrap(), Value::String("2".into()));
+            Ok(match map.get("marker") {
+                Some(&Value::String(ref s)) if s == "1" => vec![Test(2), Test(3)],
+                Some(&Value::String(ref s)) if s == "3" => Vec::new(),
+                None => vec![Test(0), Test(1)],
+                Some(ref x) => panic!("unexpected marker {:?}", x)
+            })
+        }
+    }
+
+    #[derive(Debug, PartialEq, Eq)]
+    struct NoPagination(u8);
+
+    impl<'a> ListResources<'a> for NoPagination {
+        const DEFAULT_LIMIT: usize = 2;
+
+        fn can_paginate(_session: &'a Session) -> Result<bool> { Ok(false) }
+
+        fn list_resources<Q>(_session: &'a Session, query: Q) -> Result<Vec<Self>>
+                where Q: ::serde::Serialize + ::std::fmt::Debug {
+            let map = match serde_json::to_value(query).unwrap() {
+                Value::Array(arr) => array_to_map(arr),
+                x => panic!("unexpected query {:?}", x)
+            };
+            assert!(map.get("limit").is_none());
+            assert!(map.get("marker").is_none());
+            Ok(vec![NoPagination(0), NoPagination(1), NoPagination(2)])
+        }
+    }
+
+    impl ResourceId for NoPagination {
+        fn resource_id(&self) -> String {
+            self.0.to_string()
+        }
+    }
+
+    #[test]
+    fn test_resource_iterator() {
+        let s = utils::test::new_session(utils::test::URL);
+        let it: ResourceIterator<Test> = ResourceIterator::new(&s, Query::new());
+        assert_eq!(it.collect::<Vec<Test>>().unwrap(),
+                   vec![Test(0), Test(1), Test(2), Test(3)]);
+    }
+
+    #[test]
+    fn test_resource_iterator_no_pagination() {
+        let s = utils::test::new_session(utils::test::URL);
+        let it: ResourceIterator<NoPagination> = ResourceIterator::new(&s, Query::new());
+        assert_eq!(it.collect::<Vec<NoPagination>>().unwrap(),
+                   vec![NoPagination(0), NoPagination(1), NoPagination(2)]);
+    }
+}
