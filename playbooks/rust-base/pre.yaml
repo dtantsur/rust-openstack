@@ -1,0 +1,11 @@
+- hosts: all
+  become: yes
+
+  tasks:
+    - name: Install Rust
+      package:
+        name: '{{ item }}'
+        state: latest
+      with_items:
+        - rustc
+        - cargo

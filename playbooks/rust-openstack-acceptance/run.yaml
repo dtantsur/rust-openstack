@@ -1,0 +1,39 @@
+- hosts: all
+  become: yes
+
+  roles:
+    - clone-devstack-gate-to-workspace
+    - create-devstack-local-conf
+    - install-devstack
+
+  tasks:
+    - name: Prepare resources for tests
+      shell:
+        cmd: |
+          source openrc admin admin
+          set -eux -o pipefail
+
+          openstack flavor create test-flavor --ram 512 --disk 5 --vcpu 1 --public
+        executable: /bin/bash
+        chdir: /opt/stack/new/devstack
+
+    - name: Run tests
+      shell:
+        cmd: |
+          source /opt/stack/new/devstack/openrc demo demo
+          set -eux -o pipefail
+
+          export RUST_OPENSTACK_FLAVOR=test-flavor
+          export RUST_OPENSTACK_NETWORK=private
+          export RUST_OPENSTACK_IMAGE=$(openstack image list -f value -c ID -c Name \
+            | awk '/cirros/ { print $1; exit 0; }')
+
+          if [ -z $RUST_OPENSTACK_IMAGE ]; then
+            echo FATAL: cirros image not found
+            openstack image list
+            exit 1
+          fi
+
+          cargo build --release --all-features
+        executable: /bin/bash
+        chdir: '{{ zuul.project.src_dir }}'

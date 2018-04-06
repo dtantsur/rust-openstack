@@ -1,0 +1,21 @@
+- job:
+    name: rust-base
+    parent: init-test
+    description: |
+      Base job for all types of rust test jobs.
+    pre-run: playbooks/rust-base/pre.yaml
+
+- job:
+    name: rust-openstack-acceptance
+    parent: rust-base
+    description: |
+      Run rust-openstack acceptance test on master branch
+    run: playbooks/rust-openstack-acceptance/run.yaml
+
+- job:
+    name: rust-openstack-acceptance-queens
+    parent: rust-openstack-acceptance
+    description: |
+      Run rust-openstack acceptance test on queens branch
+    vars:
+      os_branch: 'stable/queens'
