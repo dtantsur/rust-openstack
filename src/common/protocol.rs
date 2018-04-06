@@ -139,10 +139,7 @@ pub fn empty_as_none<'de, D, T>(des: D) -> ::std::result::Result<Option<T>, D::E
         _ => ()
     };
 
-    match serde_json::from_value(value) {
-        Ok(value) => Ok(Some(value)),
-        Err(e) => Err(DeserError::custom(e))
-    }
+    serde_json::from_value(value).map_err(DeserError::custom)
 }
 
 /// Deserialize value where empty string equals None.
