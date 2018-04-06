@@ -2,3 +2,7 @@
     check:
       jobs:
         - noop
+
+    merge-check:
+      jobs:
+        - noop
