@@ -56,8 +56,33 @@ impl<'session> Network<'session> {
     }
 
     transparent_property! {
+        #[doc = "The administrative state of the network."]
+        admin_state_up: bool
+    }
+
+    transparent_property! {
+        #[doc = "The availability zones for the network (if available)."]
+        availability_zones: ref Vec<String>
+    }
+
+    transparent_property! {
         #[doc = "Creation data and time (if available)."]
         created_at: ref Option<DateTime<FixedOffset>>
+    }
+
+    transparent_property! {
+        #[doc = "Network description."]
+        description: ref Option<String>
+    }
+
+    transparent_property! {
+        #[doc = "DNS domain for the network (if available)."]
+        dns_domain: ref Option<String>
+    }
+
+    transparent_property! {
+        #[doc = "Whether the network is external (if available)."]
+        external: Option<bool>
     }
 
     transparent_property! {
@@ -66,8 +91,28 @@ impl<'session> Network<'session> {
     }
 
     transparent_property! {
+        #[doc = "Whether the network is the default pool (if available)."]
+        is_default: Option<bool>
+    }
+
+    transparent_property! {
+        #[doc = "Whether there is L2 connectivity throughout the Network."]
+        l2_adjacency: Option<bool>
+    }
+
+    transparent_property! {
+        #[doc = "Network MTU (if available)."]
+        mtu: Option<u32>
+    }
+
+    transparent_property! {
         #[doc = "Network name."]
         name: ref String
+    }
+
+    transparent_property! {
+        #[doc = "Whether the network is shared."]
+        shared: bool
     }
 
     transparent_property! {

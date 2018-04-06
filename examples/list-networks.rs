@@ -33,7 +33,8 @@ fn main() {
         .expect("Cannot list networks");
     println!("First 10 networks:");
     for s in &servers {
-        println!("ID = {}, Name = {}", s.id(), s.name());
+        println!("ID = {}, Name = {}, UP = {}",
+                 s.id(), s.name(), s.admin_state_up());
     }
 }
 

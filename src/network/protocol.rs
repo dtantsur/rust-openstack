@@ -57,12 +57,16 @@ pub struct Network {
     #[serde(default)]
     pub created_at: Option<DateTime<FixedOffset>>,
     #[serde(deserialize_with = "common::protocol::empty_as_none", default)]
+    pub description: Option<String>,
+    #[serde(deserialize_with = "common::protocol::empty_as_none", default)]
     pub dns_domain: Option<String>,
     #[serde(rename = "router:external")]
     pub external: Option<bool>,
     pub id: String,
     #[serde(default)]
-    pub is_default: bool,
+    pub is_default: Option<bool>,
+    #[serde(default)]
+    pub l2_adjacency: Option<bool>,
     #[serde(default)]
     pub mtu: Option<u32>,
     pub name: String,
