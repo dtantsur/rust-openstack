@@ -62,7 +62,7 @@ impl<'session> KeyPair<'session> {
 
     transparent_property! {
         #[doc = "Key pair type, if available."]
-        key_type: ref Option<protocol::KeyPairType>
+        key_type: Option<protocol::KeyPairType>
     }
 
     transparent_property! {

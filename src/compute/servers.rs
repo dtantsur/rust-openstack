@@ -110,20 +110,20 @@ impl<'session> Server<'session> {
         })
     }
 
-    /// Get a reference to IPv4 address.
+    /// Get the IPv4 address.
     ///
     /// If not None, this address should be used to access the server instead
     /// of one from the `addresses` method.
-    pub fn access_ipv4(&self) -> &Option<Ipv4Addr> {
-        &self.inner.accessIPv4
+    pub fn access_ipv4(&self) -> Option<Ipv4Addr> {
+        self.inner.accessIPv4
     }
 
-    /// Get a reference to IPv6 address.
+    /// Get the IPv6 address.
     ///
     /// If not None, this address should be used to access the server instead
     /// of one from the `addresses` method.
-    pub fn access_ipv6(&self) -> &Option<Ipv6Addr> {
-        &self.inner.accessIPv6
+    pub fn access_ipv6(&self) -> Option<Ipv6Addr> {
+        self.inner.accessIPv6
     }
 
     /// Get a reference to associated addresses.
@@ -136,9 +136,9 @@ impl<'session> Server<'session> {
         &self.inner.availability_zone
     }
 
-    /// Get a reference to creation date and time.
-    pub fn created_at(&self) -> &DateTime<FixedOffset> {
-        &self.inner.created
+    /// Get the creation date and time.
+    pub fn created_at(&self) -> DateTime<FixedOffset> {
+        self.inner.created
     }
 
     /// Find a floating IP, if it exists.
@@ -188,9 +188,9 @@ impl<'session> Server<'session> {
         self.inner.status
     }
 
-    /// Get a reference to last update date and time.
-    pub fn updated_at(&self) -> &DateTime<FixedOffset> {
-        &self.inner.updated
+    /// Get the last update date and time.
+    pub fn updated_at(&self) -> DateTime<FixedOffset> {
+        self.inner.updated
     }
 
     /// Delete the server.

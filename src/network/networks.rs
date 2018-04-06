@@ -67,7 +67,7 @@ impl<'session> Network<'session> {
 
     transparent_property! {
         #[doc = "Creation data and time (if available)."]
-        created_at: ref Option<DateTime<FixedOffset>>
+        created_at: Option<DateTime<FixedOffset>>
     }
 
     transparent_property! {
@@ -117,7 +117,7 @@ impl<'session> Network<'session> {
 
     transparent_property! {
         #[doc = "Last update data and time (if available)."]
-        updated_at: ref Option<DateTime<FixedOffset>>
+        updated_at: Option<DateTime<FixedOffset>>
     }
 }
 

@@ -73,7 +73,7 @@ impl<'session> Image<'session> {
 
     transparent_property! {
         #[doc = "Creating date and time."]
-        created_at: ref DateTime<FixedOffset>
+        created_at: DateTime<FixedOffset>
     }
 
     transparent_property! {
@@ -117,7 +117,7 @@ impl<'session> Image<'session> {
 
     transparent_property! {
         #[doc = "Last update date and time."]
-        updated_at: ref DateTime<FixedOffset>
+        updated_at: DateTime<FixedOffset>
     }
 
     transparent_property! {
