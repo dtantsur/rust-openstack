@@ -14,6 +14,8 @@
 
 //! Types and traits shared between services.
 
+use std::rc::Rc;
+
 use serde::Serialize;
 
 use super::super::Result;
@@ -21,15 +23,15 @@ use super::super::session::Session;
 
 
 /// Trait representing something that can be listed from a session.
-pub trait ListResources<'a> {
+pub trait ListResources {
     /// Default limit to use with this resource.
     const DEFAULT_LIMIT: usize;
 
     /// Whether pagination is supported for this resource.
-    fn can_paginate(_session: &'a Session) -> Result<bool> { Ok(true) }
+    fn can_paginate(_session: &Session) -> Result<bool> { Ok(true) }
 
     /// List the resources from the session.
-    fn list_resources<Q>(session: &'a Session, query: Q) -> Result<Vec<Self>>
+    fn list_resources<Q>(session: Rc<Session>, query: Q) -> Result<Vec<Self>>
         where Self: Sized, Q: Serialize + ::std::fmt::Debug;
 }
 

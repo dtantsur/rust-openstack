@@ -17,6 +17,7 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use std::rc::Rc;
 use std::time::Duration;
 
 use chrono::{DateTime, FixedOffset};
@@ -36,30 +37,30 @@ use super::protocol;
 
 /// A query to server list.
 #[derive(Clone, Debug)]
-pub struct ServerQuery<'session> {
-    session: &'session Session,
+pub struct ServerQuery {
+    session: Rc<Session>,
     query: Query,
     can_paginate: bool,
 }
 
 /// Structure representing a single server.
 #[derive(Clone, Debug)]
-pub struct Server<'session> {
-    session: &'session Session,
+pub struct Server {
+    session: Rc<Session>,
     inner: protocol::Server
 }
 
 /// Structure representing a summary of a single server.
 #[derive(Clone, Debug)]
-pub struct ServerSummary<'session> {
-    session: &'session Session,
+pub struct ServerSummary {
+    session: Rc<Session>,
     inner: common::protocol::IdAndName
 }
 
 /// Waiter for server status to change.
 #[derive(Debug)]
 pub struct ServerStatusWaiter<'server> {
-    server: &'server mut Server<'server>,
+    server: &'server mut Server,
     target: protocol::ServerStatus
 }
 
@@ -76,8 +77,8 @@ pub enum ServerNIC {
 
 /// A request to create a server.
 #[derive(Debug)]
-pub struct NewServer<'session> {
-    session: &'session Session,
+pub struct NewServer {
+    session: Rc<Session>,
     flavor: FlavorRef,
     image: Option<ImageRef>,
     name: String,
@@ -86,12 +87,12 @@ pub struct NewServer<'session> {
 
 /// Waiter for server to be created.
 #[derive(Debug)]
-pub struct ServerCreationWaiter<'server> {
-    server: Server<'server>
+pub struct ServerCreationWaiter {
+    server: Server
 }
 
 
-impl<'session> Refresh for Server<'session> {
+impl Refresh for Server {
     /// Refresh the server.
     fn refresh(&mut self) -> Result<()> {
         self.inner = self.session.get_server(&self.inner.id)?;
@@ -99,10 +100,10 @@ impl<'session> Refresh for Server<'session> {
     }
 }
 
-impl<'session> Server<'session> {
+impl Server {
     /// Load a Server object.
-    pub(crate) fn new<Id: AsRef<str>>(session: &'session Session, id: Id)
-            -> Result<Server<'session>> {
+    pub(crate) fn new<Id: AsRef<str>>(session: Rc<Session>, id: Id)
+            -> Result<Server> {
         let inner = session.get_server(id)?;
         Ok(Server {
             session: session,
@@ -194,13 +195,14 @@ impl<'session> Server<'session> {
     }
 
     /// Delete the server.
-    pub fn delete(self) -> Result<DeletionWaiter<Server<'session>>> {
+    pub fn delete(self) -> Result<DeletionWaiter<Server>> {
         self.session.delete_server(&self.inner.id)?;
         Ok(DeletionWaiter::new(self, Duration::new(120, 0), Duration::new(1, 0)))
     }
 
     /// Reboot the server.
-    pub fn reboot(&'session mut self, reboot_type: protocol::RebootType) -> Result<ServerStatusWaiter<'session>> {
+    pub fn reboot<'server>(&'server mut self, reboot_type: protocol::RebootType)
+            -> Result<ServerStatusWaiter<'server>> {
         let mut args = HashMap::new();
         let _ = args.insert("type", reboot_type);
         self.session.server_action_with_args(&self.inner.id, "reboot", args)?;
@@ -211,7 +213,8 @@ impl<'session> Server<'session> {
     }
 
     /// Start the server, optionally wait for it to be active.
-    pub fn start(&'session mut self) -> Result<ServerStatusWaiter<'session>> {
+    pub fn start<'server>(&'server mut self)
+            -> Result<ServerStatusWaiter<'server>> {
         self.session.server_simple_action(&self.inner.id, "os-start")?;
         Ok(ServerStatusWaiter {
             server: self,
@@ -220,7 +223,8 @@ impl<'session> Server<'session> {
     }
 
     /// Stop the server, optionally wait for it to be powered off.
-    pub fn stop(&'session mut self) -> Result<ServerStatusWaiter<'session>> {
+    pub fn stop<'server>(&'server mut self)
+            -> Result<ServerStatusWaiter<'server>> {
         self.session.server_simple_action(&self.inner.id, "os-stop")?;
         Ok(ServerStatusWaiter {
             server: self,
@@ -264,13 +268,13 @@ impl<'server> Waiter<(), Error> for ServerStatusWaiter<'server> {
     }
 }
 
-impl<'server> WaiterCurrentState<Server<'server>> for ServerStatusWaiter<'server> {
-    fn waiter_current_state(&self) -> &Server<'server> {
+impl<'server> WaiterCurrentState<Server> for ServerStatusWaiter<'server> {
+    fn waiter_current_state(&self) -> &Server {
         &self.server
     }
 }
 
-impl<'session> ServerSummary<'session> {
+impl ServerSummary {
     /// Get a reference to server unique ID.
     pub fn id(&self) -> &String {
         &self.inner.id
@@ -282,8 +286,8 @@ impl<'session> ServerSummary<'session> {
     }
 
     /// Get details.
-    pub fn details(&self) -> Result<Server<'session>> {
-        Server::new(self.session, &self.inner.id)
+    pub fn details(&self) -> Result<Server> {
+        Server::new(self.session.clone(), &self.inner.id)
     }
 
     /// Delete the server.
@@ -293,8 +297,8 @@ impl<'session> ServerSummary<'session> {
     }
 }
 
-impl<'session> ServerQuery<'session> {
-    pub(crate) fn new(session: &'session Session) -> ServerQuery<'session> {
+impl ServerQuery {
+    pub(crate) fn new(session: Rc<Session>) -> ServerQuery {
         ServerQuery {
             session: session,
             query: Query::new(),
@@ -409,7 +413,7 @@ impl<'session> ServerQuery<'session> {
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_iter(self) -> ResourceIterator<'session, ServerSummary<'session>> {
+    pub fn into_iter(self) -> ResourceIterator<ServerSummary> {
         debug!("Fetching servers with {:?}", self.query);
         ResourceIterator::new(self.session, self.query)
     }
@@ -423,7 +427,7 @@ impl<'session> ServerQuery<'session> {
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_iter_detailed(self) -> ResourceIterator<'session, Server<'session>> {
+    pub fn into_iter_detailed(self) -> ResourceIterator<Server> {
         debug!("Fetching server details with {:?}", self.query);
         ResourceIterator::new(self.session, self.query)
     }
@@ -431,7 +435,7 @@ impl<'session> ServerQuery<'session> {
     /// Execute this request and return all results.
     ///
     /// A convenience shortcut for `self.into_iter().collect()`.
-    pub fn all(self) -> Result<Vec<ServerSummary<'session>>> {
+    pub fn all(self) -> Result<Vec<ServerSummary>> {
         self.into_iter().collect()
     }
 
@@ -439,7 +443,7 @@ impl<'session> ServerQuery<'session> {
     ///
     /// Fails with `ResourceNotFound` if the query produces no results and
     /// with `TooManyItems` if the query produces more than one result.
-    pub fn one(mut self) -> Result<ServerSummary<'session>> {
+    pub fn one(mut self) -> Result<ServerSummary> {
         debug!("Fetching one server with {:?}", self.query);
         if self.can_paginate {
             // We need only one result. We fetch maximum two to be able
@@ -468,10 +472,10 @@ fn convert_networks(session: &Session, networks: Vec<ServerNIC>)
     Ok(result)
 }
 
-impl<'session> NewServer<'session> {
+impl NewServer {
     /// Start creating a server.
-    pub(crate) fn new(session: &'session Session, name: String, flavor: FlavorRef)
-            -> NewServer<'session> {
+    pub(crate) fn new(session: Rc<Session>, name: String, flavor: FlavorRef)
+            -> NewServer {
         NewServer {
             session: session,
             flavor: flavor,
@@ -482,16 +486,16 @@ impl<'session> NewServer<'session> {
     }
 
     /// Request creation of the server.
-    pub fn create(self) -> Result<ServerCreationWaiter<'session>> {
+    pub fn create(self) -> Result<ServerCreationWaiter> {
         let request = protocol::ServerCreate {
-            flavorRef: self.flavor.into_verified(self.session)?,
+            flavorRef: self.flavor.into_verified(&self.session)?,
             imageRef: match self.image {
-                Some(img) => Some(img.into_verified(self.session)?),
+                Some(img) => Some(img.into_verified(&self.session)?),
                 None => None
             },
             key_name: None,  // TODO
             name: self.name,
-            networks: convert_networks(self.session, self.networks)?
+            networks: convert_networks(&self.session, self.networks)?
         };
 
         let server_ref = self.session.create_server(request)?;
@@ -532,34 +536,34 @@ impl<'session> NewServer<'session> {
     }
 
     /// Add a virtual NIC with given fixed IP to the new server.
-    pub fn with_fixed_ip(mut self, fixed_ip: Ipv4Addr) -> NewServer<'session> {
+    pub fn with_fixed_ip(mut self, fixed_ip: Ipv4Addr) -> NewServer {
         self.add_fixed_ip(fixed_ip);
         self
     }
 
     /// Use this image as a source for the new server.
-    pub fn with_image<I>(mut self, image: I) -> NewServer<'session>
+    pub fn with_image<I>(mut self, image: I) -> NewServer
             where I: Into<ImageRef> {
         self.set_image(image);
         self
     }
 
     /// Add a virtual NIC from this network to the new server.
-    pub fn with_network<N>(mut self, network: N) -> NewServer<'session>
+    pub fn with_network<N>(mut self, network: N) -> NewServer
             where N: Into<NetworkRef> {
         self.add_network(network);
         self
     }
 
     /// Add a virtual NIC with this port to the new server.
-    pub fn with_port<P>(mut self, port: P) -> NewServer<'session>
+    pub fn with_port<P>(mut self, port: P) -> NewServer
             where P: Into<PortRef> {
         self.add_port(port);
         self
     }
 }
 
-impl<'server> Waiter<Server<'server>, Error> for ServerCreationWaiter<'server> {
+impl Waiter<Server, Error> for ServerCreationWaiter {
     fn default_wait_timeout(&self) -> Option<Duration> {
         Some(Duration::new(1800, 0))
     }
@@ -574,7 +578,7 @@ impl<'server> Waiter<Server<'server>, Error> for ServerCreationWaiter<'server> {
                            self.server.id()))
     }
 
-    fn poll(&mut self) -> Result<Option<Server<'server>>> {
+    fn poll(&mut self) -> Result<Option<Server>> {
         self.server.refresh()?;
         if self.server.status() == protocol::ServerStatus::Active {
             debug!("Server {} successfully created", self.server.id());
@@ -594,56 +598,56 @@ impl<'server> Waiter<Server<'server>, Error> for ServerCreationWaiter<'server> {
     }
 }
 
-impl<'server> WaiterCurrentState<Server<'server>> for ServerCreationWaiter<'server> {
-    fn waiter_current_state(&self) -> &Server<'server> {
+impl WaiterCurrentState<Server> for ServerCreationWaiter {
+    fn waiter_current_state(&self) -> &Server {
         &self.server
     }
 }
 
-impl<'session> ResourceId for ServerSummary<'session> {
+impl ResourceId for ServerSummary {
     fn resource_id(&self) -> String {
         self.id().clone()
     }
 }
 
-impl<'session> ListResources<'session> for ServerSummary<'session> {
+impl ListResources for ServerSummary {
     const DEFAULT_LIMIT: usize = 50;
 
-    fn list_resources<Q: Serialize + Debug>(session: &'session Session, query: Q)
-            -> Result<Vec<ServerSummary<'session>>> {
+    fn list_resources<Q: Serialize + Debug>(session: Rc<Session>, query: Q)
+            -> Result<Vec<ServerSummary>> {
         Ok(session.list_servers(&query)?.into_iter().map(|srv| ServerSummary {
-            session: session,
+            session: session.clone(),
             inner: srv
         }).collect())
     }
 }
 
-impl<'session> ResourceId for Server<'session> {
+impl ResourceId for Server {
     fn resource_id(&self) -> String {
         self.id().clone()
     }
 }
 
-impl<'session> ListResources<'session> for Server<'session> {
+impl ListResources for Server {
     const DEFAULT_LIMIT: usize = 50;
 
-    fn list_resources<Q: Serialize + Debug>(session: &'session Session, query: Q)
-            -> Result<Vec<Server<'session>>> {
+    fn list_resources<Q: Serialize + Debug>(session: Rc<Session>, query: Q)
+            -> Result<Vec<Server>> {
         Ok(session.list_servers_detail(&query)?.into_iter().map(|srv| Server {
-            session: session,
+            session: session.clone(),
             inner: srv
         }).collect())
     }
 }
 
-impl<'session> IntoFallibleIterator for ServerQuery<'session> {
-    type Item = ServerSummary<'session>;
+impl IntoFallibleIterator for ServerQuery {
+    type Item = ServerSummary;
 
     type Error = Error;
 
-    type IntoIter = ResourceIterator<'session, ServerSummary<'session>>;
+    type IntoIter = ResourceIterator<ServerSummary>;
 
-    fn into_fallible_iterator(self) -> ResourceIterator<'session, ServerSummary<'session>> {
+    fn into_fallible_iterator(self) -> ResourceIterator<ServerSummary> {
         self.into_iter()
     }
 }

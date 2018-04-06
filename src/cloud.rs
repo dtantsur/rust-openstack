@@ -107,7 +107,7 @@ impl Cloud {
     /// the query.
     #[cfg(feature = "compute")]
     pub fn find_flavors(&self) -> FlavorQuery {
-        FlavorQuery::new(&self.session)
+        FlavorQuery::new(self.session.clone())
     }
 
     /// Build a query against image list.
@@ -116,7 +116,7 @@ impl Cloud {
     /// the query.
     #[cfg(feature = "image")]
     pub fn find_images(&self) -> ImageQuery {
-        ImageQuery::new(&self.session)
+        ImageQuery::new(self.session.clone())
     }
 
     /// Build a query against key pairs list.
@@ -125,7 +125,7 @@ impl Cloud {
     /// the query.
     #[cfg(feature = "compute")]
     pub fn find_keypairs(&self) -> KeyPairQuery {
-        KeyPairQuery::new(&self.session)
+        KeyPairQuery::new(self.session.clone())
     }
 
     /// Build a query against network list.
@@ -134,7 +134,7 @@ impl Cloud {
     /// the query.
     #[cfg(feature = "network")]
     pub fn find_networks(&self) -> NetworkQuery {
-        NetworkQuery::new(&self.session)
+        NetworkQuery::new(self.session.clone())
     }
 
     /// Build a query against server list.
@@ -157,7 +157,7 @@ impl Cloud {
     /// ```
     #[cfg(feature = "compute")]
     pub fn find_servers(&self) -> ServerQuery {
-        ServerQuery::new(&self.session)
+        ServerQuery::new(self.session.clone())
     }
 
     /// Find a flavor by its name or ID.
@@ -172,7 +172,7 @@ impl Cloud {
     /// ```
     #[cfg(feature = "compute")]
     pub fn get_flavor<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Flavor> {
-        Flavor::new(&self.session, id_or_name)
+        Flavor::new(self.session.clone(), id_or_name)
     }
 
     /// Find an image by its name or ID.
@@ -187,7 +187,7 @@ impl Cloud {
     /// ```
     #[cfg(feature = "image")]
     pub fn get_image<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Image> {
-        Image::new(&self.session, id_or_name)
+        Image::new(self.session.clone(), id_or_name)
     }
 
     /// Find a key pair by its name or ID.
@@ -202,7 +202,7 @@ impl Cloud {
     /// ```
     #[cfg(feature = "compute")]
     pub fn get_keypair<Id: AsRef<str>>(&self, name: Id) -> Result<KeyPair> {
-        KeyPair::new(&self.session, name)
+        KeyPair::new(self.session.clone(), name)
     }
 
     /// Find an network by its name or ID.
@@ -217,7 +217,7 @@ impl Cloud {
     /// ```
     #[cfg(feature = "network")]
     pub fn get_network<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Network> {
-        Network::new(&self.session, id_or_name)
+        Network::new(self.session.clone(), id_or_name)
     }
 
     /// Find a server by its name or ID.
@@ -233,7 +233,7 @@ impl Cloud {
     /// ```
     #[cfg(feature = "compute")]
     pub fn get_server<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Server> {
-        Server::new(&self.session, id_or_name)
+        Server::new(self.session.clone(), id_or_name)
     }
 
     /// List all flavors.
@@ -334,7 +334,7 @@ impl Cloud {
     #[cfg(feature = "compute")]
     pub fn new_server<S, F>(&self, name: S, flavor: F) -> NewServer
             where S: Into<String>, F: Into<FlavorRef> {
-        NewServer::new(&self.session, name.into(), flavor.into())
+        NewServer::new(self.session.clone(), name.into(), flavor.into())
     }
 }
 

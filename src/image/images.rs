@@ -15,6 +15,7 @@
 //! Image management via Image API.
 
 use std::fmt::Debug;
+use std::rc::Rc;
 
 use chrono::{DateTime, FixedOffset};
 use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
@@ -31,8 +32,8 @@ use super::protocol;
 
 /// A query to image list.
 #[derive(Clone, Debug)]
-pub struct ImageQuery<'session> {
-    session: &'session Session,
+pub struct ImageQuery {
+    session: Rc<Session>,
     query: Query,
     can_paginate: bool,
     sort: Vec<String>
@@ -40,15 +41,15 @@ pub struct ImageQuery<'session> {
 
 /// Structure representing a single image.
 #[derive(Clone, Debug)]
-pub struct Image<'session> {
-    session: &'session Session,
+pub struct Image {
+    session: Rc<Session>,
     inner: protocol::Image
 }
 
-impl<'session> Image<'session> {
+impl Image {
     /// Load a Image object.
-    pub(crate) fn new<Id: AsRef<str>>(session: &'session Session, id: Id)
-            -> Result<Image<'session>> {
+    pub(crate) fn new<Id: AsRef<str>>(session: Rc<Session>, id: Id)
+            -> Result<Image> {
         let inner = session.get_image(id)?;
         Ok(Image {
             session: session,
@@ -131,7 +132,7 @@ impl<'session> Image<'session> {
     }
 }
 
-impl<'session> Refresh for Image<'session> {
+impl Refresh for Image {
     /// Refresh the image.
     fn refresh(&mut self) -> Result<()> {
         self.inner = self.session.get_image(&self.inner.id)?;
@@ -139,8 +140,8 @@ impl<'session> Refresh for Image<'session> {
     }
 }
 
-impl<'session> ImageQuery<'session> {
-    pub(crate) fn new(session: &'session Session) -> ImageQuery<'session> {
+impl ImageQuery {
+    pub(crate) fn new(session: Rc<Session>) -> ImageQuery {
         ImageQuery {
             session: session,
             query: Query::new(),
@@ -195,18 +196,18 @@ impl<'session> ImageQuery<'session> {
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_iter(mut self) -> ResourceIterator<'session, Image<'session>> {
+    pub fn into_iter(mut self) -> ResourceIterator<Image> {
         if ! self.sort.is_empty() {
             self.query.push_str("sort", self.sort.join(","));
         }
         debug!("Fetching images with {:?}", self.query);
-        ResourceIterator::new(self.session, self.query)
+        ResourceIterator::new(self.session.clone(), self.query)
     }
 
     /// Execute this request and return all results.
     ///
     /// A convenience shortcut for `self.into_iter().collect()`.
-    pub fn all(self) -> Result<Vec<Image<'session>>> {
+    pub fn all(self) -> Result<Vec<Image>> {
         self.into_iter().collect()
     }
 
@@ -214,7 +215,7 @@ impl<'session> ImageQuery<'session> {
     ///
     /// Fails with `ResourceNotFound` if the query produces no results and
     /// with `TooManyItems` if the query produces more than one result.
-    pub fn one(mut self) -> Result<Image<'session>> {
+    pub fn one(mut self) -> Result<Image> {
         debug!("Fetching one image with {:?}", self.query);
         if self.can_paginate {
             // We need only one result. We fetch maximum two to be able
@@ -226,38 +227,38 @@ impl<'session> ImageQuery<'session> {
     }
 }
 
-impl<'session> ResourceId for Image<'session> {
+impl ResourceId for Image {
     fn resource_id(&self) -> String {
         self.id().clone()
     }
 }
 
-impl<'session> ListResources<'session> for Image<'session> {
+impl ListResources for Image {
     const DEFAULT_LIMIT: usize = 50;
 
-    fn list_resources<Q: Serialize + Debug>(session: &'session Session, query: Q)
-            -> Result<Vec<Image<'session>>> {
+    fn list_resources<Q: Serialize + Debug>(session: Rc<Session>, query: Q)
+            -> Result<Vec<Image>> {
         Ok(session.list_images(&query)?.into_iter().map(|item| Image {
-            session: session,
+            session: session.clone(),
             inner: item
         }).collect())
     }
 }
 
-impl<'session> IntoFallibleIterator for ImageQuery<'session> {
-    type Item = Image<'session>;
+impl IntoFallibleIterator for ImageQuery {
+    type Item = Image;
 
     type Error = Error;
 
-    type IntoIter = ResourceIterator<'session, Image<'session>>;
+    type IntoIter = ResourceIterator<Image>;
 
-    fn into_fallible_iterator(self) -> ResourceIterator<'session, Image<'session>> {
+    fn into_fallible_iterator(self) -> ResourceIterator<Image> {
         self.into_iter()
     }
 }
 
-impl<'session> From<Image<'session>> for ImageRef {
-    fn from(value: Image<'session>) -> ImageRef {
+impl From<Image> for ImageRef {
+    fn from(value: Image) -> ImageRef {
         ImageRef::new_verified(value.inner.id)
     }
 }
