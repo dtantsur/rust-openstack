@@ -161,15 +161,20 @@ impl Session {
         }
     }
 
+    /// Set endpoint interface to use.
+    ///
+    /// This call clears the cached service information.
+    pub fn set_endpoint_interface<S>(&mut self, endpoint_interface: S)
+            where S: Into<String> {
+        self.cached_info = utils::MapCache::new();
+        self.endpoint_interface = endpoint_interface.into();
+    }
+
     /// Convert this session into one using the given endpoint interface.
-    pub fn with_endpoint_interface<S>(self, endpoint_interface: S)
+    pub fn with_endpoint_interface<S>(mut self, endpoint_interface: S)
             -> Session where S: Into<String> {
-        Session {
-            auth: self.auth,
-            // ServiceInfo has to be refreshed
-            cached_info: utils::MapCache::new(),
-            endpoint_interface: endpoint_interface.into()
-        }
+        self.set_endpoint_interface(endpoint_interface);
+        self
     }
 
     /// Get a reference to the authentication method in use.

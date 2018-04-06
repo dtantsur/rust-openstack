@@ -14,6 +14,8 @@
 
 //! Cloud API.
 
+use std::rc::Rc;
+
 use super::Result;
 use super::auth::{self, AuthMethod};
 #[allow(unused_imports)]
@@ -33,7 +35,7 @@ use super::session::Session;
 /// Provides high-level API for working with OpenStack clouds.
 #[derive(Debug, Clone)]
 pub struct Cloud {
-    session: Session
+    session: Rc<Session>
 }
 
 impl Cloud {
@@ -56,7 +58,7 @@ impl Cloud {
     /// [from_env](#method.from_env).
     pub fn new<Auth: AuthMethod + 'static>(auth_method: Auth) -> Cloud {
         Cloud {
-            session: Session::new(auth_method)
+            session: Rc::new(Session::new(auth_method))
         }
     }
 
@@ -72,7 +74,7 @@ impl Cloud {
     /// ```
     pub fn from_env() -> Result<Cloud> {
         Ok(Cloud {
-            session: Session::new(auth::from_env()?)
+            session: Rc::new(Session::new(auth::from_env()?))
         })
     }
 
@@ -88,21 +90,15 @@ impl Cloud {
     ///
     /// # fn main() { cloud_from_env().unwrap(); }
     /// ```
-    pub fn with_endpoint_interface<S>(self, endpoint_interface: S)
+    pub fn with_endpoint_interface<S>(mut self, endpoint_interface: S)
             -> Cloud where S: Into<String> {
-        Cloud {
-            session: self.session.with_endpoint_interface(endpoint_interface)
-        }
+        Rc::make_mut(&mut self.session).set_endpoint_interface(endpoint_interface);
+        self
     }
 
     /// Refresh this `Cloud` object (renew token, refetch service catalog, etc).
     pub fn refresh(&mut self) -> Result<()> {
-        self.session.auth_method_mut().refresh()
-    }
-
-    /// `Session` used with this `Cloud` object.
-    pub fn session(&self) -> &Session {
-        &self.session
+        Rc::make_mut(&mut self.session).auth_method_mut().refresh()
     }
 
     /// Build a query against flavor list.
@@ -346,13 +342,7 @@ impl Cloud {
 impl From<Session> for Cloud {
     fn from(value: Session) -> Cloud {
         Cloud {
-            session: value
+            session: Rc::new(value)
         }
-    }
-}
-
-impl From<Cloud> for Session {
-    fn from(value: Cloud) -> Session {
-        value.session
     }
 }
