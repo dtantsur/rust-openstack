@@ -38,6 +38,6 @@
           export RUST_LOG=openstack
 
           cargo build --release --all-features
-          cargo test
+          cargo test -- --test-threads=1
         executable: /bin/bash
         chdir: '{{ zuul.project.src_dir }}'
