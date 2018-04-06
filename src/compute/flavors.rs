@@ -15,6 +15,7 @@
 //! Flavor management via Compute API.
 
 use std::fmt::Debug;
+use std::rc::Rc;
 
 use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
 use serde::Serialize;
@@ -30,31 +31,31 @@ use super::protocol;
 
 /// Structure representing a flavor.
 #[derive(Clone, Debug)]
-pub struct Flavor<'session> {
-    session: &'session Session,
+pub struct Flavor {
+    session: Rc<Session>,
     inner: protocol::Flavor
 }
 
 /// Structure representing a summary of a flavor.
 #[derive(Clone, Debug)]
-pub struct FlavorSummary<'session> {
-    session: &'session Session,
+pub struct FlavorSummary {
+    session: Rc<Session>,
     inner: common::protocol::IdAndName,
 }
 
 /// A query to server list.
 #[derive(Clone, Debug)]
-pub struct FlavorQuery<'session> {
-    session: &'session Session,
+pub struct FlavorQuery {
+    session: Rc<Session>,
     query: Query,
     can_paginate: bool,
 }
 
 
-impl<'session> Flavor<'session> {
+impl Flavor {
     /// Load a Flavor object.
-    pub(crate) fn new<Id: AsRef<str>>(session: &'session Session, id: Id)
-            -> Result<Flavor<'session>> {
+    pub(crate) fn new<Id: AsRef<str>>(session: Rc<Session>, id: Id)
+            -> Result<Flavor> {
         let inner = session.get_flavor(id)?;
         Ok(Flavor {
             session: session,
@@ -107,7 +108,7 @@ impl<'session> Flavor<'session> {
     }
 }
 
-impl<'session> Refresh for Flavor<'session> {
+impl Refresh for Flavor {
     /// Refresh the flavor.
     fn refresh(&mut self) -> Result<()> {
         self.inner = self.session.get_flavor(&self.inner.id)?;
@@ -115,7 +116,7 @@ impl<'session> Refresh for Flavor<'session> {
     }
 }
 
-impl<'session> FlavorSummary<'session> {
+impl FlavorSummary {
     /// Get a reference to flavor unique ID.
     pub fn id(&self) -> &String {
         &self.inner.id
@@ -127,13 +128,13 @@ impl<'session> FlavorSummary<'session> {
     }
 
     /// Get details.
-    pub fn details(&self) -> Result<Flavor<'session>> {
-        Flavor::new(self.session, &self.inner.id)
+    pub fn details(&self) -> Result<Flavor> {
+        Flavor::new(self.session.clone(), &self.inner.id)
     }
 }
 
-impl<'session> FlavorQuery<'session> {
-    pub(crate) fn new(session: &'session Session) -> FlavorQuery<'session> {
+impl FlavorQuery {
+    pub(crate) fn new(session: Rc<Session>) -> FlavorQuery {
         FlavorQuery {
             session: session,
             query: Query::new(),
@@ -168,7 +169,7 @@ impl<'session> FlavorQuery<'session> {
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_iter(self) -> ResourceIterator<'session, FlavorSummary<'session>> {
+    pub fn into_iter(self) -> ResourceIterator<FlavorSummary> {
         debug!("Fetching flavors with {:?}", self.query);
         ResourceIterator::new(self.session, self.query)
     }
@@ -182,7 +183,7 @@ impl<'session> FlavorQuery<'session> {
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_iter_detailed(self) -> ResourceIterator<'session, Flavor<'session>> {
+    pub fn into_iter_detailed(self) -> ResourceIterator<Flavor> {
         debug!("Fetching flavor details with {:?}", self.query);
         ResourceIterator::new(self.session, self.query)
     }
@@ -190,7 +191,7 @@ impl<'session> FlavorQuery<'session> {
     /// Execute this request and return all results.
     ///
     /// A convenience shortcut for `self.into_iter().collect()`.
-    pub fn all(self) -> Result<Vec<FlavorSummary<'session>>> {
+    pub fn all(self) -> Result<Vec<FlavorSummary>> {
         self.into_iter().collect()
     }
 
@@ -198,7 +199,7 @@ impl<'session> FlavorQuery<'session> {
     ///
     /// Fails with `ResourceNotFound` if the query produces no results and
     /// with `TooManyItems` if the query produces more than one result.
-    pub fn one(mut self) -> Result<FlavorSummary<'session>> {
+    pub fn one(mut self) -> Result<FlavorSummary> {
         debug!("Fetching one flavor with {:?}", self.query);
         if self.can_paginate {
             // We need only one result. We fetch maximum two to be able
@@ -211,62 +212,62 @@ impl<'session> FlavorQuery<'session> {
 }
 
 
-impl<'session> ResourceId for FlavorSummary<'session> {
+impl ResourceId for FlavorSummary {
     fn resource_id(&self) -> String {
         self.id().clone()
     }
 }
 
-impl<'session> ListResources<'session> for FlavorSummary<'session> {
+impl ListResources for FlavorSummary {
     const DEFAULT_LIMIT: usize = 50;
 
-    fn list_resources<Q: Serialize + Debug>(session: &'session Session, query: Q)
-            -> Result<Vec<FlavorSummary<'session>>> {
+    fn list_resources<Q: Serialize + Debug>(session: Rc<Session>, query: Q)
+            -> Result<Vec<FlavorSummary>> {
         Ok(session.list_flavors(&query)?.into_iter().map(|item| FlavorSummary {
-            session: session,
+            session: session.clone(),
             inner: item
         }).collect())
     }
 }
 
-impl<'session> ResourceId for Flavor<'session> {
+impl ResourceId for Flavor {
     fn resource_id(&self) -> String {
         self.id().clone()
     }
 }
 
-impl<'session> ListResources<'session> for Flavor<'session> {
+impl ListResources for Flavor {
     const DEFAULT_LIMIT: usize = 50;
 
-    fn list_resources<Q: Serialize + Debug>(session: &'session Session, query: Q)
-            -> Result<Vec<Flavor<'session>>> {
+    fn list_resources<Q: Serialize + Debug>(session: Rc<Session>, query: Q)
+            -> Result<Vec<Flavor>> {
         Ok(session.list_flavors_detail(&query)?.into_iter().map(|item| Flavor {
-            session: session,
+            session: session.clone(),
             inner: item
         }).collect())
     }
 }
 
-impl<'session> IntoFallibleIterator for FlavorQuery<'session> {
-    type Item = FlavorSummary<'session>;
+impl IntoFallibleIterator for FlavorQuery {
+    type Item = FlavorSummary;
 
     type Error = Error;
 
-    type IntoIter = ResourceIterator<'session, FlavorSummary<'session>>;
+    type IntoIter = ResourceIterator<FlavorSummary>;
 
-    fn into_fallible_iterator(self) -> ResourceIterator<'session, FlavorSummary<'session>> {
+    fn into_fallible_iterator(self) -> ResourceIterator<FlavorSummary> {
         self.into_iter()
     }
 }
 
-impl<'session> From<Flavor<'session>> for FlavorRef {
-    fn from(value: Flavor<'session>) -> FlavorRef {
+impl From<Flavor> for FlavorRef {
+    fn from(value: Flavor) -> FlavorRef {
         FlavorRef::new_verified(value.inner.id)
     }
 }
 
-impl<'session> From<FlavorSummary<'session>> for FlavorRef {
-    fn from(value: FlavorSummary<'session>) -> FlavorRef {
+impl From<FlavorSummary> for FlavorRef {
+    fn from(value: FlavorSummary) -> FlavorRef {
         FlavorRef::new_verified(value.inner.id)
     }
 }

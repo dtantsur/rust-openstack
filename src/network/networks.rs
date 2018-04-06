@@ -14,6 +14,7 @@
 
 //! Network management via Network API.
 
+use std::rc::Rc;
 use std::fmt::Debug;
 
 use chrono::{DateTime, FixedOffset};
@@ -31,23 +32,23 @@ use super::protocol;
 
 /// A query to network list.
 #[derive(Clone, Debug)]
-pub struct NetworkQuery<'session> {
-    session: &'session Session,
+pub struct NetworkQuery {
+    session: Rc<Session>,
     query: Query,
     can_paginate: bool,
 }
 
 /// Structure representing a single network.
 #[derive(Clone, Debug)]
-pub struct Network<'session> {
-    session: &'session Session,
+pub struct Network {
+    session: Rc<Session>,
     inner: protocol::Network
 }
 
-impl<'session> Network<'session> {
+impl Network {
     /// Load a Network object.
-    pub(crate) fn new<Id: AsRef<str>>(session: &'session Session, id: Id)
-            -> Result<Network<'session>> {
+    pub(crate) fn new<Id: AsRef<str>>(session: Rc<Session>, id: Id)
+            -> Result<Network> {
         let inner = session.get_network(id)?;
         Ok(Network {
             session: session,
@@ -121,7 +122,7 @@ impl<'session> Network<'session> {
     }
 }
 
-impl<'session> Refresh for Network<'session> {
+impl Refresh for Network {
     /// Refresh the network.
     fn refresh(&mut self) -> Result<()> {
         self.inner = self.session.get_network(&self.inner.id)?;
@@ -129,8 +130,8 @@ impl<'session> Refresh for Network<'session> {
     }
 }
 
-impl<'session> NetworkQuery<'session> {
-    pub(crate) fn new(session: &'session Session) -> NetworkQuery<'session> {
+impl NetworkQuery {
+    pub(crate) fn new(session: Rc<Session>) -> NetworkQuery {
         NetworkQuery {
             session: session,
             query: Query::new(),
@@ -176,7 +177,7 @@ impl<'session> NetworkQuery<'session> {
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_iter(self) -> ResourceIterator<'session, Network<'session>> {
+    pub fn into_iter(self) -> ResourceIterator<Network> {
         debug!("Fetching networks with {:?}", self.query);
         ResourceIterator::new(self.session, self.query)
     }
@@ -184,7 +185,7 @@ impl<'session> NetworkQuery<'session> {
     /// Execute this request and return all results.
     ///
     /// A convenience shortcut for `self.into_iter().collect()`.
-    pub fn all(self) -> Result<Vec<Network<'session>>> {
+    pub fn all(self) -> Result<Vec<Network>> {
         self.into_iter().collect()
     }
 
@@ -192,7 +193,7 @@ impl<'session> NetworkQuery<'session> {
     ///
     /// Fails with `ResourceNotFound` if the query produces no results and
     /// with `TooManyItems` if the query produces more than one result.
-    pub fn one(mut self) -> Result<Network<'session>> {
+    pub fn one(mut self) -> Result<Network> {
         debug!("Fetching one network with {:?}", self.query);
         if self.can_paginate {
             // We need only one result. We fetch maximum two to be able
@@ -204,38 +205,38 @@ impl<'session> NetworkQuery<'session> {
     }
 }
 
-impl<'session> ResourceId for Network<'session> {
+impl ResourceId for Network {
     fn resource_id(&self) -> String {
         self.id().clone()
     }
 }
 
-impl<'session> ListResources<'session> for Network<'session> {
+impl ListResources for Network {
     const DEFAULT_LIMIT: usize = 50;
 
-    fn list_resources<Q: Serialize + Debug>(session: &'session Session, query: Q)
-            -> Result<Vec<Network<'session>>> {
+    fn list_resources<Q: Serialize + Debug>(session: Rc<Session>, query: Q)
+            -> Result<Vec<Network>> {
         Ok(session.list_networks(&query)?.into_iter().map(|item| Network {
-            session: session,
+            session: session.clone(),
             inner: item
         }).collect())
     }
 }
 
-impl<'session> IntoFallibleIterator for NetworkQuery<'session> {
-    type Item = Network<'session>;
+impl IntoFallibleIterator for NetworkQuery {
+    type Item = Network;
 
     type Error = Error;
 
-    type IntoIter = ResourceIterator<'session, Network<'session>>;
+    type IntoIter = ResourceIterator<Network>;
 
-    fn into_fallible_iterator(self) -> ResourceIterator<'session, Network<'session>> {
+    fn into_fallible_iterator(self) -> ResourceIterator<Network> {
         self.into_iter()
     }
 }
 
-impl<'session> From<Network<'session>> for NetworkRef {
-    fn from(value: Network<'session>) -> NetworkRef {
+impl From<Network> for NetworkRef {
+    fn from(value: Network) -> NetworkRef {
         NetworkRef::new_verified(value.inner.id)
     }
 }

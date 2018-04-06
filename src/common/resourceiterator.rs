@@ -14,6 +14,7 @@
 
 //! Generic API bits for implementing new services.
 
+use std::rc::Rc;
 use std::vec;
 
 use fallible_iterator::FallibleIterator;
@@ -26,18 +27,18 @@ use super::{ListResources, ResourceId};
 
 /// Generic implementation of a `FallibleIterator` over resources.
 #[derive(Debug, Clone)]
-pub struct ResourceIterator<'session, T> {
-    session: &'session Session,
+pub struct ResourceIterator<T> {
+    session: Rc<Session>,
     query: Query,
     cache: Option<vec::IntoIter<T>>,
     marker: Option<String>,
     can_paginate: Option<bool>,
 }
 
-impl<'session, T> ResourceIterator<'session, T> {
+impl<T> ResourceIterator<T> {
     #[allow(dead_code)]  // unused with --no-default-features
-    pub(crate) fn new(session: &'session Session, query: Query)
-            -> ResourceIterator<'session, T> {
+    pub(crate) fn new(session: Rc<Session>, query: Query)
+            -> ResourceIterator<T> {
         let can_paginate = query.0.iter().all(|pair| {
             pair.0 != "limit" && pair.0 != "marker"
         });
@@ -56,8 +57,7 @@ impl<'session, T> ResourceIterator<'session, T> {
     }
 }
 
-impl<'session, T> ResourceIterator<'session, T>
-        where T: ListResources<'session> + ResourceId {
+impl<T> ResourceIterator<T> where T: ListResources + ResourceId {
     /// Assert that only one item is left and fetch it.
     ///
     /// Fails with `ResourceNotFound` if no items are left and with
@@ -76,15 +76,14 @@ impl<'session, T> ResourceIterator<'session, T>
     }
 }
 
-impl<'session, T> FallibleIterator for ResourceIterator<'session, T>
-        where T: ListResources<'session> + ResourceId {
+impl<T> FallibleIterator for ResourceIterator<T> where T: ListResources + ResourceId {
     type Item = T;
 
     type Error = Error;
 
     fn next(&mut self) -> Result<Option<T>> {
         if self.can_paginate.is_none() {
-            self.can_paginate = Some(T::can_paginate(self.session)?);
+            self.can_paginate = Some(T::can_paginate(&self.session)?);
         }
 
         let maybe_next = self.cache.as_mut().and_then(|cache| cache.next());
@@ -105,7 +104,7 @@ impl<'session, T> FallibleIterator for ResourceIterator<'session, T>
                     }
                 }
 
-                let mut servers_iter = T::list_resources(self.session,
+                let mut servers_iter = T::list_resources(self.session.clone(),
                                                          &query.0)?
                     .into_iter();
                 let maybe_next = servers_iter.next();
@@ -123,6 +122,8 @@ impl<'session, T> FallibleIterator for ResourceIterator<'session, T>
 
 #[cfg(test)]
 mod test {
+    use std::rc::Rc;
+
     use fallible_iterator::FallibleIterator;
     use serde_json::{self, Value};
 
@@ -153,10 +154,10 @@ mod test {
         }).collect()
     }
 
-    impl<'a> ListResources<'a> for Test {
+    impl ListResources for Test {
         const DEFAULT_LIMIT: usize = 2;
 
-        fn list_resources<Q>(_session: &'a Session, query: Q) -> Result<Vec<Self>>
+        fn list_resources<Q>(_session: Rc<Session>, query: Q) -> Result<Vec<Self>>
                 where Q: ::serde::Serialize + ::std::fmt::Debug {
             let map = match serde_json::to_value(query).unwrap() {
                 Value::Array(arr) => array_to_map(arr),
@@ -175,12 +176,12 @@ mod test {
     #[derive(Debug, PartialEq, Eq)]
     struct NoPagination(u8);
 
-    impl<'a> ListResources<'a> for NoPagination {
+    impl ListResources for NoPagination {
         const DEFAULT_LIMIT: usize = 2;
 
-        fn can_paginate(_session: &'a Session) -> Result<bool> { Ok(false) }
+        fn can_paginate(_session: &Session) -> Result<bool> { Ok(false) }
 
-        fn list_resources<Q>(_session: &'a Session, query: Q) -> Result<Vec<Self>>
+        fn list_resources<Q>(_session: Rc<Session>, query: Q) -> Result<Vec<Self>>
                 where Q: ::serde::Serialize + ::std::fmt::Debug {
             let map = match serde_json::to_value(query).unwrap() {
                 Value::Array(arr) => array_to_map(arr),
@@ -201,7 +202,8 @@ mod test {
     #[test]
     fn test_resource_iterator() {
         let s = utils::test::new_session(utils::test::URL);
-        let it: ResourceIterator<Test> = ResourceIterator::new(&s, Query::new());
+        let it: ResourceIterator<Test> = ResourceIterator::new(Rc::new(s),
+                                                               Query::new());
         assert_eq!(it.collect::<Vec<Test>>().unwrap(),
                    vec![Test(0), Test(1), Test(2), Test(3)]);
     }
@@ -209,7 +211,8 @@ mod test {
     #[test]
     fn test_resource_iterator_no_pagination() {
         let s = utils::test::new_session(utils::test::URL);
-        let it: ResourceIterator<NoPagination> = ResourceIterator::new(&s, Query::new());
+        let it: ResourceIterator<NoPagination> = ResourceIterator::new(Rc::new(s),
+                                                                       Query::new());
         assert_eq!(it.collect::<Vec<NoPagination>>().unwrap(),
                    vec![NoPagination(0), NoPagination(1), NoPagination(2)]);
     }

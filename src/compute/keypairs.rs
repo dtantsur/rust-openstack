@@ -15,6 +15,7 @@
 //! Key pair management via Compute API.
 
 use std::fmt::Debug;
+use std::rc::Rc;
 
 use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
 use serde::Serialize;
@@ -30,24 +31,24 @@ use super::protocol;
 
 /// Structure representing a key pair.
 #[derive(Clone, Debug)]
-pub struct KeyPair<'session> {
-    session: &'session Session,
+pub struct KeyPair {
+    session: Rc<Session>,
     inner: protocol::KeyPair
 }
 
 /// A query to server list.
 #[derive(Clone, Debug)]
-pub struct KeyPairQuery<'session> {
-    session: &'session Session,
+pub struct KeyPairQuery {
+    session: Rc<Session>,
     query: Query,
     can_paginate: bool,
 }
 
 
-impl<'session> KeyPair<'session> {
+impl KeyPair {
     /// Load a KeyPair object.
-    pub(crate) fn new<Id: AsRef<str>>(session: &'session Session, id: Id)
-            -> Result<KeyPair<'session>> {
+    pub(crate) fn new<Id: AsRef<str>>(session: Rc<Session>, id: Id)
+            -> Result<KeyPair> {
         let inner = session.get_keypair(id)?;
         Ok(KeyPair {
             session: session,
@@ -71,7 +72,7 @@ impl<'session> KeyPair<'session> {
     }
 }
 
-impl<'session> Refresh for KeyPair<'session> {
+impl Refresh for KeyPair {
     /// Refresh the keypair.
     fn refresh(&mut self) -> Result<()> {
         self.inner = self.session.get_keypair(&self.inner.name)?;
@@ -79,8 +80,8 @@ impl<'session> Refresh for KeyPair<'session> {
     }
 }
 
-impl<'session> KeyPairQuery<'session> {
-    pub(crate) fn new(session: &'session Session) -> KeyPairQuery<'session> {
+impl KeyPairQuery {
+    pub(crate) fn new(session: Rc<Session>) -> KeyPairQuery {
         KeyPairQuery {
             session: session,
             query: Query::new(),
@@ -112,7 +113,7 @@ impl<'session> KeyPairQuery<'session> {
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_iter(self) -> ResourceIterator<'session, KeyPair<'session>> {
+    pub fn into_iter(self) -> ResourceIterator<KeyPair> {
         debug!("Fetching key pairs with {:?}", self.query);
         ResourceIterator::new(self.session, self.query)
     }
@@ -120,7 +121,7 @@ impl<'session> KeyPairQuery<'session> {
     /// Execute this request and return all results.
     ///
     /// A convenience shortcut for `self.into_iter().collect()`.
-    pub fn all(self) -> Result<Vec<KeyPair<'session>>> {
+    pub fn all(self) -> Result<Vec<KeyPair>> {
         self.into_iter().collect()
     }
 
@@ -128,7 +129,7 @@ impl<'session> KeyPairQuery<'session> {
     ///
     /// Fails with `ResourceNotFound` if the query produces no results and
     /// with `TooManyItems` if the query produces more than one result.
-    pub fn one(mut self) -> Result<KeyPair<'session>> {
+    pub fn one(mut self) -> Result<KeyPair> {
         debug!("Fetching one key pair with {:?}", self.query);
         if self.can_paginate {
             // We need only one result. We fetch maximum two to be able
@@ -140,36 +141,36 @@ impl<'session> KeyPairQuery<'session> {
     }
 }
 
-impl<'session> ResourceId for KeyPair<'session> {
+impl ResourceId for KeyPair {
     fn resource_id(&self) -> String {
         self.name().clone()
     }
 }
 
-impl<'session> ListResources<'session> for KeyPair<'session> {
+impl ListResources for KeyPair {
     const DEFAULT_LIMIT: usize = 50;
 
-    fn can_paginate(session: &'session Session) -> Result<bool> {
+    fn can_paginate(session: &Session) -> Result<bool> {
         session.supports_keypair_pagination()
     }
 
-    fn list_resources<Q: Serialize + Debug>(session: &'session Session, query: Q)
-            -> Result<Vec<KeyPair<'session>>> {
+    fn list_resources<Q: Serialize + Debug>(session: Rc<Session>, query: Q)
+            -> Result<Vec<KeyPair>> {
         Ok(session.list_keypairs(&query)?.into_iter().map(|item| KeyPair {
-            session: session,
+            session: session.clone(),
             inner: item
         }).collect())
     }
 }
 
-impl<'session> IntoFallibleIterator for KeyPairQuery<'session> {
-    type Item = KeyPair<'session>;
+impl IntoFallibleIterator for KeyPairQuery {
+    type Item = KeyPair;
 
     type Error = Error;
 
-    type IntoIter = ResourceIterator<'session, KeyPair<'session>>;
+    type IntoIter = ResourceIterator<KeyPair>;
 
-    fn into_fallible_iterator(self) -> ResourceIterator<'session, KeyPair<'session>> {
+    fn into_fallible_iterator(self) -> ResourceIterator<KeyPair> {
         self.into_iter()
     }
 }
