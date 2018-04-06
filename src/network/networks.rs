@@ -55,24 +55,24 @@ impl<'session> Network<'session> {
         })
     }
 
-    /// Get a reference to creation date and time.
-    pub fn created_at(&self) -> &DateTime<FixedOffset> {
-        &self.inner.created_at
+    transparent_property! {
+        #[doc = "Creation data and time (if available)."]
+        created_at: ref Option<DateTime<FixedOffset>>
     }
 
-    /// Get a reference to network unique ID.
-    pub fn id(&self) -> &String {
-        &self.inner.id
+    transparent_property! {
+        #[doc = "Unique ID."]
+        id: ref String
     }
 
-    /// Get a reference to network name.
-    pub fn name(&self) -> &String {
-        &self.inner.name
+    transparent_property! {
+        #[doc = "Network name."]
+        name: ref String
     }
 
-    /// Get a reference to last update date and time.
-    pub fn updated_at(&self) -> &DateTime<FixedOffset> {
-        &self.inner.updated_at
+    transparent_property! {
+        #[doc = "Last update data and time (if available)."]
+        updated_at: ref Option<DateTime<FixedOffset>>
     }
 }
 

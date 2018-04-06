@@ -19,6 +19,8 @@
 
 use chrono::{DateTime, FixedOffset};
 
+use super::super::common;
+
 
 protocol_enum! {
     #[doc = "Possible network statuses."]
@@ -52,11 +54,12 @@ pub struct Network {
     pub admin_state_up: bool,
     #[serde(default)]
     pub availability_zones: Vec<String>,
-    pub created_at: DateTime<FixedOffset>,
     #[serde(default)]
+    pub created_at: Option<DateTime<FixedOffset>>,
+    #[serde(deserialize_with = "common::protocol::empty_as_none", default)]
     pub dns_domain: Option<String>,
     #[serde(rename = "router:external")]
-    pub external: bool,
+    pub external: Option<bool>,
     pub id: String,
     #[serde(default)]
     pub is_default: bool,
@@ -68,7 +71,8 @@ pub struct Network {
     #[serde(default)]
     pub shared: bool,
     pub subnets: Vec<String>,
-    pub updated_at: DateTime<FixedOffset>,
+    #[serde(default)]
+    pub updated_at: Option<DateTime<FixedOffset>>,
 }
 
 /// A network.
