@@ -150,6 +150,8 @@ pub struct Server {
     #[serde(deserialize_with = "common::protocol::empty_as_none", default)]
     pub image: Option<common::protocol::Ref>,
     pub name: String,
+    #[serde(default)]
+    pub metadata: HashMap<String, String>,
     pub status: ServerStatus,
     #[serde(rename = "OS-EXT-STS:power_state", default)]
     pub power_state: ServerPowerState,
@@ -188,6 +190,8 @@ pub struct ServerCreate {
     pub imageRef: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub key_name: Option<String>,
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
+    pub metadata: HashMap<String, String>,
     pub name: String,
     pub networks: Vec<ServerNetwork>
 }
