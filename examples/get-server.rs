@@ -32,6 +32,10 @@ fn main() {
              server.id(), server.name(), server.status(), server.power_state());
     println!("Links: image = {:?}", server.image_id());
     println!("Floating IP: {:?}", server.floating_ip());
+
+    if !server.metadata().is_empty() {
+        println!("Metadata: {:?}", server.metadata());
+    }
 }
 
 #[cfg(not(feature = "compute"))]

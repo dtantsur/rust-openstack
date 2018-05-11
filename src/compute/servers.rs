@@ -81,6 +81,7 @@ pub struct NewServer {
     session: Rc<Session>,
     flavor: FlavorRef,
     image: Option<ImageRef>,
+    metadata: HashMap<String, String>,
     name: String,
     networks: Vec<ServerNIC>,
 }
@@ -177,6 +178,11 @@ impl Server {
     /// Get a reference to server name.
     pub fn name(&self) -> &String {
         &self.inner.name
+    }
+
+    /// Get a reference to associated metadata.
+    pub fn metadata(&self) -> &HashMap<String, String> {
+        &self.inner.metadata
     }
 
     /// Get server power state.
@@ -480,6 +486,7 @@ impl NewServer {
             session: session,
             flavor: flavor,
             image: None,
+            metadata: HashMap::new(),
             name: name,
             networks: Vec::new(),
         }
@@ -494,6 +501,7 @@ impl NewServer {
                 None => None
             },
             key_name: None,  // TODO
+            metadata: self.metadata,
             name: self.name,
             networks: convert_networks(&self.session, self.networks)?
         };
@@ -559,6 +567,14 @@ impl NewServer {
     pub fn with_port<P>(mut self, port: P) -> NewServer
             where P: Into<PortRef> {
         self.add_port(port);
+        self
+    }
+
+    /// Add an arbitrary key/value metadata pair.
+    pub fn with_metadata<S1, S2>(mut self, key: S1, value: S2) -> NewServer
+            where S1: Into<String>,
+                  S2: Into<String> {
+        let _ = self.metadata.insert(key.into(), value.into());
         self
     }
 }

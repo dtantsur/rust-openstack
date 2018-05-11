@@ -34,6 +34,7 @@ fn main() {
 
     let waiter = os.new_server(name, flavor)
         .with_image(image).with_network(network)
+        .with_metadata("key", "value")
         .create().expect("Cannot create a server");
     {
         let current = waiter.waiter_current_state();

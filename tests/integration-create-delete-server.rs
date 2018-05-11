@@ -41,11 +41,13 @@ fn test_basic_server_ops() {
 
     let mut server = os.new_server("rust-openstack-integration", flavor_id)
         .with_image(image_id).with_network(network_id)
+        .with_metadata("meta", "a3f955c049f7416faa7")
         .create().expect("Failed to request server creation")
         .wait().expect("Server was not created");
     assert_eq!(server.name(), "rust-openstack-integration");
     assert_eq!(server.status(), openstack::compute::ServerStatus::Active);
     assert_eq!(server.power_state(), openstack::compute::ServerPowerState::Running);
+    assert_eq!(server.metadata().get("meta"), Some(&"a3f955c049f7416faa7".to_string()));
 
     server.stop().expect("Failed to request power off")
         .wait().expect("Failed to power off");
