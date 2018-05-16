@@ -38,9 +38,10 @@ fn test_basic_server_ops() {
     let image_id = env::var("RUST_OPENSTACK_IMAGE").expect("Missing RUST_OPENSTACK_IMAGE");
     let flavor_id = env::var("RUST_OPENSTACK_FLAVOR").expect("Missing RUST_OPENSTACK_FLAVOR");
     let network_id = env::var("RUST_OPENSTACK_NETWORK").expect("Missing RUST_OPENSTACK_NETWORK");
+    let keypair_id = env::var("RUST_OPENSTACK_KEYPAIR").expect("Missing RUST_OPENSTACK_KEYPAIR");
 
     let mut server = os.new_server("rust-openstack-integration", flavor_id)
-        .with_image(image_id).with_network(network_id)
+        .with_image(image_id).with_network(network_id).with_keypair(keypair_id)
         .with_metadata("meta", "a3f955c049f7416faa7")
         .create().expect("Failed to request server creation")
         .wait().expect("Server was not created");

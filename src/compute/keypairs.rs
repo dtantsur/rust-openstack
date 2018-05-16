@@ -21,7 +21,7 @@ use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
 use serde::Serialize;
 
 use super::super::{Error, Result};
-use super::super::common::{ListResources, Refresh, ResourceId,
+use super::super::common::{KeyPairRef, ListResources, Refresh, ResourceId,
                            ResourceIterator};
 use super::super::session::Session;
 use super::super::utils::Query;
@@ -172,5 +172,23 @@ impl IntoFallibleIterator for KeyPairQuery {
 
     fn into_fallible_iterator(self) -> ResourceIterator<KeyPair> {
         self.into_iter()
+    }
+}
+
+impl From<KeyPair> for KeyPairRef {
+    fn from(value: KeyPair) -> KeyPairRef {
+        KeyPairRef::new_verified(value.inner.name)
+    }
+}
+
+impl KeyPairRef {
+    /// Verify this reference and convert to an ID, if possible.
+    #[cfg(feature = "compute")]
+    pub(crate) fn into_verified(self, session: &Session) -> Result<String> {
+        Ok(if self.verified {
+            self.value
+        } else {
+            session.get_keypair(&self.value)?.name
+        })
     }
 }
