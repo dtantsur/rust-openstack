@@ -26,7 +26,7 @@ use serde::Serialize;
 use waiter::{Waiter, WaiterCurrentState};
 
 use super::super::{Error, ErrorKind, Result, Sort};
-use super::super::common::{self, DeletionWaiter, FlavorRef, ImageRef,
+use super::super::common::{self, DeletionWaiter, FlavorRef, ImageRef, KeyPairRef,
                            ListResources, NetworkRef, PortRef, ProjectRef,
                            Refresh, ResourceId, ResourceIterator, UserRef};
 use super::super::session::Session;
@@ -81,6 +81,7 @@ pub struct NewServer {
     session: Rc<Session>,
     flavor: FlavorRef,
     image: Option<ImageRef>,
+    keypair: Option<KeyPairRef>,
     metadata: HashMap<String, String>,
     name: String,
     networks: Vec<ServerNIC>,
@@ -486,6 +487,7 @@ impl NewServer {
             session: session,
             flavor: flavor,
             image: None,
+            keypair: None,
             metadata: HashMap::new(),
             name: name,
             networks: Vec::new(),
@@ -500,7 +502,10 @@ impl NewServer {
                 Some(img) => Some(img.into_verified(&self.session)?),
                 None => None
             },
-            key_name: None,  // TODO
+            key_name: match self.keypair {
+                Some(item) => Some(item.into_verified(&self.session)?),
+                None => None
+            },
             metadata: self.metadata,
             name: self.name,
             networks: convert_networks(&self.session, self.networks)?
@@ -543,6 +548,11 @@ impl NewServer {
         self.image = Some(image.into());
     }
 
+    /// Use this key pair for the new server.
+    pub fn set_keypair<K>(&mut self, keypair: K) where K: Into<KeyPairRef> {
+        self.keypair = Some(keypair.into());
+    }
+
     /// Add a virtual NIC with given fixed IP to the new server.
     pub fn with_fixed_ip(mut self, fixed_ip: Ipv4Addr) -> NewServer {
         self.add_fixed_ip(fixed_ip);
@@ -553,6 +563,13 @@ impl NewServer {
     pub fn with_image<I>(mut self, image: I) -> NewServer
             where I: Into<ImageRef> {
         self.set_image(image);
+        self
+    }
+
+    /// Use this key pair for the new server.
+    pub fn with_keypair<K>(mut self, keypair: K) -> NewServer
+            where K: Into<KeyPairRef> {
+        self.set_keypair(keypair);
         self
     }
 

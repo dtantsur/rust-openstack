@@ -31,9 +31,10 @@ fn main() {
     let flavor = env::args().nth(2).expect("Provide a flavor");
     let image = env::args().nth(3).expect("Provide an image");
     let network = env::args().nth(4).expect("Provide a network");
+    let keypair = env::args().nth(5).expect("Provide a key pair");
 
     let waiter = os.new_server(name, flavor)
-        .with_image(image).with_network(network)
+        .with_image(image).with_network(network).with_keypair(keypair)
         .with_metadata("key", "value")
         .create().expect("Cannot create a server");
     {
