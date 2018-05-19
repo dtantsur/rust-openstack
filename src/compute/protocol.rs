@@ -241,7 +241,15 @@ pub struct FlavorRoot {
 #[derive(Clone, Debug, Deserialize)]
 pub struct KeyPair {
     pub fingerprint: String,
-    #[serde(rename = "type", default)]
+    #[serde(rename = "type", default, skip_serializing_if = "Option::is_none")]
+    pub key_type: Option<KeyPairType>,
+    pub name: String,
+    pub public_key: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct KeyPairCreate {
+    #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
     pub key_type: Option<KeyPairType>,
     pub name: String,
     pub public_key: String,
@@ -250,6 +258,11 @@ pub struct KeyPair {
 #[derive(Clone, Debug, Deserialize)]
 pub struct KeyPairRoot {
     pub keypair: KeyPair
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct KeyPairCreateRoot {
+    pub keypair: KeyPairCreate
 }
 
 #[derive(Clone, Debug, Deserialize)]

@@ -22,7 +22,7 @@ use super::auth::{self, AuthMethod};
 use super::common::FlavorRef;
 #[cfg(feature = "compute")]
 use super::compute::{Flavor, FlavorQuery, FlavorSummary, KeyPair, KeyPairQuery,
-                     NewServer, Server, ServerQuery, ServerSummary};
+                     NewKeyPair, NewServer, Server, ServerQuery, ServerSummary};
 #[cfg(feature = "image")]
 use super::image::{Image, ImageQuery};
 #[cfg(feature = "network")]
@@ -325,6 +325,15 @@ impl Cloud {
     #[cfg(feature = "compute")]
     pub fn list_servers(&self) -> Result<Vec<ServerSummary>> {
         self.find_servers().all()
+    }
+
+    /// Prepare a new key pair for creation.
+    ///
+    /// This call returns a `NewKeyPair` object, which is a builder to populate
+    /// key pair fields.
+    #[cfg(feature = "compute")]
+    pub fn new_keypair<S>(&self, name: S) -> NewKeyPair where S: Into<String> {
+        NewKeyPair::new(self.session.clone(), name.into())
     }
 
     /// Prepare a new server for creation.

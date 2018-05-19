@@ -37,6 +37,8 @@ const API_VERSION_KEYPAIR_PAGINATION: ApiVersion = ApiVersion(2, 35);
 
 /// Extensions for Session.
 pub trait V2API {
+    /// Create a key pair.
+    fn create_keypair(&self, request: protocol::KeyPairCreate) -> Result<protocol::KeyPair>;
     /// Create a server.
     fn create_server(&self, request: protocol::ServerCreate) -> Result<Ref>;
 
@@ -121,6 +123,16 @@ const SERVICE_TYPE: &'static str = "compute";
 const VERSION_ID: &'static str = "v2.1";
 
 impl V2API for Session {
+    fn create_keypair(&self, request: protocol::KeyPairCreate)
+            -> Result<protocol::KeyPair> {
+        debug!("Creating a key pair with {:?}", request);
+        let body = protocol::KeyPairCreateRoot { keypair: request };
+        let keypair = self.request::<V2>(Method::Post, &["os-keypairs"], None)?
+            .json(&body).receive_json::<protocol::KeyPairRoot>()?.keypair;
+        debug!("Created key pair {:?}", keypair);
+        Ok(keypair)
+    }
+
     fn create_server(&self, request: protocol::ServerCreate) -> Result<Ref> {
         debug!("Creating a server with {:?}", request);
         let body = protocol::ServerCreateRoot { server: request };

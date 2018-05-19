@@ -17,6 +17,7 @@ extern crate openstack;
 extern crate waiter;
 
 use std::env;
+use std::fs::File;
 use std::sync::{Once, ONCE_INIT};
 
 use waiter::Waiter;
@@ -38,10 +39,17 @@ fn test_basic_server_ops() {
     let image_id = env::var("RUST_OPENSTACK_IMAGE").expect("Missing RUST_OPENSTACK_IMAGE");
     let flavor_id = env::var("RUST_OPENSTACK_FLAVOR").expect("Missing RUST_OPENSTACK_FLAVOR");
     let network_id = env::var("RUST_OPENSTACK_NETWORK").expect("Missing RUST_OPENSTACK_NETWORK");
-    let keypair_id = env::var("RUST_OPENSTACK_KEYPAIR").expect("Missing RUST_OPENSTACK_KEYPAIR");
+    let keypair_file_name = env::var("RUST_OPENSTACK_KEYPAIR")
+        .expect("Missing RUST_OPENSTACK_KEYPAIR");
+
+    let keypair = os.new_keypair("rust-openstack-integration")
+        .from_reader(&mut File::open(keypair_file_name)
+                     .expect("Cannot open RUST_OPENSTACK_KEYPAIR"))
+        .expect("Cannot read RUST_OPENSTACK_KEYPAIR")
+        .create().expect("Cannot create a key pair");
 
     let mut server = os.new_server("rust-openstack-integration", flavor_id)
-        .with_image(image_id).with_network(network_id).with_keypair(keypair_id)
+        .with_image(image_id).with_network(network_id).with_keypair(keypair)
         .with_metadata("meta", "a3f955c049f7416faa7")
         .create().expect("Failed to request server creation")
         .wait().expect("Server was not created");

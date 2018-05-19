@@ -18,32 +18,24 @@
         executable: /bin/bash
         chdir: /opt/stack/new/devstack
 
-    - name: Prepare key pair for tests
-      shell:
-        cmd: |
-          source openrc demo demo
-          set -eux -o pipefail
-
-          for i in $HOME/.ssh/id_rsa.pub $HOME/.ssh/id_dsa.pub; do
-            if [[ -r $i ]]; then
-              openstack keypair create --public-key $i test-keypair
-              break
-            fi
-          done
-        executable: /bin/bash
-        chdir: /opt/stack/new/devstack
-
     - name: Run tests
       shell:
         cmd: |
           source /opt/stack/new/devstack/openrc demo demo
           set -eux -o pipefail
 
+          for i in $HOME/.ssh/id_rsa.pub $HOME/.ssh/id_dsa.pub; do
+            if [[ -r $i ]]; then
+              KEYPAIR_FILE=$i
+              break
+            fi
+          done
+
           export RUST_OPENSTACK_FLAVOR=test-flavor
           export RUST_OPENSTACK_NETWORK=private
           export RUST_OPENSTACK_IMAGE=$(openstack image list -f value -c ID -c Name \
             | awk '/cirros/ { print $1; exit 0; }')
-          export RUST_OPENSTACK_KEYPAIR=test-keypair
+          export RUST_OPENSTACK_KEYPAIR=$KEYPAIR_FILE
 
           if [ -z $RUST_OPENSTACK_IMAGE ]; then
             echo FATAL: cirros image not found

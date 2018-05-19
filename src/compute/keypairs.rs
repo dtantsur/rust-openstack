@@ -15,12 +15,13 @@
 //! Key pair management via Compute API.
 
 use std::fmt::Debug;
+use std::io;
 use std::rc::Rc;
 
 use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
 use serde::Serialize;
 
-use super::super::{Error, Result};
+use super::super::{Error, ErrorKind, Result};
 use super::super::common::{KeyPairRef, ListResources, Refresh, ResourceId,
                            ResourceIterator};
 use super::super::session::Session;
@@ -42,6 +43,14 @@ pub struct KeyPairQuery {
     session: Rc<Session>,
     query: Query,
     can_paginate: bool,
+}
+
+/// A request to create a key pair.
+#[derive(Clone, Debug)]
+pub struct NewKeyPair {
+    session: Rc<Session>,
+    name: String,
+    public_key: Option<String>,
 }
 
 
@@ -138,6 +147,58 @@ impl KeyPairQuery {
         }
 
         self.into_iter().one()
+    }
+}
+
+impl NewKeyPair {
+    /// Start creating a key pair.
+    pub(crate) fn new(session: Rc<Session>, name: String)
+            -> NewKeyPair {
+        NewKeyPair {
+            session: session,
+            name: name,
+            public_key: None,
+        }
+    }
+
+    /// Request creation of a key pair.
+    ///
+    /// This call fails immediately if no public_key is provided.
+    pub fn create(self) -> Result<KeyPair> {
+        let request = if let Some(public_key) = self.public_key {
+            protocol::KeyPairCreate {
+                key_type: None,  // TODO
+                name: self.name,
+                public_key: public_key
+            }
+        } else {
+            return Err(Error::new(ErrorKind::InvalidInput,
+                                  "Public key contents is required"));
+        };
+
+        let keypair = self.session.create_keypair(request)?;
+        Ok(KeyPair {
+            session: self.session,
+            inner: keypair
+        })
+    }
+
+    /// Add public key from a reader.
+    pub fn from_reader<R>(self, reader: &mut R) -> io::Result<NewKeyPair> where R: io::Read {
+        let mut s = String::new();
+        let _ = reader.read_to_string(&mut s)?;
+        Ok(self.from_string(s))
+    }
+
+    /// Add public key from a string.
+    pub fn from_string<S>(mut self, public_key: S) -> NewKeyPair where S: Into<String> {
+        self.set_string(public_key);
+        self
+    }
+
+    /// Add public key from a string.
+    pub fn set_string<S>(&mut self, public_key: S) where S: Into<String> {
+        self.public_key = Some(public_key.into());
     }
 }
 
