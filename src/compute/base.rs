@@ -39,8 +39,12 @@ const API_VERSION_KEYPAIR_PAGINATION: ApiVersion = ApiVersion(2, 35);
 pub trait V2API {
     /// Create a key pair.
     fn create_keypair(&self, request: protocol::KeyPairCreate) -> Result<protocol::KeyPair>;
+
     /// Create a server.
     fn create_server(&self, request: protocol::ServerCreate) -> Result<Ref>;
+
+    /// Delete a key pair.
+    fn delete_keypair<S: AsRef<str>>(&self, name: S) -> Result<()>;
 
     /// Delete a server.
     fn delete_server<S: AsRef<str>>(&self, id: S) -> Result<()>;
@@ -140,6 +144,16 @@ impl V2API for Session {
             .json(&body).receive_json::<protocol::CreatedServerRoot>()?.server;
         trace!("Requested creation of server {:?}", server);
         Ok(server)
+    }
+
+    fn delete_keypair<S: AsRef<str>>(&self, name: S) -> Result<()> {
+        debug!("Deleting key pair {}", name.as_ref());
+        let _ = self.request::<V2>(Method::Delete,
+                                   &["os-keypairs", name.as_ref()],
+                                   None)?
+            .send()?;
+        debug!("Key pair {} was deleted", name.as_ref());
+        Ok(())
     }
 
     fn delete_server<S: AsRef<str>>(&self, id: S) -> Result<()> {

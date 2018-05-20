@@ -68,4 +68,8 @@ fn test_basic_server_ops() {
 
     server.delete().expect("Failed to request deletion")
         .wait().expect("Failed to delete server");
+
+    os.get_keypair("rust-openstack-integration")
+        .expect("Cannot get key pair").delete()
+        .expect("Cannot delete key pair");
 }

@@ -65,6 +65,11 @@ impl KeyPair {
         })
     }
 
+    /// Delete the key pair.
+    pub fn delete(self) -> Result<()> {
+        self.session.delete_keypair(&self.inner.name)
+    }
+
     transparent_property! {
         #[doc = "Key pair fingerprint."]
         fingerprint: ref String
