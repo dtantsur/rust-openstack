@@ -7,46 +7,50 @@
     - install-devstack
 
 - hosts: all
+  environment:
+    OS_CLOUD: devstack-admin
+
   tasks:
     - name: Prepare flavor for tests
-      shell:
-        cmd: |
-          source openrc admin admin
-          set -eux -o pipefail
+      command: openstack flavor create test-flavor --ram 512 --disk 5 --vcpu 1 --public
 
-          openstack flavor create test-flavor --ram 512 --disk 5 --vcpu 1 --public
-        executable: /bin/bash
-        chdir: /opt/stack/new/devstack
+- hosts: all
+  environment:
+    OS_CLOUD: devstack
+
+  tasks:
+    - name: Find a public SSH key file
+      find:
+        path: ~/.ssh/
+        pattern: id_*.pub
+      register: ssh_key_result
+      failed_when: ssh_key_result.matched < 1
+
+    - name: Set SSH public key fact
+      set_fact:
+        ssh_key_file: "{{ ssh_key_result.files[0].path }}"
+
+    - name: Find a Cirros image
+      shell: |
+        openstack image list -f value -c ID -c Name \
+          | awk '/cirros/ { print $1; exit 0; }'
+      register: cirros_image_result
+      failed_when: cirros_image_result.stdout == ""
 
     - name: Run tests
       shell:
         cmd: |
+          # TODO: support OS_CLOUD
           source /opt/stack/new/devstack/openrc demo demo
-          set -eux -o pipefail
-
-          for i in $HOME/.ssh/id_rsa.pub $HOME/.ssh/id_dsa.pub; do
-            if [[ -r $i ]]; then
-              KEYPAIR_FILE=$i
-              break
-            fi
-          done
-
-          export RUST_OPENSTACK_FLAVOR=test-flavor
-          export RUST_OPENSTACK_NETWORK=private
-          export RUST_OPENSTACK_IMAGE=$(openstack image list -f value -c ID -c Name \
-            | awk '/cirros/ { print $1; exit 0; }')
-          export RUST_OPENSTACK_KEYPAIR=$KEYPAIR_FILE
-
-          if [ -z $RUST_OPENSTACK_IMAGE ]; then
-            echo FATAL: cirros image not found
-            openstack image list
-            exit 1
-          fi
-
-          export RUST_BACKTRACE=1
-          export RUST_LOG=openstack
-
+          set -eux
           cargo build --release --all-features
           cargo test -- --test-threads=1
         executable: /bin/bash
         chdir: '{{ zuul.project.src_dir }}'
+      environment:
+        RUST_BACKTRACE: 1
+        RUST_LOG: openstack
+        RUST_OPENSTACK_FLAVOR: test-flavor
+        RUST_OPENSTACK_NETWORK: private
+        RUST_OPENSTACK_IMAGE: "{{ cirros_image_result.stdout }}"
+        RUST_OPENSTACK_KEYPAIR: "{{ ssh_key_file }}"
