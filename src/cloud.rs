@@ -26,8 +26,8 @@ use super::compute::{Flavor, FlavorQuery, FlavorSummary, KeyPair, KeyPairQuery,
 #[cfg(feature = "image")]
 use super::image::{Image, ImageQuery};
 #[cfg(feature = "network")]
-use super::network::{Network, NetworkQuery, NewPort, Port, PortQuery,
-                     Subnet, SubnetQuery};
+use super::network::{FloatingIp, FloatingIpQuery, Network, NetworkQuery,
+                     NewPort, Port, PortQuery, Subnet, SubnetQuery};
 use super::session::Session;
 
 
@@ -111,6 +111,15 @@ impl Cloud {
         FlavorQuery::new(self.session.clone())
     }
 
+    /// Build a query against floating IP list.
+    ///
+    /// The returned object is a builder that should be used to construct
+    /// the query.
+    #[cfg(feature = "network")]
+    pub fn find_floating_ips(&self) -> FloatingIpQuery {
+        FloatingIpQuery::new(self.session.clone())
+    }
+
     /// Build a query against image list.
     ///
     /// The returned object is a builder that should be used to construct
@@ -192,6 +201,22 @@ impl Cloud {
     #[cfg(feature = "compute")]
     pub fn get_flavor<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Flavor> {
         Flavor::load(self.session.clone(), id_or_name)
+    }
+
+    /// Find a floating IP by its ID.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
+    /// let server = os.get_floating_ip("031e08c7-2ca7-4c0b-9923-030c8d946ba4")
+    ///     .expect("Unable to get a floating IP");
+    /// ```
+    #[cfg(feature = "network")]
+    pub fn get_floating_ip<Id: AsRef<str>>(&self, id: Id) -> Result<FloatingIp> {
+        FloatingIp::load(self.session.clone(), id)
     }
 
     /// Find an image by its name or ID.
@@ -304,6 +329,25 @@ impl Cloud {
     #[cfg(feature = "compute")]
     pub fn list_flavors(&self) -> Result<Vec<FlavorSummary>> {
         self.find_flavors().all()
+    }
+
+    /// List all floating IPs
+    ///
+    /// This call can yield a lot of results, use the
+    /// [find_floating_ips](#method.find_floating_ips) call to limit the number of
+    /// networks to receive.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
+    /// let server_list = os.list_floating_ips().expect("Unable to fetch floating IPs");
+    /// ```
+    #[cfg(feature = "network")]
+    pub fn list_floating_ips(&self) -> Result<Vec<FloatingIp>> {
+        self.find_floating_ips().all()
     }
 
     /// List all images.

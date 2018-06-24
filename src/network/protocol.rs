@@ -55,6 +55,27 @@ protocol_enum! {
     }
 }
 
+protocol_enum! {
+    #[doc = "Possible floating IP statuses."]
+    enum FloatingIpStatus {
+        Active = "ACTIVE",
+        Down = "DOWN",
+        Error = "ERROR"
+    }
+}
+
+protocol_enum! {
+    #[doc = "Available sort keys."]
+    enum FloatingIpSortKey {
+        FixedIpAddress = "fixed_ip_address",
+        FloatingIpAddress = "floating_ip_address",
+        FloatingNetworkId = "floating_network_id",
+        Id = "id",
+        RouterId = "router_id",
+        Status = "status"
+    }
+}
+
 impl Default for NetworkSortKey {
     fn default() -> NetworkSortKey {
         NetworkSortKey::CreatedAt
@@ -362,4 +383,55 @@ pub struct SubnetRoot {
 #[derive(Debug, Clone, Deserialize)]
 pub struct SubnetsRoot {
     pub subnets: Vec<Subnet>
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct PortForwarding {
+    /// TCP or UDP port used by floating IP.
+    pub external_port: u16,
+    /// Fixed IP address of internal port.
+    pub internal_ip_address: net::IpAddr,
+    /// TCP or UDP port used by internal port.
+    pub internal_port: u16,
+    /// Network IP protocol.
+    pub protocol: String,
+}
+
+/// A floating IP.
+#[derive(Debug, Clone, Deserialize)]
+pub struct FloatingIp {
+    #[serde(default)]
+    pub created_at: Option<DateTime<FixedOffset>>,
+    #[serde(deserialize_with = "common::protocol::empty_as_none", default)]
+    pub description: Option<String>,
+    #[serde(deserialize_with = "common::protocol::empty_as_none", default)]
+    pub dns_domain: Option<String>,
+    #[serde(deserialize_with = "common::protocol::empty_as_none", default)]
+    pub dns_name: Option<String>,
+    #[serde(default)]
+    pub fixed_ip_address: Option<net::IpAddr>,
+    pub floating_ip_address: net::IpAddr,
+    pub floating_network_id: String,
+    pub id: String,
+    #[serde(default)]
+    pub port_id: Option<String>,
+    #[serde(default)]
+    pub port_forwardings: Vec<PortForwarding>,
+    #[serde(default)]
+    pub router_id: Option<String>,
+    pub status: FloatingIpStatus,
+    #[serde(default)]
+    pub updated_at: Option<DateTime<FixedOffset>>,
+}
+
+/// A floating IP.
+#[derive(Debug, Clone, Deserialize)]
+pub struct FloatingIpRoot {
+    pub floatingip: FloatingIp
+}
+
+/// Floating IPs.
+#[derive(Debug, Clone, Deserialize)]
+pub struct FloatingIpsRoot {
+    pub floatingips: Vec<FloatingIp>
 }

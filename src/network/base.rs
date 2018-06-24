@@ -32,11 +32,17 @@ pub trait V2API {
     /// Create a port.
     fn create_port(&self, request: protocol::Port) -> Result<protocol::Port>;
 
+    /// Delete a floating IP.
+    fn delete_floating_ip<S: AsRef<str>>(&self, id: S) -> Result<()>;
+
     /// Delete a port.
     fn delete_port<S: AsRef<str>>(&self, id_or_name: S) -> Result<()>;
 
     /// Delete a subnet.
     fn delete_subnet<S: AsRef<str>>(&self, id: S) -> Result<()>;
+
+    /// Get a floating IP.
+    fn get_floating_ip<S: AsRef<str>>(&self, id: S) -> Result<protocol::FloatingIp>;
 
     /// Get a network.
     fn get_network<S: AsRef<str>>(&self, id_or_name: S) -> Result<protocol::Network> {
@@ -73,6 +79,10 @@ pub trait V2API {
 
     /// Get a subnet by its name.
     fn get_subnet_by_name<S: AsRef<str>>(&self, name: S) -> Result<protocol::Subnet>;
+
+    /// List floating IPs.
+    fn list_floating_ips<Q: Serialize + Debug>(&self, query: &Q)
+        -> Result<Vec<protocol::FloatingIp>>;
 
     /// List networks.
     fn list_networks<Q: Serialize + Debug>(&self, query: &Q)
@@ -111,6 +121,16 @@ impl V2API for Session {
         Ok(port)
     }
 
+    fn delete_floating_ip<S: AsRef<str>>(&self, id: S) -> Result<()> {
+        debug!("Deleting floating IP {}", id.as_ref());
+        let _ = self.request::<V2>(Method::Delete,
+                                   &["floatingips", id.as_ref()],
+                                   None)?
+            .send()?;
+        debug!("Floating IP {} was deleted", id.as_ref());
+        Ok(())
+    }
+
     fn delete_port<S: AsRef<str>>(&self, id: S) -> Result<()> {
         debug!("Deleting port {}", id.as_ref());
         let _ = self.request::<V2>(Method::Delete,
@@ -129,6 +149,16 @@ impl V2API for Session {
             .send()?;
         debug!("Subnet {} was deleted", id.as_ref());
         Ok(())
+    }
+
+    fn get_floating_ip<S: AsRef<str>>(&self, id: S) -> Result<protocol::FloatingIp> {
+        trace!("Get floating IP by ID {}", id.as_ref());
+        let floatingip = self.request::<V2>(Method::Get,
+                                            &["floatingips", id.as_ref()],
+                                            None)?
+           .receive_json::<protocol::FloatingIpRoot>()?.floatingip;
+        trace!("Received {:?}", floatingip);
+        Ok(floatingip)
     }
 
     fn get_network_by_id<S: AsRef<str>>(&self, id: S) -> Result<protocol::Network> {
@@ -191,6 +221,15 @@ impl V2API for Session {
         let result = utils::one(items, "Subnet with given name or ID not found",
                                 "Too many subnets found with given name")?;
         trace!("Received {:?}", result);
+        Ok(result)
+    }
+
+    fn list_floating_ips<Q: Serialize + Debug>(&self, query: &Q)
+            -> Result<Vec<protocol::FloatingIp>> {
+        trace!("Listing floating IPs with {:?}", query);
+        let result = self.request::<V2>(Method::Get, &["floatingips"], None)?
+           .query(query).receive_json::<protocol::FloatingIpsRoot>()?.floatingips;
+        trace!("Received floating IPs: {:?}", result);
         Ok(result)
     }
 

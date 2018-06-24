@@ -63,6 +63,8 @@
         - get-flavor test-flavor
         - get-image {{ cirros_image_result.stdout }}
         - get-network private
+        - list-flavors
+        - list-floating-ips
         - list-images
         - list-keypairs
         - list-networks

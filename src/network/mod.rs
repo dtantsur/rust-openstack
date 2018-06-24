@@ -15,14 +15,17 @@
 //! Network API implementation bits.
 
 mod base;
+mod floatingips;
 mod networks;
 mod ports;
 mod protocol;
 mod subnets;
 
+pub use self::floatingips::{FloatingIp, FloatingIpQuery};
 pub use self::networks::{Network, NetworkQuery};
 pub use self::ports::{NewPort, Port, PortIpAddress, PortIpRequest, PortQuery};
-pub use self::protocol::{AllocationPool, HostRoute, Ipv6Mode, IpVersion,
-                         NetworkStatus, NetworkSortKey, PortExtraDhcpOption,
+pub use self::protocol::{AllocationPool, FloatingIpSortKey, FloatingIpStatus,
+                         HostRoute, Ipv6Mode, IpVersion, NetworkStatus,
+                         NetworkSortKey, PortExtraDhcpOption, PortForwarding,
                          PortSortKey, SubnetSortKey};
 pub use self::subnets::{Subnet, SubnetQuery};
