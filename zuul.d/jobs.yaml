@@ -18,4 +18,5 @@
     description: |
       Run rust-openstack acceptance test on queens branch
     vars:
-      os_branch: 'stable/queens'
+      global_env:
+        OS_BRANCH: stable/queens
