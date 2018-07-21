@@ -37,13 +37,17 @@
       register: cirros_image_result
       failed_when: cirros_image_result.stdout == ""
 
+    - name: Build the project
+      command: cargo build --release --all-features
+      args:
+        chdir: '{{ zuul.project.src_dir }}'
+
     - name: Run tests
       shell:
         cmd: |
           # TODO: support OS_CLOUD
           source /opt/stack/new/devstack/openrc demo demo
           set -eux
-          cargo build --release --all-features
           cargo test -- --test-threads=1
         executable: /bin/bash
         chdir: '{{ zuul.project.src_dir }}'
@@ -54,3 +58,23 @@
         RUST_OPENSTACK_NETWORK: private
         RUST_OPENSTACK_IMAGE: "{{ cirros_image_result.stdout }}"
         RUST_OPENSTACK_KEYPAIR: "{{ ssh_key_file }}"
+
+    - name: Run examples
+      shell:
+        cmd: |
+          # TODO: support OS_CLOUD
+          source /opt/stack/new/devstack/openrc demo demo
+          set -eux
+          cargo run --example get-flavor test-flavor
+          cargo run --example get-image {{ cirros_image_result.stdout }}
+          cargo run --example get-network private
+          cargo run --example list-images
+          cargo run --example list-keypairs
+          cargo run --example list-networks
+          cargo run --example list-ports
+          cargo run --example list-servers
+        executable: /bin/bash
+        chdir: '{{ zuul.project.src_dir }}'
+      environment:
+        RUST_BACKTRACE: 1
+        RUST_LOG: openstack

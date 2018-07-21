@@ -16,7 +16,10 @@
 
 mod base;
 mod networks;
+mod ports;
 mod protocol;
 
 pub use self::networks::{Network, NetworkQuery};
-pub use self::protocol::{NetworkStatus, NetworkSortKey};
+pub use self::ports::{Port, PortQuery};
+pub use self::protocol::{IpVersion, NetworkStatus, NetworkSortKey,
+                         PortExtraDhcpOption, PortIpAddress, PortSortKey};

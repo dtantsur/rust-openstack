@@ -49,8 +49,8 @@ fn test_basic_server_ops() {
         .create().expect("Cannot create a key pair");
 
     let mut server = os.new_server("rust-openstack-integration", flavor_id)
-        .with_image(image_id).with_network(network_id).with_keypair(keypair)
-        .with_metadata("meta", "a3f955c049f7416faa7")
+        .with_image(image_id).with_network(network_id.clone())
+        .with_keypair(keypair).with_metadata("meta", "a3f955c049f7416faa7")
         .create().expect("Failed to request server creation")
         .wait().expect("Server was not created");
     assert_eq!(server.name(), "rust-openstack-integration");
@@ -65,6 +65,22 @@ fn test_basic_server_ops() {
     server.start().expect("Failed to request power on")
         .wait().expect("Failed to power on");
     assert_eq!(server.power_state(), openstack::compute::ServerPowerState::Running);
+
+    let network = os.get_network(network_id).expect("Cannot get network");
+
+    let ports = os.find_ports()
+        .with_network(network)
+        .with_status(openstack::network::NetworkStatus::Active)
+        .all().expect("Cannot find active ports for network");
+    assert!(ports.len() > 0);
+
+    let the_port = os.find_ports()
+        .with_device_id(server.id().clone())
+        .with_admin_state_up(true)
+        .one().expect("Cannot find the port attached to the server");
+    assert_eq!(the_port.device_id().as_ref().unwrap(), server.id());
+    assert!(the_port.device_owner().as_ref().unwrap().starts_with("compute:"));
+    assert!(the_port.attached_to_server());
 
     server.delete().expect("Failed to request deletion")
         .wait().expect("Failed to delete server");

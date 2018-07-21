@@ -121,10 +121,36 @@ macro_rules! query_filter {
         }
     );
 
+    ($(#[$attr:meta])* $set_func:ident, $with_func:ident -> $name:ident) => (
+        $(#[$attr])*
+        pub fn $set_func<T: Into<String>>(&mut self, value: T)  {
+            self.query.push_str(stringify!($name), value);
+        }
+
+        $(#[$attr])*
+        pub fn $with_func<T: Into<String>>(mut self, value: T) -> Self {
+            self.$set_func(value);
+            self
+        }
+    );
+
     ($(#[$attr:meta])* $func:ident -> $name:ident: $type:ty) => (
         $(#[$attr])*
         pub fn $func(mut self, value: $type) -> Self {
             self.query.push(stringify!($name), value);
+            self
+        }
+    );
+
+    ($(#[$attr:meta])* $set_func:ident, $with_func:ident -> $name:ident: $type:ty) => (
+        $(#[$attr])*
+        pub fn $set_func(&mut self, value: $type)  {
+            self.query.push(stringify!($name), value);
+        }
+
+        $(#[$attr])*
+        pub fn $with_func(mut self, value: $type) -> Self {
+            self.$set_func(value);
             self
         }
     );

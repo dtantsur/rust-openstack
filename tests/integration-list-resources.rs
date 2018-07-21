@@ -57,6 +57,12 @@ fn test_list_networks() {
 }
 
 #[test]
+fn test_list_ports() {
+    let os = set_up();
+    let _ = os.list_ports().expect("Cannot list ports");
+}
+
+#[test]
 fn test_list_servers() {
     let os = set_up();
     let _ = os.list_servers().expect("Cannot list servers");

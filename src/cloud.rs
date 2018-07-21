@@ -26,7 +26,7 @@ use super::compute::{Flavor, FlavorQuery, FlavorSummary, KeyPair, KeyPairQuery,
 #[cfg(feature = "image")]
 use super::image::{Image, ImageQuery};
 #[cfg(feature = "network")]
-use super::network::{Network, NetworkQuery};
+use super::network::{Network, NetworkQuery, Port, PortQuery};
 use super::session::Session;
 
 
@@ -137,6 +137,15 @@ impl Cloud {
         NetworkQuery::new(self.session.clone())
     }
 
+    /// Build a query against port list.
+    ///
+    /// The returned object is a builder that should be used to construct
+    /// the query.
+    #[cfg(feature = "network")]
+    pub fn find_ports(&self) -> PortQuery {
+        PortQuery::new(self.session.clone())
+    }
+
     /// Build a query against server list.
     ///
     /// The returned object is a builder that should be used to construct
@@ -218,6 +227,22 @@ impl Cloud {
     #[cfg(feature = "network")]
     pub fn get_network<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Network> {
         Network::new(self.session.clone(), id_or_name)
+    }
+
+    /// Find an port by its name or ID.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
+    /// let server = os.get_port("4d9c1710-fa02-49f9-8218-291024ef4140")
+    ///     .expect("Unable to get a port");
+    /// ```
+    #[cfg(feature = "network")]
+    pub fn get_port<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Port> {
+        Port::new(self.session.clone(), id_or_name)
     }
 
     /// Find a server by its name or ID.
@@ -306,6 +331,25 @@ impl Cloud {
     #[cfg(feature = "network")]
     pub fn list_networks(&self) -> Result<Vec<Network>> {
         self.find_networks().all()
+    }
+
+    /// List all ports.
+    ///
+    /// This call can yield a lot of results, use the
+    /// [find_ports](#method.find_ports) call to limit the number of
+    /// ports to receive.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
+    /// let server_list = os.list_ports().expect("Unable to fetch ports");
+    /// ```
+    #[cfg(feature = "network")]
+    pub fn list_ports(&self) -> Result<Vec<Port>> {
+        self.find_ports().all()
     }
 
     /// List all servers.
