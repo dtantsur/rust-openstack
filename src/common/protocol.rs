@@ -17,8 +17,9 @@
 #![allow(dead_code)] // various things are unused with --no-default-features
 #![allow(missing_docs)]
 
+use eui48::MacAddress;
 use reqwest::{Method, Url};
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde::de::{DeserializeOwned, Error as DeserError};
 use serde_json;
 
@@ -170,4 +171,11 @@ pub fn deser_optional_url<'de, D>(des: D)
         Some(s) => Url::parse(&s).map_err(DeserError::custom).map(Some),
         None => Ok(None)
     }
+}
+
+/// Serialize a MAC address in its HEX format.
+pub fn ser_mac<S>(value: &MacAddress, serializer: S)
+        -> ::std::result::Result<S::Ok, S::Error>
+        where S: Serializer {
+    value.to_hex_string().serialize(serializer)
 }

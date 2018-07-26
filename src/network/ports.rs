@@ -16,14 +16,16 @@
 
 use std::rc::Rc;
 use std::fmt::Debug;
+use std::time::Duration;
 
 use chrono::{DateTime, FixedOffset};
+use eui48::MacAddress;
 use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
 use serde::Serialize;
 
 use super::super::{Error, Result, Sort};
-use super::super::common::{ListResources, NetworkRef, PortRef, Refresh,
-                           ResourceId, ResourceIterator};
+use super::super::common::{DeletionWaiter, ListResources, NetworkRef, PortRef,
+                           Refresh, ResourceId, ResourceIterator};
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::base::V2API;
@@ -43,6 +45,14 @@ pub struct PortQuery {
 pub struct Port {
     session: Rc<Session>,
     inner: protocol::Port
+}
+
+/// A request to create a port
+#[derive(Clone, Debug)]
+pub struct NewPort {
+    session: Rc<Session>,
+    inner: protocol::Port,
+    network: NetworkRef,
 }
 
 impl Port {
@@ -111,7 +121,7 @@ impl Port {
 
     transparent_property! {
         #[doc = "MAC address of the port."]
-        mac_address: ref String
+        mac_address: MacAddress
     }
 
     transparent_property! {
@@ -142,6 +152,12 @@ impl Port {
     transparent_property! {
         #[doc = "Last update data and time (if available)."]
         updated_at: Option<DateTime<FixedOffset>>
+    }
+
+    /// Delete the port.
+    pub fn delete(self) -> Result<DeletionWaiter<Port>> {
+        self.session.delete_port(&self.inner.id)?;
+        Ok(DeletionWaiter::new(self, Duration::new(60, 0), Duration::new(1, 0)))
     }
 }
 
@@ -274,6 +290,103 @@ impl PortQuery {
 
         self.into_iter().one()
     }
+}
+
+impl NewPort {
+    /// Start creating a port.
+    pub(crate) fn new(session: Rc<Session>, network: NetworkRef)
+            -> NewPort {
+        NewPort {
+            session: session,
+            inner: protocol::Port {
+                admin_state_up: true,
+                created_at: None,
+                description: None,
+                device_id: None,
+                device_owner: None,
+                dns_domain: None,
+                dns_name: None,
+                extra_dhcp_opts: Vec::new(),
+                fixed_ips: Vec::new(),
+                id: String::new(),
+                mac_address: Default::default(),
+                name: None,
+                // Will be replaced in create()
+                network_id: String::new(),
+                project_id: None,
+                security_groups: Vec::new(),
+                // Dummy value, not used when serializing
+                status: protocol::NetworkStatus::Active,
+                updated_at: None,
+            },
+            network: network,
+        }
+    }
+
+    /// Request creation of the port.
+    pub fn create(mut self) -> Result<Port> {
+        self.inner.network_id = self.network.into_verified(&self.session)?;
+        let port = self.session.create_port(self.inner)?;
+        Ok(Port {
+            session: self.session,
+            inner: port
+        })
+    }
+
+    creation_inner_field! {
+        #[doc = "Set administrative status for the port."]
+        set_admin_state_up, with_admin_state_up -> admin_state_up: bool
+    }
+
+    creation_inner_field! {
+        #[doc = "Set description of the port."]
+        set_description, with_description -> description: optional String
+    }
+
+    creation_inner_field! {
+        #[doc = "Set device ID of the port."]
+        set_device_id, with_device_id -> device_id: optional String
+    }
+
+    creation_inner_field! {
+        #[doc = "Set device owner of the port."]
+        set_device_owner, with_device_owner -> device_owner: optional String
+    }
+
+    creation_inner_field! {
+        #[doc = "Set DNS domain for the port."]
+        set_dns_domain, with_dns_domain -> dns_domain: optional String
+    }
+
+    creation_inner_field! {
+        #[doc = "Set DNS name for the port."]
+        set_dns_name, with_dns_name -> dns_name: optional String
+    }
+
+    /// Extra DHCP options to configure on the port.
+    pub fn extra_dhcp_opts(&mut self) -> &mut Vec<protocol::PortExtraDhcpOption> {
+        &mut self.inner.extra_dhcp_opts
+    }
+
+    creation_inner_field! {
+        #[doc = "Set extra DHCP options to configure on the port."]
+        set_extra_dhcp_opts, with_extra_dhcp_opts -> extra_dhcp_opts:
+            Vec<protocol::PortExtraDhcpOption>
+    }
+
+    // TODO(dtantsur): fixed IPs
+
+    creation_inner_field! {
+        #[doc = "Set MAC address for the port (generated otherwise)."]
+        set_mac_address, with_mac_address -> mac_address: MacAddress
+    }
+
+    creation_inner_field! {
+        #[doc = "Set a name for the port."]
+        set_name, with_name -> name: optional String
+    }
+
+    // TODO(dtantsur): security groups
 }
 
 impl ResourceId for Port {

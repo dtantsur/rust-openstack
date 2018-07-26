@@ -20,6 +20,6 @@ mod ports;
 mod protocol;
 
 pub use self::networks::{Network, NetworkQuery};
-pub use self::ports::{Port, PortQuery};
+pub use self::ports::{NewPort, Port, PortQuery};
 pub use self::protocol::{IpVersion, NetworkStatus, NetworkSortKey,
                          PortExtraDhcpOption, PortIpAddress, PortSortKey};

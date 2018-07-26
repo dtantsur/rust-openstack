@@ -29,6 +29,12 @@ use super::protocol;
 
 /// Extensions for Session.
 pub trait V2API {
+    /// Create a port.
+    fn create_port(&self, request: protocol::Port) -> Result<protocol::Port>;
+
+    /// Delete a port.
+    fn delete_port<S: AsRef<str>>(&self, id_or_name: S) -> Result<()>;
+
     /// Get a network.
     fn get_network<S: AsRef<str>>(&self, id_or_name: S) -> Result<protocol::Network> {
         let s = id_or_name.as_ref();
@@ -73,6 +79,25 @@ const VERSION_ID: &'static str = "v2.0";
 
 
 impl V2API for Session {
+    fn create_port(&self, request: protocol::Port) -> Result<protocol::Port> {
+        debug!("Creating a new port with {:?}", request);
+        let body = protocol::PortRoot { port: request };
+        let port = self.request::<V2>(Method::Post, &["ports"], None)?
+            .json(&body).receive_json::<protocol::PortRoot>()?.port;
+        debug!("Created port {:?}", port);
+        Ok(port)
+    }
+
+    fn delete_port<S: AsRef<str>>(&self, id: S) -> Result<()> {
+        debug!("Deleting port {}", id.as_ref());
+        let _ = self.request::<V2>(Method::Delete,
+                                   &["ports", id.as_ref()],
+                                   None)?
+            .send()?;
+        debug!("Port {} was deleted", id.as_ref());
+        Ok(())
+    }
+
     fn get_network_by_id<S: AsRef<str>>(&self, id: S) -> Result<protocol::Network> {
         trace!("Get network by ID {}", id.as_ref());
         let network = self.request::<V2>(Method::Get,

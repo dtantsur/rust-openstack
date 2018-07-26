@@ -81,6 +81,8 @@
 #[allow(unused_extern_crates)]
 extern crate chrono;
 #[allow(unused_extern_crates)]
+extern crate eui48;
+#[allow(unused_extern_crates)]
 extern crate fallible_iterator;
 #[macro_use]
 extern crate log;
@@ -158,6 +160,63 @@ macro_rules! query_filter {
 
 
 #[allow(unused_macros)]
+macro_rules! creation_inner_field {
+
+    ($(#[$attr:meta])* $set_func:ident, $with_func:ident -> $name:ident) => (
+        $(#[$attr])*
+        pub fn $set_func<S: Into<String>>(&mut self, value: S)  {
+            self.inner.$name = value.into();
+        }
+
+        $(#[$attr])*
+        pub fn $with_func<S: Into<String>>(mut self, value: S) -> Self {
+            self.$set_func(value);
+            self
+        }
+    );
+
+    ($(#[$attr:meta])* $set_func:ident, $with_func:ident -> $name:ident: $type:ty) => (
+        $(#[$attr])*
+        pub fn $set_func(&mut self, value: $type)  {
+            self.inner.$name = value;
+        }
+
+        $(#[$attr])*
+        pub fn $with_func(mut self, value: $type) -> Self {
+            self.$set_func(value);
+            self
+        }
+    );
+
+    ($(#[$attr:meta])* $set_func:ident, $with_func:ident -> $name:ident: optional String) => (
+        $(#[$attr])*
+        pub fn $set_func<S: Into<String>>(&mut self, value: S)  {
+            self.inner.$name = Some(value.into());
+        }
+
+        $(#[$attr])*
+        pub fn $with_func<S: Into<String>>(mut self, value: S) -> Self {
+            self.$set_func(value);
+            self
+        }
+    );
+
+    ($(#[$attr:meta])* $set_func:ident, $with_func:ident -> $name:ident: optional $type:ty) => (
+        $(#[$attr])*
+        pub fn $set_func(&mut self, value: $type)  {
+            self.inner.$name = Some(value);
+        }
+
+        $(#[$attr])*
+        pub fn $with_func(mut self, value: $type) -> Self {
+            self.$set_func(value);
+            self
+        }
+    );
+
+}
+
+#[allow(unused_macros)]
 macro_rules! protocol_enum {
     {$(#[$attr:meta])* enum $name:ident: $carrier:ty {
         $($item:ident = $val:expr),+
@@ -184,6 +243,16 @@ macro_rules! protocol_enum {
                         Err(D::Error::custom(err))
                     }
                 }
+            }
+        }
+
+        impl ::serde::ser::Serialize for $name {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                    where S: ::serde::ser::Serializer {
+                match self {
+                    $(&$name::$item => $val),+,
+                    _ => unreachable!()
+                }.serialize(serializer)
             }
         }
 

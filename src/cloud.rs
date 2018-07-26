@@ -19,14 +19,14 @@ use std::rc::Rc;
 use super::Result;
 use super::auth::{self, AuthMethod};
 #[allow(unused_imports)]
-use super::common::FlavorRef;
+use super::common::{FlavorRef, NetworkRef};
 #[cfg(feature = "compute")]
 use super::compute::{Flavor, FlavorQuery, FlavorSummary, KeyPair, KeyPairQuery,
                      NewKeyPair, NewServer, Server, ServerQuery, ServerSummary};
 #[cfg(feature = "image")]
 use super::image::{Image, ImageQuery};
 #[cfg(feature = "network")]
-use super::network::{Network, NetworkQuery, Port, PortQuery};
+use super::network::{Network, NetworkQuery, NewPort, Port, PortQuery};
 use super::session::Session;
 
 
@@ -378,6 +378,15 @@ impl Cloud {
     #[cfg(feature = "compute")]
     pub fn new_keypair<S>(&self, name: S) -> NewKeyPair where S: Into<String> {
         NewKeyPair::new(self.session.clone(), name.into())
+    }
+
+    /// Prepare a new port for creation.
+    ///
+    /// This call returns a `NewPort` object, which is a builder to populate
+    /// port fields.
+    #[cfg(feature = "network")]
+    pub fn new_port<N>(&self, network: N) -> NewPort where N: Into<NetworkRef> {
+        NewPort::new(self.session.clone(), network.into())
     }
 
     /// Prepare a new server for creation.
