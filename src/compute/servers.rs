@@ -470,8 +470,9 @@ fn convert_networks(session: &Session, networks: Vec<ServerNIC>)
             ServerNIC::FromNetwork(n) => protocol::ServerNetwork::Network {
                 uuid: n.into_verified(session)?
             },
-            ServerNIC::WithPort(p) =>
-                protocol::ServerNetwork::Port { port: p.into() },
+            ServerNIC::WithPort(p) => protocol::ServerNetwork::Port {
+                port: p.into_verified(session)?
+            },
             ServerNIC::WithFixedIp(ip) =>
                 protocol::ServerNetwork::FixedIp{ fixed_ip: ip }
         });

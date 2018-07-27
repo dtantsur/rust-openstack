@@ -427,7 +427,7 @@ impl From<Port> for PortRef {
 
 impl PortRef {
     /// Verify this reference and convert to an ID, if possible.
-    #[cfg(feature = "port")]
+    #[cfg(feature = "network")]
     pub(crate) fn into_verified(self, session: &Session) -> Result<String> {
         Ok(if self.verified {
             self.value
