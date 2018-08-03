@@ -35,6 +35,9 @@ pub trait V2API {
     /// Delete a port.
     fn delete_port<S: AsRef<str>>(&self, id_or_name: S) -> Result<()>;
 
+    /// Delete a subnet.
+    fn delete_subnet<S: AsRef<str>>(&self, id: S) -> Result<()>;
+
     /// Get a network.
     fn get_network<S: AsRef<str>>(&self, id_or_name: S) -> Result<protocol::Network> {
         let s = id_or_name.as_ref();
@@ -59,6 +62,18 @@ pub trait V2API {
     /// Get a port by its name.
     fn get_port_by_name<S: AsRef<str>>(&self, name: S) -> Result<protocol::Port>;
 
+    /// Get a subnet.
+    fn get_subnet<S: AsRef<str>>(&self, id_or_name: S) -> Result<protocol::Subnet> {
+        let s = id_or_name.as_ref();
+        self.get_subnet_by_id(s).if_not_found_then(|| self.get_subnet_by_name(s))
+    }
+
+    /// Get a subnet by its ID.
+    fn get_subnet_by_id<S: AsRef<str>>(&self, id: S) -> Result<protocol::Subnet>;
+
+    /// Get a subnet by its name.
+    fn get_subnet_by_name<S: AsRef<str>>(&self, name: S) -> Result<protocol::Subnet>;
+
     /// List networks.
     fn list_networks<Q: Serialize + Debug>(&self, query: &Q)
         -> Result<Vec<protocol::Network>>;
@@ -66,6 +81,10 @@ pub trait V2API {
     /// List ports.
     fn list_ports<Q: Serialize + Debug>(&self, query: &Q)
         -> Result<Vec<protocol::Port>>;
+
+    /// List subnets.
+    fn list_subnets<Q: Serialize + Debug>(&self, query: &Q)
+        -> Result<Vec<protocol::Subnet>>;
 }
 
 
@@ -95,6 +114,16 @@ impl V2API for Session {
                                    None)?
             .send()?;
         debug!("Port {} was deleted", id.as_ref());
+        Ok(())
+    }
+
+    fn delete_subnet<S: AsRef<str>>(&self, id: S) -> Result<()> {
+        debug!("Deleting subnet {}", id.as_ref());
+        let _ = self.request::<V2>(Method::Delete,
+                                   &["subnets", id.as_ref()],
+                                   None)?
+            .send()?;
+        debug!("Subnet {} was deleted", id.as_ref());
         Ok(())
     }
 
@@ -140,6 +169,27 @@ impl V2API for Session {
         Ok(result)
     }
 
+    fn get_subnet_by_id<S: AsRef<str>>(&self, id: S) -> Result<protocol::Subnet> {
+        trace!("Get subnet by ID {}", id.as_ref());
+        let subnet = self.request::<V2>(Method::Get,
+                                         &["subnets", id.as_ref()],
+                                         None)?
+           .receive_json::<protocol::SubnetRoot>()?.subnet;
+        trace!("Received {:?}", subnet);
+        Ok(subnet)
+    }
+
+    fn get_subnet_by_name<S: AsRef<str>>(&self, name: S) -> Result<protocol::Subnet> {
+        trace!("Get subnet by name {}", name.as_ref());
+        let items = self.request::<V2>(Method::Get, &["subnets"], None)?
+            .query(&[("name", name.as_ref())])
+            .receive_json::<protocol::SubnetsRoot>()?.subnets;
+        let result = utils::one(items, "Subnet with given name or ID not found",
+                                "Too many subnets found with given name")?;
+        trace!("Received {:?}", result);
+        Ok(result)
+    }
+
     fn list_networks<Q: Serialize + Debug>(&self, query: &Q)
             -> Result<Vec<protocol::Network>> {
         trace!("Listing networks with {:?}", query);
@@ -155,6 +205,15 @@ impl V2API for Session {
         let result = self.request::<V2>(Method::Get, &["ports"], None)?
            .query(query).receive_json::<protocol::PortsRoot>()?.ports;
         trace!("Received ports: {:?}", result);
+        Ok(result)
+    }
+
+    fn list_subnets<Q: Serialize + Debug>(&self, query: &Q)
+            -> Result<Vec<protocol::Subnet>> {
+        trace!("Listing subnets with {:?}", query);
+        let result = self.request::<V2>(Method::Get, &["subnets"], None)?
+           .query(query).receive_json::<protocol::SubnetsRoot>()?.subnets;
+        trace!("Received subnets: {:?}", result);
         Ok(result)
     }
 }

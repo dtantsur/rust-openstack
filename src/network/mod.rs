@@ -18,8 +18,11 @@ mod base;
 mod networks;
 mod ports;
 mod protocol;
+mod subnets;
 
 pub use self::networks::{Network, NetworkQuery};
 pub use self::ports::{NewPort, Port, PortQuery};
-pub use self::protocol::{IpVersion, NetworkStatus, NetworkSortKey,
-                         PortExtraDhcpOption, PortIpAddress, PortSortKey};
+pub use self::protocol::{AllocationPool, HostRoute, Ipv6Mode, IpVersion,
+                         NetworkStatus, NetworkSortKey, PortExtraDhcpOption,
+                         PortIpAddress, PortSortKey, SubnetSortKey};
+pub use self::subnets::{Subnet, SubnetQuery};

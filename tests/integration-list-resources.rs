@@ -67,3 +67,9 @@ fn test_list_servers() {
     let os = set_up();
     let _ = os.list_servers().expect("Cannot list servers");
 }
+
+#[test]
+fn test_list_subnets() {
+    let os = set_up();
+    let _ = os.list_subnets().expect("Cannot list subnets");
+}

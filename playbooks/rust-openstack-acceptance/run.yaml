@@ -73,6 +73,7 @@
           cargo run --example list-networks
           cargo run --example list-ports
           cargo run --example list-servers
+          cargo run --example list-subnets
         executable: /bin/bash
         chdir: '{{ zuul.project.src_dir }}'
       environment:

@@ -22,6 +22,7 @@ use std::net;
 
 use chrono::{DateTime, FixedOffset};
 use eui48::MacAddress;
+use ipnet;
 
 use super::super::common;
 
@@ -57,6 +58,44 @@ protocol_enum! {
 impl Default for NetworkSortKey {
     fn default() -> NetworkSortKey {
         NetworkSortKey::CreatedAt
+    }
+}
+
+protocol_enum! {
+    #[doc = "Available sort keys."]
+    enum PortSortKey {
+        AdminStateUp = "admin_state_up",
+        DeviceId = "device_id",
+        DeviceOwner = "device_owner",
+        Id = "id",
+        MacAddress = "mac_address",
+        Name = "name",
+        NetworkId = "network_id",
+        Status = "status"
+    }
+}
+
+protocol_enum! {
+    #[doc = "Available sort keys."]
+    enum SubnetSortKey {
+        Cidr = "cidr",
+        DhcpEnabled = "enable_dhcp",
+        GatewayIp = "gateway_ip",
+        Id = "id",
+        IpVersion = "ip_version",
+        Ipv6AddressMode = "ipv6_address_mode",
+        Ipv6RouterAdvertisementMode = "ipv6_ra_mode",
+        Name = "name",
+        NetworkId = "network_id"
+    }
+}
+
+protocol_enum! {
+    #[doc = "IPv6 modes for assigning IP addresses."]
+    enum Ipv6Mode {
+        DhcpStateful = "dhcpv6-stateful",
+        DhcpStateless = "dhcpv6-stateless",
+        Slaac = "slaac"
     }
 }
 
@@ -197,20 +236,6 @@ pub struct Port {
     pub updated_at: Option<DateTime<FixedOffset>>,
 }
 
-protocol_enum! {
-    #[doc = "Available sort keys."]
-    enum PortSortKey {
-        AdminStateUp = "admin_state_up",
-        DeviceId = "device_id",
-        DeviceOwner = "device_owner",
-        Id = "id",
-        MacAddress = "mac_address",
-        Name = "name",
-        NetworkId = "network_id",
-        Status = "status"
-    }
-}
-
 /// A port.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PortRoot {
@@ -221,4 +246,68 @@ pub struct PortRoot {
 #[derive(Debug, Clone, Deserialize)]
 pub struct PortsRoot {
     pub ports: Vec<Port>
+}
+
+/// An allocation pool.
+#[derive(Copy, Debug, Clone, Deserialize)]
+pub struct AllocationPool {
+    /// Start IP address.
+    pub start: net::IpAddr,
+    /// End IP address.
+    pub end: net::IpAddr
+}
+
+/// A host router.
+#[derive(Copy, Debug, Clone, Deserialize)]
+pub struct HostRoute {
+    /// Destination network.
+    pub destination: ipnet::IpNet,
+    /// Next hop address.
+    #[serde(rename = "nexthop")]
+    pub next_hop: net::IpAddr,
+}
+
+/// A subnet.
+#[derive(Debug, Clone, Deserialize)]
+pub struct Subnet {
+    #[serde(default)]
+    pub allocation_pools: Vec<AllocationPool>,
+    pub cidr: ipnet::IpNet,
+    #[serde(default)]
+    pub created_at: Option<DateTime<FixedOffset>>,
+    #[serde(deserialize_with = "common::protocol::empty_as_none", default)]
+    pub description: Option<String>,
+    #[serde(rename = "enable_dhcp")]
+    pub dhcp_enabled: bool,
+    #[serde(default)]
+    pub dns_nameservers: Vec<String>,
+    #[serde(default)]
+    pub gateway_ip: Option<net::IpAddr>,
+    #[serde(default)]
+    pub host_routes: Vec<HostRoute>,
+    pub id: String,
+    pub ip_version: IpVersion,
+    #[serde(default)]
+    pub ipv6_address_mode: Option<Ipv6Mode>,
+    #[serde(default, rename = "ipv6_ra_mode")]
+    pub ipv6_router_advertisement_mode: Option<Ipv6Mode>,
+    #[serde(deserialize_with = "common::protocol::empty_as_none")]
+    pub name: Option<String>,
+    pub network_id: String,
+    #[serde(default)]
+    pub project_id: Option<String>,
+    #[serde(default)]
+    pub updated_at: Option<DateTime<FixedOffset>>,
+}
+
+/// A subnet.
+#[derive(Debug, Clone, Deserialize)]
+pub struct SubnetRoot {
+    pub subnet: Subnet
+}
+
+/// A list of subnets.
+#[derive(Debug, Clone, Deserialize)]
+pub struct SubnetsRoot {
+    pub subnets: Vec<Subnet>
 }

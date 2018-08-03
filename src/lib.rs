@@ -84,6 +84,8 @@ extern crate chrono;
 extern crate eui48;
 #[allow(unused_extern_crates)]
 extern crate fallible_iterator;
+#[allow(unused_extern_crates)]
+extern crate ipnet;
 #[macro_use]
 extern crate log;
 extern crate reqwest;

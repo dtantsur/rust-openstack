@@ -24,5 +24,5 @@ pub use self::apiversion::ApiVersion;
 pub use self::resourceiterator::ResourceIterator;
 pub use self::types::{FlavorRef, ImageRef, KeyPairRef, ListResources,
                       NetworkRef, PortRef, ProjectRef, Refresh, ResourceId,
-                      UserRef};
+                      SubnetRef, UserRef};
 pub use self::waiter::DeletionWaiter;

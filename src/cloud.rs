@@ -26,7 +26,8 @@ use super::compute::{Flavor, FlavorQuery, FlavorSummary, KeyPair, KeyPairQuery,
 #[cfg(feature = "image")]
 use super::image::{Image, ImageQuery};
 #[cfg(feature = "network")]
-use super::network::{Network, NetworkQuery, NewPort, Port, PortQuery};
+use super::network::{Network, NetworkQuery, NewPort, Port, PortQuery,
+                     Subnet, SubnetQuery};
 use super::session::Session;
 
 
@@ -169,6 +170,15 @@ impl Cloud {
         ServerQuery::new(self.session.clone())
     }
 
+    /// Build a query against subnet list.
+    ///
+    /// The returned object is a builder that should be used to construct
+    /// the query.
+    #[cfg(feature = "network")]
+    pub fn find_subnets(&self) -> SubnetQuery {
+        SubnetQuery::new(self.session.clone())
+    }
+
     /// Find a flavor by its name or ID.
     ///
     /// # Example
@@ -259,6 +269,22 @@ impl Cloud {
     #[cfg(feature = "compute")]
     pub fn get_server<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Server> {
         Server::new(self.session.clone(), id_or_name)
+    }
+
+    /// Find an subnet by its name or ID.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
+    /// let server = os.get_subnet("private-subnet")
+    ///     .expect("Unable to get a subnet");
+    /// ```
+    #[cfg(feature = "network")]
+    pub fn get_subnet<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Subnet> {
+        Subnet::new(self.session.clone(), id_or_name)
     }
 
     /// List all flavors.
@@ -369,6 +395,25 @@ impl Cloud {
     #[cfg(feature = "compute")]
     pub fn list_servers(&self) -> Result<Vec<ServerSummary>> {
         self.find_servers().all()
+    }
+
+    /// List all subnets.
+    ///
+    /// This call can yield a lot of results, use the
+    /// [find_subnets](#method.find_subnets) call to limit the number of
+    /// subnets to receive.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
+    /// let server_list = os.list_subnets().expect("Unable to fetch subnets");
+    /// ```
+    #[cfg(feature = "network")]
+    pub fn list_subnets(&self) -> Result<Vec<Subnet>> {
+        self.find_subnets().all()
     }
 
     /// Prepare a new key pair for creation.
