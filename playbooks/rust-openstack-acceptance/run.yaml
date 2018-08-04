@@ -65,6 +65,7 @@
           # TODO: support OS_CLOUD
           source /opt/stack/new/devstack/openrc demo demo
           set -eux
+          cargo run --example create-delete-port private private-subnet
           cargo run --example get-flavor test-flavor
           cargo run --example get-image {{ cirros_image_result.stdout }}
           cargo run --example get-network private

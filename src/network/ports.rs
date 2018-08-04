@@ -27,7 +27,7 @@ use serde::Serialize;
 
 use super::super::{Error, Result, Sort};
 use super::super::common::{DeletionWaiter, ListResources, NetworkRef, PortRef,
-                           Refresh, ResourceId, ResourceIterator};
+                           Refresh, ResourceId, ResourceIterator, SubnetRef};
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::base::V2API;
@@ -60,12 +60,24 @@ pub struct Port {
     fixed_ips: Vec<PortIpAddress>,
 }
 
+/// A request of a fixed IP address.
+#[derive(Clone, Debug)]
+pub enum PortIpRequest {
+    /// Request this IP from any subnet.
+    IpAddress(net::IpAddr),
+    /// Request any IP from the given subnet.
+    AnyIpFromSubnet(SubnetRef),
+    /// Request this IP from the given subnet.
+    IpFromSubnet(net::IpAddr, SubnetRef)
+}
+
 /// A request to create a port
 #[derive(Clone, Debug)]
 pub struct NewPort {
     session: Rc<Session>,
     inner: protocol::Port,
     network: NetworkRef,
+    fixed_ips: Vec<PortIpRequest>,
 }
 
 impl Port {
@@ -354,12 +366,30 @@ impl NewPort {
                 updated_at: None,
             },
             network: network,
+            fixed_ips: Vec::new(),
         }
     }
 
     /// Request creation of the port.
     pub fn create(mut self) -> Result<Port> {
         self.inner.network_id = self.network.into_verified(&self.session)?;
+        for request in self.fixed_ips {
+            self.inner.fixed_ips.push(match request {
+                PortIpRequest::IpAddress(ip) => protocol::FixedIp {
+                    ip_address: ip,
+                    subnet_id: Default::default()
+                },
+                PortIpRequest::AnyIpFromSubnet(subnet) => protocol::FixedIp {
+                    ip_address: net::IpAddr::V4(net::Ipv4Addr::new(0, 0, 0, 0)),
+                    subnet_id: subnet.into_verified(&self.session)?
+                },
+                PortIpRequest::IpFromSubnet(ip, subnet) => protocol::FixedIp {
+                    ip_address: ip,
+                    subnet_id: subnet.into_verified(&self.session)?
+                }
+            });
+        }
+
         let port = self.session.create_port(self.inner)?;
         Ok(Port::new(self.session, port))
     }
@@ -368,6 +398,8 @@ impl NewPort {
         #[doc = "Set administrative status for the port."]
         set_admin_state_up, with_admin_state_up -> admin_state_up: bool
     }
+
+    // TODO(dtantsur): allowed_address_pairs
 
     creation_inner_field! {
         #[doc = "Set description of the port."]
@@ -405,7 +437,16 @@ impl NewPort {
             Vec<protocol::PortExtraDhcpOption>
     }
 
-    // TODO(dtantsur): fixed IPs
+    /// Add a new fixed IP to the request.
+    pub fn add_fixed_ip(&mut self, request: PortIpRequest) {
+        self.fixed_ips.push(request);
+    }
+
+    /// Add a new fixed IP to the request.
+    pub fn with_fixed_ip(mut self, request: PortIpRequest) -> Self {
+        self.add_fixed_ip(request);
+        self
+    }
 
     creation_inner_field! {
         #[doc = "Set MAC address for the port (generated otherwise)."]
