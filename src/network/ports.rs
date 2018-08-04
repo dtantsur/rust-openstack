@@ -16,6 +16,8 @@
 
 use std::rc::Rc;
 use std::fmt::Debug;
+use std::mem;
+use std::net;
 use std::time::Duration;
 
 use chrono::{DateTime, FixedOffset};
@@ -29,7 +31,7 @@ use super::super::common::{DeletionWaiter, ListResources, NetworkRef, PortRef,
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::base::V2API;
-use super::{protocol, Network};
+use super::{protocol, Network, Subnet};
 
 
 /// A query to port list.
@@ -40,11 +42,22 @@ pub struct PortQuery {
     can_paginate: bool,
 }
 
+/// A fixed IP address of a port.
+#[derive(Clone, Debug)]
+pub struct PortIpAddress {
+    session: Rc<Session>,
+    /// IP address.
+    pub ip_address: net::IpAddr,
+    /// ID of the subnet the address belongs to.
+    pub subnet_id: String
+}
+
 /// Structure representing a port - a virtual NIC.
 #[derive(Clone, Debug)]
 pub struct Port {
     session: Rc<Session>,
-    inner: protocol::Port
+    inner: protocol::Port,
+    fixed_ips: Vec<PortIpAddress>,
 }
 
 /// A request to create a port
@@ -57,13 +70,27 @@ pub struct NewPort {
 
 impl Port {
     /// Load a Port object.
-    pub(crate) fn new<Id: AsRef<str>>(session: Rc<Session>, id: Id)
+    pub(crate) fn new(session: Rc<Session>, mut inner: protocol::Port) -> Port {
+        let mut fixed_ips = Vec::new();
+        mem::swap(&mut inner.fixed_ips, &mut fixed_ips);
+        let converted = fixed_ips.into_iter().map(|ip| PortIpAddress {
+            session: session.clone(),
+            ip_address: ip.ip_address,
+            subnet_id: ip.subnet_id
+        }).collect();
+
+        Port {
+            session: session,
+            inner: inner,
+            fixed_ips: converted,
+        }
+    }
+
+    /// Load a Port object.
+    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id)
             -> Result<Port> {
         let inner = session.get_port(id)?;
-        Ok(Port {
-            session: session,
-            inner: inner
-        })
+        Ok(Port::new(session, inner))
     }
 
     transparent_property! {
@@ -114,9 +141,9 @@ impl Port {
         extra_dhcp_opts: ref Vec<protocol::PortExtraDhcpOption>
     }
 
-    transparent_property! {
-        #[doc = "Fixed IP addresses of the port."]
-        fixed_ips: ref Vec<protocol::PortIpAddress>
+    /// Fixed IP addresses of the port.
+    pub fn fixed_ips(&self) -> &Vec<PortIpAddress> {
+        &self.fixed_ips
     }
 
     transparent_property! {
@@ -166,6 +193,13 @@ impl Refresh for Port {
     fn refresh(&mut self) -> Result<()> {
         self.inner = self.session.get_port(&self.inner.id)?;
         Ok(())
+    }
+}
+
+impl PortIpAddress {
+    /// Get subnet to which this IP address belongs.
+    pub fn subnet(&self) -> Result<Subnet> {
+        Subnet::load(self.session.clone(), self.subnet_id.clone())
     }
 }
 
@@ -327,10 +361,7 @@ impl NewPort {
     pub fn create(mut self) -> Result<Port> {
         self.inner.network_id = self.network.into_verified(&self.session)?;
         let port = self.session.create_port(self.inner)?;
-        Ok(Port {
-            session: self.session,
-            inner: port
-        })
+        Ok(Port::new(self.session, port))
     }
 
     creation_inner_field! {
@@ -400,10 +431,8 @@ impl ListResources for Port {
 
     fn list_resources<Q: Serialize + Debug>(session: Rc<Session>, query: Q)
             -> Result<Vec<Port>> {
-        Ok(session.list_ports(&query)?.into_iter().map(|item| Port {
-            session: session.clone(),
-            inner: item
-        }).collect())
+        Ok(session.list_ports(&query)?.into_iter()
+           .map(|item| Port::new(session.clone(), item)).collect())
     }
 }
 

@@ -49,14 +49,19 @@ pub struct Subnet {
 }
 
 impl Subnet {
-    /// Load a Subnet object.
-    pub(crate) fn new<Id: AsRef<str>>(session: Rc<Session>, id: Id)
-            -> Result<Subnet> {
-        let inner = session.get_subnet(id)?;
-        Ok(Subnet {
+    /// Create a subnet object.
+    pub(crate) fn new(session: Rc<Session>, inner: protocol::Subnet) -> Subnet {
+        Subnet {
             session: session,
             inner: inner
-        })
+        }
+    }
+
+    /// Load a Subnet object.
+    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id)
+            -> Result<Subnet> {
+        let inner = session.get_subnet(id)?;
+        Ok(Subnet::new(session, inner))
     }
 
     transparent_property! {
@@ -290,10 +295,8 @@ impl ListResources for Subnet {
 
     fn list_resources<Q: Serialize + Debug>(session: Rc<Session>, query: Q)
             -> Result<Vec<Subnet>> {
-        Ok(session.list_subnets(&query)?.into_iter().map(|item| Subnet {
-            session: session.clone(),
-            inner: item
-        }).collect())
+        Ok(session.list_subnets(&query)?.into_iter()
+           .map(|item| Subnet::new(session.clone(), item)).collect())
     }
 }
 

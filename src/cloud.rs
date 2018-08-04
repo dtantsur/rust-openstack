@@ -252,7 +252,7 @@ impl Cloud {
     /// ```
     #[cfg(feature = "network")]
     pub fn get_port<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Port> {
-        Port::new(self.session.clone(), id_or_name)
+        Port::load(self.session.clone(), id_or_name)
     }
 
     /// Find a server by its name or ID.
@@ -284,7 +284,7 @@ impl Cloud {
     /// ```
     #[cfg(feature = "network")]
     pub fn get_subnet<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Subnet> {
-        Subnet::new(self.session.clone(), id_or_name)
+        Subnet::load(self.session.clone(), id_or_name)
     }
 
     /// List all flavors.

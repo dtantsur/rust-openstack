@@ -26,7 +26,8 @@ fn display_port(port: &openstack::network::Port) {
     println!("* Owner = {:?}, Server? {}",
              port.device_owner(), port.attached_to_server());
     for ip in port.fixed_ips() {
-        println!("* IP = {}", ip.ip_address);
+        let subnet = ip.subnet().expect("Cannot fetch subnet");
+        println!("* IP = {}, Subnet = {}", ip.ip_address, subnet.cidr());
     }
     let net = port.network().expect("Cannot fetch network");
     println!("* Network: ID = {}, Name = {}", net.id(), net.name());

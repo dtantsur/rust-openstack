@@ -185,7 +185,7 @@ impl PortExtraDhcpOption {
 
 /// A port's IP address.
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct PortIpAddress {
+pub struct FixedIp {
     #[serde(skip_serializing_if = "::std::net::IpAddr::is_unspecified")]
     pub ip_address: net::IpAddr,
     #[serde(skip_serializing_if = "String::is_empty")]
@@ -216,7 +216,7 @@ pub struct Port {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub extra_dhcp_opts: Vec<PortExtraDhcpOption>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub fixed_ips: Vec<PortIpAddress>,
+    pub fixed_ips: Vec<FixedIp>,
     #[serde(skip_serializing)]
     pub id: String,
     #[serde(skip_serializing_if = "MacAddress::is_nil",
