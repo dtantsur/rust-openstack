@@ -85,6 +85,10 @@ pub trait V2API {
     /// List subnets.
     fn list_subnets<Q: Serialize + Debug>(&self, query: &Q)
         -> Result<Vec<protocol::Subnet>>;
+
+    /// Update a port.
+    fn update_port<S: AsRef<str>>(&self, id: S, update: protocol::PortUpdate)
+        -> Result<protocol::Port>;
 }
 
 
@@ -215,6 +219,16 @@ impl V2API for Session {
            .query(query).receive_json::<protocol::SubnetsRoot>()?.subnets;
         trace!("Received subnets: {:?}", result);
         Ok(result)
+    }
+
+    fn update_port<S: AsRef<str>>(&self, id: S, update: protocol::PortUpdate)
+            -> Result<protocol::Port> {
+        debug!("Updating port {} with {:?}", id.as_ref(), update);
+        let body = protocol::PortUpdateRoot { port: update };
+        let port = self.request::<V2>(Method::Put, &["ports", id.as_ref()], None)?
+            .json(&body).receive_json::<protocol::PortRoot>()?.port;
+        debug!("Updated port {:?}", port);
+        Ok(port)
     }
 }
 

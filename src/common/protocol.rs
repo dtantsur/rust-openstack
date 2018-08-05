@@ -179,3 +179,10 @@ pub fn ser_mac<S>(value: &MacAddress, serializer: S)
         where S: Serializer {
     value.to_hex_string().serialize(serializer)
 }
+
+/// Serialize a MAC address in its HEX format.
+pub fn ser_opt_mac<S>(value: &Option<MacAddress>, serializer: S)
+        -> ::std::result::Result<S::Ok, S::Error>
+        where S: Serializer {
+    value.map(|m| m.to_hex_string()).serialize(serializer)
+}

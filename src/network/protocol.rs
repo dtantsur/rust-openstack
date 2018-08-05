@@ -237,9 +237,61 @@ pub struct Port {
 }
 
 /// A port.
+#[derive(Debug, Clone, Serialize)]
+pub struct PortUpdate {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub admin_state_up: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub device_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub device_owner: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dns_domain: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dns_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub extra_dhcp_opts: Option<Vec<PortExtraDhcpOption>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fixed_ips: Option<Vec<FixedIp>>,
+    #[serde(skip_serializing_if = "Option::is_none",
+            serialize_with = "common::protocol::ser_opt_mac")]
+    pub mac_address: Option<MacAddress>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub security_groups: Option<Vec<String>>,
+}
+
+impl Default for PortUpdate {
+    fn default() -> PortUpdate {
+        PortUpdate {
+            admin_state_up: None,
+            description: None,
+            device_id: None,
+            device_owner: None,
+            dns_domain: None,
+            dns_name: None,
+            extra_dhcp_opts: None,
+            fixed_ips: None,
+            mac_address: None,
+            name: None,
+            security_groups: None
+        }
+    }
+}
+
+/// A port.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PortRoot {
     pub port: Port
+}
+
+/// A port update.
+#[derive(Debug, Clone, Serialize)]
+pub struct PortUpdateRoot {
+    pub port: PortUpdate
 }
 
 /// A list of ports.

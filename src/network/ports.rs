@@ -14,6 +14,7 @@
 
 //! Ports management via Port API.
 
+use std::collections::HashSet;
 use std::rc::Rc;
 use std::fmt::Debug;
 use std::mem;
@@ -58,6 +59,7 @@ pub struct Port {
     session: Rc<Session>,
     inner: protocol::Port,
     fixed_ips: Vec<PortIpAddress>,
+    dirty: HashSet<&'static str>,
 }
 
 /// A request of a fixed IP address.
@@ -80,21 +82,26 @@ pub struct NewPort {
     fixed_ips: Vec<PortIpRequest>,
 }
 
+fn convert_fixed_ips(session: &Rc<Session>, inner: &mut protocol::Port)
+        -> Vec<PortIpAddress> {
+    let mut fixed_ips = Vec::new();
+    mem::swap(&mut inner.fixed_ips, &mut fixed_ips);
+    fixed_ips.into_iter().map(|ip| PortIpAddress {
+        session: session.clone(),
+        ip_address: ip.ip_address,
+        subnet_id: ip.subnet_id
+    }).collect()
+}
+
 impl Port {
     /// Load a Port object.
     pub(crate) fn new(session: Rc<Session>, mut inner: protocol::Port) -> Port {
-        let mut fixed_ips = Vec::new();
-        mem::swap(&mut inner.fixed_ips, &mut fixed_ips);
-        let converted = fixed_ips.into_iter().map(|ip| PortIpAddress {
-            session: session.clone(),
-            ip_address: ip.ip_address,
-            subnet_id: ip.subnet_id
-        }).collect();
-
+        let fixed_ips = convert_fixed_ips(&session, &mut inner);
         Port {
             session: session,
             inner: inner,
-            fixed_ips: converted,
+            fixed_ips: fixed_ips,
+            dirty: HashSet::new(),
         }
     }
 
@@ -108,6 +115,11 @@ impl Port {
     transparent_property! {
         #[doc = "The administrative state of the port."]
         admin_state_up: bool
+    }
+
+    update_field! {
+        #[doc = "Update the administrative state."]
+        set_admin_state_up, with_admin_state_up -> admin_state_up: bool
     }
 
     /// Whether the `device_owner` is a Compute server.
@@ -128,9 +140,19 @@ impl Port {
         description: ref Option<String>
     }
 
+    update_field! {
+        #[doc = "Update the description."]
+        set_description, with_description -> description: optional String
+    }
+
     transparent_property! {
         #[doc = "ID of object (server, router, etc) to which this port is attached."]
         device_id: ref Option<String>
+    }
+
+    update_field! {
+        #[doc = "Update the device ID."]
+        set_device_id, with_device_id -> device_id: optional String
     }
 
     transparent_property! {
@@ -138,14 +160,29 @@ impl Port {
         device_owner: ref Option<String>
     }
 
+    update_field! {
+        #[doc = "Update the device owner."]
+        set_device_owner, with_device_owner -> device_owner: optional String
+    }
+
     transparent_property! {
         #[doc = "DNS domain for the port (if available)."]
         dns_domain: ref Option<String>
     }
 
+    update_field! {
+        #[doc = "Update the DNS domain."]
+        set_dns_domain, with_dns_domain -> dns_domain: optional String
+    }
+
     transparent_property! {
-        #[doc = "DNS domain for the port (if available)."]
+        #[doc = "DNS name for the port (if available)."]
         dns_name: ref Option<String>
+    }
+
+    update_field! {
+        #[doc = "Update the DNS name."]
+        set_dns_name, with_dns_name -> dns_name: optional String
     }
 
     transparent_property! {
@@ -153,14 +190,33 @@ impl Port {
         extra_dhcp_opts: ref Vec<protocol::PortExtraDhcpOption>
     }
 
+    /// Mutable access to DHCP options.
+    #[allow(unused_results)]
+    pub fn extra_dhcp_opts_mut(&mut self) -> &mut Vec<protocol::PortExtraDhcpOption> {
+        self.dirty.insert("extra_dhcp_opts");
+        &mut self.inner.extra_dhcp_opts
+    }
+
+    update_field! {
+        #[doc = "Update the DHCP options."]
+        set_extra_dhcp_opts, with_extra_dhcp_opts -> extra_dhcp_opts: Vec<protocol::PortExtraDhcpOption>
+    }
+
     /// Fixed IP addresses of the port.
     pub fn fixed_ips(&self) -> &Vec<PortIpAddress> {
         &self.fixed_ips
     }
 
+    // TODO(dtantsur): updating fixed IPs with validation
+
     transparent_property! {
         #[doc = "MAC address of the port."]
         mac_address: MacAddress
+    }
+
+    update_field! {
+        #[doc = "Update the MAC address (admin-only)."]
+        set_mac_address, with_mac_address -> mac_address: MacAddress
     }
 
     transparent_property! {
@@ -171,6 +227,11 @@ impl Port {
     transparent_property! {
         #[doc = "Port name."]
         name: ref Option<String>
+    }
+
+    update_field! {
+        #[doc = "Update the port name."]
+        set_name, with_name -> name: optional String
     }
 
     /// Get network associated with this port.
@@ -198,12 +259,36 @@ impl Port {
         self.session.delete_port(&self.inner.id)?;
         Ok(DeletionWaiter::new(self, Duration::new(60, 0), Duration::new(1, 0)))
     }
+
+    /// Whether the port is modified.
+    pub fn is_dirty(&self) -> bool {
+        !self.dirty.is_empty()
+    }
+
+    /// Save the changes to the port.
+    pub fn save(&mut self) -> Result<()> {
+        let mut update = protocol::PortUpdate::default();
+        save_fields! {
+            self -> update: admin_state_up extra_dhcp_opts mac_address
+        };
+        save_option_fields! {
+            self -> update: description device_id device_owner dns_domain
+                dns_name name
+        };
+        let mut inner = self.session.update_port(self.id(), update)?;
+        self.fixed_ips = convert_fixed_ips(&self.session, &mut inner);
+        self.dirty.clear();
+        self.inner = inner;
+        Ok(())
+    }
 }
 
 impl Refresh for Port {
     /// Refresh the port.
     fn refresh(&mut self) -> Result<()> {
         self.inner = self.session.get_port(&self.inner.id)?;
+        self.fixed_ips = convert_fixed_ips(&self.session, &mut self.inner);
+        self.dirty.clear();
         Ok(())
     }
 }

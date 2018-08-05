@@ -22,8 +22,9 @@ use waiter::Waiter;
 
 #[cfg(feature = "network")]
 fn display_port(port: &openstack::network::Port) {
-    println!("ID = {}, MAC = {}, UP = {}, Status = {}",
-             port.id(), port.mac_address(), port.admin_state_up(), port.status());
+    println!("ID = {}, Name = {:?}, MAC = {}, UP = {}, Status = {}",
+             port.id(), port.name(), port.mac_address(),
+             port.admin_state_up(), port.status());
     println!("* Owner = {:?}, Server? {}",
              port.device_owner(), port.attached_to_server());
     for ip in port.fixed_ips() {
@@ -44,13 +45,19 @@ fn main() {
     let network = env::args().nth(1).expect("Provide a network");
     let subnet = env::args().nth(2).expect("Provide a subnet");
 
-    let port = os.new_port(network).with_name("example-port")
+    let mut port = os.new_port(network).with_name("example-port")
         .with_fixed_ip(openstack::network::PortIpRequest::AnyIpFromSubnet(subnet.into()))
         .create().expect("Cannot create a port");
 
     display_port(&port);
 
     os.get_port("example-port").expect("Cannot find the port");
+
+    println!("Updating the port");
+    port.set_name("example-new-name");
+    port.save().expect("Cannot update port");
+    display_port(&port);
+
     port.delete().expect("Cannot request port deletion")
         .wait().expect("Port was not deleted");
 }

@@ -218,6 +218,95 @@ macro_rules! creation_inner_field {
 
 }
 
+
+#[allow(unused_macros)]
+macro_rules! update_field {
+
+    ($(#[$attr:meta])* $set_func:ident, $with_func:ident -> $name:ident) => (
+        $(#[$attr])*
+        pub fn $set_func<S: Into<String>>(&mut self, value: S)  {
+            self.inner.$name = value.into();
+            self.dirty.insert(stringify!($name));
+        }
+
+        $(#[$attr])*
+        pub fn $with_func<S: Into<String>>(mut self, value: S) -> Self {
+            self.$set_func(value);
+            self
+        }
+    );
+
+    ($(#[$attr:meta])* $set_func:ident, $with_func:ident -> $name:ident: $type:ty) => (
+        $(#[$attr])*
+        #[allow(unused_results)]
+        pub fn $set_func(&mut self, value: $type)  {
+            self.inner.$name = value;
+            self.dirty.insert(stringify!($name));
+        }
+
+        $(#[$attr])*
+        pub fn $with_func(mut self, value: $type) -> Self {
+            self.$set_func(value);
+            self
+        }
+    );
+
+    ($(#[$attr:meta])* $set_func:ident, $with_func:ident -> $name:ident: optional String) => (
+        $(#[$attr])*
+        #[allow(unused_results)]
+        pub fn $set_func<S: Into<String>>(&mut self, value: S)  {
+            self.inner.$name = Some(value.into());
+            self.dirty.insert(stringify!($name));
+        }
+
+        $(#[$attr])*
+        pub fn $with_func<S: Into<String>>(mut self, value: S) -> Self {
+            self.$set_func(value);
+            self
+        }
+    );
+
+    ($(#[$attr:meta])* $set_func:ident, $with_func:ident -> $name:ident: optional $type:ty) => (
+        $(#[$attr])*
+        pub fn $set_func(&mut self, value: $type)  {
+            self.inner.$name = Some(value);
+            self.dirty.insert(stringify!($name));
+        }
+
+        $(#[$attr])*
+        pub fn $with_func(mut self, value: $type) -> Self {
+            self.$set_func(value);
+            self
+        }
+    );
+
+}
+
+
+#[allow(unused_macros)]
+macro_rules! save_option_fields {
+    ($self:ident -> $target:ident: $($field:ident)+) => {
+        $($target.$field = if $self.dirty.contains(stringify!($field)) {
+            $self.inner.$field.clone()
+        } else {
+            None
+        };)+
+    }
+}
+
+
+#[allow(unused_macros)]
+macro_rules! save_fields {
+    ($self:ident -> $target:ident: $($field:ident)+) => {
+        $($target.$field = if $self.dirty.contains(stringify!($field)) {
+            Some($self.inner.$field.clone())
+        } else {
+            None
+        };)+
+    }
+}
+
+
 #[allow(unused_macros)]
 macro_rules! protocol_enum {
     {$(#[$attr:meta])* enum $name:ident: $carrier:ty {
