@@ -268,7 +268,7 @@ impl Cloud {
     /// ```
     #[cfg(feature = "compute")]
     pub fn get_server<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Server> {
-        Server::new(self.session.clone(), id_or_name)
+        Server::load(self.session.clone(), id_or_name)
     }
 
     /// Find an subnet by its name or ID.

@@ -31,6 +31,9 @@ fn main() {
     println!("ID = {}, Name = {}, Status = {:?}, Power = {:?}",
              server.id(), server.name(), server.status(), server.power_state());
     println!("Links: image = {:?}", server.image_id());
+    println!("Flavor: {} CPU, disk {}G, memory {}M",
+             server.flavor().vcpu_count, server.flavor().root_size,
+             server.flavor().ram_size);
     println!("Floating IP: {:?}", server.floating_ip());
 
     if !server.metadata().is_empty() {

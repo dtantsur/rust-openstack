@@ -60,6 +60,14 @@ fn validate_server(os: &openstack::Cloud, server: &mut openstack::compute::Serve
         .with_admin_state_up(true)
         .one().expect("Cannot find the port attached to the server");
     validate_port(&port, &server);
+
+    let image = server.image().expect("Cannot fetch Server image");
+    assert_eq!(image.id(), server.image_id().unwrap());
+
+    let flavor = server.flavor();
+    assert!(flavor.vcpu_count > 0);
+    assert!(flavor.ram_size > 0);
+    assert!(flavor.root_size > 0);
 }
 
 

@@ -17,6 +17,8 @@
 #![allow(dead_code)] // various things are unused with --no-default-features
 #![allow(missing_docs)]
 
+use std::collections::HashMap;
+
 use eui48::MacAddress;
 use reqwest::{Method, Url};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -46,6 +48,12 @@ pub struct Ref {
 pub struct IdAndName {
     pub id: String,
     pub name: String
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct KeyValue {
+    pub key: String,
+    pub value: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -171,6 +179,14 @@ pub fn deser_optional_url<'de, D>(des: D)
         Some(s) => Url::parse(&s).map_err(DeserError::custom).map(Some),
         None => Ok(None)
     }
+}
+
+/// Deserialize a key-value mapping.
+pub fn deser_key_value<'de, D>(des: D)
+        -> ::std::result::Result<HashMap<String, String>, D::Error>
+        where D: Deserializer<'de> {
+    let value: Vec<KeyValue> = Deserialize::deserialize(des)?;
+    Ok(value.into_iter().map(|kv| (kv.key, kv.value)).collect())
 }
 
 /// Serialize a MAC address in its HEX format.

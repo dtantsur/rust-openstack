@@ -134,21 +134,51 @@ pub struct ServerAddress {
     pub addr_type: Option<AddressType>
 }
 
+/// A summary information of a flavor used for a server.
+#[derive(Clone, Debug)]
+pub struct ServerFlavor {
+    // TODO(dtantsur): extra_specs
+    /// Ephemeral disk size in GiB.
+    pub ephemeral_size: u64,
+    /// Name of the original flavor.
+    pub original_name: String,
+    /// RAM size in MiB.
+    pub ram_size: u64,
+    /// Root disk size in GiB.
+    pub root_size: u64,
+    /// Swap disk size in MiB.
+    pub swap_size: u64,
+    /// VCPU count.
+    pub vcpu_count: u32,
+}
+
 #[derive(Clone, Debug, Deserialize)]
 pub struct Server {
-    #[serde(deserialize_with = "common::protocol::empty_as_none", default)]
-    pub accessIPv4: Option<Ipv4Addr>,
-    #[serde(deserialize_with = "common::protocol::empty_as_none", default)]
-    pub accessIPv6: Option<Ipv6Addr>,
+    #[serde(deserialize_with = "common::protocol::empty_as_none", default,
+            rename = "accessIPv4")]
+    pub access_ipv4: Option<Ipv4Addr>,
+    #[serde(deserialize_with = "common::protocol::empty_as_none", default,
+            rename = "accessIPv6")]
+    pub access_ipv6: Option<Ipv6Addr>,
     #[serde(default)]
     pub addresses: HashMap<String, Vec<ServerAddress>>,
     #[serde(rename = "OS-EXT-AZ:availability_zone")]
     pub availability_zone: String,
-    pub created: DateTime<FixedOffset>,
-    // TODO(dtantsur): flavor
+    #[serde(rename = "created")]
+    pub created_at: DateTime<FixedOffset>,
+    #[serde(deserialize_with = "common::protocol::empty_as_none", default)]
+    pub description: Option<String>,
+    // TODO(dtantsur): flavor in newer versions
+    pub flavor: common::protocol::Ref,
+    #[serde(deserialize_with = "common::protocol::empty_as_default",
+            rename = "config_drive")]
+    pub has_config_drive: bool,
     pub id: String,
     #[serde(deserialize_with = "common::protocol::empty_as_none", default)]
     pub image: Option<common::protocol::Ref>,
+    #[serde(rename = "key_name", deserialize_with = "common::protocol::empty_as_none",
+            default)]
+    pub key_pair_name: Option<String>,
     pub name: String,
     #[serde(default)]
     pub metadata: HashMap<String, String>,
@@ -156,7 +186,8 @@ pub struct Server {
     #[serde(rename = "OS-EXT-STS:power_state", default)]
     pub power_state: ServerPowerState,
     pub tenant_id: String,
-    pub updated: DateTime<FixedOffset>,
+    #[serde(rename = "updated")]
+    pub updated_at: DateTime<FixedOffset>,
     pub user_id: String
 }
 

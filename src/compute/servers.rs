@@ -29,10 +29,12 @@ use super::super::{Error, ErrorKind, Result, Sort};
 use super::super::common::{self, DeletionWaiter, FlavorRef, ImageRef, KeyPairRef,
                            ListResources, NetworkRef, PortRef, ProjectRef,
                            Refresh, ResourceId, ResourceIterator, UserRef};
+#[cfg(feature = "image")]
+use super::super::image::Image;
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::base::V2API;
-use super::protocol;
+use super::{protocol, KeyPair};
 
 
 /// A query to server list.
@@ -47,7 +49,8 @@ pub struct ServerQuery {
 #[derive(Clone, Debug)]
 pub struct Server {
     session: Rc<Session>,
-    inner: protocol::Server
+    inner: protocol::Server,
+    flavor: protocol::ServerFlavor,
 }
 
 /// Structure representing a summary of a single server.
@@ -103,45 +106,64 @@ impl Refresh for Server {
 }
 
 impl Server {
-    /// Load a Server object.
-    pub(crate) fn new<Id: AsRef<str>>(session: Rc<Session>, id: Id)
+    /// Create a new Server object.
+    pub(crate) fn new(session: Rc<Session>, inner: protocol::Server)
             -> Result<Server> {
-        let inner = session.get_server(id)?;
+        let flavor = session.get_flavor(&inner.flavor.id)?;
         Ok(Server {
             session: session,
-            inner: inner
+            inner: inner,
+            flavor: protocol::ServerFlavor {
+                ephemeral_size: flavor.ephemeral,
+                original_name: flavor.name,
+                ram_size: flavor.ram,
+                root_size: flavor.disk,
+                swap_size: flavor.swap,
+                vcpu_count: flavor.vcpus,
+            },
         })
     }
 
-    /// Get the IPv4 address.
-    ///
-    /// If not None, this address should be used to access the server instead
-    /// of one from the `addresses` method.
-    pub fn access_ipv4(&self) -> Option<Ipv4Addr> {
-        self.inner.accessIPv4
+    /// Load a Server object.
+    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id)
+            -> Result<Server> {
+        let inner = session.get_server(id)?;
+        Server::new(session, inner)
     }
 
-    /// Get the IPv6 address.
-    ///
-    /// If not None, this address should be used to access the server instead
-    /// of one from the `addresses` method.
-    pub fn access_ipv6(&self) -> Option<Ipv6Addr> {
-        self.inner.accessIPv6
+    transparent_property! {
+        #[doc = "IPv4 address to access the server (if provided)."]
+        access_ipv4: Option<Ipv4Addr>
     }
 
-    /// Get a reference to associated addresses.
-    pub fn addresses(&self) -> &HashMap<String, Vec<protocol::ServerAddress>> {
-        &self.inner.addresses
+    transparent_property! {
+        #[doc = "IPv6 address to access the server (if provided)."]
+        access_ipv6: Option<Ipv6Addr>
     }
 
-    /// Get a reference to the availability zone.
-    pub fn availability_zone(&self) -> &String {
-        &self.inner.availability_zone
+    transparent_property! {
+        #[doc = "Addresses (floating and fixed) associated with the server."]
+        addresses: ref HashMap<String, Vec<protocol::ServerAddress>>
     }
 
-    /// Get the creation date and time.
-    pub fn created_at(&self) -> DateTime<FixedOffset> {
-        self.inner.created
+    transparent_property! {
+        #[doc = "Availability zone."]
+        availability_zone: ref String
+    }
+
+    transparent_property! {
+        #[doc = "Creation date and time."]
+        created_at: DateTime<FixedOffset>
+    }
+
+    transparent_property! {
+        #[doc = "Server description."]
+        description: ref Option<String>
+    }
+
+    /// Flavor information used to create this server.
+    pub fn flavor(&self) -> &protocol::ServerFlavor {
+        &self.flavor
     }
 
     /// Find a floating IP, if it exists.
@@ -154,9 +176,33 @@ impl Server {
             .map(|a| a.addr).next()
     }
 
-    /// Get a reference to server unique ID.
-    pub fn id(&self) -> &String {
-        &self.inner.id
+    transparent_property! {
+        #[doc = "Whether the server was created with a config drive."]
+        has_config_drive: bool
+    }
+
+    /// Whether the server has an image.
+    ///
+    /// May return `false` if the server was created from a volume.
+    pub fn has_image(&self) -> bool {
+        self.inner.image.is_some()
+    }
+
+    transparent_property! {
+        #[doc = "Server unique ID."]
+        id: ref String
+    }
+
+    /// Fetch the associated image.
+    ///
+    /// Fails with `ResourceNotFound` if the server does not have an image.
+    #[cfg(feature = "image")]
+    pub fn image(&self) -> Result<Image> {
+        match self.inner.image {
+            Some(ref image) => Image::new(self.session.clone(), &image.id),
+            None => Err(Error::new(ErrorKind::ResourceNotFound,
+                                   "No image associated with server"))
+        }
     }
 
     /// Get a reference to the image.
@@ -169,36 +215,43 @@ impl Server {
         }
     }
 
-    /// Whether the server has an image.
-    ///
-    /// May return `false` if the server was created from a volume.
-    pub fn has_image(&self) -> bool {
-        self.inner.image.is_some()
+    /// Fetch the key pair used for the server.
+    pub fn key_pair(&self) -> Result<KeyPair> {
+        match self.inner.key_pair_name {
+            Some(ref key_pair) => KeyPair::new(self.session.clone(), key_pair),
+            None => Err(Error::new(ErrorKind::ResourceNotFound,
+                                   "No key pair associated with server"))
+        }
     }
 
-    /// Get a reference to server name.
-    pub fn name(&self) -> &String {
-        &self.inner.name
+    transparent_property! {
+        #[doc = "Name of a key pair used with this server (if any)."]
+        key_pair_name: ref Option<String>
     }
 
-    /// Get a reference to associated metadata.
-    pub fn metadata(&self) -> &HashMap<String, String> {
-        &self.inner.metadata
+    transparent_property! {
+        #[doc = "Server name."]
+        name: ref String
     }
 
-    /// Get server power state.
-    pub fn power_state(&self) -> protocol::ServerPowerState {
-        self.inner.power_state
+    transparent_property! {
+        #[doc = "Metadata associated with the server."]
+        metadata: ref HashMap<String, String>
     }
 
-    /// Get server status.
-    pub fn status(&self) -> protocol::ServerStatus {
-        self.inner.status
+    transparent_property! {
+        #[doc = "Server power state."]
+        power_state: protocol::ServerPowerState
     }
 
-    /// Get the last update date and time.
-    pub fn updated_at(&self) -> DateTime<FixedOffset> {
-        self.inner.updated
+    transparent_property! {
+        #[doc = "Server status."]
+        status: protocol::ServerStatus
+    }
+
+    transparent_property! {
+        #[doc = "Last update date and time."]
+        updated_at: DateTime<FixedOffset>
     }
 
     /// Delete the server.
@@ -294,7 +347,7 @@ impl ServerSummary {
 
     /// Get details.
     pub fn details(&self) -> Result<Server> {
-        Server::new(self.session.clone(), &self.inner.id)
+        Server::load(self.session.clone(), &self.inner.id)
     }
 
     /// Delete the server.
@@ -514,7 +567,7 @@ impl NewServer {
 
         let server_ref = self.session.create_server(request)?;
         Ok(ServerCreationWaiter {
-            server: Server::new(self.session, server_ref.id)?
+            server: Server::load(self.session, server_ref.id)?
         })
     }
 
@@ -667,10 +720,11 @@ impl ListResources for Server {
 
     fn list_resources<Q: Serialize + Debug>(session: Rc<Session>, query: Q)
             -> Result<Vec<Server>> {
-        Ok(session.list_servers_detail(&query)?.into_iter().map(|srv| Server {
-            session: session.clone(),
-            inner: srv
-        }).collect())
+        let mut result = Vec::new();
+        for srv in session.list_servers_detail(&query)?.into_iter() {
+            result.push(Server::new(session.clone(), srv)?);
+        }
+        Ok(result)
     }
 }
 

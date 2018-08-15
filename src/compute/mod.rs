@@ -24,6 +24,7 @@ pub use self::base::V2 as ServiceType;
 pub use self::flavors::{Flavor, FlavorSummary, FlavorQuery};
 pub use self::keypairs::{KeyPair, KeyPairQuery, NewKeyPair};
 pub use self::protocol::{AddressType, KeyPairType, RebootType, ServerAddress,
-                         ServerSortKey, ServerPowerState, ServerStatus};
+                         ServerFlavor, ServerSortKey, ServerPowerState,
+                         ServerStatus};
 pub use self::servers::{NewServer, Server, ServerCreationWaiter, ServerNIC,
                         ServerQuery, ServerStatusWaiter, ServerSummary};

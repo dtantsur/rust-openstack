@@ -32,7 +32,9 @@ use super::protocol;
 
 
 const API_VERSION_KEYPAIR_TYPE: ApiVersion = ApiVersion(2, 2);
+const API_VERSION_SERVER_DESCRIPTION: ApiVersion = ApiVersion(2, 19);
 const API_VERSION_KEYPAIR_PAGINATION: ApiVersion = ApiVersion(2, 35);
+const API_VERSION_FLAVOR_EXTRA_SPECS: ApiVersion = ApiVersion(2, 61);
 
 
 /// Extensions for Session.
@@ -169,9 +171,10 @@ impl V2API for Session {
 
     fn get_flavor_by_id<S: AsRef<str>>(&self, id: S) -> Result<protocol::Flavor> {
         trace!("Get compute flavor by ID {}", id.as_ref());
+        let version = self.pick_compute_api_version(&[API_VERSION_FLAVOR_EXTRA_SPECS])?;
         let flavor = self.request::<V2>(Method::Get,
                                         &["flavors", id.as_ref()],
-                                        None)?
+                                        version)?
            .receive_json::<protocol::FlavorRoot>()?.flavor;
         trace!("Received {:?}", flavor);
         Ok(flavor)
@@ -200,9 +203,10 @@ impl V2API for Session {
 
     fn get_server_by_id<S: AsRef<str>>(&self, id: S) -> Result<protocol::Server> {
         trace!("Get compute server with ID {}", id.as_ref());
+        let version = self.pick_compute_api_version(&[API_VERSION_SERVER_DESCRIPTION])?;
         let server = self.request::<V2>(Method::Get,
                                         &["servers", id.as_ref()],
-                                        None)?
+                                        version)?
            .receive_json::<protocol::ServerRoot>()?.server;
         trace!("Received {:?}", server);
         Ok(server)
@@ -231,9 +235,10 @@ impl V2API for Session {
     fn list_flavors_detail<Q: Serialize + Debug>(&self, query: &Q)
             -> Result<Vec<protocol::Flavor>> {
         trace!("Listing compute flavors with {:?}", query);
+        let version = self.pick_compute_api_version(&[API_VERSION_FLAVOR_EXTRA_SPECS])?;
         let result = self.request::<V2>(Method::Get,
                                         &["flavors", "detail"],
-                                        None)?
+                                        version)?
            .query(query).receive_json::<protocol::FlavorsDetailRoot>()?.flavors;
         trace!("Received flavors: {:?}", result);
         Ok(result)
@@ -263,9 +268,10 @@ impl V2API for Session {
     fn list_servers_detail<Q: Serialize + Debug>(&self, query: &Q)
             -> Result<Vec<protocol::Server>> {
         trace!("Listing compute servers with {:?}", query);
+        let version = self.pick_compute_api_version(&[API_VERSION_SERVER_DESCRIPTION])?;
         let result = self.request::<V2>(Method::Get,
                                         &["servers", "detail"],
-                                        None)?
+                                        version)?
            .query(query).receive_json::<protocol::ServersDetailRoot>()?.servers;
         trace!("Received servers: {:?}", result);
         Ok(result)
