@@ -2,4 +2,5 @@
     check:
       jobs:
         - rust-openstack-acceptance
+        - rust-openstack-acceptance-rocky
         - rust-openstack-acceptance-queens

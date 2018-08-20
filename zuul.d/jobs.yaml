@@ -13,6 +13,15 @@
     run: playbooks/rust-openstack-acceptance/run.yaml
 
 - job:
+    name: rust-openstack-acceptance-rocky
+    parent: rust-openstack-acceptance
+    description: |
+      Run rust-openstack acceptance test on rocky branch
+    vars:
+      global_env:
+        OS_BRANCH: stable/rocky
+
+- job:
     name: rust-openstack-acceptance-queens
     parent: rust-openstack-acceptance
     description: |
