@@ -74,10 +74,12 @@
 //! * Only Identity API v3 is supported and planned for support.
 
 mod base;
+mod config;
 mod identity;
 mod simple;
 
 pub use self::base::{AuthMethod, BoxedClone};
+pub use self::config::from_config;
 pub use self::simple::NoAuth;
 pub use self::identity::{Identity, PasswordAuth};
 
@@ -101,22 +103,26 @@ fn _get_env(name: &str) -> Result<String> {
 
 /// Create an authentication method from environment variables.
 pub fn from_env() -> Result<PasswordAuth> {
-    let auth_url = _get_env("OS_AUTH_URL")?;
-    let id = Identity::new(&auth_url).map_err(|_| {
-        Error::new(ErrorKind::InvalidInput,
-                                INVALID_ENV_AUTH_URL)
-    })?;
+    if let Ok(cloud_name) = env::var("OS_CLOUD") {
+        from_config(cloud_name).and_then(Identity::create)
+    } else {
+        let auth_url = _get_env("OS_AUTH_URL")?;
+        let id = Identity::new(&auth_url).map_err(|_| {
+            Error::new(ErrorKind::InvalidInput,
+                                    INVALID_ENV_AUTH_URL)
+        })?;
 
-    let user_name = _get_env("OS_USERNAME")?;
-    let password = _get_env("OS_PASSWORD")?;
-    let project_name = _get_env("OS_PROJECT_NAME")?;
+        let user_name = _get_env("OS_USERNAME")?;
+        let password = _get_env("OS_PASSWORD")?;
+        let project_name = _get_env("OS_PROJECT_NAME")?;
 
-    let user_domain = env::var("OS_USER_DOMAIN_NAME")
-        .unwrap_or(String::from("Default"));
-    let project_domain = env::var("OS_PROJECT_DOMAIN_NAME")
-        .unwrap_or(String::from("Default"));
+        let user_domain = env::var("OS_USER_DOMAIN_NAME")
+            .unwrap_or(String::from("Default"));
+        let project_domain = env::var("OS_PROJECT_DOMAIN_NAME")
+            .unwrap_or(String::from("Default"));
 
-    id.with_user(user_name, password, user_domain)
-        .with_project_scope(project_name, project_domain)
-        .create()
+        id.with_user(user_name, password, user_domain)
+            .with_project_scope(project_name, project_domain)
+            .create()
+    }
 }

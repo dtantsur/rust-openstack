@@ -17,6 +17,8 @@
 - hosts: all
   environment:
     OS_CLOUD: devstack
+    RUST_BACKTRACE: 1
+    RUST_LOG: openstack
 
   tasks:
     - name: Find a public SSH key file
@@ -43,40 +45,27 @@
         chdir: '{{ zuul.project.src_dir }}'
 
     - name: Run tests
-      shell:
-        cmd: |
-          # TODO: support OS_CLOUD
-          source /opt/stack/new/devstack/openrc demo demo
-          set -eux
-          cargo test -- --test-threads=1
-        executable: /bin/bash
+      command: cargo test -- --test-threads=1
+      args:
         chdir: '{{ zuul.project.src_dir }}'
       environment:
-        RUST_BACKTRACE: 1
-        RUST_LOG: openstack
         RUST_OPENSTACK_FLAVOR: test-flavor
         RUST_OPENSTACK_NETWORK: private
         RUST_OPENSTACK_IMAGE: "{{ cirros_image_result.stdout }}"
         RUST_OPENSTACK_KEYPAIR: "{{ ssh_key_file }}"
 
     - name: Run examples
-      shell:
-        cmd: |
-          # TODO: support OS_CLOUD
-          source /opt/stack/new/devstack/openrc demo demo
-          set -eux
-          cargo run --example create-delete-port private private-subnet
-          cargo run --example get-flavor test-flavor
-          cargo run --example get-image {{ cirros_image_result.stdout }}
-          cargo run --example get-network private
-          cargo run --example list-images
-          cargo run --example list-keypairs
-          cargo run --example list-networks
-          cargo run --example list-ports
-          cargo run --example list-servers
-          cargo run --example list-subnets
-        executable: /bin/bash
+      command: cargo run --example {{ item }}
+      args:
         chdir: '{{ zuul.project.src_dir }}'
-      environment:
-        RUST_BACKTRACE: 1
-        RUST_LOG: openstack
+      with_items:
+        - create-delete-port private private-subnet
+        - get-flavor test-flavor
+        - get-image {{ cirros_image_result.stdout }}
+        - get-network private
+        - list-images
+        - list-keypairs
+        - list-networks
+        - list-ports
+        - list-servers
+        - list-subnets

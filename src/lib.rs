@@ -94,6 +94,8 @@ extern crate serde;
 extern crate serde_derive;
 #[allow(unused_extern_crates)]
 extern crate serde_json;
+#[allow(unused_extern_crates)]
+extern crate serde_yaml;
 extern crate waiter;
 
 

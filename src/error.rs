@@ -73,6 +73,9 @@ pub enum ErrorKind {
     /// Maps to HTTP 5xx codes.
     InternalServerError,
 
+    /// Invalid clouds.yaml file.
+    InvalidConfig,
+
     #[allow(missing_docs)]
     __Nonexhaustive,
 }
@@ -152,6 +155,8 @@ impl ErrorKind {
                 "Received invalid response",
             &ErrorKind::InternalServerError =>
                 "Internal server error or bad gateway",
+            &ErrorKind::InvalidConfig =>
+                "clouds.yaml cannot be found or is invalid",
             _ => unreachable!()
         }
     }
