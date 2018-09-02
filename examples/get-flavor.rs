@@ -31,6 +31,7 @@ fn main() {
     println!("ID = {}, Name = {}, VCPUs = {}, RAM = {} MiB, DISK = {} GiB",
              flavor.id(), flavor.name(),
              flavor.vcpu_count(), flavor.ram_size(), flavor.root_size());
+    println!("Extra Specs = {:?}", flavor.extra_specs());
 }
 
 #[cfg(not(feature = "compute"))]

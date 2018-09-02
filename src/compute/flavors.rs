@@ -14,6 +14,7 @@
 
 //! Flavor management via Compute API.
 
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::rc::Rc;
 
@@ -33,7 +34,8 @@ use super::protocol;
 #[derive(Clone, Debug)]
 pub struct Flavor {
     session: Rc<Session>,
-    inner: protocol::Flavor
+    inner: protocol::Flavor,
+    extra_specs: HashMap<String, String>,
 }
 
 /// Structure representing a summary of a flavor.
@@ -53,14 +55,26 @@ pub struct FlavorQuery {
 
 
 impl Flavor {
-    /// Load a Flavor object.
-    pub(crate) fn new<Id: AsRef<str>>(session: Rc<Session>, id: Id)
+    /// Create a flavor object.
+    pub(crate) fn new(session: Rc<Session>, mut inner: protocol::Flavor)
             -> Result<Flavor> {
-        let inner = session.get_flavor(id)?;
+        let extra_specs = match inner.extra_specs.take() {
+            Some(es) => es,
+            None => session.get_extra_specs_by_flavor_id(&inner.id)?
+        };
+
         Ok(Flavor {
             session: session,
-            inner: inner
+            inner: inner,
+            extra_specs: extra_specs,
         })
+    }
+
+    /// Load a Flavor object.
+    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id)
+            -> Result<Flavor> {
+        let inner = session.get_flavor(id)?;
+        Flavor::new(session, inner)
     }
 
     /// Get ephemeral disk size in GiB.
@@ -68,6 +82,11 @@ impl Flavor {
     /// Returns `0` when ephemeral disk was not requested.
     pub fn emphemeral_size(&self) -> u64 {
         self.inner.ephemeral
+    }
+
+    /// Extra specs of the flavor.
+    pub fn extra_specs(&self) -> &HashMap<String, String> {
+        &self.extra_specs
     }
 
     /// Get a reference to flavor unique ID.
@@ -129,7 +148,7 @@ impl FlavorSummary {
 
     /// Get details.
     pub fn details(&self) -> Result<Flavor> {
-        Flavor::new(self.session.clone(), &self.inner.id)
+        Flavor::load(self.session.clone(), &self.inner.id)
     }
 }
 
@@ -241,10 +260,12 @@ impl ListResources for Flavor {
 
     fn list_resources<Q: Serialize + Debug>(session: Rc<Session>, query: Q)
             -> Result<Vec<Flavor>> {
-        Ok(session.list_flavors_detail(&query)?.into_iter().map(|item| Flavor {
-            session: session.clone(),
-            inner: item
-        }).collect())
+        let flavors = session.list_flavors_detail(&query)?;
+        let mut result = Vec::with_capacity(flavors.len());
+        for item in flavors.into_iter() {
+            result.push(Flavor::new(session.clone(), item)?);
+        }
+        Ok(result)
     }
 }
 
@@ -281,5 +302,19 @@ impl FlavorRef {
         } else {
             session.get_flavor(&self.value)?.id
         })
+    }
+}
+
+impl From<Flavor> for protocol::ServerFlavor {
+    fn from(value: Flavor) -> protocol::ServerFlavor {
+        protocol::ServerFlavor {
+            ephemeral_size: value.inner.ephemeral,
+            extra_specs: Some(value.extra_specs),
+            original_name: value.inner.name,
+            ram_size: value.inner.ram,
+            root_size: value.inner.disk,
+            swap_size: value.inner.swap,
+            vcpu_count: value.inner.vcpus,
+        }
     }
 }

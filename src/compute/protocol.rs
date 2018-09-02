@@ -134,12 +134,18 @@ pub struct ServerAddress {
     pub addr_type: Option<AddressType>
 }
 
+#[derive(Clone, Debug, Deserialize)]
+pub struct ExtraSpecsRoot {
+    pub extra_specs: HashMap<String, String>
+}
+
 /// A summary information of a flavor used for a server.
 #[derive(Clone, Debug)]
 pub struct ServerFlavor {
-    // TODO(dtantsur): extra_specs
     /// Ephemeral disk size in GiB.
     pub ephemeral_size: u64,
+    /// Extra specs (if present).
+    pub extra_specs: Option<HashMap<String, String>>,
     /// Name of the original flavor.
     pub original_name: String,
     /// RAM size in MiB.
@@ -241,7 +247,11 @@ pub struct CreatedServerRoot {
 pub struct Flavor {
     #[serde(rename = "OS-FLV-EXT-DATA:ephemeral", default)]
     pub ephemeral: u64,
+    #[serde(default, deserialize_with = "common::protocol::empty_as_none")]
+    pub description: Option<String>,
     pub disk: u64,
+    #[serde(default)]
+    pub extra_specs: Option<HashMap<String, String>>,
     pub id: String,
     #[serde(rename = "os-flavor-access:is_public",
             default = "default_flavor_is_public")]

@@ -191,7 +191,7 @@ impl Cloud {
     /// ```
     #[cfg(feature = "compute")]
     pub fn get_flavor<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Flavor> {
-        Flavor::new(self.session.clone(), id_or_name)
+        Flavor::load(self.session.clone(), id_or_name)
     }
 
     /// Find an image by its name or ID.

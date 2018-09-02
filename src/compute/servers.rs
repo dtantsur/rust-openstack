@@ -115,6 +115,7 @@ impl Server {
             inner: inner,
             flavor: protocol::ServerFlavor {
                 ephemeral_size: flavor.ephemeral,
+                extra_specs: flavor.extra_specs,
                 original_name: flavor.name,
                 ram_size: flavor.ram,
                 root_size: flavor.disk,

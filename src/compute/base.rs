@@ -34,6 +34,7 @@ use super::protocol;
 const API_VERSION_KEYPAIR_TYPE: ApiVersion = ApiVersion(2, 2);
 const API_VERSION_SERVER_DESCRIPTION: ApiVersion = ApiVersion(2, 19);
 const API_VERSION_KEYPAIR_PAGINATION: ApiVersion = ApiVersion(2, 35);
+const API_VERSION_FLAVOR_DESCRIPTION: ApiVersion = ApiVersion(2, 55);
 const API_VERSION_FLAVOR_EXTRA_SPECS: ApiVersion = ApiVersion(2, 61);
 
 
@@ -50,6 +51,10 @@ pub trait V2API {
 
     /// Delete a server.
     fn delete_server<S: AsRef<str>>(&self, id: S) -> Result<()>;
+
+    /// Get a flavor by its ID.
+    fn get_extra_specs_by_flavor_id<S: AsRef<str>>(&self, id: S)
+        -> Result<HashMap<String, String>>;
 
     /// Get a flavor.
     fn get_flavor<S: AsRef<str>>(&self, id_or_name: S) -> Result<protocol::Flavor> {
@@ -128,6 +133,13 @@ pub struct V2;
 const SERVICE_TYPE: &'static str = "compute";
 const VERSION_ID: &'static str = "v2.1";
 
+fn flavor_api_version<T: V2API>(api: &T) -> Result<Option<ApiVersion>> {
+    api.pick_compute_api_version(
+        &[API_VERSION_FLAVOR_DESCRIPTION,
+          API_VERSION_FLAVOR_EXTRA_SPECS]
+    )
+}
+
 impl V2API for Session {
     fn create_keypair(&self, request: protocol::KeyPairCreate)
             -> Result<protocol::KeyPair> {
@@ -168,10 +180,21 @@ impl V2API for Session {
         Ok(())
     }
 
+    fn get_extra_specs_by_flavor_id<S: AsRef<str>>(&self, id: S)
+            -> Result<HashMap<String, String>> {
+        trace!("Get compute extra specs by ID {}", id.as_ref());
+        let extra_specs = self.request::<V2>(Method::Get,
+                                             &["flavors", id.as_ref(),
+                                               "os-extra_specs"],
+                                             None)?
+           .receive_json::<protocol::ExtraSpecsRoot>()?.extra_specs;
+        trace!("Received {:?}", extra_specs);
+        Ok(extra_specs)
+    }
 
     fn get_flavor_by_id<S: AsRef<str>>(&self, id: S) -> Result<protocol::Flavor> {
         trace!("Get compute flavor by ID {}", id.as_ref());
-        let version = self.pick_compute_api_version(&[API_VERSION_FLAVOR_EXTRA_SPECS])?;
+        let version = flavor_api_version(self)?;
         let flavor = self.request::<V2>(Method::Get,
                                         &["flavors", id.as_ref()],
                                         version)?
