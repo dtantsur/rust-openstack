@@ -4,3 +4,4 @@
         - rust-openstack-acceptance
         - rust-openstack-acceptance-rocky
         - rust-openstack-acceptance-queens
+        - rust-openstack-acceptance-nightly

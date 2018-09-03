@@ -4,6 +4,8 @@
     description: |
       Base job for all types of rust test jobs.
     pre-run: playbooks/rust-base/pre.yaml
+    vars:
+      rustup_toolchain: stable
 
 - job:
     name: rust-openstack-acceptance
@@ -29,3 +31,13 @@
     vars:
       global_env:
         OS_BRANCH: stable/queens
+
+- job:
+    name: rust-openstack-acceptance-nightly
+    parent: rust-base
+    description: |
+      Run rust-openstack acceptance test on master branch with nightly rust.
+    run: playbooks/rust-openstack-acceptance/run.yaml
+    vars:
+      rustup_toolchain: nightly
+    voting: false

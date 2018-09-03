@@ -1,11 +1,14 @@
 - hosts: all
-  become: yes
 
   tasks:
     - name: Install Rust
-      package:
-        name: '{{ item }}'
-        state: latest
-      with_items:
-        - rustc
-        - cargo
+      shell: >
+          curl https://sh.rustup.rs -sSf
+          | sh -s -- -y --no-modify-path --default-toolchain {{ rustup_toolchain }}
+      environment:
+        RUSTUP_HOME: /usr
+        CARGO_HOME: /usr
+      become: yes
+
+    - name: Use selected Rust toolchain
+      command: rustup default {{ rustup_toolchain }}
