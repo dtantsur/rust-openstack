@@ -32,6 +32,9 @@ pub trait V2API {
     /// Create a port.
     fn create_port(&self, request: protocol::Port) -> Result<protocol::Port>;
 
+    /// Create a floating IP.
+    fn create_floating_ip(&self, request: protocol::FloatingIp) -> Result<protocol::FloatingIp>;
+
     /// Delete a floating IP.
     fn delete_floating_ip<S: AsRef<str>>(&self, id: S) -> Result<()>;
 
@@ -112,6 +115,15 @@ const VERSION_ID: &'static str = "v2.0";
 
 
 impl V2API for Session {
+    fn create_floating_ip(&self, request: protocol::FloatingIp) -> Result<protocol::FloatingIp> {
+        debug!("Creating a new floating IP with {:?}", request);
+        let body = protocol::FloatingIpRoot { floatingip: request };
+        let floating_ip = self.request::<V2>(Method::Post, &["floatingips"], None)?
+            .json(&body).receive_json::<protocol::FloatingIpRoot>()?.floatingip;
+        debug!("Created floating IP {:?}", floating_ip);
+        Ok(floating_ip)
+    }
+
     fn create_port(&self, request: protocol::Port) -> Result<protocol::Port> {
         debug!("Creating a new port with {:?}", request);
         let body = protocol::PortRoot { port: request };

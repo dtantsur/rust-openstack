@@ -398,34 +398,42 @@ pub struct PortForwarding {
 }
 
 /// A floating IP.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct FloatingIp {
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub created_at: Option<DateTime<FixedOffset>>,
-    #[serde(deserialize_with = "common::protocol::empty_as_none", default)]
+    #[serde(deserialize_with = "common::protocol::empty_as_none", default,
+            skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    #[serde(deserialize_with = "common::protocol::empty_as_none", default)]
+    #[serde(deserialize_with = "common::protocol::empty_as_none", default,
+            skip_serializing_if = "Option::is_none")]
     pub dns_domain: Option<String>,
-    #[serde(deserialize_with = "common::protocol::empty_as_none", default)]
+    #[serde(deserialize_with = "common::protocol::empty_as_none", default,
+            skip_serializing_if = "Option::is_none")]
     pub dns_name: Option<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fixed_ip_address: Option<net::IpAddr>,
+    #[serde(skip_serializing_if = "::std::net::IpAddr::is_unspecified")]
     pub floating_ip_address: net::IpAddr,
     pub floating_network_id: String,
+    #[serde(skip_serializing)]
     pub id: String,
     #[serde(default)]
     pub port_id: Option<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub port_forwardings: Vec<PortForwarding>,
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub router_id: Option<String>,
+    #[serde(skip_serializing)]
     pub status: FloatingIpStatus,
-    #[serde(default)]
+    #[serde(skip_deserializing, skip_serializing_if = "Option::is_none")]
+    pub subnet_id: Option<String>,
+    #[serde(default, skip_serializing)]
     pub updated_at: Option<DateTime<FixedOffset>>,
 }
 
 /// A floating IP.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct FloatingIpRoot {
     pub floatingip: FloatingIp
 }

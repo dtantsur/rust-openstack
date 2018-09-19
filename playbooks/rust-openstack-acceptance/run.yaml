@@ -53,6 +53,7 @@
         RUST_OPENSTACK_NETWORK: private
         RUST_OPENSTACK_IMAGE: "{{ cirros_image_result.stdout }}"
         RUST_OPENSTACK_KEYPAIR: "{{ ssh_key_file }}"
+        RUST_OPENSTACK_FLOATING_NETWORK: public
 
     - name: Run examples
       command: cargo run --example {{ item }}
@@ -63,7 +64,6 @@
         - get-flavor test-flavor
         - get-image {{ cirros_image_result.stdout }}
         - get-network private
-        - list-flavors
         - list-floating-ips
         - list-images
         - list-keypairs

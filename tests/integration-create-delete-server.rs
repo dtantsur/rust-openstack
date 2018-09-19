@@ -120,6 +120,8 @@ fn test_server_ops_with_port() {
     let network_id = env::var("RUST_OPENSTACK_NETWORK").expect("Missing RUST_OPENSTACK_NETWORK");
     let keypair_file_name = env::var("RUST_OPENSTACK_KEYPAIR")
         .expect("Missing RUST_OPENSTACK_KEYPAIR");
+    let floating_network_id = env::var("RUST_OPENSTACK_FLOATING_NETWORK")
+        .expect("Missing RUST_OPENSTACK_FLOATING_NETWORK");
 
     let keypair = os.new_keypair("rust-openstack-integration")
         .from_reader(&mut File::open(keypair_file_name)
@@ -145,6 +147,13 @@ fn test_server_ops_with_port() {
 
     let network = port.network().expect("Could not find port's network");
     assert_eq!(network.id(), port.network_id());
+
+    let floating_ip = os.new_floating_ip(floating_network_id)
+        .with_port(port.clone()).create()
+        .expect("Cannot create a floating IP");
+
+    floating_ip.delete().expect("Failed to request floating IP deletion")
+        .wait().expect("Failed to delete floating IP");
 
     server.delete().expect("Failed to request deletion")
         .wait().expect("Failed to delete server");

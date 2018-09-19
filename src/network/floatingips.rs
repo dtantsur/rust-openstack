@@ -26,7 +26,7 @@ use serde::Serialize;
 use super::super::{Error, ErrorKind, Result, Sort};
 use super::super::common::{DeletionWaiter, ListResources, NetworkRef,
                            PortRef, Refresh, ResourceId, ResourceIterator,
-                           RouterRef};
+                           RouterRef, SubnetRef};
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::base::V2API;
@@ -46,6 +46,16 @@ pub struct FloatingIpQuery {
     session: Rc<Session>,
     query: Query,
     can_paginate: bool,
+}
+
+/// A request to create a floating IP.
+#[derive(Clone, Debug)]
+pub struct NewFloatingIp {
+    session: Rc<Session>,
+    inner: protocol::FloatingIp,
+    floating_network: NetworkRef,
+    port: Option<PortRef>,
+    subnet: Option<SubnetRef>,
 }
 
 
@@ -309,6 +319,101 @@ impl FloatingIpQuery {
         }
 
         self.into_iter().one()
+    }
+}
+
+impl NewFloatingIp {
+    /// Start creating a floating IP.
+    pub(crate) fn new(session: Rc<Session>, floating_network: NetworkRef)
+            -> NewFloatingIp {
+        NewFloatingIp {
+            session: session,
+            inner: protocol::FloatingIp {
+                created_at: None,
+                description: None,
+                dns_domain: None,
+                dns_name: None,
+                fixed_ip_address: None,
+                // 0.0.0.0 is skipped when serializing
+                floating_ip_address: net::IpAddr::V4(net::Ipv4Addr::new(0, 0, 0, 0)),
+                // Will be replaced in create()
+                floating_network_id: String::new(),
+                // Dummy value, not used when serializing
+                id: String::new(),
+                port_id: None,
+                port_forwardings: Vec::new(),
+                router_id: None,
+                // Dummy value, not used when serializing
+                status: protocol::FloatingIpStatus::Active,
+                subnet_id: None,
+                updated_at: None,
+            },
+            floating_network: floating_network,
+            port: None,
+            subnet: None,
+        }
+    }
+
+    /// Request creation of the port.
+    pub fn create(mut self) -> Result<FloatingIp> {
+        self.inner.floating_network_id = self.floating_network.into_verified(
+            &self.session)?;
+        if let Some(port) = self.port {
+            self.inner.port_id = Some(port.into_verified(&self.session)?);
+        }
+        if let Some(subnet) = self.subnet {
+            self.inner.subnet_id = Some(subnet.into_verified(&self.session)?);
+        }
+
+        let floating_ip = self.session.create_floating_ip(self.inner)?;
+        Ok(FloatingIp::new(self.session, floating_ip))
+    }
+
+    creation_inner_field! {
+        #[doc = "Set description of the floating IP."]
+        set_description, with_description -> description: optional String
+    }
+
+    creation_inner_field! {
+        #[doc = "Set DNS domain for the floating IP."]
+        set_dns_domain, with_dns_domain -> dns_domain: optional String
+    }
+
+    creation_inner_field! {
+        #[doc = "Set DNS name for the floating IP."]
+        set_dns_name, with_dns_name -> dns_name: optional String
+    }
+
+    creation_inner_field! {
+        #[doc = "Set the requested fixed IP address (required if the port has several)."]
+        set_fixed_ip_address, with_fixed_ip_address -> fixed_ip_address: optional net::IpAddr
+    }
+
+    creation_inner_field! {
+        #[doc = "Set the requested floating IP address."]
+        set_floating_ip_address, with_floating_ip_address -> floating_ip_address: net::IpAddr
+    }
+
+    /// Set the port to associate with the new IP.
+    pub fn set_port<P>(&mut self, port: P) where P: Into<PortRef> {
+        self.port = Some(port.into());
+    }
+
+    /// Set the port to associate with the new IP.
+    pub fn with_port<P>(mut self, port: P) -> NewFloatingIp where P: Into<PortRef> {
+        self.set_port(port);
+        self
+    }
+
+    /// Set the subnet to create the IP address from.
+    pub fn set_subnet<P>(&mut self, subnet: P) where P: Into<SubnetRef> {
+        self.subnet = Some(subnet.into());
+    }
+
+    /// Set the subnet to create the IP address from.
+    pub fn with_subnet<P>(mut self, subnet: P) -> NewFloatingIp where P: Into<SubnetRef> {
+        self.set_subnet(subnet);
+        self
     }
 }
 

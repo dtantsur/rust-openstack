@@ -27,7 +27,8 @@ use super::compute::{Flavor, FlavorQuery, FlavorSummary, KeyPair, KeyPairQuery,
 use super::image::{Image, ImageQuery};
 #[cfg(feature = "network")]
 use super::network::{FloatingIp, FloatingIpQuery, Network, NetworkQuery,
-                     NewPort, Port, PortQuery, Subnet, SubnetQuery};
+                     NewFloatingIp, NewPort, Port, PortQuery, Subnet,
+                     SubnetQuery};
 use super::session::Session;
 
 
@@ -458,6 +459,16 @@ impl Cloud {
     #[cfg(feature = "network")]
     pub fn list_subnets(&self) -> Result<Vec<Subnet>> {
         self.find_subnets().all()
+    }
+
+    /// Prepare a new floating IP for creation.
+    ///
+    /// This call returns a `NewFloatingIp` object, which is a builder
+    /// to populate floating IP fields.
+    #[cfg(feature = "network")]
+    pub fn new_floating_ip<N>(&self, floating_network: N) -> NewFloatingIp
+            where N: Into<NetworkRef> {
+        NewFloatingIp::new(self.session.clone(), floating_network.into())
     }
 
     /// Prepare a new key pair for creation.

@@ -21,7 +21,7 @@ mod ports;
 mod protocol;
 mod subnets;
 
-pub use self::floatingips::{FloatingIp, FloatingIpQuery};
+pub use self::floatingips::{FloatingIp, FloatingIpQuery, NewFloatingIp};
 pub use self::networks::{Network, NetworkQuery};
 pub use self::ports::{NewPort, Port, PortIpAddress, PortIpRequest, PortQuery};
 pub use self::protocol::{AllocationPool, FloatingIpSortKey, FloatingIpStatus,
