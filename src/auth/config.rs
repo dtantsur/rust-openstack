@@ -18,6 +18,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
+use dirs;
 use serde_yaml;
 
 use super::Identity;
@@ -62,7 +63,7 @@ fn find_config() -> Option<PathBuf> {
         }
     }
 
-    if let Some(mut home) = ::std::env::home_dir() {
+    if let Some(mut home) = dirs::home_dir() {
         home.push(".config/openstack/clouds.yaml");
         if home.is_file() {
             return Some(home);

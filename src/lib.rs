@@ -80,6 +80,7 @@
 
 #[allow(unused_extern_crates)]
 extern crate chrono;
+extern crate dirs;
 #[allow(unused_extern_crates)]
 extern crate eui48;
 #[allow(unused_extern_crates)]
