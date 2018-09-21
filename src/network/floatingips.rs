@@ -14,6 +14,7 @@
 
 //! Floating IP support.
 
+use std::collections::HashSet;
 use std::fmt::Debug;
 use std::net;
 use std::rc::Rc;
@@ -22,6 +23,7 @@ use std::time::Duration;
 use chrono::{DateTime, FixedOffset};
 use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
 use serde::Serialize;
+use serde_json;
 
 use super::super::{Error, ErrorKind, Result, Sort};
 use super::super::common::{DeletionWaiter, ListResources, NetworkRef,
@@ -37,7 +39,8 @@ use super::{protocol, Network, Port};
 #[derive(Clone, Debug)]
 pub struct FloatingIp {
     session: Rc<Session>,
-    inner: protocol::FloatingIp
+    inner: protocol::FloatingIp,
+    dirty: HashSet<&'static str>,
 }
 
 /// A query to floating IP list.
@@ -64,7 +67,8 @@ impl FloatingIp {
     pub(crate) fn new(session: Rc<Session>, inner: protocol::FloatingIp) -> FloatingIp {
         FloatingIp {
             session: session,
-            inner: inner
+            inner: inner,
+            dirty: HashSet::new(),
         }
     }
 
@@ -85,6 +89,11 @@ impl FloatingIp {
         description: ref Option<String>
     }
 
+    update_field! {
+        #[doc = "Update the description."]
+        set_description, with_description -> description: optional String
+    }
+
     transparent_property! {
         #[doc = "DNS domain for the floating IP (if available)."]
         dns_domain: ref Option<String>
@@ -98,6 +107,11 @@ impl FloatingIp {
     transparent_property! {
         #[doc = "IP address of the port associated with the IP (if any)."]
         fixed_ip_address: Option<net::IpAddr>
+    }
+
+    update_field! {
+        #[doc = "Update which fixed IP address is associated with the floating IP."]
+        set_fixed_ip_address, with_fixed_ip_address ->fixed_ip_address: optional net::IpAddr
     }
 
     transparent_property! {
@@ -161,10 +175,65 @@ impl FloatingIp {
         updated_at: Option<DateTime<FixedOffset>>
     }
 
+    /// Associate this floating IP with a port.
+    ///
+    /// Optionally provide a fixed IP address to associate with, in case
+    /// the port has several fixed IP addresses.
+    ///
+    /// # Warning
+    ///
+    /// Any changes to `fixed_ip_address` are reset on this call.
+    pub fn associate<P>(&mut self, port: P, fixed_ip_address: Option<net::IpAddr>)
+            -> Result<()> where P: Into<PortRef> {
+        let new_port = port.into().into_verified(&self.session)?.into();
+        self.update_port(new_port, fixed_ip_address)
+    }
+
+    /// Dissociate this floating IP from a port.
+    ///
+    /// # Warning
+    ///
+    /// Any changes to `fixed_ip_address` are reset on this call.
+    pub fn dissociate(&mut self) -> Result<()> {
+        self.update_port(serde_json::Value::Null, None)
+    }
+
     /// Delete the floating IP.
     pub fn delete(self) -> Result<DeletionWaiter<FloatingIp>> {
         self.session.delete_floating_ip(&self.inner.id)?;
         Ok(DeletionWaiter::new(self, Duration::new(60, 0), Duration::new(1, 0)))
+    }
+
+    /// Save the changes to the floating IP.
+    pub fn save(&mut self) -> Result<()> {
+        let mut update = protocol::FloatingIpUpdate::default();
+        save_option_fields! {
+            self -> update: description fixed_ip_address
+        };
+        self.inner = self.session.update_floating_ip(self.id(), update)?;
+        self.dirty.clear();
+        Ok(())
+    }
+
+    fn update_port(&mut self, value: serde_json::Value,
+                   fixed_ip_address: Option<net::IpAddr>) -> Result<()> {
+        let update = protocol::FloatingIpUpdate {
+            description: None,
+            fixed_ip_address: fixed_ip_address,
+            port_id: Some(value),
+        };
+        let mut inner = self.session.update_floating_ip(self.id(), update)?;
+
+        // NOTE(dtantsur): description is independent of port.
+        let desc_changed = self.dirty.contains("description");
+        self.dirty.clear();
+        if desc_changed {
+            inner.description = self.inner.description.take();
+            let _ = self.dirty.insert("description");
+        }
+
+        self.inner = inner;
+        Ok(())
     }
 }
 

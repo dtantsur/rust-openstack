@@ -99,6 +99,10 @@ pub trait V2API {
     fn list_subnets<Q: Serialize + Debug>(&self, query: &Q)
         -> Result<Vec<protocol::Subnet>>;
 
+    /// Update a floating IP.
+    fn update_floating_ip<S: AsRef<str>>(&self, id: S, update: protocol::FloatingIpUpdate)
+        -> Result<protocol::FloatingIp>;
+
     /// Update a port.
     fn update_port<S: AsRef<str>>(&self, id: S, update: protocol::PortUpdate)
         -> Result<protocol::Port>;
@@ -270,6 +274,17 @@ impl V2API for Session {
            .query(query).receive_json::<protocol::SubnetsRoot>()?.subnets;
         trace!("Received subnets: {:?}", result);
         Ok(result)
+    }
+
+    fn update_floating_ip<S: AsRef<str>>(&self, id: S, update: protocol::FloatingIpUpdate)
+            -> Result<protocol::FloatingIp> {
+        debug!("Updating floatingIP {} with {:?}", id.as_ref(), update);
+        let body = protocol::FloatingIpUpdateRoot { floatingip: update };
+        let floating_ip = self.request::<V2>(Method::Put,
+                                             &["floatingips", id.as_ref()], None)?
+            .json(&body).receive_json::<protocol::FloatingIpRoot>()?.floatingip;
+        debug!("Updated floating IP {:?}", floating_ip);
+        Ok(floating_ip)
     }
 
     fn update_port<S: AsRef<str>>(&self, id: S, update: protocol::PortUpdate)

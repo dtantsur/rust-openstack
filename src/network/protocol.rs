@@ -23,6 +23,7 @@ use std::net;
 use chrono::{DateTime, FixedOffset};
 use eui48::MacAddress;
 use ipnet;
+use serde_json::Value;
 
 use super::super::common;
 
@@ -258,7 +259,7 @@ pub struct Port {
 }
 
 /// A port.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Default)]
 pub struct PortUpdate {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub admin_state_up: Option<bool>,
@@ -283,24 +284,6 @@ pub struct PortUpdate {
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub security_groups: Option<Vec<String>>,
-}
-
-impl Default for PortUpdate {
-    fn default() -> PortUpdate {
-        PortUpdate {
-            admin_state_up: None,
-            description: None,
-            device_id: None,
-            device_owner: None,
-            dns_domain: None,
-            dns_name: None,
-            extra_dhcp_opts: None,
-            fixed_ips: None,
-            mac_address: None,
-            name: None,
-            security_groups: None
-        }
-    }
 }
 
 /// A port.
@@ -432,10 +415,27 @@ pub struct FloatingIp {
     pub updated_at: Option<DateTime<FixedOffset>>,
 }
 
+/// A port.
+#[derive(Debug, Clone, Serialize, Default)]
+pub struct FloatingIpUpdate {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fixed_ip_address: Option<net::IpAddr>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub port_id: Option<Value>,
+}
+
 /// A floating IP.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct FloatingIpRoot {
     pub floatingip: FloatingIp
+}
+
+/// A floating IP.
+#[derive(Debug, Clone, Serialize)]
+pub struct FloatingIpUpdateRoot {
+    pub floatingip: FloatingIpUpdate
 }
 
 /// Floating IPs.

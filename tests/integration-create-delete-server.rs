@@ -79,6 +79,8 @@ fn test_basic_server_ops() {
     let network_id = env::var("RUST_OPENSTACK_NETWORK").expect("Missing RUST_OPENSTACK_NETWORK");
     let keypair_file_name = env::var("RUST_OPENSTACK_KEYPAIR")
         .expect("Missing RUST_OPENSTACK_KEYPAIR");
+    let floating_network_id = env::var("RUST_OPENSTACK_FLOATING_NETWORK")
+        .expect("Missing RUST_OPENSTACK_FLOATING_NETWORK");
 
     let keypair = os.new_keypair("rust-openstack-integration")
         .from_reader(&mut File::open(keypair_file_name)
@@ -102,6 +104,19 @@ fn test_basic_server_ops() {
         .with_status(openstack::network::NetworkStatus::Active)
         .all().expect("Cannot find active ports for network");
     assert!(ports.len() > 0);
+
+    let server_port = os.find_ports()
+        .with_device_id(server.id().clone())
+        .one().expect("Cannot find the port attached to the server");
+
+    let mut floating_ip = os.new_floating_ip(floating_network_id)
+        .create().expect("Cannot create a floating IP");
+
+    floating_ip.associate(server_port, None)
+        .expect("Cannot associate floating IP");
+
+    floating_ip.delete().expect("Failed to request floating IP deletion")
+        .wait().expect("Failed to delete floating IP");
 
     server.delete().expect("Failed to request deletion")
         .wait().expect("Failed to delete server");
@@ -148,9 +163,21 @@ fn test_server_ops_with_port() {
     let network = port.network().expect("Could not find port's network");
     assert_eq!(network.id(), port.network_id());
 
-    let floating_ip = os.new_floating_ip(floating_network_id)
+    let mut floating_ip = os.new_floating_ip(floating_network_id)
         .with_port(port.clone()).create()
         .expect("Cannot create a floating IP");
+
+    floating_ip.set_description("A floating IP");
+    floating_ip.save().expect("Cannot save floating IP");
+    assert_eq!(floating_ip.description().as_ref().expect("No description"),
+               "A floating IP");
+
+    server.refresh().expect("Cannot refresh the server");
+
+    let server_ip = server.floating_ip().expect("No floating IP");
+    assert_eq!(server_ip, floating_ip.floating_ip_address());
+
+    floating_ip.dissociate().expect("Cannot dissociate a floating IP");
 
     floating_ip.delete().expect("Failed to request floating IP deletion")
         .wait().expect("Failed to delete floating IP");

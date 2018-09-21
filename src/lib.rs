@@ -271,6 +271,7 @@ macro_rules! update_field {
 
     ($(#[$attr:meta])* $set_func:ident, $with_func:ident -> $name:ident: optional $type:ty) => (
         $(#[$attr])*
+        #[allow(unused_results)]
         pub fn $set_func(&mut self, value: $type)  {
             self.inner.$name = Some(value);
             self.dirty.insert(stringify!($name));
