@@ -20,7 +20,7 @@ use reqwest::{StatusCode, UrlError};
 use reqwest::Error as HttpClientError;
 
 /// Kind of an error.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ErrorKind {
     /// Authentication failure
     ///
@@ -81,7 +81,7 @@ pub enum ErrorKind {
 }
 
 /// Error from an OpenStack call.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Error {
     kind: ErrorKind,
     status: Option<StatusCode>,

@@ -24,7 +24,7 @@ use super::super::{Error, ErrorKind, Result};
 
 
 /// API version (major, minor).
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub struct ApiVersion(pub u16, pub u16);
 
 impl fmt::Display for ApiVersion {
