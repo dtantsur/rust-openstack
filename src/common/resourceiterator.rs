@@ -89,29 +89,27 @@ impl<T> FallibleIterator for ResourceIterator<T> where T: ListResources + Resour
         let maybe_next = self.cache.as_mut().and_then(|cache| cache.next());
         Ok(if maybe_next.is_some() {
             maybe_next
+        } else if self.cache.is_some() && self.can_paginate == Some(false) {
+            // We have exhausted the results and pagination is not possible
+            None
         } else {
-            if self.cache.is_some() && self.can_paginate == Some(false) {
-                // We have exhausted the results and pagination is not possible
-                None
-            } else {
-                let mut query = self.query.clone();
+            let mut query = self.query.clone();
 
-                if self.can_paginate == Some(true) {
-                    // can_paginate=true implies no limit was provided
-                    query.push("limit", T::DEFAULT_LIMIT);
-                    if let Some(marker) = self.marker.take() {
-                        query.push_str("marker", marker);
-                    }
+            if self.can_paginate == Some(true) {
+                // can_paginate=true implies no limit was provided
+                query.push("limit", T::DEFAULT_LIMIT);
+                if let Some(marker) = self.marker.take() {
+                    query.push_str("marker", marker);
                 }
-
-                let mut servers_iter = T::list_resources(self.session.clone(),
-                                                         &query.0)?
-                    .into_iter();
-                let maybe_next = servers_iter.next();
-                self.cache = Some(servers_iter);
-
-                maybe_next
             }
+
+            let mut servers_iter = T::list_resources(self.session.clone(),
+                                                     &query.0)?
+                .into_iter();
+            let maybe_next = servers_iter.next();
+            self.cache = Some(servers_iter);
+
+            maybe_next
         }.map(|next| {
             self.marker = Some(next.resource_id());
             next

@@ -87,9 +87,9 @@ use std::env;
 
 use super::{Error, ErrorKind, Result};
 
-const MISSING_ENV_VARS: &'static str =
+const MISSING_ENV_VARS: &str =
     "Not all required environment variables were provided";
-const INVALID_ENV_AUTH_URL: &'static str =
+const INVALID_ENV_AUTH_URL: &str =
     "Malformed authentication URL provided in the environment";
 
 #[inline]

@@ -262,7 +262,7 @@ impl ListResources for Flavor {
             -> Result<Vec<Flavor>> {
         let flavors = session.list_flavors_detail(&query)?;
         let mut result = Vec::with_capacity(flavors.len());
-        for item in flavors.into_iter() {
+        for item in flavors {
             result.push(Flavor::new(session.clone(), item)?);
         }
         Ok(result)

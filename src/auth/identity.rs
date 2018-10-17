@@ -29,10 +29,9 @@ use super::super::utils::ValueCache;
 use super::AuthMethod;
 
 
-const MISSING_USER: &'static str = "User information required";
-const MISSING_SCOPE: &'static str = "Unscoped tokens are not supported now";
-const MISSING_SUBJECT_HEADER: &'static str =
-    "Missing X-Subject-Token header";
+const MISSING_USER: &str = "User information required";
+const MISSING_SCOPE: &str = "Unscoped tokens are not supported now";
+const MISSING_SUBJECT_HEADER: &str = "Missing X-Subject-Token header";
 // Required validity time in minutes. Here we refresh the token if it expires
 // in 10 minutes or less.
 const TOKEN_MIN_VALIDITY: i64 = 10;
@@ -242,10 +241,10 @@ impl PasswordAuth {
 
     fn refresh_token(&self) -> Result<()> {
         self.cached_token.validate_and_ensure_value(|val| {
-            let validity_time_left = val.body.expires_at.clone()
+            let validity_time_left = val.body.expires_at
                 .signed_duration_since(Local::now());
             trace!("Token is valid for {:?}", validity_time_left);
-            return validity_time_left > Duration::minutes(TOKEN_MIN_VALIDITY);
+            validity_time_left > Duration::minutes(TOKEN_MIN_VALIDITY)
         }, || {
             debug!("Requesting a token for user {} from {}",
                    self.body.auth.identity.password.user.name,

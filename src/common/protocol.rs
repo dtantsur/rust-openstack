@@ -109,7 +109,7 @@ pub fn fetch_service_info(endpoint: Url, auth: &AuthMethod,
             let mut info = match resp.json()? {
                 Root::Version { version: ver } => ver.into_service_info(),
                 Root::Versions { versions: vers } => {
-                    match vers.into_iter().find(|x| &x.id == major_version) {
+                    match vers.into_iter().find(|x| x.id == major_version) {
                         Some(ver) => ver.into_service_info(),
                         None => Err(Error::new_endpoint_not_found(service_type))
                     }
@@ -118,7 +118,7 @@ pub fn fetch_service_info(endpoint: Url, auth: &AuthMethod,
 
             // Older Nova returns insecure URLs even for secure protocol.
             if secure {
-                let _ = info.root_url.set_scheme("https").unwrap();
+                info.root_url.set_scheme("https").unwrap();
             }
 
             debug!("Received {:?} for {} service from {}",
@@ -143,8 +143,8 @@ pub fn fetch_service_info(endpoint: Url, auth: &AuthMethod,
 pub fn empty_as_none<'de, D, T>(des: D) -> ::std::result::Result<Option<T>, D::Error>
         where D: Deserializer<'de>, T: DeserializeOwned {
     let value = serde_json::Value::deserialize(des)?;
-    match &value {
-        &serde_json::Value::String(ref s) if s == "" => return Ok(None),
+    match value {
+        serde_json::Value::String(ref s) if s == "" => return Ok(None),
         _ => ()
     };
 
@@ -155,8 +155,8 @@ pub fn empty_as_none<'de, D, T>(des: D) -> ::std::result::Result<Option<T>, D::E
 pub fn empty_as_default<'de, D, T>(des: D) -> ::std::result::Result<T, D::Error>
         where D: Deserializer<'de>, T: DeserializeOwned + Default {
     let value = serde_json::Value::deserialize(des)?;
-    match &value {
-        &serde_json::Value::String(ref s) if s == "" =>
+    match value {
+        serde_json::Value::String(ref s) if s == "" =>
             return Ok(Default::default()),
         _ => ()
     };

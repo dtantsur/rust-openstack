@@ -52,9 +52,9 @@ pub trait V2API {
 pub struct V2;
 
 
-const SERVICE_TYPE: &'static str = "image";
+const SERVICE_TYPE: &str = "image";
 // FIXME(dtantsur): detect versions instead of hardcoding Kilo.
-const VERSION_ID: &'static str = "v2.3";
+const VERSION_ID: &str = "v2.3";
 
 
 impl V2API for Session {

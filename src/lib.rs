@@ -71,21 +71,17 @@
         unused_allocation,
         unused_comparisons,
         unused_doc_comments,
-        unused_extern_crates,
         unused_import_braces,
         unused_parens,
         unused_qualifications,
         unused_results,
         while_true)]
+#![allow(unused_extern_crates)]
 
-#[allow(unused_extern_crates)]
 extern crate chrono;
 extern crate dirs;
-#[allow(unused_extern_crates)]
 extern crate eui48;
-#[allow(unused_extern_crates)]
 extern crate fallible_iterator;
-#[allow(unused_extern_crates)]
 extern crate ipnet;
 #[macro_use]
 extern crate log;
@@ -93,9 +89,7 @@ extern crate reqwest;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-#[allow(unused_extern_crates)]
 extern crate serde_json;
-#[allow(unused_extern_crates)]
 extern crate serde_yaml;
 extern crate waiter;
 

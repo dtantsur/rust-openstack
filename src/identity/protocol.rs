@@ -96,7 +96,7 @@ pub struct TokenRoot {
     pub token: Token
 }
 
-const PASSWORD_METHOD: &'static str = "password";
+const PASSWORD_METHOD: &str = "password";
 
 
 impl PasswordAuth {

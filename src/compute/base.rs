@@ -130,8 +130,8 @@ pub trait V2API {
 pub struct V2;
 
 
-const SERVICE_TYPE: &'static str = "compute";
-const VERSION_ID: &'static str = "v2.1";
+const SERVICE_TYPE: &str = "compute";
+const VERSION_ID: &str = "v2.1";
 
 fn flavor_api_version<T: V2API>(api: &T) -> Result<Option<ApiVersion>> {
     api.pick_compute_api_version(
@@ -302,9 +302,9 @@ impl V2API for Session {
 
     fn pick_compute_api_version(&self, versions: &[ApiVersion]) -> Result<Option<ApiVersion>> {
         let info = self.get_service_info_ref::<V2>()?;
-        Ok(versions.into_iter().map(|item| *item).filter(|item| {
-            info.supports_api_version(*item)
-        }).max())
+        Ok(versions.into_iter().filter(|item| {
+            info.supports_api_version(**item)
+        }).max().cloned())
     }
 
     fn server_action_with_args<S1, S2, Q>(&self, id: S1, action: S2, args: Q)

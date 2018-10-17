@@ -114,8 +114,8 @@ pub trait V2API {
 pub struct V2;
 
 
-const SERVICE_TYPE: &'static str = "network";
-const VERSION_ID: &'static str = "v2.0";
+const SERVICE_TYPE: &str = "network";
+const VERSION_ID: &str = "v2.0";
 
 
 impl V2API for Session {
