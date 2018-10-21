@@ -53,8 +53,6 @@ pub struct V2;
 
 
 const SERVICE_TYPE: &str = "image";
-// FIXME(dtantsur): detect versions instead of hardcoding Kilo.
-const VERSION_ID: &str = "v2.3";
 
 
 impl V2API for Session {
@@ -96,6 +94,7 @@ impl ServiceType for V2 {
     }
 
     fn service_info(endpoint: Url, auth: &AuthMethod) -> Result<ServiceInfo> {
-        common::protocol::fetch_service_info(endpoint, auth, SERVICE_TYPE, VERSION_ID)
+        common::protocol::fetch_service_info(endpoint, auth, SERVICE_TYPE,
+                                             |ver| ver.0 == 2)
     }
 }

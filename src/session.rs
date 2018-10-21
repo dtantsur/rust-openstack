@@ -32,6 +32,8 @@ use super::utils;
 pub struct ServiceInfo {
     /// Root endpoint.
     pub root_url: Url,
+    /// Major API version.
+    pub major_version: ApiVersion,
     /// Current API version (if supported).
     pub current_version: Option<ApiVersion>,
     /// Minimum API version (if supported).

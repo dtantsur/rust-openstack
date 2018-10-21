@@ -131,7 +131,6 @@ pub struct V2;
 
 
 const SERVICE_TYPE: &str = "compute";
-const VERSION_ID: &str = "v2.1";
 
 fn flavor_api_version<T: V2API>(api: &T) -> Result<Option<ApiVersion>> {
     api.pick_compute_api_version(
@@ -335,7 +334,8 @@ impl ServiceType for V2 {
     }
 
     fn service_info(endpoint: Url, auth: &AuthMethod) -> Result<ServiceInfo> {
-        common::protocol::fetch_service_info(endpoint, auth, SERVICE_TYPE, VERSION_ID)
+        common::protocol::fetch_service_info(endpoint, auth, SERVICE_TYPE,
+                                             |ver| ver.0 == 2)
     }
 
     fn api_version_headers(version: ApiVersion) -> Option<Headers> {

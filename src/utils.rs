@@ -251,6 +251,7 @@ pub mod test {
             if endpoint.port() == Some(5000) {
                 Ok(ServiceInfo {
                     root_url: Url::parse(URL).unwrap(),
+                    major_version: ApiVersion(1, 0),
                     current_version: Some(ApiVersion(1, 42)),
                     minimum_version: Some(ApiVersion(1, 1)),
                 })

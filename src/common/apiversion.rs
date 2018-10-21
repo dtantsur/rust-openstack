@@ -45,7 +45,7 @@ impl FromStr for ApiVersion {
     fn from_str(s: &str) -> Result<ApiVersion> {
         let parts: Vec<&str> = s.split('.').collect();
 
-        if parts.len() != 2 {
+        if parts.len() < 1 || parts.len() > 2 {
             let msg = format!("Invalid API version: expected X.Y, got {}", s);
             return Err(Error::new(ErrorKind::InvalidResponse, msg))
         }
@@ -53,8 +53,12 @@ impl FromStr for ApiVersion {
         let major = parse_component(parts[0],
                                     "First version component is not a number")?;
 
-        let minor = parse_component(parts[1],
-                                    "Second version component is not a number")?;
+        let minor = if parts.len() == 2 {
+            parse_component(parts[1],
+                            "Second version component is not a number")?
+        } else {
+            0
+        };
 
         Ok(ApiVersion(major, minor))
     }
