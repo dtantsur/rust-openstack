@@ -16,13 +16,12 @@
 
 use std::fmt::Debug;
 
-use reqwest::{Method, Url};
+use reqwest::Method;
 use serde::Serialize;
 
 use super::super::Result;
-use super::super::auth::AuthMethod;
-use super::super::common;
-use super::super::session::{Session, ServiceInfo, ServiceType};
+use super::super::common::ApiVersion;
+use super::super::session::{Session, ServiceType};
 use super::super::utils::{self, ResultExt};
 use super::protocol;
 
@@ -93,8 +92,7 @@ impl ServiceType for V2 {
         SERVICE_TYPE
     }
 
-    fn service_info(endpoint: Url, auth: &AuthMethod) -> Result<ServiceInfo> {
-        common::protocol::fetch_service_info(endpoint, auth, SERVICE_TYPE,
-                                             |ver| ver.0 == 2)
+    fn major_version_supported(version: ApiVersion) -> bool {
+        version.0 == 2
     }
 }

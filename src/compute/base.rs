@@ -17,16 +17,15 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
 
-use reqwest::{Method, Url};
+use reqwest::Method;
 use reqwest::header::Headers;
 use serde::Serialize;
 use serde_json;
 
 use super::super::Result;
-use super::super::auth::AuthMethod;
 use super::super::common::{self, ApiVersion};
 use super::super::common::protocol::Ref;
-use super::super::session::{Session, ServiceInfo, ServiceType};
+use super::super::session::{Session, ServiceType};
 use super::super::utils::{self, ResultExt};
 use super::protocol;
 
@@ -333,9 +332,8 @@ impl ServiceType for V2 {
         SERVICE_TYPE
     }
 
-    fn service_info(endpoint: Url, auth: &AuthMethod) -> Result<ServiceInfo> {
-        common::protocol::fetch_service_info(endpoint, auth, SERVICE_TYPE,
-                                             |ver| ver.0 == 2)
+    fn major_version_supported(version: ApiVersion) -> bool {
+        version.0 == 2
     }
 
     fn api_version_headers(version: ApiVersion) -> Option<Headers> {

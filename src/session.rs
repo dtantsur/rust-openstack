@@ -25,28 +25,17 @@ use serde::de::DeserializeOwned;
 use super::Result;
 use super::auth::AuthMethod;
 use super::common::ApiVersion;
+use super::common::protocol::ServiceInfo;
 use super::utils;
 
-/// Information about API endpoint.
-#[derive(Clone, Debug)]
-pub struct ServiceInfo {
-    /// Root endpoint.
-    pub root_url: Url,
-    /// Major API version.
-    pub major_version: ApiVersion,
-    /// Current API version (if supported).
-    pub current_version: Option<ApiVersion>,
-    /// Minimum API version (if supported).
-    pub minimum_version: Option<ApiVersion>
-}
 
 /// Trait representing a service type.
 pub trait ServiceType {
     /// Service type to pass to the catalog.
     fn catalog_type() -> &'static str;
 
-    /// Get basic service information.
-    fn service_info(endpoint: Url, auth: &AuthMethod) -> Result<ServiceInfo>;
+    /// Check whether this service type is compatible with the given major version.
+    fn major_version_supported(_version: ApiVersion) -> bool { true }
 
     /// Return headers to set for this API version.
     fn api_version_headers(_version: ApiVersion) -> Option<Headers> { None }
@@ -189,18 +178,30 @@ impl Session {
         self.auth.as_mut()
     }
 
-    /// Get service info for the given service.
-    pub fn get_service_info<Srv>(&self) -> Result<ServiceInfo>
-            where Srv: ServiceType {
-        let info = self.get_service_info_ref::<Srv>()?;
-        Ok(info.clone())
-    }
-
     /// Construct and endpoint for the given service from the path.
     pub fn get_endpoint<Srv: ServiceType>(&self, path: &[&str])
             -> Result<Url> {
         let info = self.get_service_info_ref::<Srv>()?;
         Ok(utils::url::extend(info.root_url.clone(), path))
+    }
+
+    /// Get the currently used major version from the given service.
+    pub fn get_major_version<Srv: ServiceType>(&self) -> Result<ApiVersion> {
+        let info = self.get_service_info_ref::<Srv>()?;
+        Ok(info.major_version)
+    }
+
+    /// Get minimum/maximum API (micro)version information.
+    ///
+    /// Returns `None` if the range cannot be determined, which usually means
+    /// that microversioning is not supported.
+    pub fn get_api_versions<Srv: ServiceType>(&self)
+            -> Result<Option<(ApiVersion, ApiVersion)>> {
+        let info = self.get_service_info_ref::<Srv>()?;
+        match (info.minimum_version, info.current_version) {
+            (Some(min), Some(max)) => Ok(Some((min, max))),
+            _ => Ok(None)
+        }
     }
 
     /// Make an HTTP request to the given service.
@@ -223,7 +224,7 @@ impl Session {
     fn ensure_service_info<Srv>(&self) -> Result<()> where Srv: ServiceType {
         self.cached_info.ensure_value(Srv::catalog_type(), |_| {
             self.get_catalog_endpoint(Srv::catalog_type())
-                .and_then(|ep| Srv::service_info(ep, self.auth_method()))
+                .and_then(|ep| ServiceInfo::fetch::<Srv>(ep, self.auth_method()))
         })?;
 
         Ok(())
@@ -246,6 +247,7 @@ impl ServiceInfo {
     /// Whether this service supports the given API version.
     ///
     /// Defaults to false if cannot be determined.
+    #[allow(dead_code)]  // unused with --no-default-features
     pub fn supports_api_version(&self, version: ApiVersion) -> bool {
         match (self.minimum_version, self.current_version) {
             (Some(min), Some(max)) => min <= version && max >= version,
@@ -265,21 +267,5 @@ mod test {
         let s = utils::test::new_session(utils::test::URL);
         let ep = s.get_catalog_endpoint("fake").unwrap();
         assert_eq!(&ep.to_string(), utils::test::URL);
-    }
-
-    #[test]
-    fn test_session_get_endpoint() {
-        let s = utils::test::new_session(utils::test::URL);
-        let ep = s.get_endpoint::<utils::test::FakeServiceType>(&[])
-            .unwrap();
-        assert_eq!(&ep.to_string(), utils::test::URL);
-    }
-
-    #[test]
-    fn test_session_get_endpoint_with_path() {
-        let s = utils::test::new_session(utils::test::URL);
-        let ep = s.get_endpoint::<utils::test::FakeServiceType>(&["foo", "bar"])
-            .unwrap();
-        assert_eq!(ep.to_string(), format!("{}foo/bar", utils::test::URL));
     }
 }

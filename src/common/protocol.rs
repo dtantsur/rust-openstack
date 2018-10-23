@@ -28,7 +28,7 @@ use serde_json;
 
 use super::super::{Error, ErrorKind, Result};
 use super::super::auth::AuthMethod;
-use super::super::session::ServiceInfo;
+use super::super::session::ServiceType;
 use super::super::utils;
 use super::ApiVersion;
 
@@ -76,6 +76,19 @@ pub enum Root {
     Version { version: Version }
 }
 
+/// Information about API endpoint.
+#[derive(Clone, Debug)]
+pub struct ServiceInfo {
+    /// Root endpoint.
+    pub root_url: Url,
+    /// Major API version.
+    pub major_version: ApiVersion,
+    /// Current API version (if supported).
+    pub current_version: Option<ApiVersion>,
+    /// Minimum API version (if supported).
+    pub minimum_version: Option<ApiVersion>
+}
+
 impl Version {
     pub fn into_service_info(self) -> Result<ServiceInfo> {
         let endpoint = match self.links.into_iter().find(|x| &x.rel == "self") {
@@ -96,62 +109,63 @@ impl Version {
     }
 }
 
-/// Generic code to extract a `ServiceInfo` from a URL.
-pub fn fetch_service_info<F>(endpoint: Url, auth: &AuthMethod,
-                             service_type: &str,
-                             major_version_supported: F)
-        -> Result<ServiceInfo> where F: Fn(ApiVersion) -> bool {
-    debug!("Fetching {} service info from {}", service_type, endpoint);
+impl ServiceInfo {
+    /// Generic code to extract a `ServiceInfo` from a URL.
+    pub fn fetch<Srv: ServiceType>(endpoint: Url, auth: &AuthMethod) -> Result<ServiceInfo> {
+        let service_type = Srv::catalog_type();
+        debug!("Fetching {} service info from {}", service_type, endpoint);
 
-    // Workaround for old version of Nova returning HTTP endpoints even if
-    // accessed via HTTP
-    let secure = endpoint.scheme() == "https";
+        // Workaround for old version of Nova returning HTTP endpoints even if
+        // accessed via HTTP
+        let secure = endpoint.scheme() == "https";
 
-    let result = auth.request(Method::Get, endpoint.clone())?.send();
-    match result {
-        Ok(mut resp) => {
-            let mut info = match resp.json()? {
-                Root::Version { version: ver } => {
-                    trace!("The major version for {} service from {}: {:?}",
-                           service_type, endpoint, ver);
-                    if major_version_supported(ver.id) {
-                        ver.into_service_info()
-                    } else {
-                        Err(Error::new(ErrorKind::EndpointNotFound,
-                                       "Major version not supported"))
+        let result = auth.request(Method::Get, endpoint.clone())?.send();
+        match result {
+            Ok(mut resp) => {
+                let mut info = match resp.json()? {
+                    Root::Version { version: ver } => {
+                        trace!("The major version for {} service from {}: {:?}",
+                               service_type, endpoint, ver);
+                        if Srv::major_version_supported(ver.id) {
+                            ver.into_service_info()
+                        } else {
+                            Err(Error::new(ErrorKind::EndpointNotFound,
+                                           "Major version not supported"))
+                        }
+                    },
+                    Root::Versions { versions: mut vers } => {
+                        vers.sort_unstable_by_key(|x| x.id);
+                        trace!("Available major versions for {} service from {}: {:?}",
+                               service_type, endpoint, vers);
+                        match vers.into_iter()
+                                .rfind(|x| Srv::major_version_supported(x.id)) {
+                            Some(ver) => ver.into_service_info(),
+                            None => Err(Error::new_endpoint_not_found(service_type))
+                        }
                     }
-                },
-                Root::Versions { versions: mut vers } => {
-                    vers.sort_unstable_by_key(|x| x.id);
-                    trace!("Available major versions for {} service from {}: {:?}",
-                           service_type, endpoint, vers);
-                    match vers.into_iter().rfind(|x| major_version_supported(x.id)) {
-                        Some(ver) => ver.into_service_info(),
-                        None => Err(Error::new_endpoint_not_found(service_type))
-                    }
+                }?;
+
+                // Older Nova returns insecure URLs even for secure protocol.
+                if secure {
+                    info.root_url.set_scheme("https").unwrap();
                 }
-            }?;
 
-            // Older Nova returns insecure URLs even for secure protocol.
-            if secure {
-                info.root_url.set_scheme("https").unwrap();
-            }
-
-            debug!("Received {:?} for {} service from {}",
-                   info, service_type, endpoint);
-            Ok(info)
-        },
-        Err(ref e) if e.kind() == ErrorKind::ResourceNotFound => {
-            if utils::url::is_root(&endpoint) {
-                Err(Error::new_endpoint_not_found(service_type))
-            } else {
-                debug!("Got HTTP 404 from {}, trying parent endpoint",
-                       endpoint);
-                fetch_service_info(utils::url::pop(endpoint, true), auth,
-                                   service_type, major_version_supported)
-            }
-        },
-        Err(other) => Err(other)
+                debug!("Received {:?} for {} service from {}",
+                       info, service_type, endpoint);
+                Ok(info)
+            },
+            Err(ref e) if e.kind() == ErrorKind::ResourceNotFound => {
+                if utils::url::is_root(&endpoint) {
+                    Err(Error::new_endpoint_not_found(service_type))
+                } else {
+                    debug!("Got HTTP 404 from {}, trying parent endpoint",
+                           endpoint);
+                    ServiceInfo::fetch::<Srv>(utils::url::pop(endpoint, true),
+                                              auth)
+                }
+            },
+            Err(other) => Err(other)
+        }
     }
 }
 
