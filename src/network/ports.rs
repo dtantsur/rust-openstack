@@ -236,7 +236,7 @@ impl Port {
 
     /// Get network associated with this port.
     pub fn network(&self) -> Result<Network> {
-        Network::new(self.session.clone(), &self.inner.network_id)
+        Network::load(self.session.clone(), &self.inner.network_id)
     }
 
     transparent_property! {

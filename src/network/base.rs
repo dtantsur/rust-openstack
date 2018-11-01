@@ -28,17 +28,23 @@ use super::protocol;
 
 /// Extensions for Session.
 pub trait V2API {
-    /// Create a port.
-    fn create_port(&self, request: protocol::Port) -> Result<protocol::Port>;
-
     /// Create a floating IP.
     fn create_floating_ip(&self, request: protocol::FloatingIp) -> Result<protocol::FloatingIp>;
+
+    /// Create a network.
+    fn create_network(&self, request: protocol::Network) -> Result<protocol::Network>;
+
+    /// Create a port.
+    fn create_port(&self, request: protocol::Port) -> Result<protocol::Port>;
 
     /// Delete a floating IP.
     fn delete_floating_ip<S: AsRef<str>>(&self, id: S) -> Result<()>;
 
     /// Delete a port.
     fn delete_port<S: AsRef<str>>(&self, id_or_name: S) -> Result<()>;
+
+    /// Delete a network.
+    fn delete_network<S: AsRef<str>>(&self, id: S) -> Result<()>;
 
     /// Delete a subnet.
     fn delete_subnet<S: AsRef<str>>(&self, id: S) -> Result<()>;
@@ -127,6 +133,15 @@ impl V2API for Session {
         Ok(floating_ip)
     }
 
+    fn create_network(&self, request: protocol::Network) -> Result<protocol::Network> {
+        debug!("Creating a new network with {:?}", request);
+        let body = protocol::NetworkRoot { network: request };
+        let network = self.request::<V2>(Method::Post, &["networks"], None)?
+            .json(&body).receive_json::<protocol::NetworkRoot>()?.network;
+        debug!("Created network {:?}", network);
+        Ok(network)
+    }
+
     fn create_port(&self, request: protocol::Port) -> Result<protocol::Port> {
         debug!("Creating a new port with {:?}", request);
         let body = protocol::PortRoot { port: request };
@@ -143,6 +158,16 @@ impl V2API for Session {
                                    None)?
             .send()?;
         debug!("Floating IP {} was deleted", id.as_ref());
+        Ok(())
+    }
+
+    fn delete_network<S: AsRef<str>>(&self, id: S) -> Result<()> {
+        debug!("Deleting network {}", id.as_ref());
+        let _ = self.request::<V2>(Method::Delete,
+                                   &["networks", id.as_ref()],
+                                   None)?
+            .send()?;
+        debug!("Network {} was deleted", id.as_ref());
         Ok(())
     }
 

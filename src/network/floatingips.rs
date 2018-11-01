@@ -126,7 +126,7 @@ impl FloatingIp {
 
     /// Get network this floating IP belongs to.
     pub fn floating_network(&self) -> Result<Network> {
-        Network::new(self.session.clone(), &self.inner.floating_network_id)
+        Network::load(self.session.clone(), &self.inner.floating_network_id)
     }
 
     transparent_property! {

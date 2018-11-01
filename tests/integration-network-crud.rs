@@ -77,3 +77,37 @@ fn test_port_create_update_delete() {
     os.get_port("rust-openstack-integration-2")
         .err().expect("Port is still present");
 }
+
+#[test]
+fn test_network_create_delete_simple() {
+    let os = set_up();
+
+    let network = os.new_network().create().expect("Could not create network");
+    assert!(network.admin_state_up());
+    assert!(network.dns_domain().is_none());
+    assert_eq!(network.external(), Some(false));
+    assert!(!network.shared());
+
+    network.delete().expect("Cannot request network deletion")
+        .wait().expect("Network was not deleted");
+}
+
+#[test]
+fn test_network_create_delete_with_fields() {
+    let os = set_up();
+
+    let network = os.new_network()
+        .with_admin_state_up(false)
+        .with_name("rust-openstack-integration-new")
+        .with_mtu(1400)
+        .with_description("New network for testing")
+        .create().expect("Could not create network");
+    assert!(!network.admin_state_up());
+    assert!(network.dns_domain().is_none());
+    assert_eq!(network.external(), Some(false));
+    assert!(!network.shared());
+    assert_eq!(network.name(), "rust-openstack-integration-new");
+
+    network.delete().expect("Cannot request network deletion")
+        .wait().expect("Network was not deleted");
+}

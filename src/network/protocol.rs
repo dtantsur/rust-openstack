@@ -19,6 +19,7 @@
 
 use std::marker::PhantomData;
 use std::net;
+use std::ops::Not;
 
 use chrono::{DateTime, FixedOffset};
 use eui48::MacAddress;
@@ -122,38 +123,71 @@ protocol_enum! {
 }
 
 /// An network.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Network {
     pub admin_state_up: bool,
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub availability_zones: Vec<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub created_at: Option<DateTime<FixedOffset>>,
-    #[serde(deserialize_with = "common::protocol::empty_as_none", default)]
+    #[serde(deserialize_with = "common::protocol::empty_as_none", default,
+            skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    #[serde(deserialize_with = "common::protocol::empty_as_none", default)]
+    #[serde(deserialize_with = "common::protocol::empty_as_none", default,
+            skip_serializing_if = "Option::is_none")]
     pub dns_domain: Option<String>,
-    #[serde(rename = "router:external")]
+    #[serde(rename = "router:external", skip_serializing_if = "Option::is_none")]
     pub external: Option<bool>,
+    #[serde(skip_serializing)]
     pub id: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub is_default: Option<bool>,
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub l2_adjacency: Option<bool>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mtu: Option<u32>,
+    #[serde(skip_serializing_if = "String::is_empty")]
     pub name: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub port_security_enabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub project_id: Option<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Not::not")]
     pub shared: bool,
+    #[serde(skip_serializing)]
     pub subnets: Vec<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub updated_at: Option<DateTime<FixedOffset>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vlan_transparent: Option<bool>,
+}
+
+impl Default for Network {
+    fn default() -> Network {
+        Network {
+            admin_state_up: true,
+            availability_zones: Vec::new(),
+            created_at: None,
+            description: None,
+            dns_domain: None,
+            external: None,
+            id: String::new(),
+            is_default: None,
+            l2_adjacency: None,
+            mtu: None,
+            name: String::new(),
+            port_security_enabled: None,
+            project_id: None,
+            shared: false,
+            subnets: Vec::new(),
+            updated_at: None,
+            vlan_transparent: None,
+        }
+    }
 }
 
 /// A network.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct NetworkRoot {
     pub network: Network
 }

@@ -27,8 +27,8 @@ use super::compute::{Flavor, FlavorQuery, FlavorSummary, KeyPair, KeyPairQuery,
 use super::image::{Image, ImageQuery};
 #[cfg(feature = "network")]
 use super::network::{FloatingIp, FloatingIpQuery, Network, NetworkQuery,
-                     NewFloatingIp, NewPort, Port, PortQuery, Subnet,
-                     SubnetQuery};
+                     NewFloatingIp, NewNetwork, NewPort, Port, PortQuery,
+                     Subnet, SubnetQuery};
 use super::session::Session;
 
 
@@ -262,7 +262,7 @@ impl Cloud {
     /// ```
     #[cfg(feature = "network")]
     pub fn get_network<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Network> {
-        Network::new(self.session.clone(), id_or_name)
+        Network::load(self.session.clone(), id_or_name)
     }
 
     /// Find an port by its name or ID.
@@ -478,6 +478,15 @@ impl Cloud {
     #[cfg(feature = "compute")]
     pub fn new_keypair<S>(&self, name: S) -> NewKeyPair where S: Into<String> {
         NewKeyPair::new(self.session.clone(), name.into())
+    }
+
+    /// Prepare a new network for creation.
+    ///
+    /// This call returns a `NewNetwork` object, which is a builder to populate
+    /// network fields.
+    #[cfg(feature = "network")]
+    pub fn new_network(&self) -> NewNetwork {
+        NewNetwork::new(self.session.clone())
     }
 
     /// Prepare a new port for creation.

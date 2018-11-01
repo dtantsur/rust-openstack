@@ -16,14 +16,15 @@
 
 use std::rc::Rc;
 use std::fmt::Debug;
+use std::time::Duration;
 
 use chrono::{DateTime, FixedOffset};
 use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
 use serde::Serialize;
 
 use super::super::{Error, Result, Sort};
-use super::super::common::{ListResources, NetworkRef, Refresh, ResourceId,
-                           ResourceIterator};
+use super::super::common::{DeletionWaiter, ListResources, NetworkRef, Refresh,
+                           ResourceId, ResourceIterator};
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::base::V2API;
@@ -45,15 +46,27 @@ pub struct Network {
     inner: protocol::Network
 }
 
+/// A request to create a network
+#[derive(Clone, Debug)]
+pub struct NewNetwork {
+    session: Rc<Session>,
+    inner: protocol::Network,
+}
+
 impl Network {
-    /// Load a Network object.
-    pub(crate) fn new<Id: AsRef<str>>(session: Rc<Session>, id: Id)
-            -> Result<Network> {
-        let inner = session.get_network(id)?;
-        Ok(Network {
+    /// Create a network object.
+    fn new(session: Rc<Session>, inner: protocol::Network) -> Network {
+        Network {
             session: session,
             inner: inner
-        })
+        }
+    }
+
+    /// Load a Network object.
+    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id)
+            -> Result<Network> {
+        let inner = session.get_network(id)?;
+        Ok(Network::new(session, inner))
     }
 
     transparent_property! {
@@ -112,6 +125,11 @@ impl Network {
     }
 
     transparent_property! {
+        #[doc = "Whether port security is enabled by default."]
+        port_security_enabled: Option<bool>
+    }
+
+    transparent_property! {
         #[doc = "Whether the network is shared."]
         shared: bool
     }
@@ -119,6 +137,17 @@ impl Network {
     transparent_property! {
         #[doc = "Last update data and time (if available)."]
         updated_at: Option<DateTime<FixedOffset>>
+    }
+
+    transparent_property! {
+        #[doc = "VLAN transparency mode of the network."]
+        vlan_transparent: Option<bool>
+    }
+
+    /// Delete the network.
+    pub fn delete(self) -> Result<DeletionWaiter<Network>> {
+        self.session.delete_network(&self.inner.id)?;
+        Ok(DeletionWaiter::new(self, Duration::new(60, 0), Duration::new(1, 0)))
     }
 }
 
@@ -205,6 +234,69 @@ impl NetworkQuery {
     }
 }
 
+impl NewNetwork {
+    /// Start creating a network.
+    pub(crate) fn new(session: Rc<Session>) -> NewNetwork {
+        NewNetwork {
+            session: session,
+            inner: protocol::Network::default(),
+        }
+    }
+
+    /// Request creation of a network.
+    pub fn create(self) -> Result<Network> {
+        let inner = self.session.create_network(self.inner)?;
+        Ok(Network::new(self.session, inner))
+    }
+
+    creation_inner_field! {
+        #[doc = "Set administrative status for the network."]
+        set_admin_state_up, with_admin_state_up -> admin_state_up: bool
+    }
+
+    creation_inner_field! {
+        #[doc = "Configure whether this network is default."]
+        set_default, with_default -> is_default: optional bool
+    }
+
+    creation_inner_field! {
+        #[doc = "Set description of the network."]
+        set_description, with_description -> description: optional String
+    }
+
+    creation_inner_field! {
+        #[doc = "Set DNS domain for the network."]
+        set_dns_domain, with_dns_domain -> dns_domain: optional String
+    }
+
+    creation_inner_field! {
+        #[doc = "Configure whether this network is external."]
+        set_external, with_external -> external: optional bool
+    }
+
+    creation_inner_field! {
+        #[doc = "Set MTU for the network."]
+        set_mtu, with_mtu -> mtu: optional u32
+    }
+
+    creation_inner_field! {
+        #[doc = "Set a name for the network."]
+        set_name, with_name -> name
+    }
+
+    creation_inner_field! {
+        #[doc = "Configure whether port security is enabled by default."]
+        set_port_security_enabled, with_port_security_enabled
+            -> port_security_enabled: optional bool
+    }
+
+    creation_inner_field! {
+        #[doc = "Configure VLAN transparency mode of the network."]
+        set_vlan_transparent, with_vlan_transparent
+            -> vlan_transparent: optional bool
+    }
+}
+
 impl ResourceId for Network {
     fn resource_id(&self) -> String {
         self.id().clone()
@@ -216,10 +308,8 @@ impl ListResources for Network {
 
     fn list_resources<Q: Serialize + Debug>(session: Rc<Session>, query: Q)
             -> Result<Vec<Network>> {
-        Ok(session.list_networks(&query)?.into_iter().map(|item| Network {
-            session: session.clone(),
-            inner: item
-        }).collect())
+        Ok(session.list_networks(&query)?.into_iter()
+           .map(|item| Network::new(session.clone(), item)).collect())
     }
 }
 
