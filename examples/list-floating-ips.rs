@@ -24,7 +24,7 @@ fn display_floating_ip(floating_ip: &openstack::network::FloatingIp) {
     println!("ID = {}, IP = {}, Fixed IP = {:?}, Status = {}",
              floating_ip.id(), floating_ip.floating_ip_address(),
              floating_ip.fixed_ip_address(), floating_ip.status());
-    println!("* Network = {}, Name = {}",
+    println!("* Network = {}, Name = {:?}",
              floating_ip.floating_network_id(),
              floating_ip.floating_network()
                 .expect("Cannot fetch floating network").name());

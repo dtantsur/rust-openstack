@@ -27,13 +27,13 @@ fn main() {
         .expect("Failed to create an identity provider from the environment");
     let sorting = openstack::network::NetworkSortKey::Name;
 
-    let servers: Vec<openstack::network::Network> = os.find_networks()
+    let networks: Vec<openstack::network::Network> = os.find_networks()
         .sort_by(openstack::Sort::Asc(sorting))
         .into_iter().take(10).collect()
         .expect("Cannot list networks");
     println!("First 10 networks:");
-    for s in &servers {
-        println!("ID = {}, Name = {}, UP = {}",
+    for s in &networks {
+        println!("ID = {}, Name = {:?}, UP = {}",
                  s.id(), s.name(), s.admin_state_up());
     }
 }

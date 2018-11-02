@@ -87,6 +87,7 @@ fn test_network_create_delete_simple() {
     assert!(network.dns_domain().is_none());
     assert_eq!(network.external(), Some(false));
     assert!(!network.shared());
+    assert!(network.name().is_none());
 
     network.delete().expect("Cannot request network deletion")
         .wait().expect("Network was not deleted");
@@ -106,7 +107,7 @@ fn test_network_create_delete_with_fields() {
     assert!(network.dns_domain().is_none());
     assert_eq!(network.external(), Some(false));
     assert!(!network.shared());
-    assert_eq!(network.name(), "rust-openstack-integration-new");
+    assert_eq!(network.name().as_ref().unwrap(), "rust-openstack-integration-new");
 
     network.delete().expect("Cannot request network deletion")
         .wait().expect("Network was not deleted");

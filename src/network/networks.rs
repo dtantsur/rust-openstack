@@ -121,7 +121,7 @@ impl Network {
 
     transparent_property! {
         #[doc = "Network name."]
-        name: ref String
+        name: ref Option<String>
     }
 
     transparent_property! {
@@ -281,7 +281,7 @@ impl NewNetwork {
 
     creation_inner_field! {
         #[doc = "Set a name for the network."]
-        set_name, with_name -> name
+        set_name, with_name -> name: optional String
     }
 
     creation_inner_field! {

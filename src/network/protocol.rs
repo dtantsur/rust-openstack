@@ -146,8 +146,9 @@ pub struct Network {
     pub l2_adjacency: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mtu: Option<u32>,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub name: String,
+    #[serde(deserialize_with = "common::protocol::empty_as_none",
+            skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub port_security_enabled: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -175,7 +176,7 @@ impl Default for Network {
             is_default: None,
             l2_adjacency: None,
             mtu: None,
-            name: String::new(),
+            name: None,
             port_security_enabled: None,
             project_id: None,
             shared: false,

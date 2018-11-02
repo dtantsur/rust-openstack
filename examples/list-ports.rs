@@ -30,7 +30,7 @@ fn display_port(port: &openstack::network::Port) {
         println!("* IP = {}, Subnet = {}", ip.ip_address, subnet.cidr());
     }
     let net = port.network().expect("Cannot fetch network");
-    println!("* Network: ID = {}, Name = {}", net.id(), net.name());
+    println!("* Network: ID = {}, Name = {:?}", net.id(), net.name());
 }
 
 #[cfg(feature = "network")]

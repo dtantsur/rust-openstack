@@ -28,7 +28,7 @@ fn main() {
     let id = env::args().nth(1).expect("Provide a network ID");
     let network = os.get_network(id).expect("Cannot get an network");
 
-    println!("ID = {}, Name = {}, UP = {}, external = {:?}",
+    println!("ID = {}, Name = {:?}, UP = {}, external = {:?}",
              network.id(), network.name(), network.admin_state_up(),
              network.external());
 }

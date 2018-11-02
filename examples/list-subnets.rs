@@ -24,7 +24,7 @@ fn display_subnet(subnet: &openstack::network::Subnet) {
     println!("ID = {}, CIDR = {}, Gateway = {:?}, DHCP? {}",
              subnet.id(), subnet.cidr(), subnet.gateway_ip(), subnet.dhcp_enabled());
     let net = subnet.network().expect("Cannot fetch network");
-    println!("* Network: ID = {}, Name = {}", net.id(), net.name());
+    println!("* Network: ID = {}, Name = {:?}", net.id(), net.name());
 }
 
 #[cfg(feature = "network")]
