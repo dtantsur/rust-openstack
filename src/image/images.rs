@@ -135,7 +135,7 @@ impl Image {
 impl Refresh for Image {
     /// Refresh the image.
     fn refresh(&mut self) -> Result<()> {
-        self.inner = self.session.get_image(&self.inner.id)?;
+        self.inner = self.session.get_image_by_id(&self.inner.id)?;
         Ok(())
     }
 }

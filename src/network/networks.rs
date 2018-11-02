@@ -154,7 +154,7 @@ impl Network {
 impl Refresh for Network {
     /// Refresh the network.
     fn refresh(&mut self) -> Result<()> {
-        self.inner = self.session.get_network(&self.inner.id)?;
+        self.inner = self.session.get_network_by_id(&self.inner.id)?;
         Ok(())
     }
 }

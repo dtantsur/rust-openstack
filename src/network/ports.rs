@@ -286,7 +286,7 @@ impl Port {
 impl Refresh for Port {
     /// Refresh the port.
     fn refresh(&mut self) -> Result<()> {
-        self.inner = self.session.get_port(&self.inner.id)?;
+        self.inner = self.session.get_port_by_id(&self.inner.id)?;
         self.fixed_ips = convert_fixed_ips(&self.session, &mut self.inner);
         self.dirty.clear();
         Ok(())

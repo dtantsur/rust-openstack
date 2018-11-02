@@ -100,7 +100,7 @@ pub struct ServerCreationWaiter {
 impl Refresh for Server {
     /// Refresh the server.
     fn refresh(&mut self) -> Result<()> {
-        self.inner = self.session.get_server(&self.inner.id)?;
+        self.inner = self.session.get_server_by_id(&self.inner.id)?;
         Ok(())
     }
 }
