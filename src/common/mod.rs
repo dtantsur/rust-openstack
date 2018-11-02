@@ -22,7 +22,7 @@ mod waiter;
 
 pub use self::apiversion::ApiVersion;
 pub use self::resourceiterator::ResourceIterator;
-pub use self::types::{FlavorRef, ImageRef, KeyPairRef, ListResources,
-                      NetworkRef, PortRef, ProjectRef, Refresh, ResourceId,
-                      RouterRef, SubnetRef, UserRef};
+pub use self::types::{FlavorRef, ImageRef, KeyPairRef, NetworkRef, PortRef,
+                      ProjectRef, Refresh, RouterRef, SubnetRef, UserRef};
+pub(crate) use self::types::{ListResources, ResourceId};
 pub use self::waiter::DeletionWaiter;
