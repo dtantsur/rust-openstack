@@ -154,7 +154,7 @@ impl Subnet {
 impl Refresh for Subnet {
     /// Refresh the subnet.
     fn refresh(&mut self) -> Result<()> {
-        self.inner = self.session.get_subnet(&self.inner.id)?;
+        self.inner = self.session.get_subnet_by_id(&self.inner.id)?;
         Ok(())
     }
 }

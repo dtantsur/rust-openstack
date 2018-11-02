@@ -130,7 +130,7 @@ impl Flavor {
 impl Refresh for Flavor {
     /// Refresh the flavor.
     fn refresh(&mut self) -> Result<()> {
-        self.inner = self.session.get_flavor(&self.inner.id)?;
+        self.inner = self.session.get_flavor_by_id(&self.inner.id)?;
         Ok(())
     }
 }
