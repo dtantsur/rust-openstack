@@ -16,12 +16,11 @@
 
 use std::fmt::Debug;
 
-use reqwest::Method;
 use serde::Serialize;
 
 use super::super::Result;
 use super::super::common::ApiVersion;
-use super::super::session::{Session, ServiceType};
+use super::super::session::{RequestBuilderExt, Session, ServiceType};
 use super::super::utils::{self, ResultExt};
 use super::protocol;
 
@@ -127,7 +126,7 @@ impl V2API for Session {
     fn create_floating_ip(&self, request: protocol::FloatingIp) -> Result<protocol::FloatingIp> {
         debug!("Creating a new floating IP with {:?}", request);
         let body = protocol::FloatingIpRoot { floatingip: request };
-        let floating_ip = self.request::<V2>(Method::Post, &["floatingips"], None)?
+        let floating_ip = self.post::<V2>(&["floatingips"], None)?
             .json(&body).receive_json::<protocol::FloatingIpRoot>()?.floatingip;
         debug!("Created floating IP {:?}", floating_ip);
         Ok(floating_ip)
@@ -136,7 +135,7 @@ impl V2API for Session {
     fn create_network(&self, request: protocol::Network) -> Result<protocol::Network> {
         debug!("Creating a new network with {:?}", request);
         let body = protocol::NetworkRoot { network: request };
-        let network = self.request::<V2>(Method::Post, &["networks"], None)?
+        let network = self.post::<V2>(&["networks"], None)?
             .json(&body).receive_json::<protocol::NetworkRoot>()?.network;
         debug!("Created network {:?}", network);
         Ok(network)
@@ -145,7 +144,7 @@ impl V2API for Session {
     fn create_port(&self, request: protocol::Port) -> Result<protocol::Port> {
         debug!("Creating a new port with {:?}", request);
         let body = protocol::PortRoot { port: request };
-        let port = self.request::<V2>(Method::Post, &["ports"], None)?
+        let port = self.post::<V2>(&["ports"], None)?
             .json(&body).receive_json::<protocol::PortRoot>()?.port;
         debug!("Created port {:?}", port);
         Ok(port)
@@ -153,49 +152,35 @@ impl V2API for Session {
 
     fn delete_floating_ip<S: AsRef<str>>(&self, id: S) -> Result<()> {
         debug!("Deleting floating IP {}", id.as_ref());
-        let _ = self.request::<V2>(Method::Delete,
-                                   &["floatingips", id.as_ref()],
-                                   None)?
-            .send()?;
+        self.delete::<V2>(&["floatingips", id.as_ref()], None)?.commit()?;
         debug!("Floating IP {} was deleted", id.as_ref());
         Ok(())
     }
 
     fn delete_network<S: AsRef<str>>(&self, id: S) -> Result<()> {
         debug!("Deleting network {}", id.as_ref());
-        let _ = self.request::<V2>(Method::Delete,
-                                   &["networks", id.as_ref()],
-                                   None)?
-            .send()?;
+        self.delete::<V2>(&["networks", id.as_ref()], None)?.commit()?;
         debug!("Network {} was deleted", id.as_ref());
         Ok(())
     }
 
     fn delete_port<S: AsRef<str>>(&self, id: S) -> Result<()> {
         debug!("Deleting port {}", id.as_ref());
-        let _ = self.request::<V2>(Method::Delete,
-                                   &["ports", id.as_ref()],
-                                   None)?
-            .send()?;
+        self.delete::<V2>(&["ports", id.as_ref()], None)?.commit()?;
         debug!("Port {} was deleted", id.as_ref());
         Ok(())
     }
 
     fn delete_subnet<S: AsRef<str>>(&self, id: S) -> Result<()> {
         debug!("Deleting subnet {}", id.as_ref());
-        let _ = self.request::<V2>(Method::Delete,
-                                   &["subnets", id.as_ref()],
-                                   None)?
-            .send()?;
+        self.delete::<V2>(&["subnets", id.as_ref()], None)?.commit()?;
         debug!("Subnet {} was deleted", id.as_ref());
         Ok(())
     }
 
     fn get_floating_ip<S: AsRef<str>>(&self, id: S) -> Result<protocol::FloatingIp> {
         trace!("Get floating IP by ID {}", id.as_ref());
-        let floatingip = self.request::<V2>(Method::Get,
-                                            &["floatingips", id.as_ref()],
-                                            None)?
+        let floatingip = self.get::<V2>(&["floatingips", id.as_ref()], None)?
            .receive_json::<protocol::FloatingIpRoot>()?.floatingip;
         trace!("Received {:?}", floatingip);
         Ok(floatingip)
@@ -203,9 +188,7 @@ impl V2API for Session {
 
     fn get_network_by_id<S: AsRef<str>>(&self, id: S) -> Result<protocol::Network> {
         trace!("Get network by ID {}", id.as_ref());
-        let network = self.request::<V2>(Method::Get,
-                                         &["networks", id.as_ref()],
-                                         None)?
+        let network = self.get::<V2>(&["networks", id.as_ref()], None)?
            .receive_json::<protocol::NetworkRoot>()?.network;
         trace!("Received {:?}", network);
         Ok(network)
@@ -213,7 +196,7 @@ impl V2API for Session {
 
     fn get_network_by_name<S: AsRef<str>>(&self, name: S) -> Result<protocol::Network> {
         trace!("Get network by name {}", name.as_ref());
-        let items = self.request::<V2>(Method::Get, &["networks"], None)?
+        let items = self.get::<V2>(&["networks"], None)?
             .query(&[("name", name.as_ref())])
             .receive_json::<protocol::NetworksRoot>()?.networks;
         let result = utils::one(items, "Network with given name or ID not found",
@@ -224,9 +207,7 @@ impl V2API for Session {
 
     fn get_port_by_id<S: AsRef<str>>(&self, id: S) -> Result<protocol::Port> {
         trace!("Get port by ID {}", id.as_ref());
-        let port = self.request::<V2>(Method::Get,
-                                         &["ports", id.as_ref()],
-                                         None)?
+        let port = self.get::<V2>(&["ports", id.as_ref()], None)?
            .receive_json::<protocol::PortRoot>()?.port;
         trace!("Received {:?}", port);
         Ok(port)
@@ -234,7 +215,7 @@ impl V2API for Session {
 
     fn get_port_by_name<S: AsRef<str>>(&self, name: S) -> Result<protocol::Port> {
         trace!("Get port by name {}", name.as_ref());
-        let items = self.request::<V2>(Method::Get, &["ports"], None)?
+        let items = self.get::<V2>(&["ports"], None)?
             .query(&[("name", name.as_ref())])
             .receive_json::<protocol::PortsRoot>()?.ports;
         let result = utils::one(items, "Port with given name or ID not found",
@@ -245,9 +226,7 @@ impl V2API for Session {
 
     fn get_subnet_by_id<S: AsRef<str>>(&self, id: S) -> Result<protocol::Subnet> {
         trace!("Get subnet by ID {}", id.as_ref());
-        let subnet = self.request::<V2>(Method::Get,
-                                         &["subnets", id.as_ref()],
-                                         None)?
+        let subnet = self.get::<V2>(&["subnets", id.as_ref()], None)?
            .receive_json::<protocol::SubnetRoot>()?.subnet;
         trace!("Received {:?}", subnet);
         Ok(subnet)
@@ -255,7 +234,7 @@ impl V2API for Session {
 
     fn get_subnet_by_name<S: AsRef<str>>(&self, name: S) -> Result<protocol::Subnet> {
         trace!("Get subnet by name {}", name.as_ref());
-        let items = self.request::<V2>(Method::Get, &["subnets"], None)?
+        let items = self.get::<V2>(&["subnets"], None)?
             .query(&[("name", name.as_ref())])
             .receive_json::<protocol::SubnetsRoot>()?.subnets;
         let result = utils::one(items, "Subnet with given name or ID not found",
@@ -267,7 +246,7 @@ impl V2API for Session {
     fn list_floating_ips<Q: Serialize + Debug>(&self, query: &Q)
             -> Result<Vec<protocol::FloatingIp>> {
         trace!("Listing floating IPs with {:?}", query);
-        let result = self.request::<V2>(Method::Get, &["floatingips"], None)?
+        let result = self.get::<V2>(&["floatingips"], None)?
            .query(query).receive_json::<protocol::FloatingIpsRoot>()?.floatingips;
         trace!("Received floating IPs: {:?}", result);
         Ok(result)
@@ -276,7 +255,7 @@ impl V2API for Session {
     fn list_networks<Q: Serialize + Debug>(&self, query: &Q)
             -> Result<Vec<protocol::Network>> {
         trace!("Listing networks with {:?}", query);
-        let result = self.request::<V2>(Method::Get, &["networks"], None)?
+        let result = self.get::<V2>(&["networks"], None)?
            .query(query).receive_json::<protocol::NetworksRoot>()?.networks;
         trace!("Received networks: {:?}", result);
         Ok(result)
@@ -285,7 +264,7 @@ impl V2API for Session {
     fn list_ports<Q: Serialize + Debug>(&self, query: &Q)
             -> Result<Vec<protocol::Port>> {
         trace!("Listing ports with {:?}", query);
-        let result = self.request::<V2>(Method::Get, &["ports"], None)?
+        let result = self.get::<V2>(&["ports"], None)?
            .query(query).receive_json::<protocol::PortsRoot>()?.ports;
         trace!("Received ports: {:?}", result);
         Ok(result)
@@ -294,7 +273,7 @@ impl V2API for Session {
     fn list_subnets<Q: Serialize + Debug>(&self, query: &Q)
             -> Result<Vec<protocol::Subnet>> {
         trace!("Listing subnets with {:?}", query);
-        let result = self.request::<V2>(Method::Get, &["subnets"], None)?
+        let result = self.get::<V2>(&["subnets"], None)?
            .query(query).receive_json::<protocol::SubnetsRoot>()?.subnets;
         trace!("Received subnets: {:?}", result);
         Ok(result)
@@ -304,8 +283,7 @@ impl V2API for Session {
             -> Result<protocol::FloatingIp> {
         debug!("Updating floatingIP {} with {:?}", id.as_ref(), update);
         let body = protocol::FloatingIpUpdateRoot { floatingip: update };
-        let floating_ip = self.request::<V2>(Method::Put,
-                                             &["floatingips", id.as_ref()], None)?
+        let floating_ip = self.put::<V2>(&["floatingips", id.as_ref()], None)?
             .json(&body).receive_json::<protocol::FloatingIpRoot>()?.floatingip;
         debug!("Updated floating IP {:?}", floating_ip);
         Ok(floating_ip)
@@ -315,7 +293,7 @@ impl V2API for Session {
             -> Result<protocol::Port> {
         debug!("Updating port {} with {:?}", id.as_ref(), update);
         let body = protocol::PortUpdateRoot { port: update };
-        let port = self.request::<V2>(Method::Put, &["ports", id.as_ref()], None)?
+        let port = self.put::<V2>(&["ports", id.as_ref()], None)?
             .json(&body).receive_json::<protocol::PortRoot>()?.port;
         debug!("Updated port {:?}", port);
         Ok(port)

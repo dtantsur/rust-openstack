@@ -194,11 +194,11 @@ impl From<HttpClientError> for Error {
     fn from(value: HttpClientError) -> Error {
         let msg = value.to_string();
         let kind = match value.status() {
-            Some(StatusCode::Unauthorized) => ErrorKind::AuthenticationFailed,
-            Some(StatusCode::Forbidden) => ErrorKind::AccessDenied,
-            Some(StatusCode::NotFound) => ErrorKind::ResourceNotFound,
-            Some(StatusCode::NotAcceptable) => ErrorKind::IncompatibleApiVersion,
-            Some(StatusCode::Conflict) => ErrorKind::Conflict,
+            Some(StatusCode::UNAUTHORIZED) => ErrorKind::AuthenticationFailed,
+            Some(StatusCode::FORBIDDEN) => ErrorKind::AccessDenied,
+            Some(StatusCode::NOT_FOUND) => ErrorKind::ResourceNotFound,
+            Some(StatusCode::NOT_ACCEPTABLE) => ErrorKind::IncompatibleApiVersion,
+            Some(StatusCode::CONFLICT) => ErrorKind::Conflict,
             Some(c) if c.is_client_error() => ErrorKind::InvalidInput,
             Some(c) if c.is_server_error() => ErrorKind::InternalServerError,
             None => ErrorKind::ProtocolError,

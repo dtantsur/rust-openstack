@@ -17,12 +17,10 @@
 use std::cell::Ref;
 
 use log;
-use reqwest::{Body, Method, RequestBuilder as ReqwestRB, Response, Url};
-use reqwest::header::{Header, Headers};
-use serde::Serialize;
+use reqwest::{Method, RequestBuilder, Response, Url};
 use serde::de::DeserializeOwned;
 
-use super::Result;
+use super::{Error, ErrorKind, Result};
 use super::auth::AuthMethod;
 use super::common::ApiVersion;
 use super::common::protocol::ServiceInfo;
@@ -37,74 +35,37 @@ pub trait ServiceType {
     /// Check whether this service type is compatible with the given major version.
     fn major_version_supported(_version: ApiVersion) -> bool { true }
 
-    /// Return headers to set for this API version.
-    fn api_version_headers(_version: ApiVersion) -> Option<Headers> { None }
+    /// Update the request to include the API version headers.
+    ///
+    /// The default implementation fails with `IncompatibleApiVersion`.
+    fn set_api_version_headers(_request: RequestBuilder, _version: ApiVersion)
+            -> Result<RequestBuilder> {
+        Err(Error::new(ErrorKind::IncompatibleApiVersion,
+                       format!("The {} service does not support API versions",
+                               Self::catalog_type())))
+    }
 }
 
-/// An HTTP request builder.
-///
-/// This is a thin wrapper around reqwest's RequestBuilder with error handling.
-#[derive(Debug)]
-pub struct RequestBuilder {
-    inner: ReqwestRB,
+/// Extension trait for HTTP calls with error handling.
+pub trait RequestBuilderExt {
+    /// Send a request and validate the status code.
+    fn send_checked(self) -> Result<Response>;
+
+    /// Send a request and discard the results.
+    fn commit(self) -> Result<()> where Self: Sized {
+        let _ = self.send_checked()?;
+        Ok(())
+    }
+
+    /// Send a request and receive a JSON back.
+    fn receive_json<T: DeserializeOwned>(self) -> Result<T> where Self: Sized {
+        self.send_checked()?.json().map_err(From::from)
+    }
 }
 
-impl RequestBuilder {
-    /// Create a RequestBuilder by wrapping a reqwest's one.
-    pub fn new(inner: ReqwestRB) -> RequestBuilder {
-        RequestBuilder {
-            inner: inner
-        }
-    }
-
-    /// Access to the inner object.
-    pub fn inner_mut(&mut self) -> &mut ReqwestRB {
-        &mut self.inner
-    }
-
-    /// Take the inner object out.
-    pub fn into_inner(self) -> ReqwestRB {
-        self.inner
-    }
-
-    /// Add a Header to this Request.
-    pub fn header<H: Header>(&mut self, header: H) -> &mut RequestBuilder {
-        let _ = self.inner.header(header);
-        self
-    }
-
-    /// Add a set of Headers to the existing ones on this Request.
-    pub fn headers(&mut self, headers: Headers) -> &mut RequestBuilder {
-        let _ = self.inner.headers(headers);
-        self
-    }
-
-    /// Set the request body.
-    pub fn body<T: Into<Body>>(&mut self, body: T) -> &mut RequestBuilder {
-        let _ = self.inner.body(body);
-        self
-    }
-
-    /// Modify the query string of the URL.
-    pub fn query<T: Serialize>(&mut self, query: &T) -> &mut RequestBuilder {
-        let _ = self.inner.query(query);
-        self
-    }
-
-    /// Send a JSON body.
-    pub fn json<T: Serialize>(&mut self, json: &T) -> &mut RequestBuilder {
-        let _ = self.inner.json(json);
-        self
-    }
-
-    /// Construct the Request and sends it the target URL, returning a Response.
-    pub fn send(&mut self) -> Result<Response> {
-        _log(self.inner.send()?).error_for_status().map_err(From::from)
-    }
-
-    /// Construct the Request, send it and receive a JSON.
-    pub fn receive_json<T: DeserializeOwned>(&mut self) -> Result<T> {
-        _log(self.inner.send()?).error_for_status()?.json().map_err(From::from)
+impl RequestBuilderExt for RequestBuilder {
+    fn send_checked(self) -> Result<Response> {
+        _log(self.send()?).error_for_status().map_err(From::from)
     }
 }
 
@@ -211,14 +172,35 @@ impl Session {
         let url = self.get_endpoint::<Srv>(path)?;
         trace!("Sending HTTP {} request to {} with API version {:?}",
                method, url, api_version);
-        let maybe_headers = api_version.and_then(|ver| {
-            Srv::api_version_headers(ver)
-        });
         let mut builder = self.auth.request(method, url)?;
-        if let Some(headers) = maybe_headers {
-            let _unused = builder.headers(headers);
+        if let Some(version) = api_version {
+            builder = Srv::set_api_version_headers(builder, version)?;
         }
         Ok(builder)
+    }
+
+    /// Start a GET request.
+    pub fn get<Srv: ServiceType>(&self, path: &[&str], api_version: Option<ApiVersion>)
+            -> Result<RequestBuilder> {
+        self.request::<Srv>(Method::GET, path, api_version)
+    }
+
+    /// Start a POST request.
+    pub fn post<Srv: ServiceType>(&self, path: &[&str], api_version: Option<ApiVersion>)
+            -> Result<RequestBuilder> {
+        self.request::<Srv>(Method::POST, path, api_version)
+    }
+
+    /// Start a PUT request.
+    pub fn put<Srv: ServiceType>(&self, path: &[&str], api_version: Option<ApiVersion>)
+            -> Result<RequestBuilder> {
+        self.request::<Srv>(Method::PUT, path, api_version)
+    }
+
+    /// Start a DELETE request.
+    pub fn delete<Srv: ServiceType>(&self, path: &[&str], api_version: Option<ApiVersion>)
+            -> Result<RequestBuilder> {
+        self.request::<Srv>(Method::DELETE, path, api_version)
     }
 
     fn ensure_service_info<Srv>(&self) -> Result<()> where Srv: ServiceType {

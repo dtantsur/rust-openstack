@@ -28,7 +28,7 @@ use serde_json;
 
 use super::super::{Error, ErrorKind, Result};
 use super::super::auth::AuthMethod;
-use super::super::session::ServiceType;
+use super::super::session::{RequestBuilderExt, ServiceType};
 use super::super::utils;
 use super::ApiVersion;
 
@@ -119,7 +119,7 @@ impl ServiceInfo {
         // accessed via HTTP
         let secure = endpoint.scheme() == "https";
 
-        let result = auth.request(Method::Get, endpoint.clone())?.send();
+        let result = auth.request(Method::GET, endpoint.clone())?.send_checked();
         match result {
             Ok(mut resp) => {
                 let mut info = match resp.json()? {

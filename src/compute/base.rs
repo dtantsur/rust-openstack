@@ -17,15 +17,14 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
 
-use reqwest::Method;
-use reqwest::header::Headers;
+use reqwest::RequestBuilder;
 use serde::Serialize;
 use serde_json;
 
 use super::super::Result;
 use super::super::common::{self, ApiVersion};
 use super::super::common::protocol::Ref;
-use super::super::session::{Session, ServiceType};
+use super::super::session::{RequestBuilderExt, Session, ServiceType};
 use super::super::utils::{self, ResultExt};
 use super::protocol;
 
@@ -143,7 +142,7 @@ impl V2API for Session {
             -> Result<protocol::KeyPair> {
         debug!("Creating a key pair with {:?}", request);
         let body = protocol::KeyPairCreateRoot { keypair: request };
-        let keypair = self.request::<V2>(Method::Post, &["os-keypairs"], None)?
+        let keypair = self.post::<V2>(&["os-keypairs"], None)?
             .json(&body).receive_json::<protocol::KeyPairRoot>()?.keypair;
         debug!("Created key pair {:?}", keypair);
         Ok(keypair)
@@ -152,7 +151,7 @@ impl V2API for Session {
     fn create_server(&self, request: protocol::ServerCreate) -> Result<Ref> {
         debug!("Creating a server with {:?}", request);
         let body = protocol::ServerCreateRoot { server: request };
-        let server = self.request::<V2>(Method::Post, &["servers"], None)?
+        let server = self.post::<V2>(&["servers"], None)?
             .json(&body).receive_json::<protocol::CreatedServerRoot>()?.server;
         trace!("Requested creation of server {:?}", server);
         Ok(server)
@@ -160,20 +159,14 @@ impl V2API for Session {
 
     fn delete_keypair<S: AsRef<str>>(&self, name: S) -> Result<()> {
         debug!("Deleting key pair {}", name.as_ref());
-        let _ = self.request::<V2>(Method::Delete,
-                                   &["os-keypairs", name.as_ref()],
-                                   None)?
-            .send()?;
+        self.delete::<V2>(&["os-keypairs", name.as_ref()], None)?.commit()?;
         debug!("Key pair {} was deleted", name.as_ref());
         Ok(())
     }
 
     fn delete_server<S: AsRef<str>>(&self, id: S) -> Result<()> {
         trace!("Deleting server {}", id.as_ref());
-        let _ = self.request::<V2>(Method::Delete,
-                                   &["servers", id.as_ref()],
-                                   None)?
-            .send()?;
+        self.delete::<V2>(&["servers", id.as_ref()], None)?.commit()?;
         debug!("Successfully requested deletion of server {}", id.as_ref());
         Ok(())
     }
@@ -181,10 +174,8 @@ impl V2API for Session {
     fn get_extra_specs_by_flavor_id<S: AsRef<str>>(&self, id: S)
             -> Result<HashMap<String, String>> {
         trace!("Get compute extra specs by ID {}", id.as_ref());
-        let extra_specs = self.request::<V2>(Method::Get,
-                                             &["flavors", id.as_ref(),
-                                               "os-extra_specs"],
-                                             None)?
+        let extra_specs = self.get::<V2>(&["flavors", id.as_ref(), "os-extra_specs"],
+                                         None)?
            .receive_json::<protocol::ExtraSpecsRoot>()?.extra_specs;
         trace!("Received {:?}", extra_specs);
         Ok(extra_specs)
@@ -193,9 +184,7 @@ impl V2API for Session {
     fn get_flavor_by_id<S: AsRef<str>>(&self, id: S) -> Result<protocol::Flavor> {
         trace!("Get compute flavor by ID {}", id.as_ref());
         let version = flavor_api_version(self)?;
-        let flavor = self.request::<V2>(Method::Get,
-                                        &["flavors", id.as_ref()],
-                                        version)?
+        let flavor = self.get::<V2>(&["flavors", id.as_ref()], version)?
            .receive_json::<protocol::FlavorRoot>()?.flavor;
         trace!("Received {:?}", flavor);
         Ok(flavor)
@@ -203,7 +192,7 @@ impl V2API for Session {
 
     fn get_flavor_by_name<S: AsRef<str>>(&self, name: S) -> Result<protocol::Flavor> {
         trace!("Get compute flavor by name {}", name.as_ref());
-        let items = self.request::<V2>(Method::Get, &["flavors"], None)?
+        let items = self.get::<V2>(&["flavors"], None)?
             .receive_json::<protocol::FlavorsRoot>()?.flavors
             .into_iter().filter(|item| item.name == name.as_ref());
         utils::one(items, "Flavor with given name or ID not found",
@@ -214,9 +203,7 @@ impl V2API for Session {
     fn get_keypair<S: AsRef<str>>(&self, name: S) -> Result<protocol::KeyPair> {
         trace!("Get compute key pair by name {}", name.as_ref());
         let ver = self.pick_compute_api_version(&[API_VERSION_KEYPAIR_TYPE])?;
-        let keypair = self.request::<V2>(Method::Get,
-                                        &["os-keypairs", name.as_ref()],
-                                        ver)?
+        let keypair = self.get::<V2>(&["os-keypairs", name.as_ref()], ver)?
            .receive_json::<protocol::KeyPairRoot>()?.keypair;
         trace!("Received {:?}", keypair);
         Ok(keypair)
@@ -225,9 +212,7 @@ impl V2API for Session {
     fn get_server_by_id<S: AsRef<str>>(&self, id: S) -> Result<protocol::Server> {
         trace!("Get compute server with ID {}", id.as_ref());
         let version = self.pick_compute_api_version(&[API_VERSION_SERVER_DESCRIPTION])?;
-        let server = self.request::<V2>(Method::Get,
-                                        &["servers", id.as_ref()],
-                                        version)?
+        let server = self.get::<V2>(&["servers", id.as_ref()], version)?
            .receive_json::<protocol::ServerRoot>()?.server;
         trace!("Received {:?}", server);
         Ok(server)
@@ -235,7 +220,7 @@ impl V2API for Session {
 
     fn get_server_by_name<S: AsRef<str>>(&self, name: S) -> Result<protocol::Server> {
         trace!("Get compute server with name {}", name.as_ref());
-        let items = self.request::<V2>(Method::Get, &["servers"], None)?
+        let items = self.get::<V2>(&["servers"], None)?
             .query(&[("name", name.as_ref())])
             .receive_json::<protocol::ServersRoot>()?.servers
             .into_iter().filter(|item| item.name == name.as_ref());
@@ -247,7 +232,7 @@ impl V2API for Session {
     fn list_flavors<Q: Serialize + Debug>(&self, query: &Q)
             -> Result<Vec<common::protocol::IdAndName>> {
         trace!("Listing compute flavors with {:?}", query);
-        let result = self.request::<V2>(Method::Get, &["flavors"], None)?
+        let result = self.get::<V2>(&["flavors"], None)?
            .query(query).receive_json::<protocol::FlavorsRoot>()?.flavors;
         trace!("Received flavors: {:?}", result);
         Ok(result)
@@ -257,9 +242,7 @@ impl V2API for Session {
             -> Result<Vec<protocol::Flavor>> {
         trace!("Listing compute flavors with {:?}", query);
         let version = self.pick_compute_api_version(&[API_VERSION_FLAVOR_EXTRA_SPECS])?;
-        let result = self.request::<V2>(Method::Get,
-                                        &["flavors", "detail"],
-                                        version)?
+        let result = self.get::<V2>(&["flavors", "detail"], version)?
            .query(query).receive_json::<protocol::FlavorsDetailRoot>()?.flavors;
         trace!("Received flavors: {:?}", result);
         Ok(result)
@@ -270,7 +253,7 @@ impl V2API for Session {
         trace!("Listing compute key pairs with {:?}", query);
         let ver = self.pick_compute_api_version(&[API_VERSION_KEYPAIR_TYPE,
                                                   API_VERSION_KEYPAIR_PAGINATION])?;
-        let result = self.request::<V2>(Method::Get, &["os-keypairs"], ver)?
+        let result = self.get::<V2>(&["os-keypairs"], ver)?
            .query(query).receive_json::<protocol::KeyPairsRoot>()?.keypairs
            .into_iter().map(|item| item.keypair).collect::<Vec<_>>();
         trace!("Received key pairs: {:?}", result);
@@ -280,7 +263,7 @@ impl V2API for Session {
     fn list_servers<Q: Serialize + Debug>(&self, query: &Q)
             -> Result<Vec<common::protocol::IdAndName>> {
         trace!("Listing compute servers with {:?}", query);
-        let result = self.request::<V2>(Method::Get, &["servers"], None)?
+        let result = self.get::<V2>(&["servers"], None)?
            .query(query).receive_json::<protocol::ServersRoot>()?.servers;
         trace!("Received servers: {:?}", result);
         Ok(result)
@@ -290,9 +273,7 @@ impl V2API for Session {
             -> Result<Vec<protocol::Server>> {
         trace!("Listing compute servers with {:?}", query);
         let version = self.pick_compute_api_version(&[API_VERSION_SERVER_DESCRIPTION])?;
-        let result = self.request::<V2>(Method::Get,
-                                        &["servers", "detail"],
-                                        version)?
+        let result = self.get::<V2>(&["servers", "detail"], version)?
            .query(query).receive_json::<protocol::ServersDetailRoot>()?.servers;
         trace!("Received servers: {:?}", result);
         Ok(result)
@@ -312,10 +293,8 @@ impl V2API for Session {
                action.as_ref(), id.as_ref(), args);
         let mut body = HashMap::new();
         let _ = body.insert(action.as_ref(), args);
-        let _ = self.request::<V2>(Method::Post,
-                                   &["servers", id.as_ref(), "action"],
-                                   None)?
-            .json(&body).send()?;
+        self.post::<V2>(&["servers", id.as_ref(), "action"], None)?
+            .json(&body).commit()?;
         debug!("Successfully ran {} on server {}", action.as_ref(), id.as_ref());
         Ok(())
     }
@@ -336,10 +315,9 @@ impl ServiceType for V2 {
         version.0 == 2
     }
 
-    fn api_version_headers(version: ApiVersion) -> Option<Headers> {
-        let mut hdrs = Headers::new();
-        // TODO: typed header, new-style header support
-        hdrs.set_raw("x-openstack-nova-api-version", version.to_string());
-        Some(hdrs)
+    fn set_api_version_headers(request: RequestBuilder, version: ApiVersion)
+            -> Result<RequestBuilder> {
+        // TODO: new-style header support
+        Ok(request.header("x-openstack-nova-api-version", version.to_string()))
     }
 }

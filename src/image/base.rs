@@ -16,12 +16,11 @@
 
 use std::fmt::Debug;
 
-use reqwest::Method;
 use serde::Serialize;
 
 use super::super::Result;
 use super::super::common::ApiVersion;
-use super::super::session::{Session, ServiceType};
+use super::super::session::{RequestBuilderExt, Session, ServiceType};
 use super::super::utils::{self, ResultExt};
 use super::protocol;
 
@@ -57,9 +56,7 @@ const SERVICE_TYPE: &str = "image";
 impl V2API for Session {
     fn get_image_by_id<S: AsRef<str>>(&self, id: S) -> Result<protocol::Image> {
         trace!("Fetching image {}", id.as_ref());
-        let image = self.request::<V2>(Method::Get,
-                                       &["images", id.as_ref()],
-                                       None)?
+        let image = self.get::<V2>(&["images", id.as_ref()], None)?
            .receive_json::<protocol::Image>()?;
         trace!("Received {:?}", image);
         Ok(image)
@@ -67,7 +64,7 @@ impl V2API for Session {
 
     fn get_image_by_name<S: AsRef<str>>(&self, name: S) -> Result<protocol::Image> {
         trace!("Get image by name {}", name.as_ref());
-        let items = self.request::<V2>(Method::Get, &["images"], None)?
+        let items = self.get::<V2>(&["images"], None)?
             .query(&[("name", name.as_ref())])
             .receive_json::<protocol::ImagesRoot>()?.images;
         let result = utils::one(items, "Image with given name or ID not found",
@@ -79,7 +76,7 @@ impl V2API for Session {
     fn list_images<Q: Serialize + Debug>(&self, query: &Q)
             -> Result<Vec<protocol::Image>> {
         trace!("Listing images with {:?}", query);
-        let result = self.request::<V2>(Method::Get, &["images"], None)?
+        let result = self.get::<V2>(&["images"], None)?
            .query(query).receive_json::<protocol::ImagesRoot>()?.images;
         trace!("Received images: {:?}", result);
         Ok(result)

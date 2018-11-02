@@ -14,10 +14,9 @@
 
 //! Simple authentication methods.
 
-use reqwest::{Client, IntoUrl, Method, Url, UrlError};
+use reqwest::{Client, IntoUrl, Method, RequestBuilder, Url};
 
 use super::super::Result;
-use super::super::session::RequestBuilder;
 use super::AuthMethod;
 
 /// Authentication method that provides no authentication.
@@ -35,8 +34,7 @@ impl NoAuth {
     ///
     /// This endpoint will be returned in response to all get_endpoint calls
     /// of the [AuthMethod](trait.AuthMethod.html) trait.
-    pub fn new<U>(endpoint: U) -> ::std::result::Result<NoAuth, UrlError>
-            where U: IntoUrl {
+    pub fn new<U>(endpoint: U) -> Result<NoAuth> where U: IntoUrl {
         Ok(NoAuth {
             client: Client::new(),
             endpoint: endpoint.into_url()?
@@ -47,7 +45,7 @@ impl NoAuth {
 impl AuthMethod for NoAuth {
     /// Create a request.
     fn request(&self, method: Method, url: Url) -> Result<RequestBuilder> {
-        Ok(RequestBuilder::new(self.client.request(method, url)))
+        Ok(self.client.request(method, url))
     }
 
     /// Get a predefined endpoint for all service types

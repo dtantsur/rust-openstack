@@ -19,12 +19,12 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 
 use chrono::{Duration, Local};
-use reqwest::{Client, IntoUrl, Method, Response, StatusCode, Url, UrlError};
-use reqwest::header::{ContentType, Headers};
+use reqwest::{Client, IntoUrl, Method, RequestBuilder, Response, Url};
+use reqwest::header::CONTENT_TYPE;
 
 use super::super::{Error, ErrorKind, Result};
 use super::super::identity::{catalog, protocol};
-use super::super::session::RequestBuilder;
+use super::super::session::RequestBuilderExt;
 use super::super::utils::ValueCache;
 use super::AuthMethod;
 
@@ -32,6 +32,7 @@ use super::AuthMethod;
 const MISSING_USER: &str = "User information required";
 const MISSING_SCOPE: &str = "Unscoped tokens are not supported now";
 const MISSING_SUBJECT_HEADER: &str = "Missing X-Subject-Token header";
+const INVALID_SUBJECT_HEADER: &str = "Invalid X-Subject-Token header";
 // Required validity time in minutes. Here we refresh the token if it expires
 // in 10 minutes or less.
 const TOKEN_MIN_VALIDITY: i64 = 10;
@@ -84,14 +85,13 @@ impl Identity {
     }
 
     /// Create a password authentication against the given Identity service.
-    pub fn new<U>(auth_url: U) -> ::std::result::Result<Identity, UrlError>
-            where U: IntoUrl  {
+    pub fn new<U>(auth_url: U) -> Result<Identity> where U: IntoUrl  {
         Identity::new_with_client(auth_url, Client::new())
     }
 
     /// Create a password authentication against the given Identity service.
     pub fn new_with_region<U>(auth_url: U, region: String)
-            -> ::std::result::Result<Identity, UrlError> where U: IntoUrl  {
+            -> Result<Identity> where U: IntoUrl  {
         Ok(Identity {
             client: Client::new(),
             auth_url: auth_url.into_url()?,
@@ -103,7 +103,7 @@ impl Identity {
 
     /// Create a password authentication against the given Identity service.
     pub fn new_with_client<U>(auth_url: U, client: Client)
-            -> ::std::result::Result<Identity, UrlError> where U: IntoUrl  {
+            -> Result<Identity> where U: IntoUrl  {
         Ok(Identity {
             client: client,
             auth_url: auth_url.into_url()?,
@@ -156,13 +156,6 @@ impl Identity {
     }
 }
 
-#[inline]
-fn extract_subject_token(headers: &Headers) -> Option<String> {
-    // TODO: replace with a typed header
-    headers.get_raw("x-subject-token").and_then(|h| h.one())
-        .map(|buf| { String::from_utf8_lossy(buf).into_owned() })
-}
-
 impl PasswordAuth {
     /// Get a reference to the auth URL.
     pub fn auth_url(&self) -> &Url {
@@ -193,36 +186,21 @@ impl PasswordAuth {
     }
 
     fn token_from_response(&self, mut resp: Response) -> Result<Token> {
-        let token_value = match resp.status() {
-            StatusCode::Ok | StatusCode::Created => {
-                match extract_subject_token(resp.headers()) {
-                    Some(value) => value,
-                    None => {
-                        error!("No X-Subject-Token header received from {}",
-                               self.token_endpoint);
-                        return Err(Error::new(ErrorKind::InvalidResponse,
-                                              MISSING_SUBJECT_HEADER));
-                    }
-                }
+        let token_value = match resp.headers().get("x-subject-token") {
+            Some(hdr) => match hdr.to_str() {
+                Ok(value) => value.to_string(),
+                Err(e) => {
+                    error!("Invalid X-Subject-Token received from {}: {}",
+                           self.token_endpoint, e);
+                    return Err(Error::new(ErrorKind::InvalidResponse,
+                                          INVALID_SUBJECT_HEADER));
+                },
             },
-            StatusCode::Unauthorized => {
-                error!("Invalid credentials for user {}",
-                       self.body.auth.identity.password.user.name);
-                return Err(Error::new_with_details(
-                    ErrorKind::AuthenticationFailed,
-                    Some(resp.status()),
-                    Some(String::from("Unable to authenticate"))
-                ));
-            },
-            other => {
-                error!("Unexpected HTTP error {} when getting a token for {}",
-                       other, self.body.auth.identity.password.user.name);
-                return Err(Error::new_with_details(
-                    ErrorKind::AuthenticationFailed,
-                    Some(resp.status()),
-                    Some(format!("Unexpected HTTP code {} when authenticating",
-                                 resp.status()))
-                ));
+            None => {
+                error!("No X-Subject-Token header received from {}",
+                       self.token_endpoint);
+                return Err(Error::new(ErrorKind::InvalidResponse,
+                                      MISSING_SUBJECT_HEADER));
             }
         };
 
@@ -250,7 +228,7 @@ impl PasswordAuth {
                    self.body.auth.identity.password.user.name,
                    self.token_endpoint);
             let resp = self.client.post(&self.token_endpoint).json(&self.body)
-                .header(ContentType::json()).send()?.error_for_status()?;
+                .header(CONTENT_TYPE, "application/json").send_checked()?;
             self.token_from_response(resp)
         })
     }
@@ -273,14 +251,9 @@ impl AuthMethod for PasswordAuth {
     /// Create an authenticated request.
     fn request(&self, method: Method, url: Url) -> Result<RequestBuilder> {
         let token = self.get_token()?;
-        let mut headers = Headers::new();
-        // TODO: replace with a typed header
-        headers.set_raw("x-auth-token", token);
-        let mut builder = self.client.request(method, url);
-        {
-            let _unused = builder.headers(headers);
-        }
-        Ok(RequestBuilder::new(builder))
+        let builder = self.client.request(method, url)
+            .header("x-auth-token", token);
+        Ok(builder)
     }
 
     /// Get a URL for the requested service.
