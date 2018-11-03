@@ -28,4 +28,4 @@ pub use self::protocol::{AllocationPool, FloatingIpSortKey, FloatingIpStatus,
                          HostRoute, Ipv6Mode, IpVersion, NetworkStatus,
                          NetworkSortKey, PortExtraDhcpOption, PortForwarding,
                          PortSortKey, SubnetSortKey};
-pub use self::subnets::{Subnet, SubnetQuery};
+pub use self::subnets::{NewSubnet, Subnet, SubnetQuery};

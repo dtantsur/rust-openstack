@@ -48,6 +48,15 @@ pub struct Subnet {
     inner: protocol::Subnet
 }
 
+/// A request to create a subnet.
+#[derive(Clone, Debug)]
+pub struct NewSubnet {
+    session: Rc<Session>,
+    inner: protocol::Subnet,
+    network: NetworkRef,
+}
+
+
 impl Subnet {
     /// Create a subnet object.
     pub(crate) fn new(session: Rc<Session>, inner: protocol::Subnet) -> Subnet {
@@ -281,6 +290,88 @@ impl SubnetQuery {
         }
 
         self.into_iter().one()
+    }
+}
+
+impl NewSubnet {
+    /// Start creating a subnet.
+    pub(crate) fn new(session: Rc<Session>, network: NetworkRef, cidr: ipnet::IpNet)
+            -> NewSubnet {
+        NewSubnet {
+            session: session,
+            inner: protocol::Subnet::empty(cidr),
+            network: network
+        }
+    }
+
+    /// Request creation of the subnet.
+    pub fn create(mut self) -> Result<Subnet> {
+        self.inner.network_id = self.network.into_verified(&self.session)?;
+        self.inner.ip_version = match self.inner.cidr {
+            ipnet::IpNet::V4(..) => protocol::IpVersion::V4,
+            ipnet::IpNet::V6(..) => protocol::IpVersion::V6,
+        };
+
+        let subnet = self.session.create_subnet(self.inner)?;
+        Ok(Subnet::new(self.session, subnet))
+    }
+
+    creation_inner_vec! {
+        #[doc = "Allocation pool(s) for the subnet (the default is the whole CIDR)."]
+        add_allocation_pool, with_allocation_pool -> allocation_pools: protocol::AllocationPool
+    }
+
+    creation_inner_field! {
+        #[doc = "Set CIDR of the subnet."]
+        set_cidr, with_cidr -> cidr: ipnet::IpNet
+    }
+
+    creation_inner_field! {
+        #[doc = "Set description of the subnet."]
+        set_description, with_description -> description: optional String
+    }
+
+    creation_inner_field! {
+        #[doc = "Configure whether DHCP is enabled (true by default)."]
+        set_dhcp_enabled, with_dhcp_enabled -> dhcp_enabled: bool
+    }
+
+    creation_inner_vec! {
+        #[doc = "DNS nameserver(s) for the subnet."]
+        add_dns_nameserver, with_dns_nameserver -> dns_nameservers
+    }
+
+    creation_inner_vec! {
+        #[doc = "Host route(s) for the subnet."]
+        add_host_route, with_host_route -> host_routes: protocol::HostRoute
+    }
+
+    creation_inner_field! {
+        #[doc = "Set IPv6 address assignment mode."]
+        set_ipv6_address_mode, with_ipv6_address_mode
+            -> ipv6_address_mode: optional protocol::Ipv6Mode
+    }
+
+    creation_inner_field! {
+        #[doc = "Set IPv6 router advertisement mode."]
+        set_ipv6_router_advertisement_mode, with_ipv6_router_advertisement_mode
+            -> ipv6_router_advertisement_mode: optional protocol::Ipv6Mode
+    }
+
+    creation_inner_field! {
+        #[doc = "Set a name for the subnet."]
+        set_name, with_name -> name: optional String
+    }
+
+    /// Set the network of the subnet.
+    pub fn set_network<N>(&mut self, value: N) where N: Into<NetworkRef> {
+        self.network = value.into();
+    }
+
+    /// Set the network of the subnet.
+    pub fn with_network<N>(mut self, value: N) -> Self where N: Into<NetworkRef> {
+        self.set_network(value);
+        self
     }
 }
 

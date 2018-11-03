@@ -16,6 +16,9 @@
 
 use std::rc::Rc;
 
+#[allow(unused_imports)]
+use ipnet;
+
 use super::Result;
 use super::auth::{self, AuthMethod};
 #[allow(unused_imports)]
@@ -27,8 +30,8 @@ use super::compute::{Flavor, FlavorQuery, FlavorSummary, KeyPair, KeyPairQuery,
 use super::image::{Image, ImageQuery};
 #[cfg(feature = "network")]
 use super::network::{FloatingIp, FloatingIpQuery, Network, NetworkQuery,
-                     NewFloatingIp, NewNetwork, NewPort, Port, PortQuery,
-                     Subnet, SubnetQuery};
+                     NewFloatingIp, NewNetwork, NewPort, NewSubnet, Port,
+                     PortQuery, Subnet, SubnetQuery};
 use super::session::Session;
 
 
@@ -506,6 +509,31 @@ impl Cloud {
     pub fn new_server<S, F>(&self, name: S, flavor: F) -> NewServer
             where S: Into<String>, F: Into<FlavorRef> {
         NewServer::new(self.session.clone(), name.into(), flavor.into())
+    }
+
+    /// Prepare a new subnet for creation.
+    ///
+    /// This call returns a `NewSubnet` object, which is a builder to populate
+    /// subnet fields.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// extern crate ipnet;
+    /// extern crate openstack;
+    /// use std::net;
+    ///
+    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
+    /// let cidr = ipnet::Ipv4Net::new(net::Ipv4Addr::new(192, 168, 1, 0), 24)
+    ///     .unwrap().into();
+    /// let new_subnet = os.new_subnet("private-net", cidr)
+    ///     .with_name("private-subnet")
+    ///     .create().expect("Unable to create subnet");
+    /// ```
+    #[cfg(feature = "network")]
+    pub fn new_subnet<N>(&self, network: N, cidr: ipnet::IpNet) -> NewSubnet
+            where N: Into<NetworkRef> {
+        NewSubnet::new(self.session.clone(), network.into(), cidr)
     }
 }
 

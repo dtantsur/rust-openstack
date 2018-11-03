@@ -217,6 +217,48 @@ macro_rules! creation_inner_field {
 
 
 #[allow(unused_macros)]
+macro_rules! creation_inner_vec {
+
+    ($(#[$attr:meta])* $add_func:ident, $with_func:ident -> $name:ident) => (
+        $(#[$attr])*
+        pub fn $add_func<S: Into<String>>(&mut self, value: S)  {
+            self.inner.$name.push(value.into());
+        }
+
+        $(#[$attr])*
+        pub fn $name(&mut self) -> &mut Vec<String> {
+            &mut self.inner.$name
+        }
+
+        $(#[$attr])*
+        pub fn $with_func<S: Into<String>>(mut self, value: S) -> Self {
+            self.$add_func(value);
+            self
+        }
+    );
+
+    ($(#[$attr:meta])* $add_func:ident, $with_func:ident -> $name:ident: $type:ty) => (
+        $(#[$attr])*
+        pub fn $add_func(&mut self, value: $type)  {
+            self.inner.$name.push(value);
+        }
+
+        $(#[$attr])*
+        pub fn $name(&mut self) -> &mut Vec<$type> {
+            &mut self.inner.$name
+        }
+
+        $(#[$attr])*
+        pub fn $with_func(mut self, value: $type) -> Self {
+            self.$add_func(value);
+            self
+        }
+    );
+
+}
+
+
+#[allow(unused_macros)]
 macro_rules! update_field {
 
     ($(#[$attr:meta])* $set_func:ident, $with_func:ident -> $name:ident) => (

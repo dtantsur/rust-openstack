@@ -13,10 +13,12 @@
 // limitations under the License.
 
 extern crate env_logger;
+extern crate ipnet;
 extern crate openstack;
 extern crate waiter;
 
 use std::env;
+use std::net;
 use std::sync::{Once, ONCE_INIT};
 
 use waiter::Waiter;
@@ -89,6 +91,19 @@ fn test_network_create_delete_simple() {
     assert!(!network.shared());
     assert!(network.name().is_none());
 
+    let cidr = ipnet::Ipv4Net::new(net::Ipv4Addr::new(192, 168, 1, 0), 24)
+        .unwrap().into();
+    let subnet = os.new_subnet(network.clone(), cidr)
+        .create().expect("Could not create subnet");
+    assert_eq!(subnet.cidr(), cidr);
+    assert!(subnet.dhcp_enabled());
+    assert!(subnet.dns_nameservers().is_empty());
+    assert_eq!(subnet.ip_version(), openstack::network::IpVersion::V4);
+    assert!(subnet.name().is_none());
+
+    subnet.delete().expect("Cannot request subnet deletion")
+        .wait().expect("Subnet was not deleted");
+
     network.delete().expect("Cannot request network deletion")
         .wait().expect("Network was not deleted");
 }
@@ -108,6 +123,22 @@ fn test_network_create_delete_with_fields() {
     assert_eq!(network.external(), Some(false));
     assert!(!network.shared());
     assert_eq!(network.name().as_ref().unwrap(), "rust-openstack-integration-new");
+
+    let cidr = ipnet::Ipv4Net::new(net::Ipv4Addr::new(192, 168, 1, 0), 24)
+        .unwrap().into();
+    let subnet = os.new_subnet("rust-openstack-integration-new", cidr)
+        .with_name("rust-openstack-integration-new")
+        .with_dhcp_enabled(false)
+        .with_dns_nameserver("8.8.8.8")
+        .create().expect("Could not create subnet");
+    assert_eq!(subnet.cidr(), cidr);
+    assert!(!subnet.dhcp_enabled());
+    assert_eq!(subnet.dns_nameservers(), &vec!["8.8.8.8".to_string()]);
+    assert_eq!(subnet.ip_version(), openstack::network::IpVersion::V4);
+    assert_eq!(subnet.name().as_ref().unwrap(), "rust-openstack-integration-new");
+
+    subnet.delete().expect("Cannot request subnet deletion")
+        .wait().expect("Subnet was not deleted");
 
     network.delete().expect("Cannot request network deletion")
         .wait().expect("Network was not deleted");

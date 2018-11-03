@@ -36,6 +36,9 @@ pub trait V2API {
     /// Create a port.
     fn create_port(&self, request: protocol::Port) -> Result<protocol::Port>;
 
+    /// Create a subnet.
+    fn create_subnet(&self, request: protocol::Subnet) -> Result<protocol::Subnet>;
+
     /// Delete a floating IP.
     fn delete_floating_ip<S: AsRef<str>>(&self, id: S) -> Result<()>;
 
@@ -148,6 +151,15 @@ impl V2API for Session {
             .json(&body).receive_json::<protocol::PortRoot>()?.port;
         debug!("Created port {:?}", port);
         Ok(port)
+    }
+
+    fn create_subnet(&self, request: protocol::Subnet) -> Result<protocol::Subnet> {
+        debug!("Creating a new subnet with {:?}", request);
+        let body = protocol::SubnetRoot { subnet: request };
+        let subnet = self.post::<V2>(&["subnets"], None)?
+            .json(&body).receive_json::<protocol::SubnetRoot>()?.subnet;
+        debug!("Created subnet {:?}", subnet);
+        Ok(subnet)
     }
 
     fn delete_floating_ip<S: AsRef<str>>(&self, id: S) -> Result<()> {

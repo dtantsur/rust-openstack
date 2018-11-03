@@ -340,7 +340,7 @@ pub struct PortsRoot {
 }
 
 /// An allocation pool.
-#[derive(Copy, Debug, Clone, Deserialize)]
+#[derive(Copy, Debug, Clone, Deserialize, Serialize)]
 pub struct AllocationPool {
     /// Start IP address.
     pub start: net::IpAddr,
@@ -349,7 +349,7 @@ pub struct AllocationPool {
 }
 
 /// A host router.
-#[derive(Copy, Debug, Clone, Deserialize)]
+#[derive(Copy, Debug, Clone, Deserialize, Serialize)]
 pub struct HostRoute {
     /// Destination network.
     pub destination: ipnet::IpNet,
@@ -359,40 +359,70 @@ pub struct HostRoute {
 }
 
 /// A subnet.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Subnet {
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub allocation_pools: Vec<AllocationPool>,
     pub cidr: ipnet::IpNet,
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub created_at: Option<DateTime<FixedOffset>>,
-    #[serde(deserialize_with = "common::protocol::empty_as_none", default)]
+    #[serde(deserialize_with = "common::protocol::empty_as_none", default,
+            skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     #[serde(rename = "enable_dhcp")]
     pub dhcp_enabled: bool,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub dns_nameservers: Vec<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub gateway_ip: Option<net::IpAddr>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub host_routes: Vec<HostRoute>,
+    #[serde(skip_serializing)]
     pub id: String,
     pub ip_version: IpVersion,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ipv6_address_mode: Option<Ipv6Mode>,
-    #[serde(default, rename = "ipv6_ra_mode")]
+    #[serde(default, rename = "ipv6_ra_mode",
+            skip_serializing_if = "Option::is_none")]
     pub ipv6_router_advertisement_mode: Option<Ipv6Mode>,
-    #[serde(deserialize_with = "common::protocol::empty_as_none")]
+    #[serde(deserialize_with = "common::protocol::empty_as_none",
+            skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     pub network_id: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub project_id: Option<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub updated_at: Option<DateTime<FixedOffset>>,
 }
 
+impl Subnet {
+    pub(crate) fn empty(cidr: ipnet::IpNet) -> Subnet {
+        Subnet {
+            allocation_pools: Vec::new(),
+            cidr: cidr,
+            created_at: None,
+            description: None,
+            dhcp_enabled: true,
+            dns_nameservers: Vec::new(),
+            gateway_ip: None,
+            host_routes: Vec::new(),
+            id: String::new(),
+            ip_version: match cidr {
+                ipnet::IpNet::V4(..) => IpVersion::V4,
+                ipnet::IpNet::V6(..) => IpVersion::V6,
+            },
+            ipv6_address_mode: None,
+            ipv6_router_advertisement_mode: None,
+            name: None,
+            network_id: String::new(),
+            project_id: None,
+            updated_at: None,
+        }
+    }
+}
+
 /// A subnet.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SubnetRoot {
     pub subnet: Subnet
 }
