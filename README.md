@@ -8,7 +8,7 @@ Status](https://travis-ci.org/dtantsur/rust-openstack.svg?branch=master)](https:
 Version](https://img.shields.io/crates/v/openstack.svg)](https://crates.io/crates/openstack)
 
 The goal of this project is to provide a simple API for working with OpenStack
-clouds. This is an early work-in-progress, don't expect too much of it.
+clouds. It is still work-in-progress, so many bits are not implemented.
 
 Documentation: [master](https://dtantsur.github.io/rust-openstack/openstack/),
 [latest release](https://docs.rs/openstack/),
