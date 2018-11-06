@@ -57,7 +57,8 @@ pub struct ProjectScope {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ProjectScopedAuth {
     pub identity: PasswordIdentity,
-    pub scope: ProjectScope
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scope: Option<ProjectScope>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -141,7 +142,7 @@ impl ProjectScope {
 }
 
 impl ProjectScopedAuthRoot {
-    pub fn new(identity: PasswordIdentity, scope: ProjectScope)
+    pub fn new(identity: PasswordIdentity, scope: Option<ProjectScope>)
             -> ProjectScopedAuthRoot {
         ProjectScopedAuthRoot {
             auth: ProjectScopedAuth {

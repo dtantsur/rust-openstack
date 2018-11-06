@@ -29,8 +29,6 @@ use super::super::utils::ValueCache;
 use super::AuthMethod;
 
 
-const MISSING_USER: &str = "User information required";
-const MISSING_SCOPE: &str = "Unscoped tokens are not supported now";
 const MISSING_SUBJECT_HEADER: &str = "Missing X-Subject-Token header";
 const INVALID_SUBJECT_HEADER: &str = "Invalid X-Subject-Token header";
 // Required validity time in minutes. Here we refresh the token if it expires
@@ -54,135 +52,95 @@ impl fmt::Debug for Token {
     }
 }
 
-
-/// Authentication method factory using Identity API V3.
-#[derive(Clone, Debug)]
-pub struct Identity {
-    client: Client,
-    auth_url: Url,
-    region: Option<String>,
-    password_identity: Option<protocol::PasswordIdentity>,
-    project_scope: Option<protocol::ProjectScope>
+/// Generic trait for authentication using Identity API V3.
+pub trait Identity {
+    /// Get a reference to the auth URL.
+    fn auth_url(&self) -> &Url;
 }
 
 /// Password authentication using Identity API V3.
-///
-/// Has to be created via [Identity object](struct.Identity.html) methods.
 #[derive(Clone, Debug)]
-pub struct PasswordAuth {
+pub struct Password {
     client: Client,
     auth_url: Url,
     region: Option<String>,
     body: protocol::ProjectScopedAuthRoot,
     token_endpoint: String,
-    cached_token: ValueCache<Token>
+    cached_token: ValueCache<Token>,
 }
 
-impl Identity {
-    /// Get a reference to the auth URL.
-    pub fn auth_url(&self) -> &Url {
+impl Identity for Password {
+    fn auth_url(&self) -> &Url {
         &self.auth_url
-    }
-
-    /// Create a password authentication against the given Identity service.
-    pub fn new<U>(auth_url: U) -> Result<Identity> where U: IntoUrl  {
-        Identity::new_with_client(auth_url, Client::new())
-    }
-
-    /// Create a password authentication against the given Identity service.
-    pub fn new_with_region<U>(auth_url: U, region: String)
-            -> Result<Identity> where U: IntoUrl  {
-        Ok(Identity {
-            client: Client::new(),
-            auth_url: auth_url.into_url()?,
-            region: Some(region),
-            password_identity: None,
-            project_scope: None,
-        })
-    }
-
-    /// Create a password authentication against the given Identity service.
-    pub fn new_with_client<U>(auth_url: U, client: Client)
-            -> Result<Identity> where U: IntoUrl  {
-        Ok(Identity {
-            client: client,
-            auth_url: auth_url.into_url()?,
-            region: None,
-            password_identity: None,
-            project_scope: None,
-        })
-    }
-
-    /// Add authentication based on user name and password.
-    pub fn with_user<S1, S2, S3>(self, user_name: S1, password: S2,
-                                 domain_name: S3) -> Identity
-            where S1: Into<String>, S2: Into<String>, S3: Into<String> {
-        Identity {
-            password_identity: Some(protocol::PasswordIdentity::new(user_name,
-                                                                    password,
-                                                                    domain_name)),
-            .. self
-        }
-    }
-
-    /// Request a token scoped to the given project.
-    pub fn with_project_scope<S1, S2>(self, project_name: S1, domain_name: S2)
-            -> Identity where S1: Into<String>, S2: Into<String> {
-        Identity {
-            project_scope: Some(protocol::ProjectScope::new(project_name,
-                                                            domain_name)),
-            .. self
-        }
-    }
-
-    /// Create an authentication method based on provided information.
-    pub fn create(self) -> Result<PasswordAuth> {
-        // TODO: support more authentication methods (at least a token)
-        let password_identity = match self.password_identity {
-            Some(p) => p,
-            None =>
-                return Err(Error::new(ErrorKind::InvalidInput, MISSING_USER))
-        };
-
-        // TODO: support unscoped tokens
-        let project_scope = match self.project_scope {
-            Some(p) => p,
-            None =>
-                return Err(Error::new(ErrorKind::InvalidInput, MISSING_SCOPE))
-        };
-
-        Ok(PasswordAuth::new(self.auth_url, self.region, password_identity,
-                             project_scope, self.client))
     }
 }
 
-impl PasswordAuth {
-    /// Get a reference to the auth URL.
-    pub fn auth_url(&self) -> &Url {
-        &self.auth_url
+impl Password {
+    /// Create a password authentication against the given Identity service.
+    pub fn new<U, S1, S2, S3>(auth_url: U, user_name: S1, password: S2,
+                              user_domain_name: S3) -> Result<Password>
+            where U: IntoUrl, S1: Into<String>, S2: Into<String>, S3: Into<String>  {
+        Password::new_with_client(auth_url, Client::new(), user_name, password,
+                                  user_domain_name)
     }
 
-    fn new(auth_url: Url, region: Option<String>,
-           password_identity: protocol::PasswordIdentity,
-           project_scope: protocol::ProjectScope,
-           client: Client) -> PasswordAuth {
-        let body = protocol::ProjectScopedAuthRoot::new(password_identity,
-                                                        project_scope);
+    /// Create a password authentication against the given Identity service.
+    pub fn new_with_client<U, S1, S2, S3>(auth_url: U, client: Client,
+                                          user_name: S1, password: S2,
+                                          user_domain_name: S3) -> Result<Password>
+            where U: IntoUrl, S1: Into<String>, S2: Into<String>, S3: Into<String>  {
+        let url = auth_url.into_url()?;
         // TODO: more robust logic?
-        let token_endpoint = if auth_url.path().ends_with("/v3") {
-            format!("{}/auth/tokens", auth_url)
+        let token_endpoint = if url.path().ends_with("/v3") {
+            format!("{}/auth/tokens", url)
         } else {
-            format!("{}/v3/auth/tokens", auth_url)
+            format!("{}/v3/auth/tokens", url)
         };
-
-        PasswordAuth {
+        let pw = protocol::PasswordIdentity::new(user_name, password,
+                                                 user_domain_name);
+        let body = protocol::ProjectScopedAuthRoot::new(pw, None);
+        Ok(Password {
             client: client,
-            auth_url: auth_url,
-            region: region,
+            auth_url: url,
+            region: None,
             body: body,
             token_endpoint: token_endpoint,
-            cached_token: ValueCache::new(None)
-        }
+            cached_token: ValueCache::new(None),
+        })
+    }
+
+    /// User name.
+    pub fn user_name(&self) -> &String {
+        &self.body.auth.identity.password.user.name
+    }
+
+    /// Set a region for this authentication methjod.
+    pub fn set_region<S>(&mut self, region: S) where S: Into<String> {
+        self.region = Some(region.into());
+    }
+
+    /// Scope authentication to the given project.
+    ///
+    /// This is required in the most cases.
+    pub fn set_project_scope<S1, S2>(&mut self, project_name: S1,
+                                     project_domain_name: S2)
+            where S1: Into<String>, S2: Into<String> {
+        self.body.auth.scope = Some(protocol::ProjectScope::new(project_name,
+                                                                project_domain_name));
+    }
+
+    /// Set a region for this authentication methjod.
+    pub fn with_region<S>(mut self, region: S) -> Self where S: Into<String> {
+        self.set_region(region);
+        self
+    }
+
+    /// Scope authentication to the given project.
+    pub fn with_project_scope<S1, S2>(mut self, project_name: S1,
+                                      project_domain_name: S2)
+            -> Password where S1: Into<String>, S2: Into<String> {
+        self.set_project_scope(project_name, project_domain_name);
+        self
     }
 
     fn token_from_response(&self, mut resp: Response) -> Result<Token> {
@@ -207,8 +165,7 @@ impl PasswordAuth {
         let body = resp.json::<protocol::TokenRoot>()?.token;
 
         debug!("Received a token for user {} from {} expiring at {}",
-               self.body.auth.identity.password.user.name,
-               self.token_endpoint, body.expires_at);
+               self.user_name(), self.token_endpoint, body.expires_at);
         trace!("Received catalog: {:?}", body.catalog);
 
         Ok(Token {
@@ -225,8 +182,7 @@ impl PasswordAuth {
             validity_time_left > Duration::minutes(TOKEN_MIN_VALIDITY)
         }, || {
             debug!("Requesting a token for user {} from {}",
-                   self.body.auth.identity.password.user.name,
-                   self.token_endpoint);
+                   self.user_name(), self.token_endpoint);
             let resp = self.client.post(&self.token_endpoint).json(&self.body)
                 .header(CONTENT_TYPE, "application/json").send_checked()?;
             self.token_from_response(resp)
@@ -244,7 +200,7 @@ impl PasswordAuth {
     }
 }
 
-impl AuthMethod for PasswordAuth {
+impl AuthMethod for Password {
     /// Get region.
     fn region(&self) -> Option<String> { self.region.clone() }
 
@@ -290,30 +246,31 @@ pub mod test {
     #![allow(unused_results)]
 
     use super::super::AuthMethod;
-    use super::Identity;
+    use super::{Identity, Password};
 
     #[test]
     fn test_identity_new() {
-        let id = Identity::new("http://127.0.0.1:8080/").unwrap();
-        let e = id.auth_url;
+        let id = Password::new("http://127.0.0.1:8080/", "admin",
+                               "pa$$w0rd", "Default").unwrap();
+        let e = id.auth_url();
         assert_eq!(e.scheme(), "http");
         assert_eq!(e.host_str().unwrap(), "127.0.0.1");
         assert_eq!(e.port().unwrap(), 8080u16);
         assert_eq!(e.path(), "/");
+        assert_eq!(id.user_name(), "admin");
     }
 
     #[test]
     fn test_identity_new_invalid() {
-        Identity::new("http://127.0.0.1 8080/").err().unwrap();
+        Password::new("http://127.0.0.1 8080/", "admin", "pa$$w0rd",
+                      "Default").err().unwrap();
     }
 
     #[test]
     fn test_identity_create() {
-        let id = Identity::new("http://127.0.0.1:8080/identity").unwrap()
-            .with_user("user", "pa$$w0rd", "example.com")
-            .with_project_scope("cool project", "example.com")
-            .create().unwrap();
-        assert_eq!(&id.auth_url.to_string(), "http://127.0.0.1:8080/identity");
+        let id = Password::new("http://127.0.0.1:8080/identity", "user",
+                               "pa$$w0rd", "example.com").unwrap()
+            .with_project_scope("cool project", "example.com");
         assert_eq!(id.auth_url().to_string(),
                    "http://127.0.0.1:8080/identity");
         assert_eq!(&id.body.auth.identity.password.user.name, "user");
@@ -322,24 +279,10 @@ pub mod test {
                    "example.com");
         assert_eq!(id.body.auth.identity.methods,
                    vec![String::from("password")]);
-        assert_eq!(&id.body.auth.scope.project.name, "cool project");
-        assert_eq!(&id.body.auth.scope.project.domain.name, "example.com");
+        assert_eq!(&id.body.auth.scope.as_ref().unwrap().project.name, "cool project");
+        assert_eq!(&id.body.auth.scope.as_ref().unwrap().project.domain.name, "example.com");
         assert_eq!(&id.token_endpoint,
                    "http://127.0.0.1:8080/identity/v3/auth/tokens");
         assert_eq!(id.region(), None);
-    }
-
-    #[test]
-    fn test_identity_create_no_scope() {
-        Identity::new("http://127.0.0.1:8080/identity").unwrap()
-            .with_user("user", "pa$$w0rd", "example.com")
-            .create().err().unwrap();
-    }
-
-    #[test]
-    fn test_identity_create_no_user() {
-        Identity::new("http://127.0.0.1:8080/identity").unwrap()
-            .with_project_scope("cool project", "example.com")
-            .create().err().unwrap();
     }
 }

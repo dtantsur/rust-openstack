@@ -21,7 +21,7 @@ use std::path::{Path, PathBuf};
 use dirs;
 use serde_yaml;
 
-use super::Identity;
+use super::Password;
 use super::super::{Error, ErrorKind, Result};
 
 #[derive(Debug, Clone, Deserialize)]
@@ -81,7 +81,7 @@ fn find_config() -> Option<PathBuf> {
 }
 
 /// Create `Identity` authentication from the config file.
-pub fn from_config<S: AsRef<str>>(cloud_name: S) -> Result<Identity> {
+pub fn from_config<S: AsRef<str>>(cloud_name: S) -> Result<Password> {
     let path = find_config()
         .ok_or_else(|| Error::new(ErrorKind::InvalidConfig,
                                   "clouds.yaml was not found in any location"))?;
@@ -98,12 +98,13 @@ pub fn from_config<S: AsRef<str>>(cloud_name: S) -> Result<Identity> {
                                   format!("No such cloud: {}", name)))?;
 
     let auth = cloud.auth;
-    Ok(if let Some(region) = cloud.region_name {
-        Identity::new_with_region(&auth.auth_url, region)
-    } else {
-        Identity::new(&auth.auth_url)
-    }?.with_user(auth.username, auth.password,
-                 auth.user_domain_name.unwrap_or(String::from("Default")))
-    .with_project_scope(auth.project_name,
-                        auth.project_domain_name.unwrap_or(String::from("Default"))))
+    let mut id = Password::new(&auth.auth_url, auth.username, auth.password,
+                               auth.user_domain_name.unwrap_or(String::from("Default")))?
+        .with_project_scope(auth.project_name,
+                            auth.project_domain_name.unwrap_or(String::from("Default")));
+    if let Some(region) = cloud.region_name {
+        id.set_region(region)
+    }
+
+    Ok(id)
 }

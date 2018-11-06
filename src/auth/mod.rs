@@ -42,10 +42,11 @@
 //! ```rust,no_run
 //! use openstack;
 //!
-//! let auth = openstack::auth::Identity::new("https://my.cloud.com/identity").unwrap()
-//!     .with_user("admin", "pa$$w0rd", "My Domain")
-//!     .with_project_scope("project1", "My Domain")
-//!     .create().expect("Failed to authenticate");
+//! let auth = openstack::auth::Password::new(
+//!         "https://my.cloud.com/identity",
+//!         "admin", "pa$$w0rd", "domain.com")
+//!     .expect("Invalid authentication URL")
+//!     .with_project_scope("project1", "domain.com");
 //! let os = openstack::Cloud::new(auth);
 //! ```
 //!
@@ -81,7 +82,7 @@ mod simple;
 pub use self::base::{AuthMethod, BoxedClone};
 pub use self::config::from_config;
 pub use self::simple::NoAuth;
-pub use self::identity::{Identity, PasswordAuth};
+pub use self::identity::{Identity, Password};
 
 use std::env;
 
@@ -89,8 +90,6 @@ use super::{Error, ErrorKind, Result};
 
 const MISSING_ENV_VARS: &str =
     "Not all required environment variables were provided";
-const INVALID_ENV_AUTH_URL: &str =
-    "Malformed authentication URL provided in the environment";
 
 #[inline]
 fn _get_env(name: &str) -> Result<String> {
@@ -102,27 +101,22 @@ fn _get_env(name: &str) -> Result<String> {
 
 
 /// Create an authentication method from environment variables.
-pub fn from_env() -> Result<PasswordAuth> {
+pub fn from_env() -> Result<Password> {
     if let Ok(cloud_name) = env::var("OS_CLOUD") {
-        from_config(cloud_name).and_then(Identity::create)
+        from_config(cloud_name)
     } else {
         let auth_url = _get_env("OS_AUTH_URL")?;
-        let id = Identity::new(&auth_url).map_err(|_| {
-            Error::new(ErrorKind::InvalidInput,
-                                    INVALID_ENV_AUTH_URL)
-        })?;
-
         let user_name = _get_env("OS_USERNAME")?;
         let password = _get_env("OS_PASSWORD")?;
-        let project_name = _get_env("OS_PROJECT_NAME")?;
-
         let user_domain = env::var("OS_USER_DOMAIN_NAME")
             .unwrap_or(String::from("Default"));
+
+        let id = Password::new(&auth_url, user_name, password, user_domain)?;
+
+        let project_name = _get_env("OS_PROJECT_NAME")?;
         let project_domain = env::var("OS_PROJECT_DOMAIN_NAME")
             .unwrap_or(String::from("Default"));
 
-        id.with_user(user_name, password, user_domain)
-            .with_project_scope(project_name, project_domain)
-            .create()
+        Ok(id.with_project_scope(project_name, project_domain))
     }
 }
