@@ -23,6 +23,7 @@ use serde_yaml;
 
 use super::Password;
 use super::super::{Error, ErrorKind, Result};
+use super::super::session::Session;
 
 #[derive(Debug, Clone, Deserialize)]
 struct Auth {
@@ -80,8 +81,8 @@ fn find_config() -> Option<PathBuf> {
     }
 }
 
-/// Create `Identity` authentication from the config file.
-pub fn from_config<S: AsRef<str>>(cloud_name: S) -> Result<Password> {
+/// Create a `Session` from the config file.
+pub fn from_config<S: AsRef<str>>(cloud_name: S) -> Result<Session> {
     let path = find_config()
         .ok_or_else(|| Error::new(ErrorKind::InvalidConfig,
                                   "clouds.yaml was not found in any location"))?;
@@ -106,5 +107,5 @@ pub fn from_config<S: AsRef<str>>(cloud_name: S) -> Result<Password> {
         id.set_region(region)
     }
 
-    Ok(id)
+    Ok(Session::new(id))
 }

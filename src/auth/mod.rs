@@ -50,13 +50,13 @@
 //! let os = openstack::Cloud::new(auth);
 //! ```
 //!
-//! Creating an authentication method from environment variables:
+//! Creating a session and a cloud from environment variables:
 //!
 //! ```rust,no_run
 //! use openstack;
 //!
-//! let auth = openstack::auth::from_env().expect("Failed to authenticate");
-//! let os = openstack::Cloud::new(auth);
+//! let session = openstack::auth::from_env().expect("Failed to authenticate");
+//! let os = openstack::Cloud::from(session);
 //! ```
 //!
 //! Creating a dummy authentication method for use against clouds that do not
@@ -87,6 +87,7 @@ pub use self::identity::{Identity, Password};
 use std::env;
 
 use super::{Error, ErrorKind, Result};
+use super::session::Session;
 
 const MISSING_ENV_VARS: &str =
     "Not all required environment variables were provided";
@@ -94,14 +95,13 @@ const MISSING_ENV_VARS: &str =
 #[inline]
 fn _get_env(name: &str) -> Result<String> {
     env::var(name).map_err(|_| {
-        Error::new(ErrorKind::InvalidInput,
-                                MISSING_ENV_VARS)
+        Error::new(ErrorKind::InvalidInput, MISSING_ENV_VARS)
     })
 }
 
 
-/// Create an authentication method from environment variables.
-pub fn from_env() -> Result<Password> {
+/// Create a `Session` from environment variables.
+pub fn from_env() -> Result<Session> {
     if let Ok(cloud_name) = env::var("OS_CLOUD") {
         from_config(cloud_name)
     } else {
@@ -117,6 +117,6 @@ pub fn from_env() -> Result<Password> {
         let project_domain = env::var("OS_PROJECT_DOMAIN_NAME")
             .unwrap_or(String::from("Default"));
 
-        Ok(id.with_project_scope(project_name, project_domain))
+        Ok(Session::new(id.with_project_scope(project_name, project_domain)))
     }
 }

@@ -52,19 +52,42 @@ impl Cloud {
     /// # Example
     ///
     /// ```rust,no_run
-    /// fn cloud_from_env() -> openstack::Result<openstack::Cloud> {
-    ///     openstack::auth::from_env().map(openstack::Cloud::new)
+    /// fn cloud() -> openstack::Result<openstack::Cloud> {
+    ///     let auth = openstack::auth::Password::new(
+    ///             "https://cloud.example.com",
+    ///             "user1", "pa$$word", "Default")
+    ///         .expect("Invalid authentication URL")
+    ///         .with_project_scope("project1", "Default");
+    ///     Ok(openstack::Cloud::new(auth))
     /// }
     ///
-    /// # fn main() { cloud_from_env().unwrap(); }
+    /// # fn main() { cloud().unwrap(); }
     /// ```
     ///
-    /// Note: in this particular case it's better to use
-    /// [from_env](#method.from_env).
+    /// # See Also
+    ///
+    /// * [from_config](#method.from_config) to create a Cloud from clouds.yaml
+    /// * [from_env](#method.from_env) to create a Cloud from environment variables
     pub fn new<Auth: AuthMethod + 'static>(auth_method: Auth) -> Cloud {
         Cloud {
             session: Rc::new(Session::new(auth_method))
         }
+    }
+
+    /// Create a new cloud object from a configuration file
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// # fn cloud_from_config() -> openstack::Result<()> {
+    /// let os = openstack::Cloud::from_config("cloud-1")?;
+    /// # Ok(()) }
+    /// # fn main() { cloud_from_config().unwrap(); }
+    /// ```
+    pub fn from_config<S: AsRef<str>>(cloud_name: S) -> Result<Cloud> {
+        Ok(Cloud {
+            session: Rc::new(auth::from_config(cloud_name)?)
+        })
     }
 
     /// Create a new cloud object from environment variables.
@@ -79,7 +102,7 @@ impl Cloud {
     /// ```
     pub fn from_env() -> Result<Cloud> {
         Ok(Cloud {
-            session: Rc::new(Session::new(auth::from_env()?))
+            session: Rc::new(auth::from_env()?)
         })
     }
 
