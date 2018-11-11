@@ -22,8 +22,8 @@ use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
 use serde::Serialize;
 
 use super::super::{Error, Result, Sort};
-use super::super::common::{ImageRef, ListResources, Refresh, ResourceId,
-                           ResourceIterator};
+use super::super::common::{ImageRef, IntoVerified, ListResources, Refresh,
+                           ResourceId, ResourceIterator};
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::base::V2API;
@@ -263,14 +263,14 @@ impl From<Image> for ImageRef {
     }
 }
 
-impl ImageRef {
+#[cfg(feature = "image")]
+impl IntoVerified for ImageRef {
     /// Verify this reference and convert to an ID, if possible.
-    #[cfg(feature = "image")]
-    pub(crate) fn into_verified(self, session: &Session) -> Result<String> {
+    fn into_verified(self, session: &Session) -> Result<ImageRef> {
         Ok(if self.verified {
-            self.value
+            self
         } else {
-            session.get_image(&self.value)?.id
+            ImageRef::new_verified(session.get_image(&self.value)?.id)
         })
     }
 }

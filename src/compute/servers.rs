@@ -26,9 +26,10 @@ use serde::Serialize;
 use waiter::{Waiter, WaiterCurrentState};
 
 use super::super::{Error, ErrorKind, Result, Sort};
-use super::super::common::{self, DeletionWaiter, FlavorRef, ImageRef, KeyPairRef,
-                           ListResources, NetworkRef, PortRef, ProjectRef,
-                           Refresh, ResourceId, ResourceIterator, UserRef};
+use super::super::common::{self, DeletionWaiter, FlavorRef, ImageRef,
+                           IntoVerified, KeyPairRef, ListResources, NetworkRef,
+                           PortRef, ProjectRef, Refresh, ResourceId,
+                           ResourceIterator, UserRef};
 #[cfg(feature = "image")]
 use super::super::image::Image;
 use super::super::session::Session;
@@ -522,10 +523,10 @@ fn convert_networks(session: &Session, networks: Vec<ServerNIC>)
     for item in networks {
         result.push(match item {
             ServerNIC::FromNetwork(n) => protocol::ServerNetwork::Network {
-                uuid: n.into_verified(session)?
+                uuid: n.into_verified(session)?.into()
             },
             ServerNIC::WithPort(p) => protocol::ServerNetwork::Port {
-                port: p.into_verified(session)?
+                port: p.into_verified(session)?.into()
             },
             ServerNIC::WithFixedIp(ip) =>
                 protocol::ServerNetwork::FixedIp{ fixed_ip: ip }
@@ -552,13 +553,13 @@ impl NewServer {
     /// Request creation of the server.
     pub fn create(self) -> Result<ServerCreationWaiter> {
         let request = protocol::ServerCreate {
-            flavorRef: self.flavor.into_verified(&self.session)?,
+            flavorRef: self.flavor.into_verified(&self.session)?.into(),
             imageRef: match self.image {
-                Some(img) => Some(img.into_verified(&self.session)?),
+                Some(img) => Some(img.into_verified(&self.session)?.into()),
                 None => None
             },
             key_name: match self.keypair {
-                Some(item) => Some(item.into_verified(&self.session)?),
+                Some(item) => Some(item.into_verified(&self.session)?.into()),
                 None => None
             },
             metadata: self.metadata,

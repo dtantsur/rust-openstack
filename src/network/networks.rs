@@ -23,8 +23,8 @@ use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
 use serde::Serialize;
 
 use super::super::{Error, Result, Sort};
-use super::super::common::{DeletionWaiter, ListResources, NetworkRef, Refresh,
-                           ResourceId, ResourceIterator};
+use super::super::common::{DeletionWaiter, IntoVerified, ListResources,
+                           NetworkRef, Refresh, ResourceId, ResourceIterator};
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::base::V2API;
@@ -331,14 +331,14 @@ impl From<Network> for NetworkRef {
     }
 }
 
-impl NetworkRef {
+#[cfg(feature = "network")]
+impl IntoVerified for NetworkRef {
     /// Verify this reference and convert to an ID, if possible.
-    #[cfg(feature = "network")]
-    pub(crate) fn into_verified(self, session: &Session) -> Result<String> {
+    fn into_verified(self, session: &Session) -> Result<NetworkRef> {
         Ok(if self.verified {
-            self.value
+            self
         } else {
-            session.get_network(&self.value)?.id
+            NetworkRef::new_verified(session.get_network(&self.value)?.id)
         })
     }
 }

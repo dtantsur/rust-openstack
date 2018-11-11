@@ -27,8 +27,9 @@ use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
 use serde::Serialize;
 
 use super::super::{Error, Result, Sort};
-use super::super::common::{DeletionWaiter, ListResources, NetworkRef, PortRef,
-                           Refresh, ResourceId, ResourceIterator, SubnetRef};
+use super::super::common::{DeletionWaiter, IntoVerified, ListResources,
+                           NetworkRef, PortRef, Refresh, ResourceId,
+                           ResourceIterator, SubnetRef};
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::base::V2API;
@@ -457,7 +458,7 @@ impl NewPort {
 
     /// Request creation of the port.
     pub fn create(mut self) -> Result<Port> {
-        self.inner.network_id = self.network.into_verified(&self.session)?;
+        self.inner.network_id = self.network.into_verified(&self.session)?.into();
         for request in self.fixed_ips {
             self.inner.fixed_ips.push(match request {
                 PortIpRequest::IpAddress(ip) => protocol::FixedIp {
@@ -466,11 +467,11 @@ impl NewPort {
                 },
                 PortIpRequest::AnyIpFromSubnet(subnet) => protocol::FixedIp {
                     ip_address: net::IpAddr::V4(net::Ipv4Addr::new(0, 0, 0, 0)),
-                    subnet_id: subnet.into_verified(&self.session)?
+                    subnet_id: subnet.into_verified(&self.session)?.into()
                 },
                 PortIpRequest::IpFromSubnet(ip, subnet) => protocol::FixedIp {
                     ip_address: ip,
-                    subnet_id: subnet.into_verified(&self.session)?
+                    subnet_id: subnet.into_verified(&self.session)?.into()
                 }
             });
         }
@@ -580,14 +581,14 @@ impl From<Port> for PortRef {
     }
 }
 
-impl PortRef {
+#[cfg(feature = "network")]
+impl IntoVerified for PortRef {
     /// Verify this reference and convert to an ID, if possible.
-    #[cfg(feature = "network")]
-    pub(crate) fn into_verified(self, session: &Session) -> Result<String> {
+    fn into_verified(self, session: &Session) -> Result<PortRef> {
         Ok(if self.verified {
-            self.value
+            self
         } else {
-            session.get_port(&self.value)?.id
+            PortRef::new_verified(session.get_port(&self.value)?.id)
         })
     }
 }

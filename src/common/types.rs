@@ -47,6 +47,13 @@ pub trait ResourceId {
     fn resource_id(&self) -> String;
 }
 
+/// A type that can be converted into a verified representation.
+pub trait IntoVerified {
+    /// Conver this object into the same object with verification.
+    fn into_verified(self, session: &Session) -> Result<Self> where Self: Sized;
+}
+
+
 macro_rules! opaque_resource_type {
     ($(#[$attr:meta])* $name:ident ? $service:expr) => (
         $(#[$attr])*
@@ -77,6 +84,12 @@ macro_rules! opaque_resource_type {
         impl From<$name> for String {
             fn from(value: $name) -> String {
                 value.value
+            }
+        }
+
+        impl From<$name> for ::serde_json::Value {
+            fn from(value: $name) -> ::serde_json::Value {
+                value.value.into()
             }
         }
 
@@ -120,13 +133,14 @@ macro_rules! opaque_resource_type {
                     verified: true
                 }
             }
+        }
 
-            /// Verify this reference and convert to an ID, if possible.
-            #[cfg(not(feature = $service))]
-            #[allow(dead_code)]
-            pub(crate) fn into_verified(self, _session: &$crate::session::Session)
-                    -> $crate::Result<String> {
-                Ok(self.value)
+        #[cfg(not(feature = $service))]
+        #[allow(dead_code)]
+        impl $crate::common::IntoVerified for $name {
+            fn into_verified(self, _session: &$crate::session::Session)
+                    -> $crate::Result<$name> {
+                Ok(self)
             }
         }
     )

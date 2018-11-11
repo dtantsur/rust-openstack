@@ -26,9 +26,9 @@ use serde::Serialize;
 use serde_json;
 
 use super::super::{Error, ErrorKind, Result, Sort};
-use super::super::common::{DeletionWaiter, ListResources, NetworkRef,
-                           PortRef, Refresh, ResourceId, ResourceIterator,
-                           RouterRef, SubnetRef};
+use super::super::common::{DeletionWaiter, IntoVerified, ListResources,
+                           NetworkRef, PortRef, Refresh, ResourceId,
+                           ResourceIterator, RouterRef, SubnetRef};
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::base::V2API;
@@ -426,12 +426,12 @@ impl NewFloatingIp {
     /// Request creation of the port.
     pub fn create(mut self) -> Result<FloatingIp> {
         self.inner.floating_network_id = self.floating_network.into_verified(
-            &self.session)?;
+            &self.session)?.into();
         if let Some(port) = self.port {
-            self.inner.port_id = Some(port.into_verified(&self.session)?);
+            self.inner.port_id = Some(port.into_verified(&self.session)?.into());
         }
         if let Some(subnet) = self.subnet {
-            self.inner.subnet_id = Some(subnet.into_verified(&self.session)?);
+            self.inner.subnet_id = Some(subnet.into_verified(&self.session)?.into());
         }
 
         let floating_ip = self.session.create_floating_ip(self.inner)?;

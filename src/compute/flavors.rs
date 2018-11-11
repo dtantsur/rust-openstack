@@ -22,8 +22,8 @@ use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
 use serde::Serialize;
 
 use super::super::{Error, Result};
-use super::super::common::{self, FlavorRef, ListResources, Refresh, ResourceId,
-                           ResourceIterator};
+use super::super::common::{self, FlavorRef, IntoVerified, ListResources,
+                           Refresh, ResourceId, ResourceIterator};
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::base::V2API;
@@ -293,14 +293,14 @@ impl From<FlavorSummary> for FlavorRef {
     }
 }
 
-impl FlavorRef {
+#[cfg(feature = "compute")]
+impl IntoVerified for FlavorRef {
     /// Verify this reference and convert to an ID, if possible.
-    #[cfg(feature = "compute")]
-    pub(crate) fn into_verified(self, session: &Session) -> Result<String> {
+    fn into_verified(self, session: &Session) -> Result<FlavorRef> {
         Ok(if self.verified {
-            self.value
+            self
         } else {
-            session.get_flavor(&self.value)?.id
+            FlavorRef::new_verified(session.get_flavor(&self.value)?.id)
         })
     }
 }

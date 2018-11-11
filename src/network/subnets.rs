@@ -25,8 +25,9 @@ use ipnet;
 use serde::Serialize;
 
 use super::super::{Error, Result, Sort};
-use super::super::common::{DeletionWaiter, ListResources, NetworkRef, SubnetRef,
-                           Refresh, ResourceId, ResourceIterator};
+use super::super::common::{DeletionWaiter, IntoVerified, ListResources,
+                           NetworkRef, SubnetRef, Refresh, ResourceId,
+                           ResourceIterator};
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::base::V2API;
@@ -306,7 +307,7 @@ impl NewSubnet {
 
     /// Request creation of the subnet.
     pub fn create(mut self) -> Result<Subnet> {
-        self.inner.network_id = self.network.into_verified(&self.session)?;
+        self.inner.network_id = self.network.into_verified(&self.session)?.into();
         self.inner.ip_version = match self.inner.cidr {
             ipnet::IpNet::V4(..) => protocol::IpVersion::V4,
             ipnet::IpNet::V6(..) => protocol::IpVersion::V6,
@@ -409,15 +410,14 @@ impl From<Subnet> for SubnetRef {
     }
 }
 
-impl SubnetRef {
+#[cfg(feature = "network")]
+impl IntoVerified for SubnetRef {
     /// Verify this reference and convert to an ID, if possible.
-    #[cfg(feature = "network")]
-    #[allow(unused)] // TODO(dtantsur): remove when something uses this
-    pub(crate) fn into_verified(self, session: &Session) -> Result<String> {
+    fn into_verified(self, session: &Session) -> Result<SubnetRef> {
         Ok(if self.verified {
-            self.value
+            self
         } else {
-            session.get_subnet(&self.value)?.id
+            SubnetRef::new_verified(session.get_subnet(&self.value)?.id)
         })
     }
 }
