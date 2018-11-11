@@ -29,7 +29,7 @@ fn main() {
 
     let servers: Vec<openstack::compute::Server> = os.find_servers()
         .sort_by(openstack::Sort::Asc(sorting))
-        .into_iter_detailed().take(10).collect()
+        .detailed().into_iter().take(10).collect()
         .expect("Cannot list servers");
     println!("First 10 servers:");
     for s in &servers {

@@ -14,12 +14,13 @@
 
 //! Waiters.
 
+use std::fmt::Debug;
 use std::time::Duration;
 
 use waiter::{Waiter, WaiterCurrentState};
 
 use super::super::{Error, ErrorKind, Result};
-use super::{Refresh, ResourceId};
+use super::Refresh;
 
 
 /// Wait for resource deletion.
@@ -48,7 +49,7 @@ impl<T> WaiterCurrentState<T> for DeletionWaiter<T> {
     }
 }
 
-impl<T: ResourceId + Refresh> Waiter<(), Error> for DeletionWaiter<T> {
+impl<T: Refresh + Debug> Waiter<(), Error> for DeletionWaiter<T> {
     fn default_wait_timeout(&self) -> Option<Duration> {
         Some(self.wait_timeout)
     }
@@ -59,24 +60,23 @@ impl<T: ResourceId + Refresh> Waiter<(), Error> for DeletionWaiter<T> {
 
     fn timeout_error(&self) -> Error {
         Error::new(ErrorKind::OperationTimedOut,
-                   format!("Timeout waiting for resource {} to be deleted",
-                           self.inner.resource_id()))
+                   format!("Timeout waiting for resource {:?} to be deleted",
+                           self.inner))
     }
 
     fn poll(&mut self) -> Result<Option<()>> {
         match self.inner.refresh() {
             Ok(..) => {
-                trace!("Still waiting for resource {} to be deleted",
-                       self.inner.resource_id());
+                trace!("Still waiting for resource {:?} to be deleted",
+                       self.inner);
                 Ok(None)
             },
             Err(ref e) if e.kind() == ErrorKind::ResourceNotFound => {
-                debug!("Resource {} was deleted", self.inner.resource_id());
+                debug!("Resource {:?} was deleted", self.inner);
                 Ok(Some(()))
             },
             Err(e) => {
-                debug!("Failed to delete resource {} - {}",
-                       self.inner.resource_id(), e);
+                debug!("Failed to delete resource {:?} - {}", self.inner, e);
                 Err(e)
             }
         }

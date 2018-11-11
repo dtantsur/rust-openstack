@@ -15,16 +15,14 @@
 //! Network management via Network API.
 
 use std::rc::Rc;
-use std::fmt::Debug;
 use std::time::Duration;
 
 use chrono::{DateTime, FixedOffset};
 use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
-use serde::Serialize;
 
 use super::super::{Error, Result, Sort};
-use super::super::common::{DeletionWaiter, IntoVerified, ListResources,
-                           NetworkRef, Refresh, ResourceId, ResourceIterator};
+use super::super::common::{DeletionWaiter, IntoVerified, NetworkRef, Refresh,
+                           ResourceQuery, ResourceIterator};
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::base::V2API;
@@ -206,9 +204,9 @@ impl NetworkQuery {
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_iter(self) -> ResourceIterator<Network> {
+    pub fn into_iter(self) -> ResourceIterator<NetworkQuery> {
         debug!("Fetching networks with {:?}", self.query);
-        ResourceIterator::new(self.session, self.query)
+        ResourceIterator::new(self)
     }
 
     /// Execute this request and return all results.
@@ -231,6 +229,27 @@ impl NetworkQuery {
         }
 
         self.into_iter().one()
+    }
+}
+
+impl ResourceQuery for NetworkQuery {
+    type Item = Network;
+
+    const DEFAULT_LIMIT: usize = 50;
+
+    fn can_paginate(&self) -> Result<bool> {
+        Ok(self.can_paginate)
+    }
+
+    fn extract_marker(&self, resource: &Self::Item) -> String {
+        resource.id().clone()
+    }
+
+    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>)
+            -> Result<Vec<Self::Item>> {
+        let query = self.query.with_marker_and_limit(limit, marker);
+        Ok(self.session.list_networks(&query)?.into_iter()
+           .map(|item| Network::new(self.session.clone(), item)).collect())
     }
 }
 
@@ -297,30 +316,14 @@ impl NewNetwork {
     }
 }
 
-impl ResourceId for Network {
-    fn resource_id(&self) -> String {
-        self.id().clone()
-    }
-}
-
-impl ListResources for Network {
-    const DEFAULT_LIMIT: usize = 50;
-
-    fn list_resources<Q: Serialize + Debug>(session: Rc<Session>, query: Q)
-            -> Result<Vec<Network>> {
-        Ok(session.list_networks(&query)?.into_iter()
-           .map(|item| Network::new(session.clone(), item)).collect())
-    }
-}
-
 impl IntoFallibleIterator for NetworkQuery {
     type Item = Network;
 
     type Error = Error;
 
-    type IntoIter = ResourceIterator<Network>;
+    type IntoIter = ResourceIterator<NetworkQuery>;
 
-    fn into_fallible_iterator(self) -> ResourceIterator<Network> {
+    fn into_fallible_iterator(self) -> Self::IntoIter {
         self.into_iter()
     }
 }

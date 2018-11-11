@@ -15,15 +15,13 @@
 //! Flavor management via Compute API.
 
 use std::collections::HashMap;
-use std::fmt::Debug;
 use std::rc::Rc;
 
 use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
-use serde::Serialize;
 
 use super::super::{Error, Result};
-use super::super::common::{self, FlavorRef, IntoVerified, ListResources,
-                           Refresh, ResourceId, ResourceIterator};
+use super::super::common::{self, FlavorRef, IntoVerified, Refresh,
+                           ResourceQuery, ResourceIterator};
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::base::V2API;
@@ -45,12 +43,18 @@ pub struct FlavorSummary {
     inner: common::protocol::IdAndName,
 }
 
-/// A query to server list.
+/// A query to flavor list.
 #[derive(Clone, Debug)]
 pub struct FlavorQuery {
     session: Rc<Session>,
     query: Query,
     can_paginate: bool,
+}
+
+/// A detailed query to flavor list.
+#[derive(Clone, Debug)]
+pub struct DetailedFlavorQuery {
+    inner: FlavorQuery,
 }
 
 
@@ -179,6 +183,13 @@ impl FlavorQuery {
         self
     }
 
+    /// Convert this query into a detailed query.
+    pub fn detailed(self) -> DetailedFlavorQuery {
+        DetailedFlavorQuery {
+            inner: self
+        }
+    }
+
     /// Convert this query into an iterator executing the request.
     ///
     /// This iterator yields only `FlavorSummary` objects, containing
@@ -188,9 +199,9 @@ impl FlavorQuery {
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_iter(self) -> ResourceIterator<FlavorSummary> {
+    pub fn into_iter(self) -> ResourceIterator<FlavorQuery> {
         debug!("Fetching flavors with {:?}", self.query);
-        ResourceIterator::new(self.session, self.query)
+        ResourceIterator::new(self)
     }
 
     /// Convert this query into an iterator executing the request.
@@ -202,9 +213,9 @@ impl FlavorQuery {
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_iter_detailed(self) -> ResourceIterator<Flavor> {
-        debug!("Fetching flavor details with {:?}", self.query);
-        ResourceIterator::new(self.session, self.query)
+    #[deprecated(since = "0.2.0", note = "Use .detailed().into_iter()")]
+    pub fn into_iter_detailed(self) -> ResourceIterator<DetailedFlavorQuery> {
+        self.detailed().into_iter()
     }
 
     /// Execute this request and return all results.
@@ -230,40 +241,64 @@ impl FlavorQuery {
     }
 }
 
+impl ResourceQuery for FlavorQuery {
+    type Item = FlavorSummary;
 
-impl ResourceId for FlavorSummary {
-    fn resource_id(&self) -> String {
-        self.id().clone()
+    const DEFAULT_LIMIT: usize = 100;
+
+    fn can_paginate(&self) -> Result<bool> {
+        Ok(self.can_paginate)
     }
-}
 
-impl ListResources for FlavorSummary {
-    const DEFAULT_LIMIT: usize = 50;
+    fn extract_marker(&self, resource: &Self::Item) -> String {
+        resource.id().clone()
+    }
 
-    fn list_resources<Q: Serialize + Debug>(session: Rc<Session>, query: Q)
-            -> Result<Vec<FlavorSummary>> {
-        Ok(session.list_flavors(&query)?.into_iter().map(|item| FlavorSummary {
-            session: session.clone(),
+    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>)
+            -> Result<Vec<Self::Item>> {
+        let query = self.query.with_marker_and_limit(limit, marker);
+        Ok(self.session.list_flavors(&query)?.into_iter().map(|item| FlavorSummary {
+            session: self.session.clone(),
             inner: item
         }).collect())
     }
 }
 
-impl ResourceId for Flavor {
-    fn resource_id(&self) -> String {
-        self.id().clone()
+impl DetailedFlavorQuery {
+    /// Convert this query into an iterator executing the request.
+    ///
+    /// This iterator yields full `Flavor` objects.
+    ///
+    /// Returns a `FallibleIterator`, which is an iterator with each `next`
+    /// call returning a `Result`.
+    ///
+    /// Note that no requests are done until you start iterating.
+    pub fn into_iter(self) -> ResourceIterator<DetailedFlavorQuery> {
+        debug!("Fetching detailed flavors with {:?}", self.inner.query);
+        ResourceIterator::new(self)
     }
 }
 
-impl ListResources for Flavor {
+impl ResourceQuery for DetailedFlavorQuery {
+    type Item = Flavor;
+
     const DEFAULT_LIMIT: usize = 50;
 
-    fn list_resources<Q: Serialize + Debug>(session: Rc<Session>, query: Q)
-            -> Result<Vec<Flavor>> {
-        let flavors = session.list_flavors_detail(&query)?;
+    fn can_paginate(&self) -> Result<bool> {
+        Ok(self.inner.can_paginate)
+    }
+
+    fn extract_marker(&self, resource: &Self::Item) -> String {
+        resource.id().clone()
+    }
+
+    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>)
+            -> Result<Vec<Self::Item>> {
+        let query = self.inner.query.with_marker_and_limit(limit, marker);
+        let flavors = self.inner.session.list_flavors_detail(&query)?;
         let mut result = Vec::with_capacity(flavors.len());
         for item in flavors {
-            result.push(Flavor::new(session.clone(), item)?);
+            result.push(Flavor::new(self.inner.session.clone(), item)?);
         }
         Ok(result)
     }
@@ -274,9 +309,21 @@ impl IntoFallibleIterator for FlavorQuery {
 
     type Error = Error;
 
-    type IntoIter = ResourceIterator<FlavorSummary>;
+    type IntoIter = ResourceIterator<FlavorQuery>;
 
-    fn into_fallible_iterator(self) -> ResourceIterator<FlavorSummary> {
+    fn into_fallible_iterator(self) -> Self::IntoIter {
+        self.into_iter()
+    }
+}
+
+impl IntoFallibleIterator for DetailedFlavorQuery {
+    type Item = Flavor;
+
+    type Error = Error;
+
+    type IntoIter = ResourceIterator<DetailedFlavorQuery>;
+
+    fn into_fallible_iterator(self) -> Self::IntoIter {
         self.into_iter()
     }
 }

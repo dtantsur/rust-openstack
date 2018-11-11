@@ -14,37 +14,14 @@
 
 //! Types and traits shared between services.
 
-use std::rc::Rc;
-
-use serde::Serialize;
-
 use super::super::Result;
 use super::super::session::Session;
 
-
-/// Trait representing something that can be listed from a session.
-pub trait ListResources {
-    /// Default limit to use with this resource.
-    const DEFAULT_LIMIT: usize;
-
-    /// Whether pagination is supported for this resource.
-    fn can_paginate(_session: &Session) -> Result<bool> { Ok(true) }
-
-    /// List the resources from the session.
-    fn list_resources<Q>(session: Rc<Session>, query: Q) -> Result<Vec<Self>>
-        where Self: Sized, Q: Serialize + ::std::fmt::Debug;
-}
 
 /// Trait representing something that can be refreshed.
 pub trait Refresh {
     /// Refresh the resource representation.
     fn refresh(&mut self) -> Result<()>;
-}
-
-/// Trait representing something that has an ID.
-pub trait ResourceId {
-    /// Identifier of the current resource.
-    fn resource_id(&self) -> String;
 }
 
 /// A type that can be converted into a verified representation.

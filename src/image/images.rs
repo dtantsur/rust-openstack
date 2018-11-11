@@ -14,16 +14,14 @@
 
 //! Image management via Image API.
 
-use std::fmt::Debug;
 use std::rc::Rc;
 
 use chrono::{DateTime, FixedOffset};
 use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
-use serde::Serialize;
 
 use super::super::{Error, Result, Sort};
-use super::super::common::{ImageRef, IntoVerified, ListResources, Refresh,
-                           ResourceId, ResourceIterator};
+use super::super::common::{ImageRef, IntoVerified, Refresh, ResourceQuery,
+                           ResourceIterator};
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::base::V2API;
@@ -196,12 +194,12 @@ impl ImageQuery {
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_iter(mut self) -> ResourceIterator<Image> {
+    pub fn into_iter(mut self) -> ResourceIterator<ImageQuery> {
         if ! self.sort.is_empty() {
             self.query.push_str("sort", self.sort.join(","));
         }
         debug!("Fetching images with {:?}", self.query);
-        ResourceIterator::new(self.session.clone(), self.query)
+        ResourceIterator::new(self)
     }
 
     /// Execute this request and return all results.
@@ -227,19 +225,24 @@ impl ImageQuery {
     }
 }
 
-impl ResourceId for Image {
-    fn resource_id(&self) -> String {
-        self.id().clone()
-    }
-}
+impl ResourceQuery for ImageQuery {
+    type Item = Image;
 
-impl ListResources for Image {
     const DEFAULT_LIMIT: usize = 50;
 
-    fn list_resources<Q: Serialize + Debug>(session: Rc<Session>, query: Q)
-            -> Result<Vec<Image>> {
-        Ok(session.list_images(&query)?.into_iter().map(|item| Image {
-            session: session.clone(),
+    fn can_paginate(&self) -> Result<bool> {
+        Ok(self.can_paginate)
+    }
+
+    fn extract_marker(&self, resource: &Self::Item) -> String {
+        resource.id().clone()
+    }
+
+    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>)
+            -> Result<Vec<Self::Item>> {
+        let query = self.query.with_marker_and_limit(limit, marker);
+        Ok(self.session.list_images(&query)?.into_iter().map(|item| Image {
+            session: self.session.clone(),
             inner: item
         }).collect())
     }
@@ -250,9 +253,9 @@ impl IntoFallibleIterator for ImageQuery {
 
     type Error = Error;
 
-    type IntoIter = ResourceIterator<Image>;
+    type IntoIter = ResourceIterator<ImageQuery>;
 
-    fn into_fallible_iterator(self) -> ResourceIterator<Image> {
+    fn into_fallible_iterator(self) -> Self::IntoIter {
         self.into_iter()
     }
 }

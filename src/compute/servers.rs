@@ -15,20 +15,18 @@
 //! Server management via Compute API.
 
 use std::collections::HashMap;
-use std::fmt::Debug;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::rc::Rc;
 use std::time::Duration;
 
 use chrono::{DateTime, FixedOffset};
 use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
-use serde::Serialize;
 use waiter::{Waiter, WaiterCurrentState};
 
 use super::super::{Error, ErrorKind, Result, Sort};
 use super::super::common::{self, DeletionWaiter, FlavorRef, ImageRef,
-                           IntoVerified, KeyPairRef, ListResources, NetworkRef,
-                           PortRef, ProjectRef, Refresh, ResourceId,
+                           IntoVerified, KeyPairRef, NetworkRef,
+                           PortRef, ProjectRef, Refresh, ResourceQuery,
                            ResourceIterator, UserRef};
 #[cfg(feature = "image")]
 use super::super::image::Image;
@@ -44,6 +42,14 @@ pub struct ServerQuery {
     session: Rc<Session>,
     query: Query,
     can_paginate: bool,
+}
+
+/// A detailed query to server list.
+///
+/// Is constructed from a `ServerQuery`.
+#[derive(Clone, Debug)]
+pub struct DetailedServerQuery {
+    inner: ServerQuery,
 }
 
 /// Structure representing a single server.
@@ -466,6 +472,13 @@ impl ServerQuery {
         self
     }
 
+    /// Convert this query into a detailed query.
+    pub fn detailed(self) -> DetailedServerQuery {
+        DetailedServerQuery {
+            inner: self
+        }
+    }
+
     /// Convert this query into an iterator executing the request.
     ///
     /// This iterator yields only `ServerSummary` objects, containing
@@ -475,9 +488,9 @@ impl ServerQuery {
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_iter(self) -> ResourceIterator<ServerSummary> {
+    pub fn into_iter(self) -> ResourceIterator<ServerQuery> {
         debug!("Fetching servers with {:?}", self.query);
-        ResourceIterator::new(self.session, self.query)
+        ResourceIterator::new(self)
     }
 
     /// Convert this query into an iterator executing the request.
@@ -489,9 +502,9 @@ impl ServerQuery {
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_iter_detailed(self) -> ResourceIterator<Server> {
-        debug!("Fetching server details with {:?}", self.query);
-        ResourceIterator::new(self.session, self.query)
+    #[deprecated(since = "0.2.0", note = "Use .detailed().into_iter()")]
+    pub fn into_iter_detailed(self) -> ResourceIterator<DetailedServerQuery> {
+        self.detailed().into_iter()
     }
 
     /// Execute this request and return all results.
@@ -514,6 +527,81 @@ impl ServerQuery {
         }
 
         self.into_iter().one()
+    }
+}
+
+impl ResourceQuery for ServerQuery {
+    type Item = ServerSummary;
+
+    const DEFAULT_LIMIT: usize = 100;
+
+    fn can_paginate(&self) -> Result<bool> {
+        Ok(self.can_paginate)
+    }
+
+    fn extract_marker(&self, resource: &Self::Item) -> String {
+        resource.id().clone()
+    }
+
+    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>)
+            -> Result<Vec<Self::Item>> {
+        let query = self.query.with_marker_and_limit(limit, marker);
+        Ok(self.session.list_servers(&query)?.into_iter().map(|srv| ServerSummary {
+            session: self.session.clone(),
+            inner: srv
+        }).collect())
+    }
+}
+
+impl DetailedServerQuery {
+    /// Convert this query into an iterator executing the request.
+    ///
+    /// This iterator yields full `Server` objects.
+    ///
+    /// Returns a `FallibleIterator`, which is an iterator with each `next`
+    /// call returning a `Result`.
+    ///
+    /// Note that no requests are done until you start iterating.
+    pub fn into_iter(self) -> ResourceIterator<DetailedServerQuery> {
+        debug!("Fetching server details with {:?}", self.inner.query);
+        ResourceIterator::new(self)
+    }
+}
+
+impl ResourceQuery for DetailedServerQuery {
+    type Item = Server;
+
+    const DEFAULT_LIMIT: usize = 50;
+
+    fn can_paginate(&self) -> Result<bool> {
+        Ok(self.inner.can_paginate)
+    }
+
+    fn extract_marker(&self, resource: &Self::Item) -> String {
+        resource.id().clone()
+    }
+
+    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>)
+            -> Result<Vec<Self::Item>> {
+        let query = self.inner.query.with_marker_and_limit(limit, marker);
+        let servers = self.inner.session.list_servers_detail(&query)?;
+        let mut result = Vec::with_capacity(servers.len());
+        for srv in servers {
+            result.push(Server::new(self.inner.session.clone(), srv)?);
+        }
+        Ok(result)
+    }
+}
+
+impl From<DetailedServerQuery> for ServerQuery {
+    fn from(value: DetailedServerQuery) -> ServerQuery {
+        value.inner
+    }
+}
+
+impl From<ServerQuery> for DetailedServerQuery {
+    fn from(value: ServerQuery) -> DetailedServerQuery {
+        value.detailed()
     }
 }
 
@@ -693,51 +781,26 @@ impl WaiterCurrentState<Server> for ServerCreationWaiter {
     }
 }
 
-impl ResourceId for ServerSummary {
-    fn resource_id(&self) -> String {
-        self.id().clone()
-    }
-}
-
-impl ListResources for ServerSummary {
-    const DEFAULT_LIMIT: usize = 50;
-
-    fn list_resources<Q: Serialize + Debug>(session: Rc<Session>, query: Q)
-            -> Result<Vec<ServerSummary>> {
-        Ok(session.list_servers(&query)?.into_iter().map(|srv| ServerSummary {
-            session: session.clone(),
-            inner: srv
-        }).collect())
-    }
-}
-
-impl ResourceId for Server {
-    fn resource_id(&self) -> String {
-        self.id().clone()
-    }
-}
-
-impl ListResources for Server {
-    const DEFAULT_LIMIT: usize = 50;
-
-    fn list_resources<Q: Serialize + Debug>(session: Rc<Session>, query: Q)
-            -> Result<Vec<Server>> {
-        let mut result = Vec::new();
-        for srv in session.list_servers_detail(&query)?.into_iter() {
-            result.push(Server::new(session.clone(), srv)?);
-        }
-        Ok(result)
-    }
-}
-
 impl IntoFallibleIterator for ServerQuery {
     type Item = ServerSummary;
 
     type Error = Error;
 
-    type IntoIter = ResourceIterator<ServerSummary>;
+    type IntoIter = ResourceIterator<ServerQuery>;
 
-    fn into_fallible_iterator(self) -> ResourceIterator<ServerSummary> {
+    fn into_fallible_iterator(self) -> Self::IntoIter {
+        self.into_iter()
+    }
+}
+
+impl IntoFallibleIterator for DetailedServerQuery {
+    type Item = Server;
+
+    type Error = Error;
+
+    type IntoIter = ResourceIterator<DetailedServerQuery>;
+
+    fn into_fallible_iterator(self) -> Self::IntoIter {
         self.into_iter()
     }
 }

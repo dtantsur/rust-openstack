@@ -21,10 +21,11 @@ mod protocol;
 mod servers;
 
 pub use self::base::V2 as ServiceType;
-pub use self::flavors::{Flavor, FlavorSummary, FlavorQuery};
+pub use self::flavors::{DetailedFlavorQuery, Flavor, FlavorSummary, FlavorQuery};
 pub use self::keypairs::{KeyPair, KeyPairQuery, NewKeyPair};
 pub use self::protocol::{AddressType, KeyPairType, RebootType, ServerAddress,
                          ServerFlavor, ServerSortKey, ServerPowerState,
                          ServerStatus};
-pub use self::servers::{NewServer, Server, ServerCreationWaiter, ServerNIC,
-                        ServerQuery, ServerStatusWaiter, ServerSummary};
+pub use self::servers::{DetailedServerQuery, NewServer, Server,
+                        ServerCreationWaiter, ServerNIC, ServerQuery,
+                        ServerStatusWaiter, ServerSummary};

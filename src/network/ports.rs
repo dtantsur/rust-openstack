@@ -16,7 +16,6 @@
 
 use std::collections::HashSet;
 use std::rc::Rc;
-use std::fmt::Debug;
 use std::mem;
 use std::net;
 use std::time::Duration;
@@ -24,11 +23,10 @@ use std::time::Duration;
 use chrono::{DateTime, FixedOffset};
 use eui48::MacAddress;
 use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
-use serde::Serialize;
 
 use super::super::{Error, Result, Sort};
-use super::super::common::{DeletionWaiter, IntoVerified, ListResources,
-                           NetworkRef, PortRef, Refresh, ResourceId,
+use super::super::common::{DeletionWaiter, IntoVerified, NetworkRef,
+                           PortRef, Refresh, ResourceQuery,
                            ResourceIterator, SubnetRef};
 use super::super::session::Session;
 use super::super::utils::Query;
@@ -396,9 +394,9 @@ impl PortQuery {
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_iter(self) -> ResourceIterator<Port> {
+    pub fn into_iter(self) -> ResourceIterator<PortQuery> {
         debug!("Fetching ports with {:?}", self.query);
-        ResourceIterator::new(self.session, self.query)
+        ResourceIterator::new(self)
     }
 
     /// Execute this request and return all results.
@@ -421,6 +419,27 @@ impl PortQuery {
         }
 
         self.into_iter().one()
+    }
+}
+
+impl ResourceQuery for PortQuery {
+    type Item = Port;
+
+    const DEFAULT_LIMIT: usize = 50;
+
+    fn can_paginate(&self) -> Result<bool> {
+        Ok(self.can_paginate)
+    }
+
+    fn extract_marker(&self, resource: &Self::Item) -> String {
+        resource.id().clone()
+    }
+
+    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>)
+            -> Result<Vec<Self::Item>> {
+        let query = self.query.with_marker_and_limit(limit, marker);
+        Ok(self.session.list_ports(&query)?.into_iter()
+           .map(|item| Port::new(self.session.clone(), item)).collect())
     }
 }
 
@@ -547,30 +566,14 @@ impl NewPort {
     // TODO(dtantsur): security groups
 }
 
-impl ResourceId for Port {
-    fn resource_id(&self) -> String {
-        self.id().clone()
-    }
-}
-
-impl ListResources for Port {
-    const DEFAULT_LIMIT: usize = 50;
-
-    fn list_resources<Q: Serialize + Debug>(session: Rc<Session>, query: Q)
-            -> Result<Vec<Port>> {
-        Ok(session.list_ports(&query)?.into_iter()
-           .map(|item| Port::new(session.clone(), item)).collect())
-    }
-}
-
 impl IntoFallibleIterator for PortQuery {
     type Item = Port;
 
     type Error = Error;
 
-    type IntoIter = ResourceIterator<Port>;
+    type IntoIter = ResourceIterator<PortQuery>;
 
-    fn into_fallible_iterator(self) -> ResourceIterator<Port> {
+    fn into_fallible_iterator(self) -> Self::IntoIter {
         self.into_iter()
     }
 }

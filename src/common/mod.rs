@@ -21,8 +21,8 @@ mod types;
 mod waiter;
 
 pub use self::apiversion::ApiVersion;
-pub use self::resourceiterator::ResourceIterator;
+pub use self::resourceiterator::{ResourceIterator, ResourceQuery};
 pub use self::types::{FlavorRef, ImageRef, KeyPairRef, NetworkRef, PortRef,
                       ProjectRef, Refresh, RouterRef, SubnetRef, UserRef};
-pub(crate) use self::types::{IntoVerified, ListResources, ResourceId};
+pub(crate) use self::types::IntoVerified;
 pub use self::waiter::DeletionWaiter;

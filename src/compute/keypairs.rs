@@ -14,16 +14,14 @@
 
 //! Key pair management via Compute API.
 
-use std::fmt::Debug;
 use std::io;
 use std::rc::Rc;
 
 use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
-use serde::Serialize;
 
 use super::super::{Error, ErrorKind, Result};
-use super::super::common::{KeyPairRef, IntoVerified, ListResources, Refresh,
-                           ResourceId, ResourceIterator};
+use super::super::common::{KeyPairRef, IntoVerified, Refresh,
+                           ResourceQuery, ResourceIterator};
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::base::V2API;
@@ -127,9 +125,9 @@ impl KeyPairQuery {
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_iter(self) -> ResourceIterator<KeyPair> {
+    pub fn into_iter(self) -> ResourceIterator<KeyPairQuery> {
         debug!("Fetching key pairs with {:?}", self.query);
-        ResourceIterator::new(self.session, self.query)
+        ResourceIterator::new(self)
     }
 
     /// Execute this request and return all results.
@@ -207,23 +205,28 @@ impl NewKeyPair {
     }
 }
 
-impl ResourceId for KeyPair {
-    fn resource_id(&self) -> String {
-        self.name().clone()
-    }
-}
+impl ResourceQuery for KeyPairQuery {
+    type Item = KeyPair;
 
-impl ListResources for KeyPair {
     const DEFAULT_LIMIT: usize = 50;
 
-    fn can_paginate(session: &Session) -> Result<bool> {
-        session.supports_keypair_pagination()
+    fn can_paginate(&self) -> Result<bool> {
+        if self.can_paginate {
+            self.session.supports_keypair_pagination()
+        } else {
+            Ok(false)
+        }
     }
 
-    fn list_resources<Q: Serialize + Debug>(session: Rc<Session>, query: Q)
-            -> Result<Vec<KeyPair>> {
-        Ok(session.list_keypairs(&query)?.into_iter().map(|item| KeyPair {
-            session: session.clone(),
+    fn extract_marker(&self, resource: &Self::Item) -> String {
+        resource.name().clone()
+    }
+
+    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>)
+            -> Result<Vec<Self::Item>> {
+        let query = self.query.with_marker_and_limit(limit, marker);
+        Ok(self.session.list_keypairs(&query)?.into_iter().map(|item| KeyPair {
+            session: self.session.clone(),
             inner: item
         }).collect())
     }
@@ -234,9 +237,9 @@ impl IntoFallibleIterator for KeyPairQuery {
 
     type Error = Error;
 
-    type IntoIter = ResourceIterator<KeyPair>;
+    type IntoIter = ResourceIterator<KeyPairQuery>;
 
-    fn into_fallible_iterator(self) -> ResourceIterator<KeyPair> {
+    fn into_fallible_iterator(self) -> Self::IntoIter {
         self.into_iter()
     }
 }

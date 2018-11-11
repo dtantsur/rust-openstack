@@ -15,18 +15,16 @@
 //! Subnets management via Network API.
 
 use std::rc::Rc;
-use std::fmt::Debug;
 use std::net;
 use std::time::Duration;
 
 use chrono::{DateTime, FixedOffset};
 use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
 use ipnet;
-use serde::Serialize;
 
 use super::super::{Error, Result, Sort};
-use super::super::common::{DeletionWaiter, IntoVerified, ListResources,
-                           NetworkRef, SubnetRef, Refresh, ResourceId,
+use super::super::common::{DeletionWaiter, IntoVerified, NetworkRef,
+                           SubnetRef, Refresh, ResourceQuery,
                            ResourceIterator};
 use super::super::session::Session;
 use super::super::utils::Query;
@@ -266,9 +264,9 @@ impl SubnetQuery {
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_iter(self) -> ResourceIterator<Subnet> {
+    pub fn into_iter(self) -> ResourceIterator<SubnetQuery> {
         debug!("Fetching subnets with {:?}", self.query);
-        ResourceIterator::new(self.session, self.query)
+        ResourceIterator::new(self)
     }
 
     /// Execute this request and return all results.
@@ -291,6 +289,27 @@ impl SubnetQuery {
         }
 
         self.into_iter().one()
+    }
+}
+
+impl ResourceQuery for SubnetQuery {
+    type Item = Subnet;
+
+    const DEFAULT_LIMIT: usize = 50;
+
+    fn can_paginate(&self) -> Result<bool> {
+        Ok(self.can_paginate)
+    }
+
+    fn extract_marker(&self, resource: &Self::Item) -> String {
+        resource.id().clone()
+    }
+
+    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>)
+            -> Result<Vec<Self::Item>> {
+        let query = self.query.with_marker_and_limit(limit, marker);
+        Ok(self.session.list_subnets(&query)?.into_iter()
+           .map(|item| Subnet::new(self.session.clone(), item)).collect())
     }
 }
 
@@ -376,30 +395,14 @@ impl NewSubnet {
     }
 }
 
-impl ResourceId for Subnet {
-    fn resource_id(&self) -> String {
-        self.id().clone()
-    }
-}
-
-impl ListResources for Subnet {
-    const DEFAULT_LIMIT: usize = 50;
-
-    fn list_resources<Q: Serialize + Debug>(session: Rc<Session>, query: Q)
-            -> Result<Vec<Subnet>> {
-        Ok(session.list_subnets(&query)?.into_iter()
-           .map(|item| Subnet::new(session.clone(), item)).collect())
-    }
-}
-
 impl IntoFallibleIterator for SubnetQuery {
     type Item = Subnet;
 
     type Error = Error;
 
-    type IntoIter = ResourceIterator<Subnet>;
+    type IntoIter = ResourceIterator<SubnetQuery>;
 
-    fn into_fallible_iterator(self) -> ResourceIterator<Subnet> {
+    fn into_fallible_iterator(self) -> Self::IntoIter {
         self.into_iter()
     }
 }

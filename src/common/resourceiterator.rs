@@ -14,55 +14,59 @@
 
 //! Generic API bits for implementing new services.
 
-use std::rc::Rc;
 use std::vec;
 
 use fallible_iterator::FallibleIterator;
 
 use super::super::{Error, ErrorKind, Result};
-use super::super::session::Session;
-use super::super::utils::Query;
-use super::{ListResources, ResourceId};
 
+
+/// A query for resources.
+///
+/// This is a low-level trait that should not be used directly.
+pub trait ResourceQuery {
+    /// Item type.
+    type Item;
+
+    /// Default limit to use with this query.
+    const DEFAULT_LIMIT: usize;
+
+    /// Whether pagination is supported for this query.
+    fn can_paginate(&self) -> Result<bool>;
+
+    /// Extract a marker from a resource.
+    fn extract_marker(&self, resource: &Self::Item) -> String;
+
+    /// Get a chunk of resources.
+    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>)
+        -> Result<Vec<Self::Item>>;
+}
 
 /// Generic implementation of a `FallibleIterator` over resources.
 #[derive(Debug, Clone)]
-pub struct ResourceIterator<T> {
-    session: Rc<Session>,
-    query: Query,
-    cache: Option<vec::IntoIter<T>>,
+pub struct ResourceIterator<Q: ResourceQuery> {
+    query: Q,
+    cache: Option<vec::IntoIter<Q::Item>>,
     marker: Option<String>,
     can_paginate: Option<bool>,
 }
 
-impl<T> ResourceIterator<T> {
+impl<Q> ResourceIterator<Q> where Q: ResourceQuery {
     #[allow(dead_code)]  // unused with --no-default-features
-    pub(crate) fn new(session: Rc<Session>, query: Query)
-            -> ResourceIterator<T> {
-        let can_paginate = query.0.iter().all(|pair| {
-            pair.0 != "limit" && pair.0 != "marker"
-        });
-
+    pub(crate) fn new(query: Q) -> ResourceIterator<Q> {
         ResourceIterator {
-            session: session,
             query: query,
             cache: None,
             marker: None,
-            can_paginate: if can_paginate {
-                None  // ask the service later
-            } else {
-                Some(false)
-            }
+            can_paginate: None,  // ask the service later
         }
     }
-}
 
-impl<T> ResourceIterator<T> where T: ListResources + ResourceId {
     /// Assert that only one item is left and fetch it.
     ///
     /// Fails with `ResourceNotFound` if no items are left and with
     /// `TooManyItems` if there is more than one item left.
-    pub fn one(mut self) -> Result<T> {
+    pub fn one(mut self) -> Result<Q::Item> {
         match self.next()? {
             Some(result) => if self.next()?.is_some() {
                 Err(Error::new(ErrorKind::TooManyItems,
@@ -76,14 +80,14 @@ impl<T> ResourceIterator<T> where T: ListResources + ResourceId {
     }
 }
 
-impl<T> FallibleIterator for ResourceIterator<T> where T: ListResources + ResourceId {
-    type Item = T;
+impl<Q> FallibleIterator for ResourceIterator<Q> where Q: ResourceQuery {
+    type Item = Q::Item;
 
     type Error = Error;
 
-    fn next(&mut self) -> Result<Option<T>> {
+    fn next(&mut self) -> Result<Option<Self::Item>> {
         if self.can_paginate.is_none() {
-            self.can_paginate = Some(T::can_paginate(&self.session)?);
+            self.can_paginate = Some(self.query.can_paginate()?);
         }
 
         let maybe_next = self.cache.as_mut().and_then(|cache| cache.next());
@@ -93,25 +97,21 @@ impl<T> FallibleIterator for ResourceIterator<T> where T: ListResources + Resour
             // We have exhausted the results and pagination is not possible
             None
         } else {
-            let mut query = self.query.clone();
-
+            let mut limit = None;
+            let mut marker = None;
             if self.can_paginate == Some(true) {
                 // can_paginate=true implies no limit was provided
-                query.push("limit", T::DEFAULT_LIMIT);
-                if let Some(marker) = self.marker.take() {
-                    query.push_str("marker", marker);
-                }
+                limit = Some(Q::DEFAULT_LIMIT);
+                marker = self.marker.clone();
             }
 
-            let mut servers_iter = T::list_resources(self.session.clone(),
-                                                     &query.0)?
-                .into_iter();
-            let maybe_next = servers_iter.next();
-            self.cache = Some(servers_iter);
+            let mut iter = self.query.fetch_chunk(limit, marker)?.into_iter();
+            let maybe_next = iter.next();
+            self.cache = Some(iter);
 
             maybe_next
         }.map(|next| {
-            self.marker = Some(next.resource_id());
+            self.marker = Some(self.query.extract_marker(&next));
             next
         }))
     }
@@ -120,98 +120,77 @@ impl<T> FallibleIterator for ResourceIterator<T> where T: ListResources + Resour
 
 #[cfg(test)]
 mod test {
-    use std::rc::Rc;
-
     use fallible_iterator::FallibleIterator;
-    use serde_json::{self, Value};
 
     use super::super::super::Result;
-    use super::super::super::session::Session;
-    use super::super::super::utils::{self, Query};
-    use super::super::{ListResources, ResourceId};
-    use super::ResourceIterator;
+    use super::{ResourceIterator, ResourceQuery};
 
     #[derive(Debug, PartialEq, Eq)]
     struct Test(u8);
 
-    impl ResourceId for Test {
-        fn resource_id(&self) -> String {
-            self.0.to_string()
-        }
-    }
+    #[derive(Debug)]
+    struct TestQuery;
 
-    fn array_to_map(value: Vec<Value>) -> serde_json::Map<String, Value> {
-        value.into_iter().map(|arr| {
-           match arr {
-               Value::Array(v) => match v[0] {
-                   Value::String(ref s) => (s.clone(), v[1].clone()),
-                   ref y => panic!("unexpected query key {:?}", y)
-               },
-               x => panic!("unexpected query component {:?}", x)
-           }
-        }).collect()
-    }
+    impl ResourceQuery for TestQuery {
+        type Item = Test;
 
-    impl ListResources for Test {
         const DEFAULT_LIMIT: usize = 2;
 
-        fn list_resources<Q>(_session: Rc<Session>, query: Q) -> Result<Vec<Self>>
-                where Q: ::serde::Serialize + ::std::fmt::Debug {
-            let map = match serde_json::to_value(query).unwrap() {
-                Value::Array(arr) => array_to_map(arr),
-                x => panic!("unexpected query {:?}", x)
-            };
-            assert_eq!(*map.get("limit").unwrap(), Value::String("2".into()));
-            Ok(match map.get("marker") {
-                Some(&Value::String(ref s)) if s == "1" => vec![Test(2), Test(3)],
-                Some(&Value::String(ref s)) if s == "3" => Vec::new(),
+        fn can_paginate(&self) -> Result<bool> {
+            Ok(true)
+        }
+
+        fn extract_marker(&self, resource: &Test) -> String {
+            resource.0.to_string()
+        }
+
+        fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>)
+            -> Result<Vec<Self::Item>> {
+            assert_eq!(limit, Some(2));
+            Ok(match marker.map(|s| s.parse::<u8>().unwrap()) {
+                Some(1) => vec![Test(2), Test(3)],
+                Some(3) => Vec::new(),
                 None => vec![Test(0), Test(1)],
-                Some(ref x) => panic!("unexpected marker {:?}", x)
+                Some(x) => panic!("unexpected marker {:?}", x)
             })
         }
     }
 
-    #[derive(Debug, PartialEq, Eq)]
-    struct NoPagination(u8);
+    #[derive(Debug)]
+    struct NoPagination;
 
-    impl ListResources for NoPagination {
+    impl ResourceQuery for NoPagination {
+        type Item = Test;
+
         const DEFAULT_LIMIT: usize = 2;
 
-        fn can_paginate(_session: &Session) -> Result<bool> { Ok(false) }
-
-        fn list_resources<Q>(_session: Rc<Session>, query: Q) -> Result<Vec<Self>>
-                where Q: ::serde::Serialize + ::std::fmt::Debug {
-            let map = match serde_json::to_value(query).unwrap() {
-                Value::Array(arr) => array_to_map(arr),
-                x => panic!("unexpected query {:?}", x)
-            };
-            assert!(map.get("limit").is_none());
-            assert!(map.get("marker").is_none());
-            Ok(vec![NoPagination(0), NoPagination(1), NoPagination(2)])
+        fn can_paginate(&self) -> Result<bool> {
+            Ok(false)
         }
-    }
 
-    impl ResourceId for NoPagination {
-        fn resource_id(&self) -> String {
-            self.0.to_string()
+        fn extract_marker(&self, resource: &Test) -> String {
+            resource.0.to_string()
+        }
+
+        fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>)
+            -> Result<Vec<Self::Item>> {
+            assert!(limit.is_none());
+            assert!(marker.is_none());
+            Ok(vec![Test(0), Test(1), Test(2)])
         }
     }
 
     #[test]
     fn test_resource_iterator() {
-        let s = utils::test::new_session(utils::test::URL);
-        let it: ResourceIterator<Test> = ResourceIterator::new(Rc::new(s),
-                                                               Query::new());
+        let it: ResourceIterator<TestQuery> = ResourceIterator::new(TestQuery);
         assert_eq!(it.collect::<Vec<Test>>().unwrap(),
                    vec![Test(0), Test(1), Test(2), Test(3)]);
     }
 
     #[test]
     fn test_resource_iterator_no_pagination() {
-        let s = utils::test::new_session(utils::test::URL);
-        let it: ResourceIterator<NoPagination> = ResourceIterator::new(Rc::new(s),
-                                                                       Query::new());
-        assert_eq!(it.collect::<Vec<NoPagination>>().unwrap(),
-                   vec![NoPagination(0), NoPagination(1), NoPagination(2)]);
+        let it: ResourceIterator<NoPagination> = ResourceIterator::new(NoPagination);
+        assert_eq!(it.collect::<Vec<Test>>().unwrap(),
+                   vec![Test(0), Test(1), Test(2)]);
     }
 }

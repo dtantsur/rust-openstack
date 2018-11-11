@@ -15,19 +15,17 @@
 //! Floating IP support.
 
 use std::collections::HashSet;
-use std::fmt::Debug;
 use std::net;
 use std::rc::Rc;
 use std::time::Duration;
 
 use chrono::{DateTime, FixedOffset};
 use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
-use serde::Serialize;
 use serde_json;
 
 use super::super::{Error, ErrorKind, Result, Sort};
-use super::super::common::{DeletionWaiter, IntoVerified, ListResources,
-                           NetworkRef, PortRef, Refresh, ResourceId,
+use super::super::common::{DeletionWaiter, IntoVerified, NetworkRef,
+                           PortRef, Refresh, ResourceQuery,
                            ResourceIterator, RouterRef, SubnetRef};
 use super::super::session::Session;
 use super::super::utils::Query;
@@ -363,9 +361,9 @@ impl FloatingIpQuery {
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_iter(self) -> ResourceIterator<FloatingIp> {
+    pub fn into_iter(self) -> ResourceIterator<FloatingIpQuery> {
         debug!("Fetching floating_ips with {:?}", self.query);
-        ResourceIterator::new(self.session, self.query)
+        ResourceIterator::new(self)
     }
 
     /// Execute this request and return all results.
@@ -388,6 +386,27 @@ impl FloatingIpQuery {
         }
 
         self.into_iter().one()
+    }
+}
+
+impl ResourceQuery for FloatingIpQuery {
+    type Item = FloatingIp;
+
+    const DEFAULT_LIMIT: usize = 50;
+
+    fn can_paginate(&self) -> Result<bool> {
+        Ok(self.can_paginate)
+    }
+
+    fn extract_marker(&self, resource: &Self::Item) -> String {
+        resource.id().clone()
+    }
+
+    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>)
+            -> Result<Vec<Self::Item>> {
+        let query = self.query.with_marker_and_limit(limit, marker);
+        Ok(self.session.list_floating_ips(&query)?.into_iter()
+           .map(|item| FloatingIp::new(self.session.clone(), item)).collect())
     }
 }
 
@@ -486,30 +505,14 @@ impl NewFloatingIp {
     }
 }
 
-impl ResourceId for FloatingIp {
-    fn resource_id(&self) -> String {
-        self.id().clone()
-    }
-}
-
-impl ListResources for FloatingIp {
-    const DEFAULT_LIMIT: usize = 50;
-
-    fn list_resources<Q: Serialize + Debug>(session: Rc<Session>, query: Q)
-            -> Result<Vec<FloatingIp>> {
-        Ok(session.list_floating_ips(&query)?.into_iter()
-           .map(|item| FloatingIp::new(session.clone(), item)).collect())
-    }
-}
-
 impl IntoFallibleIterator for FloatingIpQuery {
     type Item = FloatingIp;
 
     type Error = Error;
 
-    type IntoIter = ResourceIterator<FloatingIp>;
+    type IntoIter = ResourceIterator<FloatingIpQuery>;
 
-    fn into_fallible_iterator(self) -> ResourceIterator<FloatingIp> {
+    fn into_fallible_iterator(self) -> Self::IntoIter {
         self.into_iter()
     }
 }
