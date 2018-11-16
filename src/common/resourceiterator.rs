@@ -40,6 +40,12 @@ pub trait ResourceQuery {
     /// Get a chunk of resources.
     fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>)
         -> Result<Vec<Self::Item>>;
+
+    /// Validate the query before the first execution.
+    ///
+    /// This call may modify internal representation of the query, so changing
+    /// the query after calling it may cause undesired side effects.
+    fn validate(&mut self) -> Result<()> { Ok(()) }
 }
 
 /// Generic implementation of a `FallibleIterator` over resources.
@@ -49,6 +55,7 @@ pub struct ResourceIterator<Q: ResourceQuery> {
     cache: Option<vec::IntoIter<Q::Item>>,
     marker: Option<String>,
     can_paginate: Option<bool>,
+    validated: bool,
 }
 
 impl<Q> ResourceIterator<Q> where Q: ResourceQuery {
@@ -59,6 +66,7 @@ impl<Q> ResourceIterator<Q> where Q: ResourceQuery {
             cache: None,
             marker: None,
             can_paginate: None,  // ask the service later
+            validated: false,
         }
     }
 
@@ -86,6 +94,11 @@ impl<Q> FallibleIterator for ResourceIterator<Q> where Q: ResourceQuery {
     type Error = Error;
 
     fn next(&mut self) -> Result<Option<Self::Item>> {
+        if ! self.validated {
+            self.query.validate()?;
+            self.validated = true;
+        }
+
         if self.can_paginate.is_none() {
             self.can_paginate = Some(self.query.can_paginate()?);
         }

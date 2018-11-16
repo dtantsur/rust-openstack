@@ -96,11 +96,8 @@ fn test_basic_server_ops() {
 
     validate_server(&os, &mut server);
 
-    let network = os.get_network(network_id)
-        .expect("Could not find port's network");
     let ports = os.find_ports()
-        // TODO(dtantsur): just use network_id when names are supported
-        .with_network(network)
+        .with_network(network_id)
         .with_status(openstack::network::NetworkStatus::Active)
         .all().expect("Cannot find active ports for network");
     assert!(ports.len() > 0);
