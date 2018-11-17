@@ -13,6 +13,7 @@
 // limitations under the License.
 
 extern crate env_logger;
+extern crate fallible_iterator;
 extern crate ipnet;
 extern crate openstack;
 extern crate waiter;
@@ -21,6 +22,7 @@ use std::env;
 use std::net;
 use std::sync::{Once, ONCE_INIT};
 
+use fallible_iterator::FallibleIterator;
 use waiter::Waiter;
 
 use openstack::Refresh;
@@ -73,11 +75,19 @@ fn test_port_create_update_delete() {
     assert_eq!(port.name().as_ref().unwrap(), "rust-openstack-integration-2");
     assert!(!port.is_dirty());
 
+    let mut port_found = os.find_ports().with_network(network_id)
+        .with_name("rust-openstack-integration-2").one()
+        .expect("Cannot find port by network");
+    assert_eq!(port_found.name().as_ref().unwrap(), "rust-openstack-integration-2");
+    assert!(!port_found.is_dirty());
+
     port.delete().expect("Cannot request port deletion")
         .wait().expect("Port was not deleted");
 
     os.get_port("rust-openstack-integration-2")
         .err().expect("Port is still present");
+
+    port_found.refresh().err().expect("Refresh succeeds on deleted port");
 }
 
 #[test]
@@ -137,9 +147,39 @@ fn test_network_create_delete_with_fields() {
     assert_eq!(subnet.ip_version(), openstack::network::IpVersion::V4);
     assert_eq!(subnet.name().as_ref().unwrap(), "rust-openstack-integration-new");
 
+    let subnets = os.find_subnets().with_network("rust-openstack-integration-new")
+        .all().expect("Cannot find subnets by network name");
+    assert_eq!(subnets.len(), 1);
+    assert_eq!(subnets[0].id(), subnet.id());
+    assert_eq!(subnets[0].name(), subnet.name());
+
     subnet.delete().expect("Cannot request subnet deletion")
         .wait().expect("Subnet was not deleted");
 
     network.delete().expect("Cannot request network deletion")
         .wait().expect("Network was not deleted");
+}
+
+#[test]
+fn test_floating_ip_create_delete() {
+    let os = set_up();
+    let floating_network_id = env::var("RUST_OPENSTACK_FLOATING_NETWORK")
+        .expect("Missing RUST_OPENSTACK_FLOATING_NETWORK");
+
+    let mut floating_ip = os.new_floating_ip(floating_network_id)
+        .create().expect("Cannot create a floating IP");
+    assert!(!floating_ip.is_associated());
+    floating_ip.port().err().unwrap();
+
+    let net = floating_ip.floating_network().expect("Cannot find floating network");
+    let floating_ip_found = os.find_floating_ips()
+        .with_floating_network(net.name().clone().expect("Floating network has no name"))
+        .into_iter().find(|ip| ip.id() == floating_ip.id())
+        .expect("Cannot list floating IPs").expect("Floating IP was not found");
+    assert_eq!(floating_ip_found.id(), floating_ip.id());
+
+    floating_ip.refresh().expect("Cannot refresh a floating IP");
+
+    floating_ip.delete().expect("Cannot request floating IP deletion")
+        .wait().expect("Floating IP was not deleted");
 }

@@ -47,6 +47,8 @@ pub struct FloatingIpQuery {
     session: Rc<Session>,
     query: Query,
     can_paginate: bool,
+    floating_network: Option<NetworkRef>,
+    port: Option<PortRef>,
 }
 
 /// A request to create a floating IP.
@@ -249,6 +251,8 @@ impl FloatingIpQuery {
             session: session,
             query: Query::new(),
             can_paginate: true,
+            floating_network: None,
+            port: None,
         }
     }
 
@@ -294,38 +298,22 @@ impl FloatingIpQuery {
     }
 
     /// Filter by network.
-    ///
-    /// # Warning
-    ///
-    /// Due to architectural limitations, names do not work here.
     pub fn set_floating_network<N: Into<NetworkRef>>(&mut self, value: N) {
-        self.query.push_str("floating_network_id", value.into());
+        self.floating_network = Some(value.into());
     }
 
     /// Filter by network.
-    ///
-    /// # Warning
-    ///
-    /// Due to architectural limitations, names do not work here.
     pub fn with_floating_network<N: Into<NetworkRef>>(mut self, value: N) -> Self {
         self.set_floating_network(value);
         self
     }
 
     /// Filter by port.
-    ///
-    /// # Warning
-    ///
-    /// Due to architectural limitations, names do not work here.
     pub fn set_port<N: Into<PortRef>>(&mut self, value: N) {
-        self.query.push_str("port_id", value.into());
+        self.port = Some(value.into());
     }
 
     /// Filter by network.
-    ///
-    /// # Warning
-    ///
-    /// Due to architectural limitations, names do not work here.
     pub fn with_port<N: Into<PortRef>>(mut self, value: N) -> Self {
         self.set_port(value);
         self
@@ -407,6 +395,18 @@ impl ResourceQuery for FloatingIpQuery {
         let query = self.query.with_marker_and_limit(limit, marker);
         Ok(self.session.list_floating_ips(&query)?.into_iter()
            .map(|item| FloatingIp::new(self.session.clone(), item)).collect())
+    }
+
+    fn validate(&mut self) -> Result<()> {
+        if let Some(floating_network) = self.floating_network.take() {
+            let verified = floating_network.into_verified(&self.session)?;
+            self.query.push_str("floating_network_id", verified);
+        }
+        if let Some(port) = self.port.take() {
+            let verified = port.into_verified(&self.session)?;
+            self.query.push_str("port_id", verified);
+        }
+        Ok(())
     }
 }
 

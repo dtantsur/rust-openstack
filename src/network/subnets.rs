@@ -38,6 +38,7 @@ pub struct SubnetQuery {
     session: Rc<Session>,
     query: Query,
     can_paginate: bool,
+    network: Option<NetworkRef>,
 }
 
 /// Structure representing a subnet - a virtual NIC.
@@ -173,6 +174,7 @@ impl SubnetQuery {
             session: session,
             query: Query::new(),
             can_paginate: true,
+            network: None,
         }
     }
 
@@ -240,19 +242,11 @@ impl SubnetQuery {
     }
 
     /// Filter by network.
-    ///
-    /// # Warning
-    ///
-    /// Due to architectural limitations, names do not work here.
     pub fn set_network<N: Into<NetworkRef>>(&mut self, value: N) {
-        self.query.push_str("network_id", value.into());
+        self.network = Some(value.into());
     }
 
     /// Filter by network.
-    ///
-    /// # Warning
-    ///
-    /// Due to architectural limitations, names do not work here.
     pub fn with_network<N: Into<NetworkRef>>(mut self, value: N) -> Self {
         self.set_network(value);
         self
@@ -310,6 +304,14 @@ impl ResourceQuery for SubnetQuery {
         let query = self.query.with_marker_and_limit(limit, marker);
         Ok(self.session.list_subnets(&query)?.into_iter()
            .map(|item| Subnet::new(self.session.clone(), item)).collect())
+    }
+
+    fn validate(&mut self) -> Result<()> {
+        if let Some(network) = self.network.take() {
+            let verified = network.into_verified(&self.session)?;
+            self.query.push_str("network_id", verified);
+        }
+        Ok(())
     }
 }
 
