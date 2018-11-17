@@ -62,7 +62,8 @@ pub struct Version {
     #[serde(deserialize_with = "deser_version")]
     pub id: ApiVersion,
     pub links: Vec<Link>,
-    pub status: String,
+    #[serde(deserialize_with = "empty_as_none", default)]
+    pub status: Option<String>,
     #[serde(deserialize_with = "empty_as_none", default)]
     pub version: Option<ApiVersion>,
     #[serde(deserialize_with = "empty_as_none", default)]
@@ -90,6 +91,15 @@ pub struct ServiceInfo {
 }
 
 impl Version {
+    pub fn is_stable(&self) -> bool {
+        if let Some(ref status) = self.status {
+            let upper = status.to_uppercase();
+            upper == "STABLE" || upper == "CURRENT"
+        } else {
+            true
+        }
+    }
+
     pub fn into_service_info(self) -> Result<ServiceInfo> {
         let endpoint = match self.links.into_iter().find(|x| &x.rel == "self") {
             Some(link) => link.href,
@@ -138,6 +148,7 @@ impl ServiceInfo {
                         trace!("Available major versions for {} service from {}: {:?}",
                                service_type, endpoint, vers);
                         match vers.into_iter()
+                                .filter(Version::is_stable)
                                 .rfind(|x| Srv::major_version_supported(x.id)) {
                             Some(ver) => ver.into_service_info(),
                             None => Err(Error::new_endpoint_not_found(service_type))
