@@ -73,8 +73,8 @@ pub struct Version {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(untagged)]
 pub enum Root {
-    Versions { versions: Vec<Version> },
-    Version { version: Version }
+    MultipleVersions { versions: Vec<Version> },
+    OneVersion { version: Version },
 }
 
 /// Information about API endpoint.
@@ -119,6 +119,36 @@ impl Version {
     }
 }
 
+impl Root {
+    /// Extract `ServiceInfo` from a version discovery root.
+    pub fn into_service_info<Srv: ServiceType>(self) -> Result<ServiceInfo> {
+        match self {
+            Root::OneVersion { version: ver } => {
+                if Srv::major_version_supported(ver.id) {
+                    if ! ver.is_stable() {
+                        warn!("Using version {:?} of {} API that is not marked as stable",
+                              ver, Srv::catalog_type());
+                    }
+
+                    ver.into_service_info()
+                } else {
+                    Err(Error::new(ErrorKind::EndpointNotFound,
+                                   "Major version not supported"))
+                }
+            },
+            Root::MultipleVersions { versions: mut vers } => {
+                vers.sort_unstable_by_key(|x| x.id);
+                match vers.into_iter().rfind(|x| {
+                    x.is_stable() && Srv::major_version_supported(x.id)
+                }) {
+                    Some(ver) => ver.into_service_info(),
+                    None => Err(Error::new_endpoint_not_found(Srv::catalog_type()))
+                }
+            }
+        }
+    }
+}
+
 impl ServiceInfo {
     /// Generic code to extract a `ServiceInfo` from a URL.
     pub fn fetch<Srv: ServiceType>(endpoint: Url, auth: &AuthMethod) -> Result<ServiceInfo> {
@@ -132,29 +162,11 @@ impl ServiceInfo {
         let result = auth.request(Method::GET, endpoint.clone())?.send_checked();
         match result {
             Ok(mut resp) => {
-                let mut info = match resp.json()? {
-                    Root::Version { version: ver } => {
-                        trace!("The major version for {} service from {}: {:?}",
-                               service_type, endpoint, ver);
-                        if Srv::major_version_supported(ver.id) {
-                            ver.into_service_info()
-                        } else {
-                            Err(Error::new(ErrorKind::EndpointNotFound,
-                                           "Major version not supported"))
-                        }
-                    },
-                    Root::Versions { versions: mut vers } => {
-                        vers.sort_unstable_by_key(|x| x.id);
-                        trace!("Available major versions for {} service from {}: {:?}",
-                               service_type, endpoint, vers);
-                        match vers.into_iter()
-                                .filter(Version::is_stable)
-                                .rfind(|x| Srv::major_version_supported(x.id)) {
-                            Some(ver) => ver.into_service_info(),
-                            None => Err(Error::new_endpoint_not_found(service_type))
-                        }
-                    }
-                }?;
+                let root = resp.json::<Root>()?;
+                trace!("Available major versions for {} service from {}: {:?}",
+                       service_type, endpoint, root);
+
+                let mut info = root.into_service_info::<Srv>()?;
 
                 // Older Nova returns insecure URLs even for secure protocol.
                 if secure {
