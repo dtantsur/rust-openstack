@@ -94,7 +94,7 @@ impl Version {
     pub fn is_stable(&self) -> bool {
         if let Some(ref status) = self.status {
             let upper = status.to_uppercase();
-            upper == "STABLE" || upper == "CURRENT"
+            upper == "STABLE" || upper == "CURRENT" || upper == "SUPPORTED"
         } else {
             true
         }
@@ -271,4 +271,113 @@ pub fn ser_opt_mac<S>(value: &Option<MacAddress>, serializer: S)
         -> ::std::result::Result<S::Ok, S::Error>
         where S: Serializer {
     value.map(|m| m.to_hex_string()).serialize(serializer)
+}
+
+
+#[cfg(test)]
+mod test {
+    use reqwest::Url;
+
+    use super::super::super::ErrorKind;
+    use super::super::ApiVersion;
+    use super::{Link, Version};
+
+    #[test]
+    fn test_version_current_is_stable() {
+        let stable = Version {
+            id: ApiVersion(2, 0),
+            links: Vec::new(),
+            status: Some("CURRENT".to_string()),
+            version: None,
+            min_version: None,
+        };
+        assert!(stable.is_stable());
+    }
+
+    #[test]
+    fn test_version_stable_is_stable() {
+        let stable = Version {
+            id: ApiVersion(2, 0),
+            links: Vec::new(),
+            status: Some("Stable".to_string()),
+            version: None,
+            min_version: None,
+        };
+        assert!(stable.is_stable());
+    }
+
+    #[test]
+    fn test_version_supported_is_stable() {
+        let stable = Version {
+            id: ApiVersion(2, 0),
+            links: Vec::new(),
+            status: Some("supported".to_string()),
+            version: None,
+            min_version: None,
+        };
+        assert!(stable.is_stable());
+    }
+
+    #[test]
+    fn test_version_no_status_is_stable() {
+        let stable = Version {
+            id: ApiVersion(2, 0),
+            links: Vec::new(),
+            status: None,
+            version: None,
+            min_version: None,
+        };
+        assert!(stable.is_stable());
+    }
+
+    #[test]
+    fn test_version_deprecated_is_not_stable() {
+        let unstable = Version {
+            id: ApiVersion(2, 0),
+            links: Vec::new(),
+            status: Some("DEPRECATED".to_string()),
+            version: None,
+            min_version: None,
+        };
+        assert!(!unstable.is_stable());
+    }
+
+    #[test]
+    fn test_version_into_service_info() {
+        let url = Url::parse("https://example.com/v2").unwrap();
+        let ver = Version {
+            id: ApiVersion(2, 0),
+            links: vec![Link{
+                href: Url::parse("https://example.com/docs").unwrap(),
+                rel: "other".to_string(),
+            }, Link {
+                href: url.clone(),
+                rel: "self".to_string(),
+            }],
+            status: None,
+            version: Some(ApiVersion(2, 2)),
+            min_version: None,
+        };
+        let info = ver.into_service_info().unwrap();
+        assert_eq!(info.root_url, url);
+        assert_eq!(info.major_version, ApiVersion(2, 0));
+        assert_eq!(info.current_version, Some(ApiVersion(2, 2)));
+        assert_eq!(info.minimum_version, None);
+    }
+
+    #[test]
+    fn test_version_into_service_info_no_self_link() {
+        let ver = Version {
+            id: ApiVersion(2, 0),
+            links: vec![Link{
+                href: Url::parse("https://example.com/docs").unwrap(),
+                rel: "other".to_string(),
+            }],
+            status: None,
+            version: Some(ApiVersion(2, 2)),
+            min_version: None,
+        };
+        let err = ver.into_service_info().err().unwrap();
+        assert_eq!(err.kind(), ErrorKind::InvalidResponse);
+    }
 }
