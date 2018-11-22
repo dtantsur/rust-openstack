@@ -14,6 +14,7 @@
 
 //! Subnets management via Network API.
 
+use std::collections::HashSet;
 use std::rc::Rc;
 use std::net;
 use std::time::Duration;
@@ -45,7 +46,8 @@ pub struct SubnetQuery {
 #[derive(Clone, Debug)]
 pub struct Subnet {
     session: Rc<Session>,
-    inner: protocol::Subnet
+    inner: protocol::Subnet,
+    dirty: HashSet<&'static str>,
 }
 
 /// A request to create a subnet.
@@ -62,7 +64,8 @@ impl Subnet {
     pub(crate) fn new(session: Rc<Session>, inner: protocol::Subnet) -> Subnet {
         Subnet {
             session: session,
-            inner: inner
+            inner: inner,
+            dirty: HashSet::new(),
         }
     }
 
@@ -76,6 +79,12 @@ impl Subnet {
     transparent_property! {
         #[doc = "Allocation pools for DHCP."]
         allocation_pools: ref Vec<protocol::AllocationPool>
+    }
+
+    update_field_mut! {
+        #[doc = "Update the allocation pools for DHCP."]
+        allocation_pools_mut, set_allocation_pools, with_allocation_pools
+            -> allocation_pools: Vec<protocol::AllocationPool>
     }
 
     transparent_property! {
@@ -93,9 +102,19 @@ impl Subnet {
         description: ref Option<String>
     }
 
+    update_field! {
+        #[doc = "Update the description."]
+        set_description, with_description -> description: optional String
+    }
+
     transparent_property! {
         #[doc = "Whether DHCP is enabled."]
         dhcp_enabled: bool
+    }
+
+    update_field! {
+        #[doc = "Update whether DHCP is enabled."]
+        set_dhcp_enabled, with_dhcp_enabled -> dhcp_enabled: bool
     }
 
     transparent_property! {
@@ -103,14 +122,31 @@ impl Subnet {
         dns_nameservers: ref Vec<String>
     }
 
+    update_field_mut! {
+        #[doc = "Update the list of DNS servers."]
+        dns_nameservers_mut, set_dns_nameservers, with_dns_nameservers
+            -> dns_nameservers: Vec<String>
+    }
+
     transparent_property! {
         #[doc = "Gateway IP address (if any)."]
         gateway_ip: Option<net::IpAddr>
     }
 
+    update_field! {
+        #[doc = "Update the gateway IP."]
+        set_gateway_ip, with_gateway_ip -> gateway_ip: optional net::IpAddr
+    }
+
     transparent_property! {
         #[doc = "Statically configured routes."]
         host_routes: ref Vec<protocol::HostRoute>
+    }
+
+    update_field_mut! {
+        #[doc = "Update the statically configured routes."]
+        host_routes_mut, set_host_routes, with_host_routes
+            -> host_routes: Vec<protocol::HostRoute>
     }
 
     transparent_property! {
@@ -138,6 +174,11 @@ impl Subnet {
         name: ref Option<String>
     }
 
+    update_field! {
+        #[doc = "Update the name."]
+        set_name, with_name -> name: optional String
+    }
+
     /// Get network associated with this subnet.
     pub fn network(&self) -> Result<Network> {
         Network::load(self.session.clone(), &self.inner.network_id)
@@ -158,12 +199,34 @@ impl Subnet {
         self.session.delete_subnet(&self.inner.id)?;
         Ok(DeletionWaiter::new(self, Duration::new(60, 0), Duration::new(1, 0)))
     }
+
+    /// Whether the subnet is modified.
+    pub fn is_dirty(&self) -> bool {
+        !self.dirty.is_empty()
+    }
+
+    /// Save the changes to the subnet.
+    pub fn save(&mut self) -> Result<()> {
+        let mut update = protocol::SubnetUpdate::default();
+        save_fields! {
+            self -> update: allocation_pools dhcp_enabled dns_nameservers
+                host_routes
+        };
+        save_option_fields! {
+            self -> update: description gateway_ip name
+        };
+        let inner = self.session.update_subnet(self.id(), update)?;
+        self.dirty.clear();
+        self.inner = inner;
+        Ok(())
+    }
 }
 
 impl Refresh for Subnet {
     /// Refresh the subnet.
     fn refresh(&mut self) -> Result<()> {
         self.inner = self.session.get_subnet_by_id(&self.inner.id)?;
+        self.dirty.clear();
         Ok(())
     }
 }

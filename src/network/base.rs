@@ -113,6 +113,10 @@ pub trait V2API {
     /// Update a port.
     fn update_port<S: AsRef<str>>(&self, id: S, update: protocol::PortUpdate)
         -> Result<protocol::Port>;
+
+    /// Update a subnet.
+    fn update_subnet<S: AsRef<str>>(&self, id: S, update: protocol::SubnetUpdate)
+        -> Result<protocol::Subnet>;
 }
 
 
@@ -309,6 +313,16 @@ impl V2API for Session {
             .json(&body).receive_json::<protocol::PortRoot>()?.port;
         debug!("Updated port {:?}", port);
         Ok(port)
+    }
+
+    fn update_subnet<S: AsRef<str>>(&self, id: S, update: protocol::SubnetUpdate)
+            -> Result<protocol::Subnet> {
+        debug!("Updating subnet {} with {:?}", id.as_ref(), update);
+        let body = protocol::SubnetUpdateRoot { subnet: update };
+        let subnet = self.put::<V2>(&["subnets", id.as_ref()], None)?
+            .json(&body).receive_json::<protocol::SubnetRoot>()?.subnet;
+        debug!("Updated subnet {:?}", subnet);
+        Ok(subnet)
     }
 }
 

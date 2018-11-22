@@ -422,9 +422,34 @@ impl Subnet {
 }
 
 /// A subnet.
+#[derive(Debug, Clone, Serialize, Default)]
+pub struct SubnetUpdate {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub allocation_pools: Option<Vec<AllocationPool>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(rename = "enable_dhcp", skip_serializing_if = "Option::is_none")]
+    pub dhcp_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dns_nameservers: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gateway_ip: Option<net::IpAddr>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub host_routes: Option<Vec<HostRoute>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+}
+
+/// A subnet.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SubnetRoot {
     pub subnet: Subnet
+}
+
+/// A subnet.
+#[derive(Debug, Clone, Serialize)]
+pub struct SubnetUpdateRoot {
+    pub subnet: SubnetUpdate
 }
 
 /// A list of subnets.

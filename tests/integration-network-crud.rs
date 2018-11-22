@@ -103,13 +103,66 @@ fn test_network_create_delete_simple() {
 
     let cidr = ipnet::Ipv4Net::new(net::Ipv4Addr::new(192, 168, 1, 0), 24)
         .unwrap().into();
-    let subnet = os.new_subnet(network.clone(), cidr)
+    let mut subnet = os.new_subnet(network.clone(), cidr)
         .create().expect("Could not create subnet");
     assert_eq!(subnet.cidr(), cidr);
     assert!(subnet.dhcp_enabled());
     assert!(subnet.dns_nameservers().is_empty());
     assert_eq!(subnet.ip_version(), openstack::network::IpVersion::V4);
     assert!(subnet.name().is_none());
+
+    subnet.refresh().expect("Cannot refresh subnet");
+
+    subnet.delete().expect("Cannot request subnet deletion")
+        .wait().expect("Subnet was not deleted");
+
+    network.delete().expect("Cannot request network deletion")
+        .wait().expect("Network was not deleted");
+}
+
+#[test]
+fn test_subnet_update() {
+    let os = set_up();
+
+    let network = os.new_network().create().expect("Could not create network");
+    let cidr = ipnet::Ipv4Net::new(net::Ipv4Addr::new(192, 168, 1, 0), 24)
+        .unwrap().into();
+    let mut subnet = os.new_subnet(network.clone(), cidr)
+        .create().expect("Could not create subnet");
+    assert!(!subnet.is_dirty());
+
+    subnet.dns_nameservers_mut().push("1.2.3.4".to_string());
+    assert!(subnet.is_dirty());
+    subnet.set_name("unused name");
+    subnet.set_description("unused description");
+
+    subnet.refresh().expect("Cannot refresh subnet");
+
+    assert!(!subnet.is_dirty());
+    assert!(subnet.dns_nameservers().is_empty());
+    assert!(subnet.name().is_none());
+
+    subnet.dns_nameservers_mut().push("8.8.8.8".to_string());
+    subnet.set_dhcp_enabled(false);
+    subnet.set_name("rust-openstack-integration-new");
+    subnet.set_description("some description");
+
+    assert_eq!("8.8.8.8", subnet.dns_nameservers()[0]);
+    assert!(!subnet.dhcp_enabled());
+    assert_eq!(subnet.name().as_ref().unwrap(), "rust-openstack-integration-new");
+
+    subnet.save().expect("Could not save subnet");
+
+    assert!(!subnet.is_dirty());
+    assert_eq!("8.8.8.8", subnet.dns_nameservers()[0]);
+    assert!(!subnet.dhcp_enabled());
+    assert_eq!(subnet.name().as_ref().unwrap(), "rust-openstack-integration-new");
+
+    subnet.refresh().expect("Cannot refresh subnet");
+
+    assert_eq!("8.8.8.8", subnet.dns_nameservers()[0]);
+    assert!(!subnet.dhcp_enabled());
+    assert_eq!(subnet.name().as_ref().unwrap(), "rust-openstack-integration-new");
 
     subnet.delete().expect("Cannot request subnet deletion")
         .wait().expect("Subnet was not deleted");

@@ -324,6 +324,33 @@ macro_rules! update_field {
 
 
 #[allow(unused_macros)]
+macro_rules! update_field_mut {
+
+    ($(#[$attr:meta])* $mut_func:ident, $set_func:ident, $with_func:ident -> $name:ident: $type:ty) => (
+        $(#[$attr])*
+        #[allow(unused_results)]
+        pub fn $mut_func(&mut self) -> &mut $type {
+            self.dirty.insert(stringify!($name));
+            &mut self.inner.$name
+        }
+
+        $(#[$attr])*
+        #[allow(unused_results)]
+        pub fn $set_func(&mut self, value: $type)  {
+            self.inner.$name = value;
+            self.dirty.insert(stringify!($name));
+        }
+
+        $(#[$attr])*
+        pub fn $with_func(mut self, value: $type) -> Self {
+            self.$set_func(value);
+            self
+        }
+    );
+
+}
+
+#[allow(unused_macros)]
 macro_rules! save_option_fields {
     ($self:ident -> $target:ident: $($field:ident)+) => {
         $($target.$field = if $self.dirty.contains(stringify!($field)) {
