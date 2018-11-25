@@ -110,6 +110,10 @@ pub trait V2API {
     fn update_floating_ip<S: AsRef<str>>(&self, id: S, update: protocol::FloatingIpUpdate)
         -> Result<protocol::FloatingIp>;
 
+    /// Update a network.
+    fn update_network<S: AsRef<str>>(&self, id: S, update: protocol::NetworkUpdate)
+        -> Result<protocol::Network>;
+
     /// Update a port.
     fn update_port<S: AsRef<str>>(&self, id: S, update: protocol::PortUpdate)
         -> Result<protocol::Port>;
@@ -303,6 +307,16 @@ impl V2API for Session {
             .json(&body).receive_json::<protocol::FloatingIpRoot>()?.floatingip;
         debug!("Updated floating IP {:?}", floating_ip);
         Ok(floating_ip)
+    }
+
+    fn update_network<S: AsRef<str>>(&self, id: S, update: protocol::NetworkUpdate)
+            -> Result<protocol::Network> {
+        debug!("Updating network {} with {:?}", id.as_ref(), update);
+        let body = protocol::NetworkUpdateRoot { network: update };
+        let network = self.put::<V2>(&["networks", id.as_ref()], None)?
+            .json(&body).receive_json::<protocol::NetworkRoot>()?.network;
+        debug!("Updated network {:?}", network);
+        Ok(network)
     }
 
     fn update_port<S: AsRef<str>>(&self, id: S, update: protocol::PortUpdate)

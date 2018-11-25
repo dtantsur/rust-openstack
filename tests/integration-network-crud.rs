@@ -172,6 +172,49 @@ fn test_subnet_update() {
 }
 
 #[test]
+fn test_network_update() {
+    let os = set_up();
+
+    let mut network = os.new_network()
+        .with_admin_state_up(false)
+        .with_name("rust-openstack-integration-new")
+        .with_mtu(1400)
+        .with_description("New network for testing")
+        .create().expect("Could not create network");
+    assert!(!network.is_dirty());
+
+    network.set_admin_state_up(true);
+    network.set_name("rust-openstack-integration-new2");
+    network.set_mtu(1450);
+
+    assert!(network.is_dirty());
+    assert!(network.admin_state_up());
+    assert_eq!(network.mtu(), Some(1450));
+    assert_eq!(network.name().as_ref().unwrap(), "rust-openstack-integration-new2");
+
+    network.save().expect("Could not save network");
+
+    assert!(!network.is_dirty());
+    assert!(network.admin_state_up());
+    assert_eq!(network.mtu(), Some(1450));
+    assert_eq!(network.name().as_ref().unwrap(), "rust-openstack-integration-new2");
+
+    network.set_name("rust-openstack-integration-new3");
+    network.set_mtu(42);
+    assert!(network.is_dirty());
+
+    network.refresh().expect("Could not refresh network");
+
+    assert!(!network.is_dirty());
+    assert!(network.admin_state_up());
+    assert_eq!(network.mtu(), Some(1450));
+    assert_eq!(network.name().as_ref().unwrap(), "rust-openstack-integration-new2");
+
+    network.delete().expect("Cannot request network deletion")
+        .wait().expect("Network was not deleted");
+}
+
+#[test]
 fn test_network_create_delete_with_fields() {
     let os = set_up();
 

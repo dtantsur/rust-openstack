@@ -14,6 +14,7 @@
 
 //! Network management via Network API.
 
+use std::collections::HashSet;
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -41,7 +42,8 @@ pub struct NetworkQuery {
 #[derive(Clone, Debug)]
 pub struct Network {
     session: Rc<Session>,
-    inner: protocol::Network
+    inner: protocol::Network,
+    dirty: HashSet<&'static str>,
 }
 
 /// A request to create a network
@@ -56,7 +58,8 @@ impl Network {
     fn new(session: Rc<Session>, inner: protocol::Network) -> Network {
         Network {
             session: session,
-            inner: inner
+            inner: inner,
+            dirty: HashSet::new(),
         }
     }
 
@@ -70,6 +73,11 @@ impl Network {
     transparent_property! {
         #[doc = "The administrative state of the network."]
         admin_state_up: bool
+    }
+
+    update_field! {
+        #[doc = "Set the administrative state of the network."]
+        set_admin_state_up, with_admin_state_up -> admin_state_up: bool
     }
 
     transparent_property! {
@@ -87,14 +95,29 @@ impl Network {
         description: ref Option<String>
     }
 
+    update_field! {
+        #[doc = "Update the description."]
+        set_description, with_description -> description: optional String
+    }
+
     transparent_property! {
         #[doc = "DNS domain for the network (if available)."]
         dns_domain: ref Option<String>
     }
 
+    update_field! {
+        #[doc = "Update the DNS domain."]
+        set_dns_domain, with_dns_domain -> dns_domain: optional String
+    }
+
     transparent_property! {
         #[doc = "Whether the network is external (if available)."]
         external: Option<bool>
+    }
+
+    update_field! {
+        #[doc = "Configure whether the network is external."]
+        set_external, with_external -> external: optional bool
     }
 
     transparent_property! {
@@ -107,6 +130,11 @@ impl Network {
         is_default: Option<bool>
     }
 
+    update_field! {
+        #[doc = "Configure whether the network is the default pool."]
+        set_default, with_default -> is_default: optional bool
+    }
+
     transparent_property! {
         #[doc = "Whether there is L2 connectivity throughout the Network."]
         l2_adjacency: Option<bool>
@@ -117,9 +145,19 @@ impl Network {
         mtu: Option<u32>
     }
 
+    update_field! {
+        #[doc = "Set the network MTU."]
+        set_mtu, with_mtu -> mtu: optional u32
+    }
+
     transparent_property! {
         #[doc = "Network name."]
         name: ref Option<String>
+    }
+
+    update_field! {
+        #[doc = "Update the name."]
+        set_name, with_name -> name: optional String
     }
 
     transparent_property! {
@@ -127,9 +165,20 @@ impl Network {
         port_security_enabled: Option<bool>
     }
 
+    update_field! {
+        #[doc = "Configure whether port security is enabled by default."]
+        set_port_security_enabled, with_port_security_enabled
+            -> port_security_enabled: optional bool
+    }
+
     transparent_property! {
         #[doc = "Whether the network is shared."]
         shared: bool
+    }
+
+    update_field! {
+        #[doc = "Configure whether the network is shared."]
+        set_shared, with_shared -> shared: bool
     }
 
     transparent_property! {
@@ -147,12 +196,34 @@ impl Network {
         self.session.delete_network(&self.inner.id)?;
         Ok(DeletionWaiter::new(self, Duration::new(60, 0), Duration::new(1, 0)))
     }
+
+    /// Whether the network is modified.
+    pub fn is_dirty(&self) -> bool {
+        !self.dirty.is_empty()
+    }
+
+    /// Save the changes to the network.
+    pub fn save(&mut self) -> Result<()> {
+        let mut update = protocol::NetworkUpdate::default();
+        save_fields! {
+            self -> update: admin_state_up shared
+        };
+        save_option_fields! {
+            self -> update: description external dns_domain is_default mtu name
+                port_security_enabled
+        };
+        let inner = self.session.update_network(self.id(), update)?;
+        self.dirty.clear();
+        self.inner = inner;
+        Ok(())
+    }
 }
 
 impl Refresh for Network {
     /// Refresh the network.
     fn refresh(&mut self) -> Result<()> {
         self.inner = self.session.get_network_by_id(&self.inner.id)?;
+        self.dirty.clear();
         Ok(())
     }
 }

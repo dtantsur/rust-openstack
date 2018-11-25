@@ -188,9 +188,38 @@ impl Default for Network {
 }
 
 /// A network.
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct NetworkUpdate {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub admin_state_up: Option<bool>,
+    #[serde(rename = "router:external", skip_serializing_if = "Option::is_none")]
+    pub external: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dns_domain: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_default: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mtu: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub port_security_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shared: Option<bool>,
+}
+
+/// A network.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct NetworkRoot {
     pub network: Network
+}
+
+/// A network.
+#[derive(Debug, Clone, Serialize)]
+pub struct NetworkUpdateRoot {
+    pub network: NetworkUpdate
 }
 
 /// A list of networks.
