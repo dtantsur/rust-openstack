@@ -1,5 +1,21 @@
 # Change Log
 
+## 0.2.1 (2018-11-25)
+
+#### Features
+
+* **network:**
+  *  updating networks (closes #50) ([d9c676de](https://github.com/dtantsur/rust-openstack/commit/d9c676de31d0bc75e6c102a7232f873c3dcb6b0a))
+  *  updating subnets (closes #33) ([5e4fba5b](https://github.com/dtantsur/rust-openstack/commit/5e4fba5b14a9758d86150b4a759033dd0a249c73))
+
+#### Bug Fixes
+
+* **common:**
+  *  only consider stable major versions ([825e371c](https://github.com/dtantsur/rust-openstack/commit/825e371ce58ec7d2c972acb8b46caa04c53878bb))
+* **network:**
+  *  validate and convert IDs when querying subnets and floating IPs ([87c9a57f](https://github.com/dtantsur/rust-openstack/commit/87c9a57f3ed4650e94d93525c94fa8c1e131b5e9))
+  *  validate and convert network ID when querying ports ([88b61bff](https://github.com/dtantsur/rust-openstack/commit/88b61bffd0d2f52291bdbc0f92d8414ddfc2a890))
+
 ## 0.2.0 (2018-11-11)
 
 #### Breaking Changes
