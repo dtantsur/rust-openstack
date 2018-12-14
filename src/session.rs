@@ -44,6 +44,9 @@ pub trait ServiceType {
                        format!("The {} service does not support API versions",
                                Self::catalog_type())))
     }
+
+    /// Whether this service supports version discovery at all.
+    fn version_discovery_supported() -> bool { true }
 }
 
 /// Extension trait for HTTP calls with error handling.
@@ -147,9 +150,16 @@ impl Session {
     }
 
     /// Get the currently used major version from the given service.
+    ///
+    /// Can return `IncompatibleApiVersion` if the service does not support
+    /// API version discovery at all.
     pub fn get_major_version<Srv: ServiceType>(&self) -> Result<ApiVersion> {
         let info = self.get_service_info_ref::<Srv>()?;
-        Ok(info.major_version)
+        info.major_version.ok_or_else(|| {
+            Error::new(ErrorKind::IncompatibleApiVersion,
+                       format!("{} service does not expose major version",
+                               Srv::catalog_type()))
+        })
     }
 
     /// Get minimum/maximum API (micro)version information.

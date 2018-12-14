@@ -83,7 +83,7 @@ pub struct ServiceInfo {
     /// Root endpoint.
     pub root_url: Url,
     /// Major API version.
-    pub major_version: ApiVersion,
+    pub major_version: Option<ApiVersion>,
     /// Current API version (if supported).
     pub current_version: Option<ApiVersion>,
     /// Minimum API version (if supported).
@@ -112,7 +112,7 @@ impl Version {
 
         Ok(ServiceInfo {
             root_url: endpoint,
-            major_version: self.id,
+            major_version: Some(self.id),
             current_version: self.version,
             minimum_version: self.min_version
         })
@@ -120,8 +120,34 @@ impl Version {
 }
 
 impl Root {
+    /// Fetch versioning root from a URL.
+    pub fn fetch<Srv: ServiceType>(endpoint: Url, auth: &AuthMethod) -> Result<Root> {
+        debug!("Fetching {} service info from {}",
+               Srv::catalog_type(), endpoint);
+
+        let result = auth.request(Method::GET, endpoint.clone())?.send_checked();
+        match result {
+            Ok(mut resp) => {
+                resp.json::<Root>().map_err(From::from)
+            },
+            Err(ref e) if e.kind() == ErrorKind::ResourceNotFound => {
+                if utils::url::is_root(&endpoint) {
+                    Err(Error::new_endpoint_not_found(Srv::catalog_type()))
+                } else {
+                    debug!("Got HTTP 404 from {}, trying parent endpoint",
+                           endpoint);
+                    Root::fetch::<Srv>(utils::url::pop(endpoint, true), auth)
+                }
+            },
+            Err(other) => Err(other)
+        }
+    }
+
     /// Extract `ServiceInfo` from a version discovery root.
     pub fn into_service_info<Srv: ServiceType>(self) -> Result<ServiceInfo> {
+        trace!("Available major versions for {} service: {:?}",
+               Srv::catalog_type(), self);
+
         match self {
             Root::OneVersion { version: ver } => {
                 if Srv::major_version_supported(ver.id) {
@@ -152,43 +178,31 @@ impl Root {
 impl ServiceInfo {
     /// Generic code to extract a `ServiceInfo` from a URL.
     pub fn fetch<Srv: ServiceType>(endpoint: Url, auth: &AuthMethod) -> Result<ServiceInfo> {
-        let service_type = Srv::catalog_type();
-        debug!("Fetching {} service info from {}", service_type, endpoint);
+        if ! Srv::version_discovery_supported() {
+            debug!("Service {} does not support version discovery, using {}",
+                   Srv::catalog_type(), endpoint);
+            return Ok(ServiceInfo {
+                root_url: endpoint,
+                major_version: None,
+                current_version: None,
+                minimum_version: None
+            })
+        }
 
         // Workaround for old version of Nova returning HTTP endpoints even if
         // accessed via HTTP
         let secure = endpoint.scheme() == "https";
 
-        let result = auth.request(Method::GET, endpoint.clone())?.send_checked();
-        match result {
-            Ok(mut resp) => {
-                let root = resp.json::<Root>()?;
-                trace!("Available major versions for {} service from {}: {:?}",
-                       service_type, endpoint, root);
+        let root = Root::fetch::<Srv>(endpoint, auth)?;
+        let mut info = root.into_service_info::<Srv>()?;
 
-                let mut info = root.into_service_info::<Srv>()?;
-
-                // Older Nova returns insecure URLs even for secure protocol.
-                if secure {
-                    info.root_url.set_scheme("https").unwrap();
-                }
-
-                debug!("Received {:?} for {} service from {}",
-                       info, service_type, endpoint);
-                Ok(info)
-            },
-            Err(ref e) if e.kind() == ErrorKind::ResourceNotFound => {
-                if utils::url::is_root(&endpoint) {
-                    Err(Error::new_endpoint_not_found(service_type))
-                } else {
-                    debug!("Got HTTP 404 from {}, trying parent endpoint",
-                           endpoint);
-                    ServiceInfo::fetch::<Srv>(utils::url::pop(endpoint, true),
-                                              auth)
-                }
-            },
-            Err(other) => Err(other)
+        // Older Nova returns insecure URLs even for secure protocol.
+        if secure && info.root_url.scheme() == "http" {
+            info.root_url.set_scheme("https").unwrap();
         }
+
+        debug!("Received {:?} for {} service", info, Srv::catalog_type());
+        Ok(info)
     }
 }
 
@@ -279,8 +293,9 @@ mod test {
     use reqwest::Url;
 
     use super::super::super::ErrorKind;
+    use super::super::super::session::ServiceType;
     use super::super::ApiVersion;
-    use super::{Link, Version};
+    use super::{Link, Root, Version};
 
     #[test]
     fn test_version_current_is_stable() {
@@ -360,7 +375,7 @@ mod test {
         };
         let info = ver.into_service_info().unwrap();
         assert_eq!(info.root_url, url);
-        assert_eq!(info.major_version, ApiVersion(2, 0));
+        assert_eq!(info.major_version, Some(ApiVersion(2, 0)));
         assert_eq!(info.current_version, Some(ApiVersion(2, 2)));
         assert_eq!(info.minimum_version, None);
     }
@@ -379,5 +394,142 @@ mod test {
         };
         let err = ver.into_service_info().err().unwrap();
         assert_eq!(err.kind(), ErrorKind::InvalidResponse);
+    }
+
+    struct ServiceWithDiscovery;
+
+    impl ServiceType for ServiceWithDiscovery {
+        fn catalog_type() -> &'static str {
+            "test-service-with-discovery"
+        }
+
+        fn major_version_supported(version: ApiVersion) -> bool {
+            version.0 == 1 && version.1 > 0
+        }
+    }
+
+    #[test]
+    fn test_root_into_service_info_one_version() {
+        let url = Url::parse("https://example.com/v1.2").unwrap();
+        let root = Root::OneVersion {
+            version: Version {
+                id: ApiVersion(1, 2),
+                links: vec![Link{
+                    href: url.clone(),
+                    rel: "self".to_string(),
+                }],
+                status: Some("STABLE".to_string()),
+                version: None,
+                min_version: None,
+            }
+        };
+
+        let info = root.into_service_info::<ServiceWithDiscovery>().unwrap();
+        assert_eq!(info.root_url, url);
+        assert_eq!(info.major_version, Some(ApiVersion(1, 2)));
+    }
+
+    #[test]
+    fn test_root_into_service_info_one_version_unsupported() {
+        let url = Url::parse("https://example.com/v1.0").unwrap();
+        let root = Root::OneVersion {
+            version: Version {
+                id: ApiVersion(1, 0),
+                links: vec![Link{
+                    href: url.clone(),
+                    rel: "self".to_string(),
+                }],
+                status: Some("STABLE".to_string()),
+                version: None,
+                min_version: None,
+            }
+        };
+
+        let err = root.into_service_info::<ServiceWithDiscovery>().err().unwrap();
+        assert_eq!(err.kind(), ErrorKind::EndpointNotFound);
+    }
+
+    #[test]
+    fn test_root_into_service_info_versions() {
+        let url = Url::parse("https://example.com/v1.2").unwrap();
+        let root = Root::MultipleVersions {
+            versions: vec![
+                Version {
+                    id: ApiVersion(1, 0),
+                    links: vec![Link{
+                        href: Url::parse("https://example.com/1.0").unwrap(),
+                        rel: "self".to_string(),
+                    }],
+                    status: Some("STABLE".to_string()),
+                    version: None,
+                    min_version: None,
+                },
+                Version {
+                    id: ApiVersion(1, 1),
+                    links: vec![Link{
+                        href: Url::parse("https://example.com/1.1").unwrap(),
+                        rel: "self".to_string(),
+                    }],
+                    status: Some("STABLE".to_string()),
+                    version: None,
+                    min_version: None,
+                },
+                Version {
+                    id: ApiVersion(1, 2),
+                    links: vec![Link{
+                        href: url.clone(),
+                        rel: "self".to_string(),
+                    }],
+                    status: Some("STABLE".to_string()),
+                    version: None,
+                    min_version: None,
+                },
+                Version {
+                    id: ApiVersion(2, 0),
+                    links: vec![Link{
+                        href: Url::parse("https://example.com/2.0").unwrap(),
+                        rel: "self".to_string(),
+                    }],
+                    status: Some("STABLE".to_string()),
+                    version: None,
+                    min_version: None,
+                }
+            ]
+        };
+
+        let info = root.into_service_info::<ServiceWithDiscovery>().unwrap();
+        assert_eq!(info.root_url, url);
+        assert_eq!(info.major_version, Some(ApiVersion(1, 2)));
+    }
+
+    #[test]
+    fn test_root_into_service_info_versions_unsupported() {
+        let root = Root::MultipleVersions {
+            versions: vec![
+                Version {
+                    id: ApiVersion(1, 0),
+                    links: vec![Link{
+                        href: Url::parse("https://example.com/1.0").unwrap(),
+                        rel: "self".to_string(),
+                    }],
+                    status: Some("STABLE".to_string()),
+                    version: None,
+                    min_version: None,
+                },
+                Version {
+                    id: ApiVersion(2, 0),
+                    links: vec![Link{
+                        href: Url::parse("https://example.com/2.0").unwrap(),
+                        rel: "self".to_string(),
+                    }],
+                    status: Some("STABLE".to_string()),
+                    version: None,
+                    min_version: None,
+                }
+            ]
+        };
+
+        let err = root.into_service_info::<ServiceWithDiscovery>().err().unwrap();
+        assert_eq!(err.kind(), ErrorKind::EndpointNotFound);
     }
 }
