@@ -99,10 +99,11 @@ pub fn from_config<S: AsRef<str>>(cloud_name: S) -> Result<Session> {
                                   format!("No such cloud: {}", name)))?;
 
     let auth = cloud.auth;
+    let user_domain = auth.user_domain_name.unwrap_or_else(|| String::from("Default"));
+    let project_domain = auth.project_domain_name.unwrap_or_else(|| String::from("Default"));
     let mut id = Password::new(&auth.auth_url, auth.username, auth.password,
-                               auth.user_domain_name.unwrap_or(String::from("Default")))?
-        .with_project_scope(auth.project_name,
-                            auth.project_domain_name.unwrap_or(String::from("Default")));
+                               user_domain)?
+        .with_project_scope(auth.project_name, project_domain);
     if let Some(region) = cloud.region_name {
         id.set_region(region)
     }

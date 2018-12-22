@@ -59,8 +59,6 @@
         patterns_in_fns_without_body,
         plugin_as_library,
         private_in_public,
-        private_no_mangle_fns,
-        private_no_mangle_statics,
         safe_extern_statics,
         trivial_casts,
         trivial_numeric_casts,
@@ -77,6 +75,9 @@
         unused_results,
         while_true)]
 #![allow(unused_extern_crates)]
+#![allow(clippy::new_ret_no_self,
+         clippy::should_implement_trait,
+         clippy::wrong_self_convention)]
 
 extern crate chrono;
 extern crate dirs;
@@ -408,7 +409,7 @@ macro_rules! protocol_enum {
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
                     where S: ::serde::ser::Serializer {
                 match self {
-                    $(&$name::$item => $val),+,
+                    $($name::$item => $val),+,
                     _ => unreachable!()
                 }.serialize(serializer)
             }

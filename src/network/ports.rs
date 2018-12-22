@@ -98,9 +98,9 @@ impl Port {
     pub(crate) fn new(session: Rc<Session>, mut inner: protocol::Port) -> Port {
         let fixed_ips = convert_fixed_ips(&session, &mut inner);
         Port {
-            session: session,
-            inner: inner,
-            fixed_ips: fixed_ips,
+            session,
+            inner,
+            fixed_ips,
             dirty: HashSet::new(),
         }
     }
@@ -303,7 +303,7 @@ impl PortIpAddress {
 impl PortQuery {
     pub(crate) fn new(session: Rc<Session>) -> PortQuery {
         PortQuery {
-            session: session,
+            session,
             query: Query::new(),
             can_paginate: true,
             network: None,
@@ -450,7 +450,7 @@ impl NewPort {
     pub(crate) fn new(session: Rc<Session>, network: NetworkRef)
             -> NewPort {
         NewPort {
-            session: session,
+            session,
             inner: protocol::Port {
                 admin_state_up: true,
                 created_at: None,
@@ -472,7 +472,7 @@ impl NewPort {
                 status: protocol::NetworkStatus::Active,
                 updated_at: None,
             },
-            network: network,
+            network,
             fixed_ips: Vec::new(),
         }
     }

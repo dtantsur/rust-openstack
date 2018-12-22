@@ -100,11 +100,11 @@ impl Password {
                                                  user_domain_name);
         let body = protocol::ProjectScopedAuthRoot::new(pw, None);
         Ok(Password {
-            client: client,
+            client,
             auth_url: url,
             region: None,
-            body: body,
-            token_endpoint: token_endpoint,
+            body,
+            token_endpoint,
             cached_token: ValueCache::new(None),
         })
     }
@@ -144,9 +144,9 @@ impl Password {
     }
 
     fn token_from_response(&self, mut resp: Response) -> Result<Token> {
-        let token_value = match resp.headers().get("x-subject-token") {
+        let value = match resp.headers().get("x-subject-token") {
             Some(hdr) => match hdr.to_str() {
-                Ok(value) => value.to_string(),
+                Ok(s) => s.to_string(),
                 Err(e) => {
                     error!("Invalid X-Subject-Token received from {}: {}",
                            self.token_endpoint, e);
@@ -169,8 +169,8 @@ impl Password {
         trace!("Received catalog: {:?}", body.catalog);
 
         Ok(Token {
-            value: token_value,
-            body: body
+            value,
+            body,
         })
     }
 
@@ -215,8 +215,8 @@ impl AuthMethod for Password {
     /// Get a URL for the requested service.
     fn get_endpoint(&self, service_type: String,
                     endpoint_interface: Option<String>) -> Result<Url> {
-        let real_interface = endpoint_interface.unwrap_or(
-            self.default_endpoint_interface());
+        let real_interface = endpoint_interface
+            .unwrap_or_else(|| self.default_endpoint_interface());
         debug!("Requesting a catalog endpoint for service '{}', interface \
                '{}' from region {:?}", service_type, real_interface,
                self.region);

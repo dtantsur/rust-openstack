@@ -19,8 +19,8 @@ use super::protocol::{CatalogRecord, Endpoint};
 
 
 /// Find an endpoint in the service catalog.
-pub fn find_endpoint<'c>(catalog: &'c Vec<CatalogRecord>, service_type: &String,
-                     endpoint_interface: &String, region: &Option<String>)
+pub fn find_endpoint<'c>(catalog: &'c [CatalogRecord], service_type: &str,
+                         endpoint_interface: &str, region: &Option<String>)
         -> Result<&'c Endpoint> {
     let svc = match catalog.iter().find(|x| x.service_type == *service_type) {
         Some(s) => s,

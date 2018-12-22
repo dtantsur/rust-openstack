@@ -62,7 +62,7 @@ impl<Q> ResourceIterator<Q> where Q: ResourceQuery {
     #[allow(dead_code)]  // unused with --no-default-features
     pub(crate) fn new(query: Q) -> ResourceIterator<Q> {
         ResourceIterator {
-            query: query,
+            query,
             cache: None,
             marker: None,
             can_paginate: None,  // ask the service later
@@ -110,13 +110,12 @@ impl<Q> FallibleIterator for ResourceIterator<Q> where Q: ResourceQuery {
             // We have exhausted the results and pagination is not possible
             None
         } else {
-            let mut limit = None;
-            let mut marker = None;
-            if self.can_paginate == Some(true) {
+            let (marker, limit) = if self.can_paginate == Some(true) {
                 // can_paginate=true implies no limit was provided
-                limit = Some(Q::DEFAULT_LIMIT);
-                marker = self.marker.clone();
-            }
+                (self.marker.clone(), Some(Q::DEFAULT_LIMIT))
+            } else {
+                (None, None)
+            };
 
             let mut iter = self.query.fetch_chunk(limit, marker)?.into_iter();
             let maybe_next = iter.next();

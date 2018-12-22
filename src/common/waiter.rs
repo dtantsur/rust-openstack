@@ -36,9 +36,9 @@ impl<T> DeletionWaiter<T> {
     pub(crate) fn new(inner: T, wait_timeout: Duration, delay: Duration)
             -> DeletionWaiter<T> {
         DeletionWaiter {
-            inner: inner,
-            wait_timeout: wait_timeout,
-            delay: delay,
+            inner,
+            wait_timeout,
+            delay,
         }
     }
 }

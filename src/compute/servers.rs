@@ -118,8 +118,8 @@ impl Server {
             -> Result<Server> {
         let flavor = session.get_flavor(&inner.flavor.id)?;
         Ok(Server {
-            session: session,
-            inner: inner,
+            session,
+            inner,
             flavor: protocol::ServerFlavor {
                 ephemeral_size: flavor.ephemeral,
                 extra_specs: flavor.extra_specs,
@@ -368,7 +368,7 @@ impl ServerSummary {
 impl ServerQuery {
     pub(crate) fn new(session: Rc<Session>) -> ServerQuery {
         ServerQuery {
-            session: session,
+            session,
             query: Query::new(),
             can_paginate: true,
         }
@@ -628,12 +628,12 @@ impl NewServer {
     pub(crate) fn new(session: Rc<Session>, name: String, flavor: FlavorRef)
             -> NewServer {
         NewServer {
-            session: session,
-            flavor: flavor,
+            session,
+            flavor,
             image: None,
             keypair: None,
             metadata: HashMap::new(),
-            name: name,
+            name,
             networks: Vec::new(),
         }
     }

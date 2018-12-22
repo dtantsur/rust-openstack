@@ -66,8 +66,8 @@ impl FloatingIp {
     /// Create a new floating IP object.
     pub(crate) fn new(session: Rc<Session>, inner: protocol::FloatingIp) -> FloatingIp {
         FloatingIp {
-            session: session,
-            inner: inner,
+            session,
+            inner,
             dirty: HashSet::new(),
         }
     }
@@ -219,7 +219,7 @@ impl FloatingIp {
                    fixed_ip_address: Option<net::IpAddr>) -> Result<()> {
         let update = protocol::FloatingIpUpdate {
             description: None,
-            fixed_ip_address: fixed_ip_address,
+            fixed_ip_address,
             port_id: Some(value),
         };
         let mut inner = self.session.update_floating_ip(self.id(), update)?;
@@ -248,7 +248,7 @@ impl Refresh for FloatingIp {
 impl FloatingIpQuery {
     pub(crate) fn new(session: Rc<Session>) -> FloatingIpQuery {
         FloatingIpQuery {
-            session: session,
+            session,
             query: Query::new(),
             can_paginate: true,
             floating_network: None,
@@ -415,7 +415,7 @@ impl NewFloatingIp {
     pub(crate) fn new(session: Rc<Session>, floating_network: NetworkRef)
             -> NewFloatingIp {
         NewFloatingIp {
-            session: session,
+            session,
             inner: protocol::FloatingIp {
                 created_at: None,
                 description: None,
@@ -436,7 +436,7 @@ impl NewFloatingIp {
                 subnet_id: None,
                 updated_at: None,
             },
-            floating_network: floating_network,
+            floating_network,
             port: None,
             subnet: None,
         }

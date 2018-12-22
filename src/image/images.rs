@@ -50,8 +50,8 @@ impl Image {
             -> Result<Image> {
         let inner = session.get_image(id)?;
         Ok(Image {
-            session: session,
-            inner: inner
+            session,
+            inner,
         })
     }
 
@@ -141,7 +141,7 @@ impl Refresh for Image {
 impl ImageQuery {
     pub(crate) fn new(session: Rc<Session>) -> ImageQuery {
         ImageQuery {
-            session: session,
+            session,
             query: Query::new(),
             can_paginate: true,
             sort: Vec::new()

@@ -1,5 +1,8 @@
 language: rust
+before_script:
+- rustup component add clippy
 script:
+- cargo clippy --verbose --package openstack -- -D warnings
 - cargo test --verbose --lib
 - cargo test --verbose --doc
 - cargo test --verbose --no-default-features --lib

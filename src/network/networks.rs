@@ -57,8 +57,8 @@ impl Network {
     /// Create a network object.
     fn new(session: Rc<Session>, inner: protocol::Network) -> Network {
         Network {
-            session: session,
-            inner: inner,
+            session,
+            inner,
             dirty: HashSet::new(),
         }
     }
@@ -231,7 +231,7 @@ impl Refresh for Network {
 impl NetworkQuery {
     pub(crate) fn new(session: Rc<Session>) -> NetworkQuery {
         NetworkQuery {
-            session: session,
+            session,
             query: Query::new(),
             can_paginate: true,
         }
@@ -328,7 +328,7 @@ impl NewNetwork {
     /// Start creating a network.
     pub(crate) fn new(session: Rc<Session>) -> NewNetwork {
         NewNetwork {
-            session: session,
+            session,
             inner: protocol::Network::default(),
         }
     }

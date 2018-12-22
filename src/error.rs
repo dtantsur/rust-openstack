@@ -95,7 +95,7 @@ pub type Result<T> = ::std::result::Result<T, Error>;
 impl Error {
     pub(crate) fn new<S: Into<String>>(kind: ErrorKind, message: S) -> Error {
         Error {
-            kind: kind,
+            kind,
             status: None,
             message: Some(message.into())
         }
@@ -105,9 +105,9 @@ impl Error {
     pub(crate) fn new_with_details(kind: ErrorKind, status: Option<StatusCode>,
                                    message: Option<String>) -> Error {
         Error {
-            kind: kind,
-            status: status,
-            message: message
+            kind,
+            status,
+            message,
         }
     }
 
@@ -127,35 +127,36 @@ impl Error {
 
 impl ErrorKind {
     /// Short description of the error kind.
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     pub fn description(&self) -> &'static str {
         match self {
-            &ErrorKind::AuthenticationFailed =>
+            ErrorKind::AuthenticationFailed =>
                 "Failed to authenticate",
-            &ErrorKind::AccessDenied =>
+            ErrorKind::AccessDenied =>
                 "Access to the resource is denied",
-            &ErrorKind::ResourceNotFound =>
+            ErrorKind::ResourceNotFound =>
                 "Requested resource was not found",
-            &ErrorKind::TooManyItems =>
+            ErrorKind::TooManyItems =>
                 "Request returned too many items",
-            &ErrorKind::EndpointNotFound =>
+            ErrorKind::EndpointNotFound =>
                 "Requested endpoint was not found",
-            &ErrorKind::InvalidInput =>
+            ErrorKind::InvalidInput =>
                 "Input value(s) are invalid or missing",
-            &ErrorKind::IncompatibleApiVersion =>
+            ErrorKind::IncompatibleApiVersion =>
                 "Incompatible or unsupported API version",
-            &ErrorKind::Conflict =>
+            ErrorKind::Conflict =>
                 "Requested cannot be fulfilled due to a conflict",
-            &ErrorKind::OperationTimedOut =>
+            ErrorKind::OperationTimedOut =>
                 "Time out reached while waiting for the operation",
-            &ErrorKind::OperationFailed =>
+            ErrorKind::OperationFailed =>
                 "Requested operation has failed",
-            &ErrorKind::ProtocolError =>
+            ErrorKind::ProtocolError =>
                 "Error when accessing the server",
-            &ErrorKind::InvalidResponse =>
+            ErrorKind::InvalidResponse =>
                 "Received invalid response",
-            &ErrorKind::InternalServerError =>
+            ErrorKind::InternalServerError =>
                 "Internal server error or bad gateway",
-            &ErrorKind::InvalidConfig =>
+            ErrorKind::InvalidConfig =>
                 "clouds.yaml cannot be found or is invalid",
             _ => unreachable!()
         }

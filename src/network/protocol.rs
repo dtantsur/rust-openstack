@@ -428,7 +428,7 @@ impl Subnet {
     pub(crate) fn empty(cidr: ipnet::IpNet) -> Subnet {
         Subnet {
             allocation_pools: Vec::new(),
-            cidr: cidr,
+            cidr,
             created_at: None,
             description: None,
             dhcp_enabled: true,

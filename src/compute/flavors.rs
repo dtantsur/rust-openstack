@@ -68,9 +68,9 @@ impl Flavor {
         };
 
         Ok(Flavor {
-            session: session,
-            inner: inner,
-            extra_specs: extra_specs,
+            session,
+            inner,
+            extra_specs,
         })
     }
 
@@ -159,7 +159,7 @@ impl FlavorSummary {
 impl FlavorQuery {
     pub(crate) fn new(session: Rc<Session>) -> FlavorQuery {
         FlavorQuery {
-            session: session,
+            session,
             query: Query::new(),
             can_paginate: true,
         }

@@ -63,8 +63,8 @@ impl Subnet {
     /// Create a subnet object.
     pub(crate) fn new(session: Rc<Session>, inner: protocol::Subnet) -> Subnet {
         Subnet {
-            session: session,
-            inner: inner,
+            session,
+            inner,
             dirty: HashSet::new(),
         }
     }
@@ -234,7 +234,7 @@ impl Refresh for Subnet {
 impl SubnetQuery {
     pub(crate) fn new(session: Rc<Session>) -> SubnetQuery {
         SubnetQuery {
-            session: session,
+            session,
             query: Query::new(),
             can_paginate: true,
             network: None,
@@ -383,9 +383,9 @@ impl NewSubnet {
     pub(crate) fn new(session: Rc<Session>, network: NetworkRef, cidr: ipnet::IpNet)
             -> NewSubnet {
         NewSubnet {
-            session: session,
+            session,
             inner: protocol::Subnet::empty(cidr),
-            network: network
+            network,
         }
     }
 

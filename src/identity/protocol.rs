@@ -146,8 +146,8 @@ impl ProjectScopedAuthRoot {
             -> ProjectScopedAuthRoot {
         ProjectScopedAuthRoot {
             auth: ProjectScopedAuth {
-                identity: identity,
-                scope: scope
+                identity,
+                scope,
             }
         }
     }

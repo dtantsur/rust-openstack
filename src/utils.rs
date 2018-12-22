@@ -52,6 +52,7 @@ impl Query {
     }
 
     /// Add an item to the query.
+    #[allow(clippy::needless_pass_by_value)] // TODO: fix
     pub fn push<K, V>(&mut self, param: K, value: V)
             where K: Into<String>, V: ToString {
         self.0.push((param.into(), value.to_string()))
@@ -213,7 +214,7 @@ pub mod url {
     #[inline]
     #[allow(unused_results)]
     pub fn is_root(url: &Url) -> bool {
-        url.path_segments().unwrap().filter(|x| !x.is_empty()).next().is_none()
+        url.path_segments().unwrap().any(|x| !x.is_empty())
     }
 
     #[inline]

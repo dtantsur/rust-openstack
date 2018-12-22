@@ -45,7 +45,7 @@ impl FromStr for ApiVersion {
     fn from_str(s: &str) -> Result<ApiVersion> {
         let parts: Vec<&str> = s.split('.').collect();
 
-        if parts.len() < 1 || parts.len() > 2 {
+        if parts.is_empty() || parts.len() > 2 {
             let msg = format!("Invalid API version: expected X.Y, got {}", s);
             return Err(Error::new(ErrorKind::InvalidResponse, msg))
         }

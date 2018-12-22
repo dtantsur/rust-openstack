@@ -239,7 +239,7 @@ pub fn deser_version<'de, D>(des: D)
         return Err(D::Error::custom("Empty version ID"));
     }
 
-    let version_part = if value.starts_with("v") {
+    let version_part = if value.starts_with('v') {
         &value[1..]
     } else {
         &value
@@ -274,6 +274,7 @@ pub fn deser_key_value<'de, D>(des: D)
 }
 
 /// Serialize a MAC address in its HEX format.
+#[allow(clippy::trivially_copy_pass_by_ref)]
 pub fn ser_mac<S>(value: &MacAddress, serializer: S)
         -> ::std::result::Result<S::Ok, S::Error>
         where S: Serializer {
@@ -281,6 +282,7 @@ pub fn ser_mac<S>(value: &MacAddress, serializer: S)
 }
 
 /// Serialize a MAC address in its HEX format.
+#[allow(clippy::trivially_copy_pass_by_ref)]
 pub fn ser_opt_mac<S>(value: &Option<MacAddress>, serializer: S)
         -> ::std::result::Result<S::Ok, S::Error>
         where S: Serializer {

@@ -58,8 +58,8 @@ impl KeyPair {
             -> Result<KeyPair> {
         let inner = session.get_keypair(id)?;
         Ok(KeyPair {
-            session: session,
-            inner: inner
+            session,
+            inner,
         })
     }
 
@@ -95,7 +95,7 @@ impl Refresh for KeyPair {
 impl KeyPairQuery {
     pub(crate) fn new(session: Rc<Session>) -> KeyPairQuery {
         KeyPairQuery {
-            session: session,
+            session,
             query: Query::new(),
             can_paginate: true,
         }
@@ -158,8 +158,8 @@ impl NewKeyPair {
     pub(crate) fn new(session: Rc<Session>, name: String)
             -> NewKeyPair {
         NewKeyPair {
-            session: session,
-            name: name,
+            session,
+            name,
             public_key: None,
         }
     }
@@ -172,7 +172,7 @@ impl NewKeyPair {
             protocol::KeyPairCreate {
                 key_type: None,  // TODO
                 name: self.name,
-                public_key: public_key
+                public_key,
             }
         } else {
             return Err(Error::new(ErrorKind::InvalidInput,

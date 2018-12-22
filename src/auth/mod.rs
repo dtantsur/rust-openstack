@@ -109,13 +109,13 @@ pub fn from_env() -> Result<Session> {
         let user_name = _get_env("OS_USERNAME")?;
         let password = _get_env("OS_PASSWORD")?;
         let user_domain = env::var("OS_USER_DOMAIN_NAME")
-            .unwrap_or(String::from("Default"));
+            .unwrap_or_else(|_| String::from("Default"));
 
         let id = Password::new(&auth_url, user_name, password, user_domain)?;
 
         let project_name = _get_env("OS_PROJECT_NAME")?;
         let project_domain = env::var("OS_PROJECT_DOMAIN_NAME")
-            .unwrap_or(String::from("Default"));
+            .unwrap_or_else(|_| String::from("Default"));
 
         Ok(Session::new(id.with_project_scope(project_name, project_domain)))
     }
