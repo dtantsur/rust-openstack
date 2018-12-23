@@ -81,24 +81,20 @@ mod simple;
 
 pub use self::base::{AuthMethod, BoxedClone};
 pub use self::config::from_config;
-pub use self::simple::NoAuth;
 pub use self::identity::{Identity, Password};
+pub use self::simple::NoAuth;
 
 use std::env;
 
-use super::{Error, ErrorKind, Result};
 use super::session::Session;
+use super::{Error, ErrorKind, Result};
 
-const MISSING_ENV_VARS: &str =
-    "Not all required environment variables were provided";
+const MISSING_ENV_VARS: &str = "Not all required environment variables were provided";
 
 #[inline]
 fn _get_env(name: &str) -> Result<String> {
-    env::var(name).map_err(|_| {
-        Error::new(ErrorKind::InvalidInput, MISSING_ENV_VARS)
-    })
+    env::var(name).map_err(|_| Error::new(ErrorKind::InvalidInput, MISSING_ENV_VARS))
 }
-
 
 /// Create a `Session` from environment variables.
 pub fn from_env() -> Result<Session> {
@@ -108,15 +104,17 @@ pub fn from_env() -> Result<Session> {
         let auth_url = _get_env("OS_AUTH_URL")?;
         let user_name = _get_env("OS_USERNAME")?;
         let password = _get_env("OS_PASSWORD")?;
-        let user_domain = env::var("OS_USER_DOMAIN_NAME")
-            .unwrap_or_else(|_| String::from("Default"));
+        let user_domain =
+            env::var("OS_USER_DOMAIN_NAME").unwrap_or_else(|_| String::from("Default"));
 
         let id = Password::new(&auth_url, user_name, password, user_domain)?;
 
         let project_name = _get_env("OS_PROJECT_NAME")?;
-        let project_domain = env::var("OS_PROJECT_DOMAIN_NAME")
-            .unwrap_or_else(|_| String::from("Default"));
+        let project_domain =
+            env::var("OS_PROJECT_DOMAIN_NAME").unwrap_or_else(|_| String::from("Default"));
 
-        Ok(Session::new(id.with_project_scope(project_name, project_domain)))
+        Ok(Session::new(
+            id.with_project_scope(project_name, project_domain),
+        ))
     }
 }

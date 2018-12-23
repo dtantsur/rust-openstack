@@ -17,7 +17,6 @@ extern crate openstack;
 
 use std::env;
 
-
 #[cfg(feature = "network")]
 fn main() {
     env_logger::init();
@@ -28,13 +27,16 @@ fn main() {
     let id = env::args().nth(1).expect("Provide a network ID");
     let network = os.get_network(id).expect("Cannot get an network");
 
-    println!("ID = {}, Name = {:?}, UP = {}, external = {:?}",
-             network.id(), network.name(), network.admin_state_up(),
-             network.external());
+    println!(
+        "ID = {}, Name = {:?}, UP = {}, external = {:?}",
+        network.id(),
+        network.name(),
+        network.admin_state_up(),
+        network.external()
+    );
 }
 
 #[cfg(not(feature = "network"))]
 fn main() {
     panic!("This example cannot run with 'network' feature disabled");
 }
-

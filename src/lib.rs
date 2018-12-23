@@ -45,39 +45,43 @@
 // NOTE: we do not use generic deny(warnings) to avoid breakages with new
 // versions of the compiler. Add more warnings here as you discover them.
 // Taken from https://github.com/rust-unofficial/patterns/
-#![deny(const_err,
-        dead_code,
-        improper_ctypes,
-        legacy_directory_ownership,
-        missing_copy_implementations,
-        missing_debug_implementations,
-        missing_docs,
-        non_shorthand_field_patterns,
-        no_mangle_generic_items,
-        overflowing_literals,
-        path_statements ,
-        patterns_in_fns_without_body,
-        plugin_as_library,
-        private_in_public,
-        safe_extern_statics,
-        trivial_casts,
-        trivial_numeric_casts,
-        unconditional_recursion,
-        unions_with_drop_fields,
-        unsafe_code,
-        unused,
-        unused_allocation,
-        unused_comparisons,
-        unused_doc_comments,
-        unused_import_braces,
-        unused_parens,
-        unused_qualifications,
-        unused_results,
-        while_true)]
+#![deny(
+    const_err,
+    dead_code,
+    improper_ctypes,
+    legacy_directory_ownership,
+    missing_copy_implementations,
+    missing_debug_implementations,
+    missing_docs,
+    non_shorthand_field_patterns,
+    no_mangle_generic_items,
+    overflowing_literals,
+    path_statements,
+    patterns_in_fns_without_body,
+    plugin_as_library,
+    private_in_public,
+    safe_extern_statics,
+    trivial_casts,
+    trivial_numeric_casts,
+    unconditional_recursion,
+    unions_with_drop_fields,
+    unsafe_code,
+    unused,
+    unused_allocation,
+    unused_comparisons,
+    unused_doc_comments,
+    unused_import_braces,
+    unused_parens,
+    unused_qualifications,
+    unused_results,
+    while_true
+)]
 #![allow(unused_extern_crates)]
-#![allow(clippy::new_ret_no_self,
-         clippy::should_implement_trait,
-         clippy::wrong_self_convention)]
+#![allow(
+    clippy::new_ret_no_self,
+    clippy::should_implement_trait,
+    clippy::wrong_self_convention
+)]
 
 extern crate chrono;
 extern crate dirs;
@@ -93,7 +97,6 @@ extern crate serde_derive;
 extern crate serde_json;
 extern crate serde_yaml;
 extern crate waiter;
-
 
 #[allow(unused_macros)]
 macro_rules! transparent_property {
@@ -111,7 +114,6 @@ macro_rules! transparent_property {
         }
     );
 }
-
 
 #[allow(unused_macros)]
 macro_rules! query_filter {
@@ -157,7 +159,6 @@ macro_rules! query_filter {
         }
     );
 }
-
 
 #[allow(unused_macros)]
 macro_rules! creation_inner_field {
@@ -216,7 +217,6 @@ macro_rules! creation_inner_field {
 
 }
 
-
 #[allow(unused_macros)]
 macro_rules! creation_inner_vec {
 
@@ -257,7 +257,6 @@ macro_rules! creation_inner_vec {
     );
 
 }
-
 
 #[allow(unused_macros)]
 macro_rules! update_field {
@@ -323,7 +322,6 @@ macro_rules! update_field {
 
 }
 
-
 #[allow(unused_macros)]
 macro_rules! update_field_mut {
 
@@ -362,7 +360,6 @@ macro_rules! save_option_fields {
     }
 }
 
-
 #[allow(unused_macros)]
 macro_rules! save_fields {
     ($self:ident -> $target:ident: $($field:ident)+) => {
@@ -373,7 +370,6 @@ macro_rules! save_fields {
         };)+
     }
 }
-
 
 #[allow(unused_macros)]
 macro_rules! protocol_enum {
@@ -481,7 +477,6 @@ macro_rules! protocol_enum {
     );
 }
 
-
 pub mod auth;
 mod cloud;
 pub mod common;
@@ -500,21 +495,20 @@ pub use cloud::Cloud;
 pub use common::Refresh;
 pub use error::{Error, ErrorKind, Result};
 
-
 /// Sorting request.
 #[derive(Debug, Clone)]
 pub enum Sort<T: Into<String>> {
     /// Sorting by given field in ascendant order.
     Asc(T),
     /// Sorting by given field in descendant order.
-    Desc(T)
+    Desc(T),
 }
 
 impl<T: Into<String>> Into<(String, String)> for Sort<T> {
     fn into(self) -> (String, String) {
         match self {
             Sort::Asc(val) => (val.into(), String::from("asc")),
-            Sort::Desc(val) => (val.into(), String::from("desc"))
+            Sort::Desc(val) => (val.into(), String::from("desc")),
         }
     }
 }

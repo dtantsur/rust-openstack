@@ -19,16 +19,16 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use chrono::{DateTime, FixedOffset};
-use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
+use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
 
-use super::super::{Error, Result, Sort};
-use super::super::common::{DeletionWaiter, IntoVerified, NetworkRef, Refresh,
-                           ResourceQuery, ResourceIterator};
+use super::super::common::{
+    DeletionWaiter, IntoVerified, NetworkRef, Refresh, ResourceIterator, ResourceQuery,
+};
 use super::super::session::Session;
 use super::super::utils::Query;
+use super::super::{Error, Result, Sort};
 use super::base::V2API;
 use super::protocol;
-
 
 /// A query to network list.
 #[derive(Clone, Debug)]
@@ -64,8 +64,7 @@ impl Network {
     }
 
     /// Load a Network object.
-    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id)
-            -> Result<Network> {
+    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id) -> Result<Network> {
         let inner = session.get_network(id)?;
         Ok(Network::new(session, inner))
     }
@@ -194,7 +193,11 @@ impl Network {
     /// Delete the network.
     pub fn delete(self) -> Result<DeletionWaiter<Network>> {
         self.session.delete_network(&self.inner.id)?;
-        Ok(DeletionWaiter::new(self, Duration::new(60, 0), Duration::new(1, 0)))
+        Ok(DeletionWaiter::new(
+            self,
+            Duration::new(60, 0),
+            Duration::new(1, 0),
+        ))
     }
 
     /// Whether the network is modified.
@@ -316,11 +319,14 @@ impl ResourceQuery for NetworkQuery {
         resource.id().clone()
     }
 
-    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>)
-            -> Result<Vec<Self::Item>> {
+    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
         let query = self.query.with_marker_and_limit(limit, marker);
-        Ok(self.session.list_networks(&query)?.into_iter()
-           .map(|item| Network::new(self.session.clone(), item)).collect())
+        Ok(self
+            .session
+            .list_networks(&query)?
+            .into_iter()
+            .map(|item| Network::new(self.session.clone(), item))
+            .collect())
     }
 }
 

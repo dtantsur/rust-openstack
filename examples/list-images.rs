@@ -18,7 +18,6 @@ extern crate openstack;
 
 use fallible_iterator::FallibleIterator;
 
-
 #[cfg(feature = "image")]
 fn main() {
     env_logger::init();
@@ -26,24 +25,38 @@ fn main() {
     let os = openstack::Cloud::from_env()
         .expect("Failed to create an identity provider from the environment");
 
-    let images: Vec<openstack::image::Image> = os.find_images()
+    let images: Vec<openstack::image::Image> = os
+        .find_images()
         .sort_by(openstack::Sort::Asc(openstack::image::ImageSortKey::Id))
-        .into_iter().take(10).collect()
+        .into_iter()
+        .take(10)
+        .collect()
         .expect("Cannot list images");
     println!("First 10 images:");
     for img in &images {
-        println!("ID = {}, Name = {}, Status = {}, Visibility = {}",
-                 img.id(), img.name(), img.status(), img.visibility());
+        println!(
+            "ID = {}, Name = {}, Status = {}, Visibility = {}",
+            img.id(),
+            img.name(),
+            img.status(),
+            img.visibility()
+        );
     }
 
-    let mut public = os.find_images()
+    let mut public = os
+        .find_images()
         .sort_by(openstack::Sort::Asc(openstack::image::ImageSortKey::Name))
         .with_visibility(openstack::image::ImageVisibility::Public)
         .into_iter();
     println!("All public images:");
     while let Some(img) = public.next().unwrap() {
-        println!("ID = {}, Name = {}, Status = {}, Visibility = {}",
-                 img.id(), img.name(), img.status(), img.visibility());
+        println!(
+            "ID = {}, Name = {}, Status = {}, Visibility = {}",
+            img.id(),
+            img.name(),
+            img.status(),
+            img.visibility()
+        );
     }
 }
 

@@ -26,7 +26,7 @@ use super::AuthMethod;
 #[derive(Clone, Debug)]
 pub struct NoAuth {
     client: Client,
-    endpoint: Url
+    endpoint: Url,
 }
 
 impl NoAuth {
@@ -34,10 +34,13 @@ impl NoAuth {
     ///
     /// This endpoint will be returned in response to all get_endpoint calls
     /// of the [AuthMethod](trait.AuthMethod.html) trait.
-    pub fn new<U>(endpoint: U) -> Result<NoAuth> where U: IntoUrl {
+    pub fn new<U>(endpoint: U) -> Result<NoAuth>
+    where
+        U: IntoUrl,
+    {
         Ok(NoAuth {
             client: Client::new(),
-            endpoint: endpoint.into_url()?
+            endpoint: endpoint.into_url()?,
         })
     }
 }
@@ -49,12 +52,17 @@ impl AuthMethod for NoAuth {
     }
 
     /// Get a predefined endpoint for all service types
-    fn get_endpoint(&self, _service_type: String,
-                    _endpoint_interface: Option<String>) -> Result<Url> {
+    fn get_endpoint(
+        &self,
+        _service_type: String,
+        _endpoint_interface: Option<String>,
+    ) -> Result<Url> {
         Ok(self.endpoint.clone())
     }
 
-    fn refresh(&mut self) -> Result<()> { Ok(()) }
+    fn refresh(&mut self) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[cfg(test)]

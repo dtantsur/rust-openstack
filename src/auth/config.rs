@@ -21,9 +21,9 @@ use std::path::{Path, PathBuf};
 use dirs;
 use serde_yaml;
 
-use super::Password;
-use super::super::{Error, ErrorKind, Result};
 use super::super::session::Session;
+use super::super::{Error, ErrorKind, Result};
+use super::Password;
 
 #[derive(Debug, Clone, Deserialize)]
 struct Auth {
@@ -47,7 +47,7 @@ struct Cloud {
 #[derive(Debug, Clone, Deserialize)]
 struct Clouds {
     #[serde(flatten)]
-    clouds: HashMap<String, Cloud>
+    clouds: HashMap<String, Cloud>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -60,7 +60,7 @@ fn find_config() -> Option<PathBuf> {
     if current.is_file() {
         match current.canonicalize() {
             Ok(val) => return Some(val),
-            Err(e) => warn!("Cannot canonicalize {:?}: {}", current, e)
+            Err(e) => warn!("Cannot canonicalize {:?}: {}", current, e),
         }
     }
 
@@ -83,26 +83,39 @@ fn find_config() -> Option<PathBuf> {
 
 /// Create a `Session` from the config file.
 pub fn from_config<S: AsRef<str>>(cloud_name: S) -> Result<Session> {
-    let path = find_config()
-        .ok_or_else(|| Error::new(ErrorKind::InvalidConfig,
-                                  "clouds.yaml was not found in any location"))?;
-    let file = File::open(path)
-        .map_err(|e| Error::new(ErrorKind::InvalidConfig,
-                                format!("Cannot read config.yaml: {}", e)))?;
-    let mut clouds: Root = serde_yaml::from_reader(file)
-        .map_err(|e| Error::new(ErrorKind::InvalidConfig,
-                                format!("Cannot parse clouds.yaml: {}", e)))?;
+    let path = find_config().ok_or_else(|| {
+        Error::new(
+            ErrorKind::InvalidConfig,
+            "clouds.yaml was not found in any location",
+        )
+    })?;
+    let file = File::open(path).map_err(|e| {
+        Error::new(
+            ErrorKind::InvalidConfig,
+            format!("Cannot read config.yaml: {}", e),
+        )
+    })?;
+    let mut clouds: Root = serde_yaml::from_reader(file).map_err(|e| {
+        Error::new(
+            ErrorKind::InvalidConfig,
+            format!("Cannot parse clouds.yaml: {}", e),
+        )
+    })?;
 
     let name = cloud_name.as_ref();
-    let cloud = clouds.clouds.clouds.remove(name)
-        .ok_or_else(|| Error::new(ErrorKind::InvalidConfig,
-                                  format!("No such cloud: {}", name)))?;
+    let cloud =
+        clouds.clouds.clouds.remove(name).ok_or_else(|| {
+            Error::new(ErrorKind::InvalidConfig, format!("No such cloud: {}", name))
+        })?;
 
     let auth = cloud.auth;
-    let user_domain = auth.user_domain_name.unwrap_or_else(|| String::from("Default"));
-    let project_domain = auth.project_domain_name.unwrap_or_else(|| String::from("Default"));
-    let mut id = Password::new(&auth.auth_url, auth.username, auth.password,
-                               user_domain)?
+    let user_domain = auth
+        .user_domain_name
+        .unwrap_or_else(|| String::from("Default"));
+    let project_domain = auth
+        .project_domain_name
+        .unwrap_or_else(|| String::from("Default"));
+    let mut id = Password::new(&auth.auth_url, auth.username, auth.password, user_domain)?
         .with_project_scope(auth.project_name, project_domain);
     if let Some(region) = cloud.region_name {
         id.set_region(region)

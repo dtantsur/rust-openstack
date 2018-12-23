@@ -20,18 +20,18 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use chrono::{DateTime, FixedOffset};
-use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
+use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
 use serde_json;
 
-use super::super::{Error, ErrorKind, Result, Sort};
-use super::super::common::{DeletionWaiter, IntoVerified, NetworkRef,
-                           PortRef, Refresh, ResourceQuery,
-                           ResourceIterator, RouterRef, SubnetRef};
+use super::super::common::{
+    DeletionWaiter, IntoVerified, NetworkRef, PortRef, Refresh, ResourceIterator, ResourceQuery,
+    RouterRef, SubnetRef,
+};
 use super::super::session::Session;
 use super::super::utils::Query;
+use super::super::{Error, ErrorKind, Result, Sort};
 use super::base::V2API;
 use super::{protocol, Network, Port};
-
 
 /// Structure representing a single floating IP.
 #[derive(Clone, Debug)]
@@ -61,7 +61,6 @@ pub struct NewFloatingIp {
     subnet: Option<SubnetRef>,
 }
 
-
 impl FloatingIp {
     /// Create a new floating IP object.
     pub(crate) fn new(session: Rc<Session>, inner: protocol::FloatingIp) -> FloatingIp {
@@ -73,8 +72,7 @@ impl FloatingIp {
     }
 
     /// Load a FloatingIp object.
-    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id)
-            -> Result<FloatingIp> {
+    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id) -> Result<FloatingIp> {
         let inner = session.get_floating_ip(id)?;
         Ok(FloatingIp::new(session, inner))
     }
@@ -160,8 +158,10 @@ impl FloatingIp {
     pub fn port(&self) -> Result<Port> {
         match self.inner.port_id {
             Some(ref port_id) => Port::load(self.session.clone(), &port_id),
-            None => Err(Error::new(ErrorKind::ResourceNotFound,
-                                   "Floating IP is not associated"))
+            None => Err(Error::new(
+                ErrorKind::ResourceNotFound,
+                "Floating IP is not associated",
+            )),
         }
     }
 
@@ -183,8 +183,10 @@ impl FloatingIp {
     /// # Warning
     ///
     /// Any changes to `fixed_ip_address` are reset on this call.
-    pub fn associate<P>(&mut self, port: P, fixed_ip_address: Option<net::IpAddr>)
-            -> Result<()> where P: Into<PortRef> {
+    pub fn associate<P>(&mut self, port: P, fixed_ip_address: Option<net::IpAddr>) -> Result<()>
+    where
+        P: Into<PortRef>,
+    {
         let new_port = port.into().into_verified(&self.session)?.into();
         self.update_port(new_port, fixed_ip_address)
     }
@@ -201,7 +203,11 @@ impl FloatingIp {
     /// Delete the floating IP.
     pub fn delete(self) -> Result<DeletionWaiter<FloatingIp>> {
         self.session.delete_floating_ip(&self.inner.id)?;
-        Ok(DeletionWaiter::new(self, Duration::new(60, 0), Duration::new(1, 0)))
+        Ok(DeletionWaiter::new(
+            self,
+            Duration::new(60, 0),
+            Duration::new(1, 0),
+        ))
     }
 
     /// Save the changes to the floating IP.
@@ -215,8 +221,11 @@ impl FloatingIp {
         Ok(())
     }
 
-    fn update_port(&mut self, value: serde_json::Value,
-                   fixed_ip_address: Option<net::IpAddr>) -> Result<()> {
+    fn update_port(
+        &mut self,
+        value: serde_json::Value,
+        fixed_ip_address: Option<net::IpAddr>,
+    ) -> Result<()> {
         let update = protocol::FloatingIpUpdate {
             description: None,
             fixed_ip_address,
@@ -390,11 +399,14 @@ impl ResourceQuery for FloatingIpQuery {
         resource.id().clone()
     }
 
-    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>)
-            -> Result<Vec<Self::Item>> {
+    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
         let query = self.query.with_marker_and_limit(limit, marker);
-        Ok(self.session.list_floating_ips(&query)?.into_iter()
-           .map(|item| FloatingIp::new(self.session.clone(), item)).collect())
+        Ok(self
+            .session
+            .list_floating_ips(&query)?
+            .into_iter()
+            .map(|item| FloatingIp::new(self.session.clone(), item))
+            .collect())
     }
 
     fn validate(&mut self) -> Result<()> {
@@ -412,8 +424,7 @@ impl ResourceQuery for FloatingIpQuery {
 
 impl NewFloatingIp {
     /// Start creating a floating IP.
-    pub(crate) fn new(session: Rc<Session>, floating_network: NetworkRef)
-            -> NewFloatingIp {
+    pub(crate) fn new(session: Rc<Session>, floating_network: NetworkRef) -> NewFloatingIp {
         NewFloatingIp {
             session,
             inner: protocol::FloatingIp {
@@ -444,8 +455,7 @@ impl NewFloatingIp {
 
     /// Request creation of the port.
     pub fn create(mut self) -> Result<FloatingIp> {
-        self.inner.floating_network_id = self.floating_network.into_verified(
-            &self.session)?.into();
+        self.inner.floating_network_id = self.floating_network.into_verified(&self.session)?.into();
         if let Some(port) = self.port {
             self.inner.port_id = Some(port.into_verified(&self.session)?.into());
         }
@@ -483,23 +493,35 @@ impl NewFloatingIp {
     }
 
     /// Set the port to associate with the new IP.
-    pub fn set_port<P>(&mut self, port: P) where P: Into<PortRef> {
+    pub fn set_port<P>(&mut self, port: P)
+    where
+        P: Into<PortRef>,
+    {
         self.port = Some(port.into());
     }
 
     /// Set the port to associate with the new IP.
-    pub fn with_port<P>(mut self, port: P) -> NewFloatingIp where P: Into<PortRef> {
+    pub fn with_port<P>(mut self, port: P) -> NewFloatingIp
+    where
+        P: Into<PortRef>,
+    {
         self.set_port(port);
         self
     }
 
     /// Set the subnet to create the IP address from.
-    pub fn set_subnet<P>(&mut self, subnet: P) where P: Into<SubnetRef> {
+    pub fn set_subnet<P>(&mut self, subnet: P)
+    where
+        P: Into<SubnetRef>,
+    {
         self.subnet = Some(subnet.into());
     }
 
     /// Set the subnet to create the IP address from.
-    pub fn with_subnet<P>(mut self, subnet: P) -> NewFloatingIp where P: Into<SubnetRef> {
+    pub fn with_subnet<P>(mut self, subnet: P) -> NewFloatingIp
+    where
+        P: Into<SubnetRef>,
+    {
         self.set_subnet(subnet);
         self
     }

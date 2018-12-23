@@ -19,7 +19,6 @@ extern crate waiter;
 use std::env;
 use waiter::{Waiter, WaiterCurrentState};
 
-
 #[cfg(feature = "compute")]
 fn main() {
     env_logger::init();
@@ -33,25 +32,36 @@ fn main() {
     let network = env::args().nth(4).expect("Provide a network");
     let keypair = env::args().nth(5).expect("Provide a key pair");
 
-    let waiter = os.new_server(name, flavor)
-        .with_image(image).with_network(network).with_keypair(keypair)
+    let waiter = os
+        .new_server(name, flavor)
+        .with_image(image)
+        .with_network(network)
+        .with_keypair(keypair)
         .with_metadata("key", "value")
-        .create().expect("Cannot create a server");
+        .create()
+        .expect("Cannot create a server");
     {
         let current = waiter.waiter_current_state();
-        println!("ID = {}, Name = {}, Status = {:?}, Power = {:?}",
-                 current.id(), current.name(),
-                 current.status(), current.power_state());
+        println!(
+            "ID = {}, Name = {}, Status = {:?}, Power = {:?}",
+            current.id(),
+            current.name(),
+            current.status(),
+            current.power_state()
+        );
     }
 
     let server = waiter.wait().expect("Server did not reach ACTIVE");
-    println!("ID = {}, Name = {}, Status = {:?}, Power = {:?}",
-             server.id(), server.name(),
-             server.status(), server.power_state());
+    println!(
+        "ID = {}, Name = {}, Status = {:?}, Power = {:?}",
+        server.id(),
+        server.name(),
+        server.status(),
+        server.power_state()
+    );
 }
 
 #[cfg(not(feature = "compute"))]
 fn main() {
     panic!("This example cannot run with 'compute' feature disabled");
 }
-

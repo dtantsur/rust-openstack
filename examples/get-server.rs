@@ -17,7 +17,6 @@ extern crate openstack;
 
 use std::env;
 
-
 #[cfg(feature = "compute")]
 fn main() {
     env_logger::init();
@@ -28,12 +27,20 @@ fn main() {
     let id = env::args().nth(1).expect("Provide a server ID");
     let server = os.get_server(id).expect("Cannot get a server");
 
-    println!("ID = {}, Name = {}, Status = {:?}, Power = {:?}",
-             server.id(), server.name(), server.status(), server.power_state());
+    println!(
+        "ID = {}, Name = {}, Status = {:?}, Power = {:?}",
+        server.id(),
+        server.name(),
+        server.status(),
+        server.power_state()
+    );
     println!("Links: image = {:?}", server.image_id());
-    println!("Flavor: {} CPU, disk {}G, memory {}M",
-             server.flavor().vcpu_count, server.flavor().root_size,
-             server.flavor().ram_size);
+    println!(
+        "Flavor: {} CPU, disk {}G, memory {}M",
+        server.flavor().vcpu_count,
+        server.flavor().root_size,
+        server.flavor().ram_size
+    );
     println!("Floating IP: {:?}", server.floating_ip());
 
     if !server.metadata().is_empty() {
@@ -45,4 +52,3 @@ fn main() {
 fn main() {
     panic!("This example cannot run with 'compute' feature disabled");
 }
-

@@ -20,7 +20,6 @@ use fallible_iterator::FallibleIterator;
 
 use super::super::{Error, ErrorKind, Result};
 
-
 /// A query for resources.
 ///
 /// This is a low-level trait that should not be used directly.
@@ -38,14 +37,15 @@ pub trait ResourceQuery {
     fn extract_marker(&self, resource: &Self::Item) -> String;
 
     /// Get a chunk of resources.
-    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>)
-        -> Result<Vec<Self::Item>>;
+    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>>;
 
     /// Validate the query before the first execution.
     ///
     /// This call may modify internal representation of the query, so changing
     /// the query after calling it may cause undesired side effects.
-    fn validate(&mut self) -> Result<()> { Ok(()) }
+    fn validate(&mut self) -> Result<()> {
+        Ok(())
+    }
 }
 
 /// Generic implementation of a `FallibleIterator` over resources.
@@ -58,14 +58,17 @@ pub struct ResourceIterator<Q: ResourceQuery> {
     validated: bool,
 }
 
-impl<Q> ResourceIterator<Q> where Q: ResourceQuery {
-    #[allow(dead_code)]  // unused with --no-default-features
+impl<Q> ResourceIterator<Q>
+where
+    Q: ResourceQuery,
+{
+    #[allow(dead_code)] // unused with --no-default-features
     pub(crate) fn new(query: Q) -> ResourceIterator<Q> {
         ResourceIterator {
             query,
             cache: None,
             marker: None,
-            can_paginate: None,  // ask the service later
+            can_paginate: None, // ask the service later
             validated: false,
         }
     }
@@ -76,25 +79,34 @@ impl<Q> ResourceIterator<Q> where Q: ResourceQuery {
     /// `TooManyItems` if there is more than one item left.
     pub fn one(mut self) -> Result<Q::Item> {
         match self.next()? {
-            Some(result) => if self.next()?.is_some() {
-                Err(Error::new(ErrorKind::TooManyItems,
-                               "Query returned more than one result"))
-            } else {
-                Ok(result)
-            },
-            None => Err(Error::new(ErrorKind::ResourceNotFound,
-                                   "Query returned no results"))
+            Some(result) => {
+                if self.next()?.is_some() {
+                    Err(Error::new(
+                        ErrorKind::TooManyItems,
+                        "Query returned more than one result",
+                    ))
+                } else {
+                    Ok(result)
+                }
+            }
+            None => Err(Error::new(
+                ErrorKind::ResourceNotFound,
+                "Query returned no results",
+            )),
         }
     }
 }
 
-impl<Q> FallibleIterator for ResourceIterator<Q> where Q: ResourceQuery {
+impl<Q> FallibleIterator for ResourceIterator<Q>
+where
+    Q: ResourceQuery,
+{
     type Item = Q::Item;
 
     type Error = Error;
 
     fn next(&mut self) -> Result<Option<Self::Item>> {
-        if ! self.validated {
+        if !self.validated {
             self.query.validate()?;
             self.validated = true;
         }
@@ -122,13 +134,13 @@ impl<Q> FallibleIterator for ResourceIterator<Q> where Q: ResourceQuery {
             self.cache = Some(iter);
 
             maybe_next
-        }.map(|next| {
+        }
+        .map(|next| {
             self.marker = Some(self.query.extract_marker(&next));
             next
         }))
     }
 }
-
 
 #[cfg(test)]
 mod test {
@@ -156,14 +168,17 @@ mod test {
             resource.0.to_string()
         }
 
-        fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>)
-            -> Result<Vec<Self::Item>> {
+        fn fetch_chunk(
+            &self,
+            limit: Option<usize>,
+            marker: Option<String>,
+        ) -> Result<Vec<Self::Item>> {
             assert_eq!(limit, Some(2));
             Ok(match marker.map(|s| s.parse::<u8>().unwrap()) {
                 Some(1) => vec![Test(2), Test(3)],
                 Some(3) => Vec::new(),
                 None => vec![Test(0), Test(1)],
-                Some(x) => panic!("unexpected marker {:?}", x)
+                Some(x) => panic!("unexpected marker {:?}", x),
             })
         }
     }
@@ -184,8 +199,11 @@ mod test {
             resource.0.to_string()
         }
 
-        fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>)
-            -> Result<Vec<Self::Item>> {
+        fn fetch_chunk(
+            &self,
+            limit: Option<usize>,
+            marker: Option<String>,
+        ) -> Result<Vec<Self::Item>> {
             assert!(limit.is_none());
             assert!(marker.is_none());
             Ok(vec![Test(0), Test(1), Test(2)])
@@ -195,14 +213,18 @@ mod test {
     #[test]
     fn test_resource_iterator() {
         let it: ResourceIterator<TestQuery> = ResourceIterator::new(TestQuery);
-        assert_eq!(it.collect::<Vec<Test>>().unwrap(),
-                   vec![Test(0), Test(1), Test(2), Test(3)]);
+        assert_eq!(
+            it.collect::<Vec<Test>>().unwrap(),
+            vec![Test(0), Test(1), Test(2), Test(3)]
+        );
     }
 
     #[test]
     fn test_resource_iterator_no_pagination() {
         let it: ResourceIterator<NoPagination> = ResourceIterator::new(NoPagination);
-        assert_eq!(it.collect::<Vec<Test>>().unwrap(),
-                   vec![Test(0), Test(1), Test(2)]);
+        assert_eq!(
+            it.collect::<Vec<Test>>().unwrap(),
+            vec![Test(0), Test(1), Test(2)]
+        );
     }
 }

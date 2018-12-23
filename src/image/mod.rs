@@ -18,6 +18,7 @@ mod base;
 mod images;
 mod protocol;
 
-pub use self::protocol::{ImageContainerFormat, ImageDiskFormat,
-                         ImageVisibility, ImageSortKey, ImageStatus};
 pub use self::images::{Image, ImageQuery};
+pub use self::protocol::{
+    ImageContainerFormat, ImageDiskFormat, ImageSortKey, ImageStatus, ImageVisibility,
+};

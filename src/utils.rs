@@ -25,7 +25,6 @@ use serde::{Serialize, Serializer};
 
 use super::{Error, ErrorKind, Result};
 
-
 /// Type of query parameters.
 #[derive(Clone)]
 pub struct Query(pub Vec<(String, String)>);
@@ -37,7 +36,6 @@ pub struct ValueCache<T: Clone>(RefCell<Option<T>>);
 /// Cached map of values.
 #[derive(Debug, Clone)]
 pub struct MapCache<K: Hash + Eq, V: Clone>(RefCell<HashMap<K, V>>);
-
 
 impl fmt::Debug for Query {
     fn fmt(&self, f: &mut fmt::Formatter) -> ::std::result::Result<(), fmt::Error> {
@@ -54,19 +52,24 @@ impl Query {
     /// Add an item to the query.
     #[allow(clippy::needless_pass_by_value)] // TODO: fix
     pub fn push<K, V>(&mut self, param: K, value: V)
-            where K: Into<String>, V: ToString {
+    where
+        K: Into<String>,
+        V: ToString,
+    {
         self.0.push((param.into(), value.to_string()))
     }
 
     /// Add a strng item to the query.
     pub fn push_str<K, V>(&mut self, param: K, value: V)
-            where K: Into<String>, V: Into<String> {
+    where
+        K: Into<String>,
+        V: Into<String>,
+    {
         self.0.push((param.into(), value.into()))
     }
 
     /// Add marker and limit to the query and clone it.
-    pub fn with_marker_and_limit(&self, limit: Option<usize>,
-                                 marker: Option<String>) -> Query {
+    pub fn with_marker_and_limit(&self, limit: Option<usize>, marker: Option<String>) -> Query {
         let mut new = self.clone();
         if let Some(limit_) = limit {
             new.push("limit", limit_);
@@ -80,7 +83,9 @@ impl Query {
 
 impl Serialize for Query {
     fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-            where S: Serializer {
+    where
+        S: Serializer,
+    {
         self.0.serialize(serializer)
     }
 }
@@ -93,7 +98,9 @@ impl<T: Clone> ValueCache<T> {
 
     /// Ensure the value is cached.
     pub fn ensure_value<F>(&self, default: F) -> Result<()>
-            where F: FnOnce() -> Result<T> {
+    where
+        F: FnOnce() -> Result<T>,
+    {
         if self.0.borrow().is_some() {
             return Ok(());
         };
@@ -106,13 +113,15 @@ impl<T: Clone> ValueCache<T> {
     ///
     /// Returns `true` if the value exists and passes the check.
     pub fn validate<F>(&self, check: F) -> bool
-            where F: FnOnce(&T) -> bool {
+    where
+        F: FnOnce(&T) -> bool,
+    {
         let valid = match self.0.borrow().as_ref() {
             Some(v) => check(v),
-            None => false
+            None => false,
         };
 
-        if ! valid {
+        if !valid {
             *self.0.borrow_mut() = None;
             false
         } else {
@@ -122,8 +131,10 @@ impl<T: Clone> ValueCache<T> {
 
     /// Validate value and set it if it is not valid.
     pub fn validate_and_ensure_value<V, F>(&self, check: V, default: F) -> Result<()>
-            where V: FnOnce(&T) -> bool,
-                  F: FnOnce() -> Result<T> {
+    where
+        V: FnOnce(&T) -> bool,
+        F: FnOnce() -> Result<T>,
+    {
         if self.validate(check) {
             Ok(())
         } else {
@@ -133,7 +144,9 @@ impl<T: Clone> ValueCache<T> {
 
     /// Extract a part of the value.
     pub fn extract<F, R>(&self, filter: F) -> Option<R>
-            where F: FnOnce(&T) -> R {
+    where
+        F: FnOnce(&T) -> R,
+    {
         self.0.borrow().as_ref().map(filter)
     }
 }
@@ -146,7 +159,9 @@ impl<K: Hash + Eq, V: Clone> MapCache<K, V> {
 
     /// Ensure the value is present in the cache.
     pub fn ensure_value<F>(&self, key: K, default: F) -> Result<()>
-            where F: FnOnce(&K) -> Result<V> {
+    where
+        F: FnOnce(&K) -> Result<V>,
+    {
         if self.0.borrow().contains_key(&key) {
             return Ok(());
         }
@@ -169,17 +184,19 @@ impl<K: Hash + Eq, V: Clone> MapCache<K, V> {
     }
 }
 
-
 /// Extensions for Result type.
 pub trait ResultExt<T> {
     /// Process result if the error was ResourceNotFound.
     fn if_not_found_then<F>(self, f: F) -> Result<T>
-        where F: FnOnce() -> Result<T>;
+    where
+        F: FnOnce() -> Result<T>;
 }
 
 impl<T> ResultExt<T> for Result<T> {
     fn if_not_found_then<F>(self, f: F) -> Result<T>
-            where F: FnOnce() -> Result<T> {
+    where
+        F: FnOnce() -> Result<T>,
+    {
         self.or_else(|err| {
             if err.kind() == ErrorKind::ResourceNotFound {
                 f()
@@ -191,12 +208,15 @@ impl<T> ResultExt<T> for Result<T> {
 }
 
 /// Get one and only one item from an iterator.
-pub fn one<T, I, S>(collection: I, not_found_msg: S, too_many_msg: S)
-        -> Result<T> where I: IntoIterator<Item = T>, S: Into<String> {
+pub fn one<T, I, S>(collection: I, not_found_msg: S, too_many_msg: S) -> Result<T>
+where
+    I: IntoIterator<Item = T>,
+    S: Into<String>,
+{
     let mut iter = collection.into_iter();
-    let result = iter.next().ok_or_else(|| {
-        Error::new(ErrorKind::ResourceNotFound, not_found_msg.into())
-    })?;
+    let result = iter
+        .next()
+        .ok_or_else(|| Error::new(ErrorKind::ResourceNotFound, not_found_msg.into()))?;
 
     if iter.next().is_some() {
         Err(Error::new(ErrorKind::TooManyItems, too_many_msg.into()))
@@ -204,7 +224,6 @@ pub fn one<T, I, S>(collection: I, not_found_msg: S, too_many_msg: S)
         Ok(result)
     }
 }
-
 
 pub mod url {
     //! Handy primitives for working with URLs.
@@ -227,8 +246,14 @@ pub mod url {
     #[inline]
     #[allow(unused_results)]
     pub fn extend<I>(mut url: Url, segments: I) -> Url
-            where I: IntoIterator, I::Item: AsRef<str> {
-        url.path_segments_mut().unwrap().pop_if_empty().extend(segments);
+    where
+        I: IntoIterator,
+        I::Item: AsRef<str>,
+    {
+        url.path_segments_mut()
+            .unwrap()
+            .pop_if_empty()
+            .extend(segments);
         url
     }
 
@@ -242,7 +267,6 @@ pub mod url {
         url
     }
 }
-
 
 #[cfg(test)]
 pub mod test {

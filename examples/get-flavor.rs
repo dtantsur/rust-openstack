@@ -17,7 +17,6 @@ extern crate openstack;
 
 use std::env;
 
-
 #[cfg(feature = "compute")]
 fn main() {
     env_logger::init();
@@ -28,9 +27,14 @@ fn main() {
     let id = env::args().nth(1).expect("Provide a flavor ID");
     let flavor = os.get_flavor(id).expect("Cannot get a flavor");
 
-    println!("ID = {}, Name = {}, VCPUs = {}, RAM = {} MiB, DISK = {} GiB",
-             flavor.id(), flavor.name(),
-             flavor.vcpu_count(), flavor.ram_size(), flavor.root_size());
+    println!(
+        "ID = {}, Name = {}, VCPUs = {}, RAM = {} MiB, DISK = {} GiB",
+        flavor.id(),
+        flavor.name(),
+        flavor.vcpu_count(),
+        flavor.ram_size(),
+        flavor.root_size()
+    );
     println!("Extra Specs = {:?}", flavor.extra_specs());
 }
 
@@ -38,4 +42,3 @@ fn main() {
 fn main() {
     panic!("This example cannot run with 'compute' feature disabled");
 }
-

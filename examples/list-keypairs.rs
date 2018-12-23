@@ -15,7 +15,6 @@
 extern crate env_logger;
 extern crate openstack;
 
-
 #[cfg(feature = "compute")]
 fn main() {
     env_logger::init();
@@ -23,12 +22,15 @@ fn main() {
     let os = openstack::Cloud::from_env()
         .expect("Failed to create an identity provider from the environment");
 
-    let keypairs: Vec<openstack::compute::KeyPair> = os.list_keypairs()
-        .expect("Cannot list key pairs");
+    let keypairs: Vec<openstack::compute::KeyPair> =
+        os.list_keypairs().expect("Cannot list key pairs");
     println!("Key pairs:");
     for keypair in &keypairs {
-        println!("Name = {}, Fingerprint = {}",
-                 keypair.name(), keypair.fingerprint());
+        println!(
+            "Name = {}, Fingerprint = {}",
+            keypair.name(),
+            keypair.fingerprint()
+        );
     }
 }
 

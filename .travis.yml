@@ -1,7 +1,9 @@
 language: rust
 before_script:
+- rustup component add rustfmt
 - rustup component add clippy
 script:
+- cargo fmt -- --check
 - cargo clippy --verbose --package openstack -- -D warnings
 - cargo test --verbose --lib
 - cargo test --verbose --doc

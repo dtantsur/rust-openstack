@@ -17,16 +17,14 @@
 use std::rc::Rc;
 
 use chrono::{DateTime, FixedOffset};
-use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
+use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
 
-use super::super::{Error, Result, Sort};
-use super::super::common::{ImageRef, IntoVerified, Refresh, ResourceQuery,
-                           ResourceIterator};
+use super::super::common::{ImageRef, IntoVerified, Refresh, ResourceIterator, ResourceQuery};
 use super::super::session::Session;
 use super::super::utils::Query;
+use super::super::{Error, Result, Sort};
 use super::base::V2API;
 use super::protocol;
-
 
 /// A query to image list.
 #[derive(Clone, Debug)]
@@ -34,25 +32,21 @@ pub struct ImageQuery {
     session: Rc<Session>,
     query: Query,
     can_paginate: bool,
-    sort: Vec<String>
+    sort: Vec<String>,
 }
 
 /// Structure representing a single image.
 #[derive(Clone, Debug)]
 pub struct Image {
     session: Rc<Session>,
-    inner: protocol::Image
+    inner: protocol::Image,
 }
 
 impl Image {
     /// Load a Image object.
-    pub(crate) fn new<Id: AsRef<str>>(session: Rc<Session>, id: Id)
-            -> Result<Image> {
+    pub(crate) fn new<Id: AsRef<str>>(session: Rc<Session>, id: Id) -> Result<Image> {
         let inner = session.get_image(id)?;
-        Ok(Image {
-            session,
-            inner,
-        })
+        Ok(Image { session, inner })
     }
 
     transparent_property! {
@@ -144,7 +138,7 @@ impl ImageQuery {
             session,
             query: Query::new(),
             can_paginate: true,
-            sort: Vec::new()
+            sort: Vec::new(),
         }
     }
 
@@ -195,7 +189,7 @@ impl ImageQuery {
     ///
     /// Note that no requests are done until you start iterating.
     pub fn into_iter(mut self) -> ResourceIterator<ImageQuery> {
-        if ! self.sort.is_empty() {
+        if !self.sort.is_empty() {
             self.query.push_str("sort", self.sort.join(","));
         }
         debug!("Fetching images with {:?}", self.query);
@@ -238,13 +232,17 @@ impl ResourceQuery for ImageQuery {
         resource.id().clone()
     }
 
-    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>)
-            -> Result<Vec<Self::Item>> {
+    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
         let query = self.query.with_marker_and_limit(limit, marker);
-        Ok(self.session.list_images(&query)?.into_iter().map(|item| Image {
-            session: self.session.clone(),
-            inner: item
-        }).collect())
+        Ok(self
+            .session
+            .list_images(&query)?
+            .into_iter()
+            .map(|item| Image {
+                session: self.session.clone(),
+                inner: item,
+            })
+            .collect())
     }
 }
 

@@ -15,23 +15,22 @@
 //! Subnets management via Network API.
 
 use std::collections::HashSet;
-use std::rc::Rc;
 use std::net;
+use std::rc::Rc;
 use std::time::Duration;
 
 use chrono::{DateTime, FixedOffset};
-use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
+use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
 use ipnet;
 
-use super::super::{Error, Result, Sort};
-use super::super::common::{DeletionWaiter, IntoVerified, NetworkRef,
-                           SubnetRef, Refresh, ResourceQuery,
-                           ResourceIterator};
+use super::super::common::{
+    DeletionWaiter, IntoVerified, NetworkRef, Refresh, ResourceIterator, ResourceQuery, SubnetRef,
+};
 use super::super::session::Session;
 use super::super::utils::Query;
+use super::super::{Error, Result, Sort};
 use super::base::V2API;
 use super::{protocol, Network};
-
 
 /// A query to subnet list.
 #[derive(Clone, Debug)]
@@ -58,7 +57,6 @@ pub struct NewSubnet {
     network: NetworkRef,
 }
 
-
 impl Subnet {
     /// Create a subnet object.
     pub(crate) fn new(session: Rc<Session>, inner: protocol::Subnet) -> Subnet {
@@ -70,8 +68,7 @@ impl Subnet {
     }
 
     /// Load a Subnet object.
-    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id)
-            -> Result<Subnet> {
+    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id) -> Result<Subnet> {
         let inner = session.get_subnet(id)?;
         Ok(Subnet::new(session, inner))
     }
@@ -197,7 +194,11 @@ impl Subnet {
     /// Delete the subnet.
     pub fn delete(self) -> Result<DeletionWaiter<Subnet>> {
         self.session.delete_subnet(&self.inner.id)?;
-        Ok(DeletionWaiter::new(self, Duration::new(60, 0), Duration::new(1, 0)))
+        Ok(DeletionWaiter::new(
+            self,
+            Duration::new(60, 0),
+            Duration::new(1, 0),
+        ))
     }
 
     /// Whether the subnet is modified.
@@ -362,11 +363,14 @@ impl ResourceQuery for SubnetQuery {
         resource.id().clone()
     }
 
-    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>)
-            -> Result<Vec<Self::Item>> {
+    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
         let query = self.query.with_marker_and_limit(limit, marker);
-        Ok(self.session.list_subnets(&query)?.into_iter()
-           .map(|item| Subnet::new(self.session.clone(), item)).collect())
+        Ok(self
+            .session
+            .list_subnets(&query)?
+            .into_iter()
+            .map(|item| Subnet::new(self.session.clone(), item))
+            .collect())
     }
 
     fn validate(&mut self) -> Result<()> {
@@ -380,8 +384,7 @@ impl ResourceQuery for SubnetQuery {
 
 impl NewSubnet {
     /// Start creating a subnet.
-    pub(crate) fn new(session: Rc<Session>, network: NetworkRef, cidr: ipnet::IpNet)
-            -> NewSubnet {
+    pub(crate) fn new(session: Rc<Session>, network: NetworkRef, cidr: ipnet::IpNet) -> NewSubnet {
         NewSubnet {
             session,
             inner: protocol::Subnet::empty(cidr),
@@ -449,12 +452,18 @@ impl NewSubnet {
     }
 
     /// Set the network of the subnet.
-    pub fn set_network<N>(&mut self, value: N) where N: Into<NetworkRef> {
+    pub fn set_network<N>(&mut self, value: N)
+    where
+        N: Into<NetworkRef>,
+    {
         self.network = value.into();
     }
 
     /// Set the network of the subnet.
-    pub fn with_network<N>(mut self, value: N) -> Self where N: Into<NetworkRef> {
+    pub fn with_network<N>(mut self, value: N) -> Self
+    where
+        N: Into<NetworkRef>,
+    {
         self.set_network(value);
         self
     }

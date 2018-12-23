@@ -17,7 +17,6 @@ extern crate openstack;
 
 use std::env;
 
-
 #[cfg(feature = "compute")]
 fn main() {
     env_logger::init();
@@ -28,12 +27,14 @@ fn main() {
     let id = env::args().nth(1).expect("Provide a key pair name");
     let keypair = os.get_keypair(id).expect("Cannot get a key pair");
 
-    println!("Fingerprint = {}, type = {:?}",
-             keypair.fingerprint(), keypair.key_type());
+    println!(
+        "Fingerprint = {}, type = {:?}",
+        keypair.fingerprint(),
+        keypair.key_type()
+    );
 }
 
 #[cfg(not(feature = "compute"))]
 fn main() {
     panic!("This example cannot run with 'compute' feature disabled");
 }
-

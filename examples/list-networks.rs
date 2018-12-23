@@ -18,7 +18,6 @@ extern crate openstack;
 
 use fallible_iterator::FallibleIterator;
 
-
 #[cfg(feature = "network")]
 fn main() {
     env_logger::init();
@@ -27,14 +26,21 @@ fn main() {
         .expect("Failed to create an identity provider from the environment");
     let sorting = openstack::network::NetworkSortKey::Name;
 
-    let networks: Vec<openstack::network::Network> = os.find_networks()
+    let networks: Vec<openstack::network::Network> = os
+        .find_networks()
         .sort_by(openstack::Sort::Asc(sorting))
-        .into_iter().take(10).collect()
+        .into_iter()
+        .take(10)
+        .collect()
         .expect("Cannot list networks");
     println!("First 10 networks:");
     for s in &networks {
-        println!("ID = {}, Name = {:?}, UP = {}",
-                 s.id(), s.name(), s.admin_state_up());
+        println!(
+            "ID = {}, Name = {:?}, UP = {}",
+            s.id(),
+            s.name(),
+            s.admin_state_up()
+        );
     }
 }
 

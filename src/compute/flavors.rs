@@ -17,16 +17,16 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
+use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
 
-use super::super::{Error, Result};
-use super::super::common::{self, FlavorRef, IntoVerified, Refresh,
-                           ResourceQuery, ResourceIterator};
+use super::super::common::{
+    self, FlavorRef, IntoVerified, Refresh, ResourceIterator, ResourceQuery,
+};
 use super::super::session::Session;
 use super::super::utils::Query;
+use super::super::{Error, Result};
 use super::base::V2API;
 use super::protocol;
-
 
 /// Structure representing a flavor.
 #[derive(Clone, Debug)]
@@ -57,14 +57,12 @@ pub struct DetailedFlavorQuery {
     inner: FlavorQuery,
 }
 
-
 impl Flavor {
     /// Create a flavor object.
-    pub(crate) fn new(session: Rc<Session>, mut inner: protocol::Flavor)
-            -> Result<Flavor> {
+    pub(crate) fn new(session: Rc<Session>, mut inner: protocol::Flavor) -> Result<Flavor> {
         let extra_specs = match inner.extra_specs.take() {
             Some(es) => es,
-            None => session.get_extra_specs_by_flavor_id(&inner.id)?
+            None => session.get_extra_specs_by_flavor_id(&inner.id)?,
         };
 
         Ok(Flavor {
@@ -75,8 +73,7 @@ impl Flavor {
     }
 
     /// Load a Flavor object.
-    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id)
-            -> Result<Flavor> {
+    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id) -> Result<Flavor> {
         let inner = session.get_flavor(id)?;
         Flavor::new(session, inner)
     }
@@ -185,9 +182,7 @@ impl FlavorQuery {
 
     /// Convert this query into a detailed query.
     pub fn detailed(self) -> DetailedFlavorQuery {
-        DetailedFlavorQuery {
-            inner: self
-        }
+        DetailedFlavorQuery { inner: self }
     }
 
     /// Convert this query into an iterator executing the request.
@@ -254,13 +249,17 @@ impl ResourceQuery for FlavorQuery {
         resource.id().clone()
     }
 
-    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>)
-            -> Result<Vec<Self::Item>> {
+    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
         let query = self.query.with_marker_and_limit(limit, marker);
-        Ok(self.session.list_flavors(&query)?.into_iter().map(|item| FlavorSummary {
-            session: self.session.clone(),
-            inner: item
-        }).collect())
+        Ok(self
+            .session
+            .list_flavors(&query)?
+            .into_iter()
+            .map(|item| FlavorSummary {
+                session: self.session.clone(),
+                inner: item,
+            })
+            .collect())
     }
 }
 
@@ -292,8 +291,7 @@ impl ResourceQuery for DetailedFlavorQuery {
         resource.id().clone()
     }
 
-    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>)
-            -> Result<Vec<Self::Item>> {
+    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
         let query = self.inner.query.with_marker_and_limit(limit, marker);
         let flavors = self.inner.session.list_flavors_detail(&query)?;
         let mut result = Vec::with_capacity(flavors.len());

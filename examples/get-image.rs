@@ -17,7 +17,6 @@ extern crate openstack;
 
 use std::env;
 
-
 #[cfg(feature = "image")]
 fn main() {
     env_logger::init();
@@ -35,4 +34,3 @@ fn main() {
 fn main() {
     panic!("This example cannot run with 'image' feature disabled");
 }
-

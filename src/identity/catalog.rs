@@ -17,28 +17,33 @@
 use super::super::{Error, Result};
 use super::protocol::{CatalogRecord, Endpoint};
 
-
 /// Find an endpoint in the service catalog.
-pub fn find_endpoint<'c>(catalog: &'c [CatalogRecord], service_type: &str,
-                         endpoint_interface: &str, region: &Option<String>)
-        -> Result<&'c Endpoint> {
+pub fn find_endpoint<'c>(
+    catalog: &'c [CatalogRecord],
+    service_type: &str,
+    endpoint_interface: &str,
+    region: &Option<String>,
+) -> Result<&'c Endpoint> {
     let svc = match catalog.iter().find(|x| x.service_type == *service_type) {
         Some(s) => s,
-        None => return Err(Error::new_endpoint_not_found(service_type))
+        None => return Err(Error::new_endpoint_not_found(service_type)),
     };
 
     let maybe_endp: Option<&Endpoint>;
     if let Some(ref rgn) = *region {
-        maybe_endp = svc.endpoints.iter().find(
-            |x| x.interface == *endpoint_interface && x.region == *rgn);
+        maybe_endp = svc
+            .endpoints
+            .iter()
+            .find(|x| x.interface == *endpoint_interface && x.region == *rgn);
     } else {
-        maybe_endp = svc.endpoints.iter().find(
-            |x| x.interface == *endpoint_interface);
+        maybe_endp = svc
+            .endpoints
+            .iter()
+            .find(|x| x.interface == *endpoint_interface);
     }
 
     maybe_endp.ok_or_else(|| Error::new_endpoint_not_found(service_type))
 }
-
 
 #[cfg(test)]
 pub mod test {
@@ -52,19 +57,19 @@ pub mod test {
                 Endpoint {
                     interface: String::from("public"),
                     region: String::from("RegionOne"),
-                    url: String::from("https://host.one/identity")
+                    url: String::from("https://host.one/identity"),
                 },
                 Endpoint {
                     interface: String::from("internal"),
                     region: String::from("RegionOne"),
-                    url: String::from("http://192.168.22.1/identity")
+                    url: String::from("http://192.168.22.1/identity"),
                 },
                 Endpoint {
                     interface: String::from("public"),
                     region: String::from("RegionTwo"),
-                    url: String::from("https://host.two:5000")
-                }
-            ]
+                    url: String::from("https://host.two:5000"),
+                },
+            ],
         }
     }
 
@@ -75,14 +80,14 @@ pub mod test {
                 Endpoint {
                     interface: String::from("public"),
                     region: String::from("RegionOne"),
-                    url: String::from("https://host.one/baremetal")
+                    url: String::from("https://host.one/baremetal"),
                 },
                 Endpoint {
                     interface: String::from("public"),
                     region: String::from("RegionTwo"),
-                    url: String::from("https://host.two:6385")
-                }
-            ]
+                    url: String::from("https://host.two:6385"),
+                },
+            ],
         }
     }
 
@@ -90,12 +95,18 @@ pub mod test {
         vec![demo_service1(), demo_service2()]
     }
 
-    fn find_endpoint<'a>(cat: &'a Vec<CatalogRecord>,
-                         service_type: &str, interface_type: &str,
-                         region: Option<&str>) -> Result<&'a Endpoint> {
-        super::find_endpoint(cat, &String::from(service_type),
-                             &String::from(interface_type),
-                             &region.map(String::from))
+    fn find_endpoint<'a>(
+        cat: &'a Vec<CatalogRecord>,
+        service_type: &str,
+        interface_type: &str,
+        region: Option<&str>,
+    ) -> Result<&'a Endpoint> {
+        super::find_endpoint(
+            cat,
+            &String::from(service_type),
+            &String::from(interface_type),
+            &region.map(String::from),
+        )
     }
 
     #[test]
@@ -116,16 +127,13 @@ pub mod test {
     fn test_find_endpoint_with_region() {
         let cat = demo_catalog();
 
-        let e1 = find_endpoint(&cat, "identity", "public",
-                               Some("RegionTwo")).unwrap();
+        let e1 = find_endpoint(&cat, "identity", "public", Some("RegionTwo")).unwrap();
         assert_eq!(&e1.url, "https://host.two:5000");
 
-        let e2 = find_endpoint(&cat, "identity", "internal",
-                               Some("RegionOne")).unwrap();
+        let e2 = find_endpoint(&cat, "identity", "internal", Some("RegionOne")).unwrap();
         assert_eq!(&e2.url, "http://192.168.22.1/identity");
 
-        let e3 = find_endpoint(&cat, "baremetal", "public",
-                               Some("RegionTwo")).unwrap();
+        let e3 = find_endpoint(&cat, "baremetal", "public", Some("RegionTwo")).unwrap();
         assert_eq!(&e3.url, "https://host.two:6385");
     }
 
@@ -141,10 +149,13 @@ pub mod test {
         let cat = demo_catalog();
 
         assert_not_found(find_endpoint(&cat, "foobar", "public", None));
-        assert_not_found(find_endpoint(&cat, "identity", "public",
-                                       Some("RegionFoo")));
+        assert_not_found(find_endpoint(&cat, "identity", "public", Some("RegionFoo")));
         assert_not_found(find_endpoint(&cat, "baremetal", "internal", None));
-        assert_not_found(find_endpoint(&cat, "identity", "internal",
-                                       Some("RegionTwo")));
+        assert_not_found(find_endpoint(
+            &cat,
+            "identity",
+            "internal",
+            Some("RegionTwo"),
+        ));
     }
 }

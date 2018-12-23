@@ -19,7 +19,6 @@ extern crate waiter;
 use std::env;
 use waiter::Waiter;
 
-
 #[cfg(feature = "compute")]
 fn main() {
     env_logger::init();
@@ -32,16 +31,27 @@ fn main() {
 
     let mut server = os.get_server(id).expect("Cannot get a server");
     match action.as_ref() {
-        "start" => server.start().expect("Cannot power on the server")
-            .wait().expect("Failed to reach ACTIVE"),
-        "stop" => server.stop().expect("Cannot power off the server")
-            .wait().expect("Failed to reach SHUTOFF"),
-        "reboot" => server.reboot(openstack::compute::RebootType::Soft)
+        "start" => server
+            .start()
+            .expect("Cannot power on the server")
+            .wait()
+            .expect("Failed to reach ACTIVE"),
+        "stop" => server
+            .stop()
+            .expect("Cannot power off the server")
+            .wait()
+            .expect("Failed to reach SHUTOFF"),
+        "reboot" => server
+            .reboot(openstack::compute::RebootType::Soft)
             .expect("Cannot reboot the server")
-            .wait().expect("Failed to reach ACTIVE"),
-        "delete" => server.delete().expect("Cannot delete the server")
-            .wait().expect("Failed to delete the server"),
-        _ => panic!("Unknown action, supported are 'start' and 'stop'")
+            .wait()
+            .expect("Failed to reach ACTIVE"),
+        "delete" => server
+            .delete()
+            .expect("Cannot delete the server")
+            .wait()
+            .expect("Failed to delete the server"),
+        _ => panic!("Unknown action, supported are 'start' and 'stop'"),
     }
 }
 
@@ -49,4 +59,3 @@ fn main() {
 fn main() {
     panic!("This example cannot run with 'compute' feature disabled");
 }
-

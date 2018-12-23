@@ -28,7 +28,6 @@ use serde_json::Value;
 
 use super::super::common;
 
-
 protocol_enum! {
     #[doc = "IP protocol version."]
     enum IpVersion: u8 {
@@ -130,11 +129,17 @@ pub struct Network {
     pub availability_zones: Vec<String>,
     #[serde(default, skip_serializing)]
     pub created_at: Option<DateTime<FixedOffset>>,
-    #[serde(deserialize_with = "common::protocol::empty_as_none", default,
-            skip_serializing_if = "Option::is_none")]
+    #[serde(
+        deserialize_with = "common::protocol::empty_as_none",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub description: Option<String>,
-    #[serde(deserialize_with = "common::protocol::empty_as_none", default,
-            skip_serializing_if = "Option::is_none")]
+    #[serde(
+        deserialize_with = "common::protocol::empty_as_none",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub dns_domain: Option<String>,
     #[serde(rename = "router:external", skip_serializing_if = "Option::is_none")]
     pub external: Option<bool>,
@@ -146,8 +151,10 @@ pub struct Network {
     pub l2_adjacency: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mtu: Option<u32>,
-    #[serde(deserialize_with = "common::protocol::empty_as_none",
-            skip_serializing_if = "Option::is_none")]
+    #[serde(
+        deserialize_with = "common::protocol::empty_as_none",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub port_security_enabled: Option<bool>,
@@ -213,19 +220,19 @@ pub struct NetworkUpdate {
 /// A network.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct NetworkRoot {
-    pub network: Network
+    pub network: Network,
 }
 
 /// A network.
 #[derive(Debug, Clone, Serialize)]
 pub struct NetworkUpdateRoot {
-    pub network: NetworkUpdate
+    pub network: NetworkUpdate,
 }
 
 /// A list of networks.
 #[derive(Debug, Clone, Deserialize)]
 pub struct NetworksRoot {
-    pub networks: Vec<Network>
+    pub networks: Vec<Network>,
 }
 
 /// An extra DHCP option.
@@ -248,7 +255,10 @@ pub struct PortExtraDhcpOption {
 impl PortExtraDhcpOption {
     /// Create a new DHCP option.
     pub fn new<S1, S2>(name: S1, value: S2) -> PortExtraDhcpOption
-            where S1: Into<String>, S2: Into<String> {
+    where
+        S1: Into<String>,
+        S2: Into<String>,
+    {
         PortExtraDhcpOption {
             ip_version: None,
             name: name.into(),
@@ -258,8 +268,15 @@ impl PortExtraDhcpOption {
     }
 
     /// Create a new DHCP option with an IP version.
-    pub fn new_with_ip_version<S1, S2>(name: S1, value: S2, ip_version: IpVersion)
-            -> PortExtraDhcpOption where S1: Into<String>, S2: Into<String> {
+    pub fn new_with_ip_version<S1, S2>(
+        name: S1,
+        value: S2,
+        ip_version: IpVersion,
+    ) -> PortExtraDhcpOption
+    where
+        S1: Into<String>,
+        S2: Into<String>,
+    {
         PortExtraDhcpOption {
             ip_version: Some(ip_version),
             name: name.into(),
@@ -275,7 +292,7 @@ pub struct FixedIp {
     #[serde(skip_serializing_if = "::std::net::IpAddr::is_unspecified")]
     pub ip_address: net::IpAddr,
     #[serde(skip_serializing_if = "String::is_empty")]
-    pub subnet_id: String
+    pub subnet_id: String,
 }
 
 /// A port.
@@ -284,20 +301,35 @@ pub struct Port {
     pub admin_state_up: bool,
     #[serde(default, skip_serializing)]
     pub created_at: Option<DateTime<FixedOffset>>,
-    #[serde(deserialize_with = "common::protocol::empty_as_none", default,
-            skip_serializing_if = "Option::is_none")]
+    #[serde(
+        deserialize_with = "common::protocol::empty_as_none",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub description: Option<String>,
-    #[serde(deserialize_with = "common::protocol::empty_as_none", default,
-            skip_serializing_if = "Option::is_none")]
+    #[serde(
+        deserialize_with = "common::protocol::empty_as_none",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub device_id: Option<String>,
-    #[serde(deserialize_with = "common::protocol::empty_as_none", default,
-            skip_serializing_if = "Option::is_none")]
+    #[serde(
+        deserialize_with = "common::protocol::empty_as_none",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub device_owner: Option<String>,
-    #[serde(deserialize_with = "common::protocol::empty_as_none", default,
-            skip_serializing_if = "Option::is_none")]
+    #[serde(
+        deserialize_with = "common::protocol::empty_as_none",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub dns_domain: Option<String>,
-    #[serde(deserialize_with = "common::protocol::empty_as_none", default,
-            skip_serializing_if = "Option::is_none")]
+    #[serde(
+        deserialize_with = "common::protocol::empty_as_none",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub dns_name: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub extra_dhcp_opts: Vec<PortExtraDhcpOption>,
@@ -305,11 +337,15 @@ pub struct Port {
     pub fixed_ips: Vec<FixedIp>,
     #[serde(skip_serializing)]
     pub id: String,
-    #[serde(skip_serializing_if = "MacAddress::is_nil",
-            serialize_with = "common::protocol::ser_mac")]
+    #[serde(
+        skip_serializing_if = "MacAddress::is_nil",
+        serialize_with = "common::protocol::ser_mac"
+    )]
     pub mac_address: MacAddress,
-    #[serde(deserialize_with = "common::protocol::empty_as_none",
-            skip_serializing_if = "Option::is_none")]
+    #[serde(
+        deserialize_with = "common::protocol::empty_as_none",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub name: Option<String>,
     pub network_id: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -341,8 +377,10 @@ pub struct PortUpdate {
     pub extra_dhcp_opts: Option<Vec<PortExtraDhcpOption>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fixed_ips: Option<Vec<FixedIp>>,
-    #[serde(skip_serializing_if = "Option::is_none",
-            serialize_with = "common::protocol::ser_opt_mac")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "common::protocol::ser_opt_mac"
+    )]
     pub mac_address: Option<MacAddress>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
@@ -353,19 +391,19 @@ pub struct PortUpdate {
 /// A port.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PortRoot {
-    pub port: Port
+    pub port: Port,
 }
 
 /// A port update.
 #[derive(Debug, Clone, Serialize)]
 pub struct PortUpdateRoot {
-    pub port: PortUpdate
+    pub port: PortUpdate,
 }
 
 /// A list of ports.
 #[derive(Debug, Clone, Deserialize)]
 pub struct PortsRoot {
-    pub ports: Vec<Port>
+    pub ports: Vec<Port>,
 }
 
 /// An allocation pool.
@@ -374,7 +412,7 @@ pub struct AllocationPool {
     /// Start IP address.
     pub start: net::IpAddr,
     /// End IP address.
-    pub end: net::IpAddr
+    pub end: net::IpAddr,
 }
 
 /// A host router.
@@ -395,8 +433,11 @@ pub struct Subnet {
     pub cidr: ipnet::IpNet,
     #[serde(default, skip_serializing)]
     pub created_at: Option<DateTime<FixedOffset>>,
-    #[serde(deserialize_with = "common::protocol::empty_as_none", default,
-            skip_serializing_if = "Option::is_none")]
+    #[serde(
+        deserialize_with = "common::protocol::empty_as_none",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub description: Option<String>,
     #[serde(rename = "enable_dhcp")]
     pub dhcp_enabled: bool,
@@ -411,11 +452,16 @@ pub struct Subnet {
     pub ip_version: IpVersion,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ipv6_address_mode: Option<Ipv6Mode>,
-    #[serde(default, rename = "ipv6_ra_mode",
-            skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "ipv6_ra_mode",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub ipv6_router_advertisement_mode: Option<Ipv6Mode>,
-    #[serde(deserialize_with = "common::protocol::empty_as_none",
-            skip_serializing_if = "Option::is_none")]
+    #[serde(
+        deserialize_with = "common::protocol::empty_as_none",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub name: Option<String>,
     pub network_id: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -472,19 +518,19 @@ pub struct SubnetUpdate {
 /// A subnet.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SubnetRoot {
-    pub subnet: Subnet
+    pub subnet: Subnet,
 }
 
 /// A subnet.
 #[derive(Debug, Clone, Serialize)]
 pub struct SubnetUpdateRoot {
-    pub subnet: SubnetUpdate
+    pub subnet: SubnetUpdate,
 }
 
 /// A list of subnets.
 #[derive(Debug, Clone, Deserialize)]
 pub struct SubnetsRoot {
-    pub subnets: Vec<Subnet>
+    pub subnets: Vec<Subnet>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -504,14 +550,23 @@ pub struct PortForwarding {
 pub struct FloatingIp {
     #[serde(default, skip_serializing)]
     pub created_at: Option<DateTime<FixedOffset>>,
-    #[serde(deserialize_with = "common::protocol::empty_as_none", default,
-            skip_serializing_if = "Option::is_none")]
+    #[serde(
+        deserialize_with = "common::protocol::empty_as_none",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub description: Option<String>,
-    #[serde(deserialize_with = "common::protocol::empty_as_none", default,
-            skip_serializing_if = "Option::is_none")]
+    #[serde(
+        deserialize_with = "common::protocol::empty_as_none",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub dns_domain: Option<String>,
-    #[serde(deserialize_with = "common::protocol::empty_as_none", default,
-            skip_serializing_if = "Option::is_none")]
+    #[serde(
+        deserialize_with = "common::protocol::empty_as_none",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub dns_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fixed_ip_address: Option<net::IpAddr>,
@@ -548,17 +603,17 @@ pub struct FloatingIpUpdate {
 /// A floating IP.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct FloatingIpRoot {
-    pub floatingip: FloatingIp
+    pub floatingip: FloatingIp,
 }
 
 /// A floating IP.
 #[derive(Debug, Clone, Serialize)]
 pub struct FloatingIpUpdateRoot {
-    pub floatingip: FloatingIpUpdate
+    pub floatingip: FloatingIpUpdate,
 }
 
 /// Floating IPs.
 #[derive(Debug, Clone, Deserialize)]
 pub struct FloatingIpsRoot {
-    pub floatingips: Vec<FloatingIp>
+    pub floatingips: Vec<FloatingIp>,
 }

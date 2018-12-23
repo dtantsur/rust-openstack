@@ -17,22 +17,20 @@
 use std::io;
 use std::rc::Rc;
 
-use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
+use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
 
-use super::super::{Error, ErrorKind, Result};
-use super::super::common::{KeyPairRef, IntoVerified, Refresh,
-                           ResourceQuery, ResourceIterator};
+use super::super::common::{IntoVerified, KeyPairRef, Refresh, ResourceIterator, ResourceQuery};
 use super::super::session::Session;
 use super::super::utils::Query;
+use super::super::{Error, ErrorKind, Result};
 use super::base::V2API;
 use super::protocol;
-
 
 /// Structure representing a key pair.
 #[derive(Clone, Debug)]
 pub struct KeyPair {
     session: Rc<Session>,
-    inner: protocol::KeyPair
+    inner: protocol::KeyPair,
 }
 
 /// A query to server list.
@@ -51,16 +49,11 @@ pub struct NewKeyPair {
     public_key: Option<String>,
 }
 
-
 impl KeyPair {
     /// Load a KeyPair object.
-    pub(crate) fn new<Id: AsRef<str>>(session: Rc<Session>, id: Id)
-            -> Result<KeyPair> {
+    pub(crate) fn new<Id: AsRef<str>>(session: Rc<Session>, id: Id) -> Result<KeyPair> {
         let inner = session.get_keypair(id)?;
-        Ok(KeyPair {
-            session,
-            inner,
-        })
+        Ok(KeyPair { session, inner })
     }
 
     /// Delete the key pair.
@@ -155,8 +148,7 @@ impl KeyPairQuery {
 
 impl NewKeyPair {
     /// Start creating a key pair.
-    pub(crate) fn new(session: Rc<Session>, name: String)
-            -> NewKeyPair {
+    pub(crate) fn new(session: Rc<Session>, name: String) -> NewKeyPair {
         NewKeyPair {
             session,
             name,
@@ -170,37 +162,48 @@ impl NewKeyPair {
     pub fn create(self) -> Result<KeyPair> {
         let request = if let Some(public_key) = self.public_key {
             protocol::KeyPairCreate {
-                key_type: None,  // TODO
+                key_type: None, // TODO
                 name: self.name,
                 public_key,
             }
         } else {
-            return Err(Error::new(ErrorKind::InvalidInput,
-                                  "Public key contents is required"));
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "Public key contents is required",
+            ));
         };
 
         let keypair = self.session.create_keypair(request)?;
         Ok(KeyPair {
             session: self.session,
-            inner: keypair
+            inner: keypair,
         })
     }
 
     /// Add public key from a reader.
-    pub fn from_reader<R>(self, reader: &mut R) -> io::Result<NewKeyPair> where R: io::Read {
+    pub fn from_reader<R>(self, reader: &mut R) -> io::Result<NewKeyPair>
+    where
+        R: io::Read,
+    {
         let mut s = String::new();
         let _ = reader.read_to_string(&mut s)?;
         Ok(self.from_string(s))
     }
 
     /// Add public key from a string.
-    pub fn from_string<S>(mut self, public_key: S) -> NewKeyPair where S: Into<String> {
+    pub fn from_string<S>(mut self, public_key: S) -> NewKeyPair
+    where
+        S: Into<String>,
+    {
         self.set_string(public_key);
         self
     }
 
     /// Add public key from a string.
-    pub fn set_string<S>(&mut self, public_key: S) where S: Into<String> {
+    pub fn set_string<S>(&mut self, public_key: S)
+    where
+        S: Into<String>,
+    {
         self.public_key = Some(public_key.into());
     }
 }
@@ -222,13 +225,17 @@ impl ResourceQuery for KeyPairQuery {
         resource.name().clone()
     }
 
-    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>)
-            -> Result<Vec<Self::Item>> {
+    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
         let query = self.query.with_marker_and_limit(limit, marker);
-        Ok(self.session.list_keypairs(&query)?.into_iter().map(|item| KeyPair {
-            session: self.session.clone(),
-            inner: item
-        }).collect())
+        Ok(self
+            .session
+            .list_keypairs(&query)?
+            .into_iter()
+            .map(|item| KeyPair {
+                session: self.session.clone(),
+                inner: item,
+            })
+            .collect())
     }
 }
 

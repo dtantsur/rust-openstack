@@ -18,13 +18,20 @@ extern crate openstack;
 
 use fallible_iterator::FallibleIterator;
 
-
 #[cfg(feature = "network")]
 fn display_port(port: &openstack::network::Port) {
-    println!("ID = {}, MAC = {}, UP = {}, Status = {}",
-             port.id(), port.mac_address(), port.admin_state_up(), port.status());
-    println!("* Owner = {:?}, Server? {}",
-             port.device_owner(), port.attached_to_server());
+    println!(
+        "ID = {}, MAC = {}, UP = {}, Status = {}",
+        port.id(),
+        port.mac_address(),
+        port.admin_state_up(),
+        port.status()
+    );
+    println!(
+        "* Owner = {:?}, Server? {}",
+        port.device_owner(),
+        port.attached_to_server()
+    );
     for ip in port.fixed_ips() {
         let subnet = ip.subnet().expect("Cannot fetch subnet");
         println!("* IP = {}, Subnet = {}", ip.ip_address, subnet.cidr());
@@ -41,18 +48,25 @@ fn main() {
         .expect("Failed to create an identity provider from the environment");
     let sorting = openstack::network::PortSortKey::Name;
 
-    let ports: Vec<_> = os.find_ports()
+    let ports: Vec<_> = os
+        .find_ports()
         .sort_by(openstack::Sort::Asc(sorting))
-        .into_iter().take(10).collect()
+        .into_iter()
+        .take(10)
+        .collect()
         .expect("Cannot list ports");
     println!("First 10 ports:");
     for p in &ports {
         display_port(p)
     }
 
-    let att_ports: Vec<_> = os.find_ports()
-        .sort_by(openstack::Sort::Asc(openstack::network::PortSortKey::DeviceId))
-        .with_status(openstack::network::NetworkStatus::Active).all()
+    let att_ports: Vec<_> = os
+        .find_ports()
+        .sort_by(openstack::Sort::Asc(
+            openstack::network::PortSortKey::DeviceId,
+        ))
+        .with_status(openstack::network::NetworkStatus::Active)
+        .all()
         .expect("Cannot list attached ports");
     println!("Only active ports attached to servers:");
     for p in &att_ports {

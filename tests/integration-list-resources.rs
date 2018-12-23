@@ -18,16 +18,16 @@ extern crate openstack;
 
 use std::sync::{Once, ONCE_INIT};
 
-
 static INIT: Once = ONCE_INIT;
 
 fn set_up() -> openstack::Cloud {
-    INIT.call_once(|| { env_logger::init(); });
+    INIT.call_once(|| {
+        env_logger::init();
+    });
 
     openstack::Cloud::from_env()
         .expect("Failed to create an identity provider from the environment")
 }
-
 
 #[test]
 fn test_list_flavors() {

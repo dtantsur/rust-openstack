@@ -18,7 +18,6 @@ extern crate openstack;
 
 use fallible_iterator::FallibleIterator;
 
-
 #[cfg(feature = "compute")]
 fn main() {
     env_logger::init();
@@ -27,19 +26,25 @@ fn main() {
         .expect("Failed to create an identity provider from the environment");
     let sorting = openstack::compute::ServerSortKey::AccessIpv4;
 
-    let servers: Vec<openstack::compute::Server> = os.find_servers()
+    let servers: Vec<openstack::compute::Server> = os
+        .find_servers()
         .sort_by(openstack::Sort::Asc(sorting))
-        .detailed().into_iter().take(10).collect()
+        .detailed()
+        .into_iter()
+        .take(10)
+        .collect()
         .expect("Cannot list servers");
     println!("First 10 servers:");
     for s in &servers {
         println!("ID = {}, Name = {}", s.id(), s.name());
     }
 
-    let active = os.find_servers()
+    let active = os
+        .find_servers()
         .sort_by(openstack::Sort::Asc(sorting))
         .with_status(openstack::compute::ServerStatus::Active)
-        .all().expect("Cannot list servers");
+        .all()
+        .expect("Cannot list servers");
     println!("All active servers:");
     for s in &active {
         println!("ID = {}, Name = {}", s.id(), s.name());

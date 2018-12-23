@@ -22,7 +22,6 @@ use waiter::{Waiter, WaiterCurrentState};
 use super::super::{Error, ErrorKind, Result};
 use super::Refresh;
 
-
 /// Wait for resource deletion.
 #[derive(Debug)]
 pub struct DeletionWaiter<T> {
@@ -32,9 +31,8 @@ pub struct DeletionWaiter<T> {
 }
 
 impl<T> DeletionWaiter<T> {
-    #[allow(dead_code)]  // unused with --no-default-features
-    pub(crate) fn new(inner: T, wait_timeout: Duration, delay: Duration)
-            -> DeletionWaiter<T> {
+    #[allow(dead_code)] // unused with --no-default-features
+    pub(crate) fn new(inner: T, wait_timeout: Duration, delay: Duration) -> DeletionWaiter<T> {
         DeletionWaiter {
             inner,
             wait_timeout,
@@ -59,22 +57,25 @@ impl<T: Refresh + Debug> Waiter<(), Error> for DeletionWaiter<T> {
     }
 
     fn timeout_error(&self) -> Error {
-        Error::new(ErrorKind::OperationTimedOut,
-                   format!("Timeout waiting for resource {:?} to be deleted",
-                           self.inner))
+        Error::new(
+            ErrorKind::OperationTimedOut,
+            format!(
+                "Timeout waiting for resource {:?} to be deleted",
+                self.inner
+            ),
+        )
     }
 
     fn poll(&mut self) -> Result<Option<()>> {
         match self.inner.refresh() {
             Ok(..) => {
-                trace!("Still waiting for resource {:?} to be deleted",
-                       self.inner);
+                trace!("Still waiting for resource {:?} to be deleted", self.inner);
                 Ok(None)
-            },
+            }
             Err(ref e) if e.kind() == ErrorKind::ResourceNotFound => {
                 debug!("Resource {:?} was deleted", self.inner);
                 Ok(Some(()))
-            },
+            }
             Err(e) => {
                 debug!("Failed to delete resource {:?} - {}", self.inner, e);
                 Err(e)

@@ -22,7 +22,6 @@ use reqwest::Url;
 
 use super::super::common;
 
-
 protocol_enum! {
     #[doc = "Possible image statuses."]
     enum ImageStatus {
@@ -118,11 +117,11 @@ pub struct Image {
     pub updated_at: DateTime<FixedOffset>,
     #[serde(default)]
     pub virtual_size: Option<u64>,
-    pub visibility: ImageVisibility
+    pub visibility: ImageVisibility,
 }
 
 /// A list of images.
 #[derive(Debug, Clone, Deserialize)]
 pub struct ImagesRoot {
-    pub images: Vec<Image>
+    pub images: Vec<Image>,
 }

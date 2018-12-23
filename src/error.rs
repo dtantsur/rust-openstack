@@ -16,8 +16,8 @@
 
 use std::fmt;
 
-use reqwest::{StatusCode, UrlError};
 use reqwest::Error as HttpClientError;
+use reqwest::{StatusCode, UrlError};
 
 /// Kind of an error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -85,25 +85,27 @@ pub enum ErrorKind {
 pub struct Error {
     kind: ErrorKind,
     status: Option<StatusCode>,
-    message: Option<String>
+    message: Option<String>,
 }
 
 /// Result of an OpenStack call.
 pub type Result<T> = ::std::result::Result<T, Error>;
-
 
 impl Error {
     pub(crate) fn new<S: Into<String>>(kind: ErrorKind, message: S) -> Error {
         Error {
             kind,
             status: None,
-            message: Some(message.into())
+            message: Some(message.into()),
         }
     }
 
     /// Create with providing all details.
-    pub(crate) fn new_with_details(kind: ErrorKind, status: Option<StatusCode>,
-                                   message: Option<String>) -> Error {
+    pub(crate) fn new_with_details(
+        kind: ErrorKind,
+        status: Option<StatusCode>,
+        message: Option<String>,
+    ) -> Error {
         Error {
             kind,
             status,
@@ -120,7 +122,7 @@ impl Error {
     pub(crate) fn new_endpoint_not_found<D: fmt::Display>(service_type: D) -> Error {
         Error::new(
             ErrorKind::EndpointNotFound,
-            format!("Endpoint for service {} was not found", service_type)
+            format!("Endpoint for service {} was not found", service_type),
         )
     }
 }
@@ -130,35 +132,21 @@ impl ErrorKind {
     #[allow(clippy::trivially_copy_pass_by_ref)]
     pub fn description(&self) -> &'static str {
         match self {
-            ErrorKind::AuthenticationFailed =>
-                "Failed to authenticate",
-            ErrorKind::AccessDenied =>
-                "Access to the resource is denied",
-            ErrorKind::ResourceNotFound =>
-                "Requested resource was not found",
-            ErrorKind::TooManyItems =>
-                "Request returned too many items",
-            ErrorKind::EndpointNotFound =>
-                "Requested endpoint was not found",
-            ErrorKind::InvalidInput =>
-                "Input value(s) are invalid or missing",
-            ErrorKind::IncompatibleApiVersion =>
-                "Incompatible or unsupported API version",
-            ErrorKind::Conflict =>
-                "Requested cannot be fulfilled due to a conflict",
-            ErrorKind::OperationTimedOut =>
-                "Time out reached while waiting for the operation",
-            ErrorKind::OperationFailed =>
-                "Requested operation has failed",
-            ErrorKind::ProtocolError =>
-                "Error when accessing the server",
-            ErrorKind::InvalidResponse =>
-                "Received invalid response",
-            ErrorKind::InternalServerError =>
-                "Internal server error or bad gateway",
-            ErrorKind::InvalidConfig =>
-                "clouds.yaml cannot be found or is invalid",
-            _ => unreachable!()
+            ErrorKind::AuthenticationFailed => "Failed to authenticate",
+            ErrorKind::AccessDenied => "Access to the resource is denied",
+            ErrorKind::ResourceNotFound => "Requested resource was not found",
+            ErrorKind::TooManyItems => "Request returned too many items",
+            ErrorKind::EndpointNotFound => "Requested endpoint was not found",
+            ErrorKind::InvalidInput => "Input value(s) are invalid or missing",
+            ErrorKind::IncompatibleApiVersion => "Incompatible or unsupported API version",
+            ErrorKind::Conflict => "Requested cannot be fulfilled due to a conflict",
+            ErrorKind::OperationTimedOut => "Time out reached while waiting for the operation",
+            ErrorKind::OperationFailed => "Requested operation has failed",
+            ErrorKind::ProtocolError => "Error when accessing the server",
+            ErrorKind::InvalidResponse => "Received invalid response",
+            ErrorKind::InternalServerError => "Internal server error or bad gateway",
+            ErrorKind::InvalidConfig => "clouds.yaml cannot be found or is invalid",
+            _ => unreachable!(),
         }
     }
 }
@@ -203,7 +191,7 @@ impl From<HttpClientError> for Error {
             Some(c) if c.is_client_error() => ErrorKind::InvalidInput,
             Some(c) if c.is_server_error() => ErrorKind::InternalServerError,
             None => ErrorKind::ProtocolError,
-            _ => ErrorKind::InvalidResponse
+            _ => ErrorKind::InvalidResponse,
         };
 
         Error::new_with_details(kind, value.status(), Some(msg))
@@ -215,4 +203,3 @@ impl From<UrlError> for Error {
         Error::new(ErrorKind::InvalidInput, value.to_string())
     }
 }
-

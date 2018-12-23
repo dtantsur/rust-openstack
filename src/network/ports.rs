@@ -15,24 +15,24 @@
 //! Ports management via Port API.
 
 use std::collections::HashSet;
-use std::rc::Rc;
 use std::mem;
 use std::net;
+use std::rc::Rc;
 use std::time::Duration;
 
 use chrono::{DateTime, FixedOffset};
 use eui48::MacAddress;
-use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
+use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
 
-use super::super::{Error, Result, Sort};
-use super::super::common::{DeletionWaiter, IntoVerified, NetworkRef,
-                           PortRef, Refresh, ResourceQuery,
-                           ResourceIterator, SubnetRef};
+use super::super::common::{
+    DeletionWaiter, IntoVerified, NetworkRef, PortRef, Refresh, ResourceIterator, ResourceQuery,
+    SubnetRef,
+};
 use super::super::session::Session;
 use super::super::utils::Query;
+use super::super::{Error, Result, Sort};
 use super::base::V2API;
 use super::{protocol, Network, Subnet};
-
 
 /// A query to port list.
 #[derive(Clone, Debug)]
@@ -50,7 +50,7 @@ pub struct PortIpAddress {
     /// IP address.
     pub ip_address: net::IpAddr,
     /// ID of the subnet the address belongs to.
-    pub subnet_id: String
+    pub subnet_id: String,
 }
 
 /// Structure representing a port - a virtual NIC.
@@ -70,7 +70,7 @@ pub enum PortIpRequest {
     /// Request any IP from the given subnet.
     AnyIpFromSubnet(SubnetRef),
     /// Request this IP from the given subnet.
-    IpFromSubnet(net::IpAddr, SubnetRef)
+    IpFromSubnet(net::IpAddr, SubnetRef),
 }
 
 /// A request to create a port
@@ -82,15 +82,17 @@ pub struct NewPort {
     fixed_ips: Vec<PortIpRequest>,
 }
 
-fn convert_fixed_ips(session: &Rc<Session>, inner: &mut protocol::Port)
-        -> Vec<PortIpAddress> {
+fn convert_fixed_ips(session: &Rc<Session>, inner: &mut protocol::Port) -> Vec<PortIpAddress> {
     let mut fixed_ips = Vec::new();
     mem::swap(&mut inner.fixed_ips, &mut fixed_ips);
-    fixed_ips.into_iter().map(|ip| PortIpAddress {
-        session: session.clone(),
-        ip_address: ip.ip_address,
-        subnet_id: ip.subnet_id
-    }).collect()
+    fixed_ips
+        .into_iter()
+        .map(|ip| PortIpAddress {
+            session: session.clone(),
+            ip_address: ip.ip_address,
+            subnet_id: ip.subnet_id,
+        })
+        .collect()
 }
 
 impl Port {
@@ -106,8 +108,7 @@ impl Port {
     }
 
     /// Load a Port object.
-    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id)
-            -> Result<Port> {
+    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id) -> Result<Port> {
         let inner = session.get_port(id)?;
         Ok(Port::new(session, inner))
     }
@@ -126,7 +127,7 @@ impl Port {
     pub fn attached_to_server(&self) -> bool {
         match self.inner.device_owner {
             Some(ref x) => x.starts_with("compute:"),
-            None => false
+            None => false,
         }
     }
 
@@ -257,7 +258,11 @@ impl Port {
     /// Delete the port.
     pub fn delete(self) -> Result<DeletionWaiter<Port>> {
         self.session.delete_port(&self.inner.id)?;
-        Ok(DeletionWaiter::new(self, Duration::new(60, 0), Duration::new(1, 0)))
+        Ok(DeletionWaiter::new(
+            self,
+            Duration::new(60, 0),
+            Duration::new(1, 0),
+        ))
     }
 
     /// Whether the port is modified.
@@ -429,11 +434,14 @@ impl ResourceQuery for PortQuery {
         resource.id().clone()
     }
 
-    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>)
-            -> Result<Vec<Self::Item>> {
+    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
         let query = self.query.with_marker_and_limit(limit, marker);
-        Ok(self.session.list_ports(&query)?.into_iter()
-           .map(|item| Port::new(self.session.clone(), item)).collect())
+        Ok(self
+            .session
+            .list_ports(&query)?
+            .into_iter()
+            .map(|item| Port::new(self.session.clone(), item))
+            .collect())
     }
 
     fn validate(&mut self) -> Result<()> {
@@ -447,8 +455,7 @@ impl ResourceQuery for PortQuery {
 
 impl NewPort {
     /// Start creating a port.
-    pub(crate) fn new(session: Rc<Session>, network: NetworkRef)
-            -> NewPort {
+    pub(crate) fn new(session: Rc<Session>, network: NetworkRef) -> NewPort {
         NewPort {
             session,
             inner: protocol::Port {
@@ -484,16 +491,16 @@ impl NewPort {
             self.inner.fixed_ips.push(match request {
                 PortIpRequest::IpAddress(ip) => protocol::FixedIp {
                     ip_address: ip,
-                    subnet_id: Default::default()
+                    subnet_id: Default::default(),
                 },
                 PortIpRequest::AnyIpFromSubnet(subnet) => protocol::FixedIp {
                     ip_address: net::IpAddr::V4(net::Ipv4Addr::new(0, 0, 0, 0)),
-                    subnet_id: subnet.into_verified(&self.session)?.into()
+                    subnet_id: subnet.into_verified(&self.session)?.into(),
                 },
                 PortIpRequest::IpFromSubnet(ip, subnet) => protocol::FixedIp {
                     ip_address: ip,
-                    subnet_id: subnet.into_verified(&self.session)?.into()
-                }
+                    subnet_id: subnet.into_verified(&self.session)?.into(),
+                },
             });
         }
 

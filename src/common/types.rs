@@ -14,9 +14,8 @@
 
 //! Types and traits shared between services.
 
-use super::super::Result;
 use super::super::session::Session;
-
+use super::super::Result;
 
 /// Trait representing something that can be refreshed.
 pub trait Refresh {
@@ -27,9 +26,10 @@ pub trait Refresh {
 /// A type that can be converted into a verified representation.
 pub trait IntoVerified {
     /// Conver this object into the same object with verification.
-    fn into_verified(self, session: &Session) -> Result<Self> where Self: Sized;
+    fn into_verified(self, session: &Session) -> Result<Self>
+    where
+        Self: Sized;
 }
-
 
 macro_rules! opaque_resource_type {
     ($(#[$attr:meta])* $name:ident ? $service:expr) => (
@@ -140,7 +140,6 @@ opaque_resource_type!(#[doc = "An ID of a `Router`"] RouterRef ? "network");
 opaque_resource_type!(#[doc = "An ID of a `Subnet`"] SubnetRef ? "network");
 
 opaque_resource_type!(#[doc = "An ID of a `User`"] UserRef ? "identity");
-
 
 #[cfg(test)]
 mod test {

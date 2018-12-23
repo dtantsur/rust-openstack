@@ -20,7 +20,6 @@ use reqwest::{Method, RequestBuilder, Url};
 
 use super::super::Result;
 
-
 /// Trait for an authentication method.
 ///
 /// An OpenStack authentication method is expected to be able to:
@@ -36,11 +35,13 @@ pub trait AuthMethod: BoxedClone + Debug {
     }
 
     /// Region used with this authentication (if any).
-    fn region(&self) -> Option<String> { None }
+    fn region(&self) -> Option<String> {
+        None
+    }
 
     /// Get a URL for the requested service.
-    fn get_endpoint(&self, service_type: String,
-                    endpoint_interface: Option<String>) -> Result<Url>;
+    fn get_endpoint(&self, service_type: String, endpoint_interface: Option<String>)
+        -> Result<Url>;
 
     /// Create an authenticated request.
     fn request(&self, method: Method, url: Url) -> Result<RequestBuilder>;
@@ -49,14 +50,16 @@ pub trait AuthMethod: BoxedClone + Debug {
     fn refresh(&mut self) -> Result<()>;
 }
 
-
 /// Helper trait to allow cloning of sessions.
 pub trait BoxedClone {
     /// Clone the authentication method.
     fn boxed_clone(&self) -> Box<AuthMethod>;
 }
 
-impl<T> BoxedClone for T where T: 'static + AuthMethod + Clone {
+impl<T> BoxedClone for T
+where
+    T: 'static + AuthMethod + Clone,
+{
     fn boxed_clone(&self) -> Box<AuthMethod> {
         Box::new(self.clone())
     }

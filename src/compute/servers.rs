@@ -20,21 +20,20 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use chrono::{DateTime, FixedOffset};
-use fallible_iterator::{IntoFallibleIterator, FallibleIterator};
+use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
 use waiter::{Waiter, WaiterCurrentState};
 
-use super::super::{Error, ErrorKind, Result, Sort};
-use super::super::common::{self, DeletionWaiter, FlavorRef, ImageRef,
-                           IntoVerified, KeyPairRef, NetworkRef,
-                           PortRef, ProjectRef, Refresh, ResourceQuery,
-                           ResourceIterator, UserRef};
+use super::super::common::{
+    self, DeletionWaiter, FlavorRef, ImageRef, IntoVerified, KeyPairRef, NetworkRef, PortRef,
+    ProjectRef, Refresh, ResourceIterator, ResourceQuery, UserRef,
+};
 #[cfg(feature = "image")]
 use super::super::image::Image;
 use super::super::session::Session;
 use super::super::utils::Query;
+use super::super::{Error, ErrorKind, Result, Sort};
 use super::base::V2API;
 use super::{protocol, KeyPair};
-
 
 /// A query to server list.
 #[derive(Clone, Debug)]
@@ -64,14 +63,14 @@ pub struct Server {
 #[derive(Clone, Debug)]
 pub struct ServerSummary {
     session: Rc<Session>,
-    inner: common::protocol::IdAndName
+    inner: common::protocol::IdAndName,
 }
 
 /// Waiter for server status to change.
 #[derive(Debug)]
 pub struct ServerStatusWaiter<'server> {
     server: &'server mut Server,
-    target: protocol::ServerStatus
+    target: protocol::ServerStatus,
 }
 
 /// A virtual NIC of a new server.
@@ -82,7 +81,7 @@ pub enum ServerNIC {
     /// A NIC with the given port.
     WithPort(PortRef),
     /// A NIC with the given fixed IP.
-    WithFixedIp(Ipv4Addr)
+    WithFixedIp(Ipv4Addr),
 }
 
 /// A request to create a server.
@@ -100,9 +99,8 @@ pub struct NewServer {
 /// Waiter for server to be created.
 #[derive(Debug)]
 pub struct ServerCreationWaiter {
-    server: Server
+    server: Server,
 }
-
 
 impl Refresh for Server {
     /// Refresh the server.
@@ -114,8 +112,7 @@ impl Refresh for Server {
 
 impl Server {
     /// Create a new Server object.
-    pub(crate) fn new(session: Rc<Session>, inner: protocol::Server)
-            -> Result<Server> {
+    pub(crate) fn new(session: Rc<Session>, inner: protocol::Server) -> Result<Server> {
         let flavor = session.get_flavor(&inner.flavor.id)?;
         Ok(Server {
             session,
@@ -133,8 +130,7 @@ impl Server {
     }
 
     /// Load a Server object.
-    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id)
-            -> Result<Server> {
+    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id) -> Result<Server> {
         let inner = session.get_server(id)?;
         Server::new(session, inner)
     }
@@ -178,10 +174,13 @@ impl Server {
     ///
     /// If multiple floating IPs exist, the first is returned.
     pub fn floating_ip(&self) -> Option<IpAddr> {
-        self.inner.addresses.values()
+        self.inner
+            .addresses
+            .values()
             .flat_map(|l| l.iter())
             .filter(|a| a.addr_type == Some(protocol::AddressType::Floating))
-            .map(|a| a.addr).next()
+            .map(|a| a.addr)
+            .next()
     }
 
     transparent_property! {
@@ -208,8 +207,10 @@ impl Server {
     pub fn image(&self) -> Result<Image> {
         match self.inner.image {
             Some(ref image) => Image::new(self.session.clone(), &image.id),
-            None => Err(Error::new(ErrorKind::ResourceNotFound,
-                                   "No image associated with server"))
+            None => Err(Error::new(
+                ErrorKind::ResourceNotFound,
+                "No image associated with server",
+            )),
         }
     }
 
@@ -219,7 +220,7 @@ impl Server {
     pub fn image_id(&self) -> Option<&String> {
         match self.inner.image {
             Some(ref image) => Some(&image.id),
-            None => None
+            None => None,
         }
     }
 
@@ -227,8 +228,10 @@ impl Server {
     pub fn key_pair(&self) -> Result<KeyPair> {
         match self.inner.key_pair_name {
             Some(ref key_pair) => KeyPair::new(self.session.clone(), key_pair),
-            None => Err(Error::new(ErrorKind::ResourceNotFound,
-                                   "No key pair associated with server"))
+            None => Err(Error::new(
+                ErrorKind::ResourceNotFound,
+                "No key pair associated with server",
+            )),
         }
     }
 
@@ -265,38 +268,45 @@ impl Server {
     /// Delete the server.
     pub fn delete(self) -> Result<DeletionWaiter<Server>> {
         self.session.delete_server(&self.inner.id)?;
-        Ok(DeletionWaiter::new(self, Duration::new(120, 0), Duration::new(1, 0)))
+        Ok(DeletionWaiter::new(
+            self,
+            Duration::new(120, 0),
+            Duration::new(1, 0),
+        ))
     }
 
     /// Reboot the server.
-    pub fn reboot<'server>(&'server mut self, reboot_type: protocol::RebootType)
-            -> Result<ServerStatusWaiter<'server>> {
+    pub fn reboot<'server>(
+        &'server mut self,
+        reboot_type: protocol::RebootType,
+    ) -> Result<ServerStatusWaiter<'server>> {
         let mut args = HashMap::new();
         let _ = args.insert("type", reboot_type);
-        self.session.server_action_with_args(&self.inner.id, "reboot", args)?;
+        self.session
+            .server_action_with_args(&self.inner.id, "reboot", args)?;
         Ok(ServerStatusWaiter {
             server: self,
-            target: protocol::ServerStatus::Active
+            target: protocol::ServerStatus::Active,
         })
     }
 
     /// Start the server, optionally wait for it to be active.
-    pub fn start<'server>(&'server mut self)
-            -> Result<ServerStatusWaiter<'server>> {
-        self.session.server_simple_action(&self.inner.id, "os-start")?;
+    pub fn start<'server>(&'server mut self) -> Result<ServerStatusWaiter<'server>> {
+        self.session
+            .server_simple_action(&self.inner.id, "os-start")?;
         Ok(ServerStatusWaiter {
             server: self,
-            target: protocol::ServerStatus::Active
+            target: protocol::ServerStatus::Active,
         })
     }
 
     /// Stop the server, optionally wait for it to be powered off.
-    pub fn stop<'server>(&'server mut self)
-            -> Result<ServerStatusWaiter<'server>> {
-        self.session.server_simple_action(&self.inner.id, "os-stop")?;
+    pub fn stop<'server>(&'server mut self) -> Result<ServerStatusWaiter<'server>> {
+        self.session
+            .server_simple_action(&self.inner.id, "os-stop")?;
         Ok(ServerStatusWaiter {
             server: self,
-            target: protocol::ServerStatus::ShutOff
+            target: protocol::ServerStatus::ShutOff,
         })
     }
 }
@@ -312,9 +322,14 @@ impl<'server> Waiter<(), Error> for ServerStatusWaiter<'server> {
     }
 
     fn timeout_error(&self) -> Error {
-        Error::new(ErrorKind::OperationTimedOut,
-                   format!("Timeout waiting for server {} to reach state {}",
-                           self.server.id(), self.target))
+        Error::new(
+            ErrorKind::OperationTimedOut,
+            format!(
+                "Timeout waiting for server {} to reach state {}",
+                self.server.id(),
+                self.target
+            ),
+        )
     }
 
     fn poll(&mut self) -> Result<Option<()>> {
@@ -323,14 +338,22 @@ impl<'server> Waiter<(), Error> for ServerStatusWaiter<'server> {
             debug!("Server {} reached state {}", self.server.id(), self.target);
             Ok(Some(()))
         } else if self.server.status() == protocol::ServerStatus::Error {
-            debug!("Failed to move server {} to {} - status is ERROR",
-                   self.server.id(), self.target);
-            Err(Error::new(ErrorKind::OperationFailed,
-                           format!("Server {} got into ERROR state",
-                                   self.server.id())))
+            debug!(
+                "Failed to move server {} to {} - status is ERROR",
+                self.server.id(),
+                self.target
+            );
+            Err(Error::new(
+                ErrorKind::OperationFailed,
+                format!("Server {} got into ERROR state", self.server.id()),
+            ))
         } else {
-            trace!("Still waiting for server {} to get to state {}, current is {}",
-                   self.server.id(), self.target, self.server.status());
+            trace!(
+                "Still waiting for server {} to get to state {}, current is {}",
+                self.server.id(),
+                self.target,
+                self.server.status()
+            );
             Ok(None)
         }
     }
@@ -474,9 +497,7 @@ impl ServerQuery {
 
     /// Convert this query into a detailed query.
     pub fn detailed(self) -> DetailedServerQuery {
-        DetailedServerQuery {
-            inner: self
-        }
+        DetailedServerQuery { inner: self }
     }
 
     /// Convert this query into an iterator executing the request.
@@ -543,13 +564,17 @@ impl ResourceQuery for ServerQuery {
         resource.id().clone()
     }
 
-    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>)
-            -> Result<Vec<Self::Item>> {
+    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
         let query = self.query.with_marker_and_limit(limit, marker);
-        Ok(self.session.list_servers(&query)?.into_iter().map(|srv| ServerSummary {
-            session: self.session.clone(),
-            inner: srv
-        }).collect())
+        Ok(self
+            .session
+            .list_servers(&query)?
+            .into_iter()
+            .map(|srv| ServerSummary {
+                session: self.session.clone(),
+                inner: srv,
+            })
+            .collect())
     }
 }
 
@@ -581,8 +606,7 @@ impl ResourceQuery for DetailedServerQuery {
         resource.id().clone()
     }
 
-    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>)
-            -> Result<Vec<Self::Item>> {
+    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
         let query = self.inner.query.with_marker_and_limit(limit, marker);
         let servers = self.inner.session.list_servers_detail(&query)?;
         let mut result = Vec::with_capacity(servers.len());
@@ -605,19 +629,20 @@ impl From<ServerQuery> for DetailedServerQuery {
     }
 }
 
-fn convert_networks(session: &Session, networks: Vec<ServerNIC>)
-        -> Result<Vec<protocol::ServerNetwork>> {
+fn convert_networks(
+    session: &Session,
+    networks: Vec<ServerNIC>,
+) -> Result<Vec<protocol::ServerNetwork>> {
     let mut result = Vec::with_capacity(networks.len());
     for item in networks {
         result.push(match item {
             ServerNIC::FromNetwork(n) => protocol::ServerNetwork::Network {
-                uuid: n.into_verified(session)?.into()
+                uuid: n.into_verified(session)?.into(),
             },
             ServerNIC::WithPort(p) => protocol::ServerNetwork::Port {
-                port: p.into_verified(session)?.into()
+                port: p.into_verified(session)?.into(),
             },
-            ServerNIC::WithFixedIp(ip) =>
-                protocol::ServerNetwork::FixedIp{ fixed_ip: ip }
+            ServerNIC::WithFixedIp(ip) => protocol::ServerNetwork::FixedIp { fixed_ip: ip },
         });
     }
     Ok(result)
@@ -625,8 +650,7 @@ fn convert_networks(session: &Session, networks: Vec<ServerNIC>)
 
 impl NewServer {
     /// Start creating a server.
-    pub(crate) fn new(session: Rc<Session>, name: String, flavor: FlavorRef)
-            -> NewServer {
+    pub(crate) fn new(session: Rc<Session>, name: String, flavor: FlavorRef) -> NewServer {
         NewServer {
             session,
             flavor,
@@ -644,20 +668,20 @@ impl NewServer {
             flavorRef: self.flavor.into_verified(&self.session)?.into(),
             imageRef: match self.image {
                 Some(img) => Some(img.into_verified(&self.session)?.into()),
-                None => None
+                None => None,
             },
             key_name: match self.keypair {
                 Some(item) => Some(item.into_verified(&self.session)?.into()),
-                None => None
+                None => None,
             },
             metadata: self.metadata,
             name: self.name,
-            networks: convert_networks(&self.session, self.networks)?
+            networks: convert_networks(&self.session, self.networks)?,
         };
 
         let server_ref = self.session.create_server(request)?;
         Ok(ServerCreationWaiter {
-            server: Server::load(self.session, server_ref.id)?
+            server: Server::load(self.session, server_ref.id)?,
         })
     }
 
@@ -671,7 +695,10 @@ impl NewServer {
     /// Add a virtual NIC from this network to the new server.
     ///
     /// A shorthand for `add_nic`.
-    pub fn add_network<N>(&mut self, network: N) where N: Into<NetworkRef> {
+    pub fn add_network<N>(&mut self, network: N)
+    where
+        N: Into<NetworkRef>,
+    {
         self.add_nic(ServerNIC::FromNetwork(network.into()));
     }
 
@@ -683,17 +710,26 @@ impl NewServer {
     /// Add a virtual NIC with this port to the new server.
     ///
     /// A shorthand for `add_nic`.
-    pub fn add_port<P>(&mut self, port: P) where P: Into<PortRef> {
+    pub fn add_port<P>(&mut self, port: P)
+    where
+        P: Into<PortRef>,
+    {
         self.add_nic(ServerNIC::WithPort(port.into()));
     }
 
     /// Use this image as a source for the new server.
-    pub fn set_image<I>(&mut self, image: I) where I: Into<ImageRef> {
+    pub fn set_image<I>(&mut self, image: I)
+    where
+        I: Into<ImageRef>,
+    {
         self.image = Some(image.into());
     }
 
     /// Use this key pair for the new server.
-    pub fn set_keypair<K>(&mut self, keypair: K) where K: Into<KeyPairRef> {
+    pub fn set_keypair<K>(&mut self, keypair: K)
+    where
+        K: Into<KeyPairRef>,
+    {
         self.keypair = Some(keypair.into());
     }
 
@@ -705,36 +741,46 @@ impl NewServer {
 
     /// Use this image as a source for the new server.
     pub fn with_image<I>(mut self, image: I) -> NewServer
-            where I: Into<ImageRef> {
+    where
+        I: Into<ImageRef>,
+    {
         self.set_image(image);
         self
     }
 
     /// Use this key pair for the new server.
     pub fn with_keypair<K>(mut self, keypair: K) -> NewServer
-            where K: Into<KeyPairRef> {
+    where
+        K: Into<KeyPairRef>,
+    {
         self.set_keypair(keypair);
         self
     }
 
     /// Add a virtual NIC from this network to the new server.
     pub fn with_network<N>(mut self, network: N) -> NewServer
-            where N: Into<NetworkRef> {
+    where
+        N: Into<NetworkRef>,
+    {
         self.add_network(network);
         self
     }
 
     /// Add a virtual NIC with this port to the new server.
     pub fn with_port<P>(mut self, port: P) -> NewServer
-            where P: Into<PortRef> {
+    where
+        P: Into<PortRef>,
+    {
         self.add_port(port);
         self
     }
 
     /// Add an arbitrary key/value metadata pair.
     pub fn with_metadata<S1, S2>(mut self, key: S1, value: S2) -> NewServer
-            where S1: Into<String>,
-                  S2: Into<String> {
+    where
+        S1: Into<String>,
+        S2: Into<String>,
+    {
         let _ = self.metadata.insert(key.into(), value.into());
         self
     }
@@ -750,9 +796,13 @@ impl Waiter<Server, Error> for ServerCreationWaiter {
     }
 
     fn timeout_error(&self) -> Error {
-        Error::new(ErrorKind::OperationTimedOut,
-                   format!("Timeout waiting for server {} to become ACTIVE",
-                           self.server.id()))
+        Error::new(
+            ErrorKind::OperationTimedOut,
+            format!(
+                "Timeout waiting for server {} to become ACTIVE",
+                self.server.id()
+            ),
+        )
     }
 
     fn poll(&mut self) -> Result<Option<Server>> {
@@ -762,14 +812,20 @@ impl Waiter<Server, Error> for ServerCreationWaiter {
             // TODO(dtantsur): get rid of clone?
             Ok(Some(self.server.clone()))
         } else if self.server.status() == protocol::ServerStatus::Error {
-            debug!("Failed create server {} - status is ERROR",
-                   self.server.id());
-            Err(Error::new(ErrorKind::OperationFailed,
-                           format!("Server {} got into ERROR state",
-                                   self.server.id())))
+            debug!(
+                "Failed create server {} - status is ERROR",
+                self.server.id()
+            );
+            Err(Error::new(
+                ErrorKind::OperationFailed,
+                format!("Server {} got into ERROR state", self.server.id()),
+            ))
         } else {
-            trace!("Still waiting for server {} to become ACTIVE, current is {}",
-                   self.server.id(), self.server.status());
+            trace!(
+                "Still waiting for server {} to become ACTIVE, current is {}",
+                self.server.id(),
+                self.server.status()
+            );
             Ok(None)
         }
     }

@@ -22,10 +22,10 @@ mod protocol;
 mod subnets;
 
 pub use self::floatingips::{FloatingIp, FloatingIpQuery, NewFloatingIp};
-pub use self::networks::{NewNetwork, Network, NetworkQuery};
+pub use self::networks::{Network, NetworkQuery, NewNetwork};
 pub use self::ports::{NewPort, Port, PortIpAddress, PortIpRequest, PortQuery};
-pub use self::protocol::{AllocationPool, FloatingIpSortKey, FloatingIpStatus,
-                         HostRoute, Ipv6Mode, IpVersion, NetworkStatus,
-                         NetworkSortKey, PortExtraDhcpOption, PortForwarding,
-                         PortSortKey, SubnetSortKey};
+pub use self::protocol::{
+    AllocationPool, FloatingIpSortKey, FloatingIpStatus, HostRoute, IpVersion, Ipv6Mode,
+    NetworkSortKey, NetworkStatus, PortExtraDhcpOption, PortForwarding, PortSortKey, SubnetSortKey,
+};
 pub use self::subnets::{NewSubnet, Subnet, SubnetQuery};

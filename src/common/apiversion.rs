@@ -17,11 +17,10 @@
 use std::fmt;
 use std::str::FromStr;
 
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde::de::{Error as DeserError, Visitor};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::super::{Error, ErrorKind, Result};
-
 
 /// API version (major, minor).
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
@@ -34,9 +33,9 @@ impl fmt::Display for ApiVersion {
 }
 
 fn parse_component(component: &str, message: &str) -> Result<u16> {
-    component.parse().map_err(|_| {
-        Error::new(ErrorKind::InvalidResponse, message)
-    })
+    component
+        .parse()
+        .map_err(|_| Error::new(ErrorKind::InvalidResponse, message))
 }
 
 impl FromStr for ApiVersion {
@@ -47,15 +46,13 @@ impl FromStr for ApiVersion {
 
         if parts.is_empty() || parts.len() > 2 {
             let msg = format!("Invalid API version: expected X.Y, got {}", s);
-            return Err(Error::new(ErrorKind::InvalidResponse, msg))
+            return Err(Error::new(ErrorKind::InvalidResponse, msg));
         }
 
-        let major = parse_component(parts[0],
-                                    "First version component is not a number")?;
+        let major = parse_component(parts[0], "First version component is not a number")?;
 
         let minor = if parts.len() == 2 {
-            parse_component(parts[1],
-                            "Second version component is not a number")?
+            parse_component(parts[1], "Second version component is not a number")?
         } else {
             0
         };
@@ -66,7 +63,9 @@ impl FromStr for ApiVersion {
 
 impl Serialize for ApiVersion {
     fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-            where S: Serializer {
+    where
+        S: Serializer,
+    {
         serializer.serialize_str(&self.to_string())
     }
 }
@@ -81,18 +80,21 @@ impl<'de> Visitor<'de> for ApiVersionVisitor {
     }
 
     fn visit_str<E>(self, value: &str) -> ::std::result::Result<ApiVersion, E>
-            where E: DeserError {
+    where
+        E: DeserError,
+    {
         ApiVersion::from_str(value).map_err(DeserError::custom)
     }
 }
 
 impl<'de> Deserialize<'de> for ApiVersion {
     fn deserialize<D>(deserializer: D) -> ::std::result::Result<ApiVersion, D::Error>
-            where D: Deserializer<'de> {
+    where
+        D: Deserializer<'de>,
+    {
         deserializer.deserialize_str(ApiVersionVisitor)
     }
 }
-
 
 #[cfg(test)]
 pub mod test {

@@ -19,14 +19,21 @@ extern crate waiter;
 use std::env;
 use waiter::Waiter;
 
-
 #[cfg(feature = "network")]
 fn display_port(port: &openstack::network::Port) {
-    println!("ID = {}, Name = {:?}, MAC = {}, UP = {}, Status = {}",
-             port.id(), port.name(), port.mac_address(),
-             port.admin_state_up(), port.status());
-    println!("* Owner = {:?}, Server? {}",
-             port.device_owner(), port.attached_to_server());
+    println!(
+        "ID = {}, Name = {:?}, MAC = {}, UP = {}, Status = {}",
+        port.id(),
+        port.name(),
+        port.mac_address(),
+        port.admin_state_up(),
+        port.status()
+    );
+    println!(
+        "* Owner = {:?}, Server? {}",
+        port.device_owner(),
+        port.attached_to_server()
+    );
     for ip in port.fixed_ips() {
         let subnet = ip.subnet().expect("Cannot fetch subnet");
         println!("* IP = {}, Subnet = {}", ip.ip_address, subnet.cidr());
@@ -45,9 +52,14 @@ fn main() {
     let network = env::args().nth(1).expect("Provide a network");
     let subnet = env::args().nth(2).expect("Provide a subnet");
 
-    let mut port = os.new_port(network).with_name("example-port")
-        .with_fixed_ip(openstack::network::PortIpRequest::AnyIpFromSubnet(subnet.into()))
-        .create().expect("Cannot create a port");
+    let mut port = os
+        .new_port(network)
+        .with_name("example-port")
+        .with_fixed_ip(openstack::network::PortIpRequest::AnyIpFromSubnet(
+            subnet.into(),
+        ))
+        .create()
+        .expect("Cannot create a port");
 
     display_port(&port);
 
@@ -58,8 +70,10 @@ fn main() {
     port.save().expect("Cannot update port");
     display_port(&port);
 
-    port.delete().expect("Cannot request port deletion")
-        .wait().expect("Port was not deleted");
+    port.delete()
+        .expect("Cannot request port deletion")
+        .wait()
+        .expect("Port was not deleted");
 }
 
 #[cfg(not(feature = "network"))]

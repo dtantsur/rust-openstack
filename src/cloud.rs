@@ -19,28 +19,30 @@ use std::rc::Rc;
 #[allow(unused_imports)]
 use ipnet;
 
-use super::Result;
 use super::auth::{self, AuthMethod};
 #[allow(unused_imports)]
 use super::common::{FlavorRef, NetworkRef};
 #[cfg(feature = "compute")]
-use super::compute::{Flavor, FlavorQuery, FlavorSummary, KeyPair, KeyPairQuery,
-                     NewKeyPair, NewServer, Server, ServerQuery, ServerSummary};
+use super::compute::{
+    Flavor, FlavorQuery, FlavorSummary, KeyPair, KeyPairQuery, NewKeyPair, NewServer, Server,
+    ServerQuery, ServerSummary,
+};
 #[cfg(feature = "image")]
 use super::image::{Image, ImageQuery};
 #[cfg(feature = "network")]
-use super::network::{FloatingIp, FloatingIpQuery, Network, NetworkQuery,
-                     NewFloatingIp, NewNetwork, NewPort, NewSubnet, Port,
-                     PortQuery, Subnet, SubnetQuery};
+use super::network::{
+    FloatingIp, FloatingIpQuery, Network, NetworkQuery, NewFloatingIp, NewNetwork, NewPort,
+    NewSubnet, Port, PortQuery, Subnet, SubnetQuery,
+};
 use super::session::Session;
-
+use super::Result;
 
 /// OpenStack cloud API.
 ///
 /// Provides high-level API for working with OpenStack clouds.
 #[derive(Debug, Clone)]
 pub struct Cloud {
-    session: Rc<Session>
+    session: Rc<Session>,
 }
 
 impl Cloud {
@@ -70,7 +72,7 @@ impl Cloud {
     /// * [from_env](#method.from_env) to create a Cloud from environment variables
     pub fn new<Auth: AuthMethod + 'static>(auth_method: Auth) -> Cloud {
         Cloud {
-            session: Rc::new(Session::new(auth_method))
+            session: Rc::new(Session::new(auth_method)),
         }
     }
 
@@ -86,7 +88,7 @@ impl Cloud {
     /// ```
     pub fn from_config<S: AsRef<str>>(cloud_name: S) -> Result<Cloud> {
         Ok(Cloud {
-            session: Rc::new(auth::from_config(cloud_name)?)
+            session: Rc::new(auth::from_config(cloud_name)?),
         })
     }
 
@@ -102,7 +104,7 @@ impl Cloud {
     /// ```
     pub fn from_env() -> Result<Cloud> {
         Ok(Cloud {
-            session: Rc::new(auth::from_env()?)
+            session: Rc::new(auth::from_env()?),
         })
     }
 
@@ -118,8 +120,10 @@ impl Cloud {
     ///
     /// # fn main() { cloud_from_env().unwrap(); }
     /// ```
-    pub fn with_endpoint_interface<S>(mut self, endpoint_interface: S)
-            -> Cloud where S: Into<String> {
+    pub fn with_endpoint_interface<S>(mut self, endpoint_interface: S) -> Cloud
+    where
+        S: Into<String>,
+    {
         Rc::make_mut(&mut self.session).set_endpoint_interface(endpoint_interface);
         self
     }
@@ -493,7 +497,9 @@ impl Cloud {
     /// to populate floating IP fields.
     #[cfg(feature = "network")]
     pub fn new_floating_ip<N>(&self, floating_network: N) -> NewFloatingIp
-            where N: Into<NetworkRef> {
+    where
+        N: Into<NetworkRef>,
+    {
         NewFloatingIp::new(self.session.clone(), floating_network.into())
     }
 
@@ -502,7 +508,10 @@ impl Cloud {
     /// This call returns a `NewKeyPair` object, which is a builder to populate
     /// key pair fields.
     #[cfg(feature = "compute")]
-    pub fn new_keypair<S>(&self, name: S) -> NewKeyPair where S: Into<String> {
+    pub fn new_keypair<S>(&self, name: S) -> NewKeyPair
+    where
+        S: Into<String>,
+    {
         NewKeyPair::new(self.session.clone(), name.into())
     }
 
@@ -520,7 +529,10 @@ impl Cloud {
     /// This call returns a `NewPort` object, which is a builder to populate
     /// port fields.
     #[cfg(feature = "network")]
-    pub fn new_port<N>(&self, network: N) -> NewPort where N: Into<NetworkRef> {
+    pub fn new_port<N>(&self, network: N) -> NewPort
+    where
+        N: Into<NetworkRef>,
+    {
         NewPort::new(self.session.clone(), network.into())
     }
 
@@ -530,7 +542,10 @@ impl Cloud {
     /// server fields.
     #[cfg(feature = "compute")]
     pub fn new_server<S, F>(&self, name: S, flavor: F) -> NewServer
-            where S: Into<String>, F: Into<FlavorRef> {
+    where
+        S: Into<String>,
+        F: Into<FlavorRef>,
+    {
         NewServer::new(self.session.clone(), name.into(), flavor.into())
     }
 
@@ -555,16 +570,17 @@ impl Cloud {
     /// ```
     #[cfg(feature = "network")]
     pub fn new_subnet<N>(&self, network: N, cidr: ipnet::IpNet) -> NewSubnet
-            where N: Into<NetworkRef> {
+    where
+        N: Into<NetworkRef>,
+    {
         NewSubnet::new(self.session.clone(), network.into(), cidr)
     }
 }
 
-
 impl From<Session> for Cloud {
     fn from(value: Session) -> Cloud {
         Cloud {
-            session: Rc::new(value)
+            session: Rc::new(value),
         }
     }
 }
