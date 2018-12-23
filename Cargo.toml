@@ -35,7 +35,7 @@ serde_yaml = "^0.8"
 waiter = "^0.1"
 
 [dev-dependencies]
-env_logger = "^0.5"
+env_logger = "^0.6"
 
 [lib]
 
