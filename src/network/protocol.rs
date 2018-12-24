@@ -163,6 +163,8 @@ pub struct Network {
     #[serde(default, skip_serializing_if = "Not::not")]
     pub shared: bool,
     #[serde(skip_serializing)]
+    pub status: NetworkStatus,
+    #[serde(skip_serializing)]
     pub subnets: Vec<String>,
     #[serde(default, skip_serializing)]
     pub updated_at: Option<DateTime<FixedOffset>>,
@@ -187,6 +189,7 @@ impl Default for Network {
             port_security_enabled: None,
             project_id: None,
             shared: false,
+            status: NetworkStatus::Active,
             subnets: Vec::new(),
             updated_at: None,
             vlan_transparent: None,

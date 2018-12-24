@@ -181,6 +181,11 @@ impl Network {
     }
 
     transparent_property! {
+        #[doc = "Status of the network."]
+        status: protocol::NetworkStatus
+    }
+
+    transparent_property! {
         #[doc = "Last update data and time (if available)."]
         updated_at: Option<DateTime<FixedOffset>>
     }

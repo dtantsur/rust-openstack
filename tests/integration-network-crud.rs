@@ -125,6 +125,7 @@ fn test_network_create_delete_simple() {
     assert_eq!(network.external(), Some(false));
     assert!(!network.shared());
     assert!(network.name().is_none());
+    assert_eq!(network.status(), openstack::network::NetworkStatus::Active);
 
     let cidr = ipnet::Ipv4Net::new(net::Ipv4Addr::new(192, 168, 1, 0), 24)
         .unwrap()
