@@ -16,7 +16,6 @@
 
 use std::cell::Ref;
 
-use log;
 use reqwest::{Method, RequestBuilder, Response, Url};
 use serde::de::DeserializeOwned;
 

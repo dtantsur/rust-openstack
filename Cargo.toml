@@ -11,6 +11,7 @@ readme = "README.md"
 license = "Apache-2.0"
 keywords = ["api", "cloud", "openstack"]
 categories = ["api-bindings"]
+edition = "2018"
 
 [features]
 
