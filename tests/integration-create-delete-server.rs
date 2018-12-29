@@ -47,18 +47,7 @@ fn validate_port(port: &openstack::network::Port, server: &openstack::compute::S
     assert!(port.fixed_ips().len() > 0);
 }
 
-fn validate_server(os: &openstack::Cloud, server: &mut openstack::compute::Server) {
-    assert_eq!(server.name(), "rust-openstack-integration");
-    assert_eq!(server.status(), openstack::compute::ServerStatus::Active);
-    assert_eq!(
-        server.power_state(),
-        openstack::compute::ServerPowerState::Running
-    );
-    assert_eq!(
-        server.metadata().get("meta"),
-        Some(&"a3f955c049f7416faa7".to_string())
-    );
-
+fn power_on_off_server(server: &mut openstack::compute::Server) {
     server
         .stop()
         .expect("Failed to request power off")
@@ -78,6 +67,21 @@ fn validate_server(os: &openstack::Cloud, server: &mut openstack::compute::Serve
         server.power_state(),
         openstack::compute::ServerPowerState::Running
     );
+}
+
+fn validate_server(os: &openstack::Cloud, server: &mut openstack::compute::Server) {
+    assert_eq!(server.name(), "rust-openstack-integration");
+    assert_eq!(server.status(), openstack::compute::ServerStatus::Active);
+    assert_eq!(
+        server.power_state(),
+        openstack::compute::ServerPowerState::Running
+    );
+    assert_eq!(
+        server.metadata().get("meta"),
+        Some(&"a3f955c049f7416faa7".to_string())
+    );
+
+    power_on_off_server(server);
 
     let port = os
         .find_ports()
@@ -261,4 +265,52 @@ fn test_server_ops_with_port() {
         .expect("Failed to request deletion")
         .wait()
         .expect("Failed to delete port");
+}
+
+#[test]
+fn test_server_boot_from_new_volume() {
+    let os = set_up();
+    let image_id = env::var("RUST_OPENSTACK_IMAGE").expect("Missing RUST_OPENSTACK_IMAGE");
+    let flavor_id = env::var("RUST_OPENSTACK_FLAVOR").expect("Missing RUST_OPENSTACK_FLAVOR");
+    let network_id = env::var("RUST_OPENSTACK_NETWORK").expect("Missing RUST_OPENSTACK_NETWORK");
+    let keypair_name = "rust-openstack-integration-bfv";
+
+    let (keypair, private_key) = os
+        .new_keypair(keypair_name)
+        .with_key_type(openstack::compute::KeyPairType::SSH)
+        .generate()
+        .expect("Cannot create a key pair");
+    assert!(!private_key.is_empty());
+
+    let mut server = os
+        .new_server("rust-openstack-integration", flavor_id)
+        .with_new_boot_volume(image_id, 8)
+        .with_block_device(openstack::compute::BlockDevice::from_empty_volume(8))
+        .with_network(network_id.clone())
+        .with_keypair(keypair)
+        .with_metadata("meta", "a3f955c049f7416faa7")
+        .create()
+        .expect("Failed to request server creation")
+        .wait()
+        .expect("Server was not created");
+
+    assert_eq!(server.status(), openstack::compute::ServerStatus::Active);
+    assert_eq!(
+        server.power_state(),
+        openstack::compute::ServerPowerState::Running
+    );
+    assert!(server.image_id().is_none());
+
+    power_on_off_server(&mut server);
+
+    server
+        .delete()
+        .expect("Failed to request deletion")
+        .wait()
+        .expect("Failed to delete server");
+
+    os.get_keypair(keypair_name)
+        .expect("Cannot get key pair")
+        .delete()
+        .expect("Cannot delete key pair");
 }

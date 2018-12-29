@@ -15,12 +15,14 @@
 //! Compute API implementation bits.
 
 mod base;
+mod block_device_mapping;
 mod flavors;
 mod keypairs;
 mod protocol;
 mod servers;
 
 pub use self::base::V2 as ServiceType;
+pub use self::block_device_mapping::{BlockDevice, BlockDeviceDestinationType, BlockDeviceSource};
 pub use self::flavors::{DetailedFlavorQuery, Flavor, FlavorQuery, FlavorSummary};
 pub use self::keypairs::{KeyPair, KeyPairQuery, NewKeyPair};
 pub use self::protocol::{

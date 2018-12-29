@@ -137,9 +137,13 @@ opaque_resource_type!(#[doc = "An ID of a `Port`"] PortRef ? "network");
 
 opaque_resource_type!(#[doc = "An ID of a `Router`"] RouterRef ? "network");
 
+opaque_resource_type!(#[doc = "An ID of a `Snapshot`"] SnapshotRef ? "volume");
+
 opaque_resource_type!(#[doc = "An ID of a `Subnet`"] SubnetRef ? "network");
 
 opaque_resource_type!(#[doc = "An ID of a `User`"] UserRef ? "identity");
+
+opaque_resource_type!(#[doc = "An ID of a `Volume`"] VolumeRef ? "volume");
 
 #[cfg(test)]
 mod test {

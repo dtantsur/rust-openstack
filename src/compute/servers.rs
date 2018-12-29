@@ -25,7 +25,7 @@ use waiter::{Waiter, WaiterCurrentState};
 
 use super::super::common::{
     self, DeletionWaiter, FlavorRef, ImageRef, IntoVerified, KeyPairRef, NetworkRef, PortRef,
-    ProjectRef, Refresh, ResourceIterator, ResourceQuery, UserRef,
+    ProjectRef, Refresh, ResourceIterator, ResourceQuery, UserRef, VolumeRef,
 };
 #[cfg(feature = "image")]
 use super::super::image::Image;
@@ -33,7 +33,7 @@ use super::super::session::Session;
 use super::super::utils::Query;
 use super::super::{Error, ErrorKind, Result, Sort};
 use super::base::V2API;
-use super::{protocol, KeyPair};
+use super::{protocol, BlockDevice, KeyPair};
 
 /// A query to server list.
 #[derive(Clone, Debug)]
@@ -94,6 +94,7 @@ pub struct NewServer {
     metadata: HashMap<String, String>,
     name: String,
     nics: Vec<ServerNIC>,
+    block_devices: Vec<BlockDevice>,
 }
 
 /// Waiter for server to be created.
@@ -652,12 +653,14 @@ impl NewServer {
             metadata: HashMap::new(),
             name,
             nics: Vec::new(),
+            block_devices: Vec::new(),
         }
     }
 
     /// Request creation of the server.
     pub fn create(self) -> Result<ServerCreationWaiter> {
         let request = protocol::ServerCreate {
+            block_devices: self.block_devices.into_verified(&self.session)?,
             flavorRef: self.flavor.into_verified(&self.session)?.into(),
             imageRef: match self.image {
                 Some(img) => Some(img.into_verified(&self.session)?.into()),
@@ -720,6 +723,12 @@ impl NewServer {
         &mut self.nics
     }
 
+    /// Block devices attached to the server.
+    #[inline]
+    pub fn block_devices(&mut self) -> &mut Vec<BlockDevice> {
+        &mut self.block_devices
+    }
+
     /// Use this image as a source for the new server.
     pub fn set_image<I>(&mut self, image: I)
     where
@@ -734,6 +743,22 @@ impl NewServer {
         K: Into<KeyPairRef>,
     {
         self.keypair = Some(keypair.into());
+    }
+
+    /// Add a block device to attach to the server.
+    #[inline]
+    pub fn with_block_device(mut self, block_device: BlockDevice) -> Self {
+        self.block_devices.push(block_device);
+        self
+    }
+
+    /// Add a volume to boot from.
+    #[inline]
+    pub fn with_boot_volume<V>(self, volume: V) -> Self
+    where
+        V: Into<VolumeRef>,
+    {
+        self.with_block_device(BlockDevice::from_volume(volume, true))
     }
 
     /// Add a virtual NIC with given fixed IP to the new server.
@@ -781,6 +806,15 @@ impl NewServer {
     {
         self.add_network(network);
         self
+    }
+
+    /// Create a volume to boot from from an image.
+    #[inline]
+    pub fn with_new_boot_volume<I>(self, image: I, size_gib: u32) -> Self
+    where
+        I: Into<ImageRef>,
+    {
+        self.with_block_device(BlockDevice::from_new_volume(image, size_gib, true))
     }
 
     /// Add a virtual NIC with this port to the new server.

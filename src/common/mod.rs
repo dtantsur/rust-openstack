@@ -25,6 +25,6 @@ pub use self::resourceiterator::{ResourceIterator, ResourceQuery};
 pub(crate) use self::types::IntoVerified;
 pub use self::types::{
     FlavorRef, ImageRef, KeyPairRef, NetworkRef, PortRef, ProjectRef, Refresh, RouterRef,
-    SubnetRef, UserRef,
+    SnapshotRef, SubnetRef, UserRef, VolumeRef,
 };
 pub use self::waiter::DeletionWaiter;

@@ -23,6 +23,7 @@ use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use chrono::{DateTime, FixedOffset};
 
 use super::super::common;
+use super::BlockDevice;
 
 protocol_enum! {
     #[doc = "Available sort keys."]
@@ -232,6 +233,11 @@ pub enum ServerNetwork {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct ServerCreate {
+    #[serde(
+        rename = "block_device_mapping_v2",
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub block_devices: Vec<BlockDevice>,
     pub flavorRef: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub imageRef: Option<String>,
