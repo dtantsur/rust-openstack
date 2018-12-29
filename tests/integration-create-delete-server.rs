@@ -18,6 +18,7 @@ extern crate waiter;
 
 use std::env;
 use std::fs::File;
+use std::io::Read;
 use std::sync::{Once, ONCE_INIT};
 
 use waiter::Waiter;
@@ -101,19 +102,15 @@ fn test_basic_server_ops() {
     let image_id = env::var("RUST_OPENSTACK_IMAGE").expect("Missing RUST_OPENSTACK_IMAGE");
     let flavor_id = env::var("RUST_OPENSTACK_FLAVOR").expect("Missing RUST_OPENSTACK_FLAVOR");
     let network_id = env::var("RUST_OPENSTACK_NETWORK").expect("Missing RUST_OPENSTACK_NETWORK");
-    let keypair_file_name =
-        env::var("RUST_OPENSTACK_KEYPAIR").expect("Missing RUST_OPENSTACK_KEYPAIR");
     let floating_network_id = env::var("RUST_OPENSTACK_FLOATING_NETWORK")
         .expect("Missing RUST_OPENSTACK_FLOATING_NETWORK");
 
-    let keypair = os
+    let (keypair, private_key) = os
         .new_keypair("rust-openstack-integration")
-        .from_reader(
-            &mut File::open(keypair_file_name).expect("Cannot open RUST_OPENSTACK_KEYPAIR"),
-        )
-        .expect("Cannot read RUST_OPENSTACK_KEYPAIR")
-        .create()
+        .with_key_type(openstack::compute::KeyPairType::SSH)
+        .generate()
         .expect("Cannot create a key pair");
+    assert!(!private_key.is_empty());
 
     let mut server = os
         .new_server("rust-openstack-integration", flavor_id)
@@ -177,15 +174,17 @@ fn test_server_ops_with_port() {
     let network_id = env::var("RUST_OPENSTACK_NETWORK").expect("Missing RUST_OPENSTACK_NETWORK");
     let keypair_file_name =
         env::var("RUST_OPENSTACK_KEYPAIR").expect("Missing RUST_OPENSTACK_KEYPAIR");
+    let mut keypair_pkey = String::new();
+    let _ = File::open(keypair_file_name)
+        .expect("Cannot open RUST_OPENSTACK_KEYPAIR")
+        .read_to_string(&mut keypair_pkey)
+        .expect("Cannot read RUST_OPENSTACK_KEYPAIR");
     let floating_network_id = env::var("RUST_OPENSTACK_FLOATING_NETWORK")
         .expect("Missing RUST_OPENSTACK_FLOATING_NETWORK");
 
     let keypair = os
         .new_keypair("rust-openstack-integration")
-        .from_reader(
-            &mut File::open(keypair_file_name).expect("Cannot open RUST_OPENSTACK_KEYPAIR"),
-        )
-        .expect("Cannot read RUST_OPENSTACK_KEYPAIR")
+        .with_public_key(keypair_pkey)
         .create()
         .expect("Cannot create a key pair");
 

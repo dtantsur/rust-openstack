@@ -147,10 +147,16 @@ fn flavor_api_version<T: V2API>(api: &T) -> Result<Option<ApiVersion>> {
 
 impl V2API for Session {
     fn create_keypair(&self, request: protocol::KeyPairCreate) -> Result<protocol::KeyPair> {
+        let version = if request.key_type.is_some() {
+            Some(API_VERSION_KEYPAIR_TYPE)
+        } else {
+            None
+        };
+
         debug!("Creating a key pair with {:?}", request);
         let body = protocol::KeyPairCreateRoot { keypair: request };
         let keypair = self
-            .post::<V2>(&["os-keypairs"], None)?
+            .post::<V2>(&["os-keypairs"], version)?
             .json(&body)
             .receive_json::<protocol::KeyPairRoot>()?
             .keypair;

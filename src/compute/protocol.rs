@@ -297,6 +297,8 @@ pub struct KeyPair {
     #[serde(rename = "type", default, skip_serializing_if = "Option::is_none")]
     pub key_type: Option<KeyPairType>,
     pub name: String,
+    #[serde(default, skip_serializing)]
+    pub private_key: Option<String>,
     pub public_key: String,
 }
 
@@ -305,7 +307,18 @@ pub struct KeyPairCreate {
     #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
     pub key_type: Option<KeyPairType>,
     pub name: String,
-    pub public_key: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub public_key: Option<String>,
+}
+
+impl KeyPairCreate {
+    pub fn new(name: String) -> KeyPairCreate {
+        KeyPairCreate {
+            key_type: None,
+            name,
+            public_key: None,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize)]

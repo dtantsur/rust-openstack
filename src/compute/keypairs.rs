@@ -45,8 +45,7 @@ pub struct KeyPairQuery {
 #[derive(Clone, Debug)]
 pub struct NewKeyPair {
     session: Rc<Session>,
-    name: String,
-    public_key: Option<String>,
+    inner: protocol::KeyPairCreate,
 }
 
 impl KeyPair {
@@ -151,8 +150,7 @@ impl NewKeyPair {
     pub(crate) fn new(session: Rc<Session>, name: String) -> NewKeyPair {
         NewKeyPair {
             session,
-            name,
-            public_key: None,
+            inner: protocol::KeyPairCreate::new(name),
         }
     }
 
@@ -160,51 +158,84 @@ impl NewKeyPair {
     ///
     /// This call fails immediately if no public_key is provided.
     pub fn create(self) -> Result<KeyPair> {
-        let request = if let Some(public_key) = self.public_key {
-            protocol::KeyPairCreate {
-                key_type: None, // TODO
-                name: self.name,
-                public_key,
-            }
-        } else {
+        if self.inner.public_key.is_none() {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
                 "Public key contents is required",
             ));
         };
 
-        let keypair = self.session.create_keypair(request)?;
+        let keypair = self.session.create_keypair(self.inner)?;
         Ok(KeyPair {
             session: self.session,
             inner: keypair,
         })
     }
 
+    /// Create a key pair, generating its public key.
+    ///
+    /// Returns a new key pair and its private key.
+    pub fn generate(mut self) -> Result<(KeyPair, String)> {
+        self.inner.public_key = None;
+
+        let mut keypair = self.session.create_keypair(self.inner)?;
+        if let Some(private_key) = keypair.private_key.take() {
+            let result = KeyPair {
+                session: self.session,
+                inner: keypair,
+            };
+
+            Ok((result, private_key))
+        } else {
+            Err(Error::new(
+                ErrorKind::InvalidResponse,
+                "Missing private key in the response",
+            ))
+        }
+    }
+
+    creation_inner_field! {
+        #[doc = "Set type of the key pair."]
+        set_key_type, with_key_type -> key_type: optional protocol::KeyPairType
+    }
+
+    creation_inner_field! {
+        #[doc = "Set name of the key pair."]
+        set_name, with_name -> name: String
+    }
+
+    creation_inner_field! {
+        #[doc = "Set name of the key pair."]
+        set_public_key, with_public_key -> public_key: optional String
+    }
+
     /// Add public key from a reader.
+    #[deprecated(since = "0.2.2", note = "Use with_public_key")]
     pub fn from_reader<R>(self, reader: &mut R) -> io::Result<NewKeyPair>
     where
         R: io::Read,
     {
         let mut s = String::new();
         let _ = reader.read_to_string(&mut s)?;
-        Ok(self.from_string(s))
+        Ok(self.with_public_key(s))
     }
 
     /// Add public key from a string.
-    pub fn from_string<S>(mut self, public_key: S) -> NewKeyPair
+    #[deprecated(since = "0.2.2", note = "Use with_public_key")]
+    pub fn from_string<S>(self, public_key: S) -> NewKeyPair
     where
         S: Into<String>,
     {
-        self.set_string(public_key);
-        self
+        self.with_public_key(public_key)
     }
 
     /// Add public key from a string.
+    #[deprecated(since = "0.2.2", note = "Use set_public_key")]
     pub fn set_string<S>(&mut self, public_key: S)
     where
         S: Into<String>,
     {
-        self.public_key = Some(public_key.into());
+        self.set_public_key(public_key);
     }
 }
 
