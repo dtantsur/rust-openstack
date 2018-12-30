@@ -102,6 +102,7 @@ extern crate waiter;
 macro_rules! transparent_property {
     ($(#[$attr:meta])* $name:ident: ref $type:ty) => (
         $(#[$attr])*
+        #[inline]
         pub fn $name(&self) -> &$type {
             &self.inner.$name
         }
@@ -109,6 +110,7 @@ macro_rules! transparent_property {
 
     ($(#[$attr:meta])* $name:ident: $type:ty) => (
         $(#[$attr])*
+        #[inline]
         pub fn $name(&self) -> $type {
             self.inner.$name
         }
@@ -132,6 +134,7 @@ macro_rules! query_filter {
         }
 
         $(#[$attr])*
+        #[inline]
         pub fn $with_func<T: Into<String>>(mut self, value: T) -> Self {
             self.$set_func(value);
             self
@@ -153,6 +156,7 @@ macro_rules! query_filter {
         }
 
         $(#[$attr])*
+        #[inline]
         pub fn $with_func(mut self, value: $type) -> Self {
             self.$set_func(value);
             self
@@ -165,11 +169,13 @@ macro_rules! creation_inner_field {
 
     ($(#[$attr:meta])* $set_func:ident, $with_func:ident -> $name:ident) => (
         $(#[$attr])*
+        #[inline]
         pub fn $set_func<S: Into<String>>(&mut self, value: S)  {
             self.inner.$name = value.into();
         }
 
         $(#[$attr])*
+        #[inline]
         pub fn $with_func<S: Into<String>>(mut self, value: S) -> Self {
             self.$set_func(value);
             self
@@ -178,11 +184,13 @@ macro_rules! creation_inner_field {
 
     ($(#[$attr:meta])* $set_func:ident, $with_func:ident -> $name:ident: $type:ty) => (
         $(#[$attr])*
+        #[inline]
         pub fn $set_func(&mut self, value: $type)  {
             self.inner.$name = value;
         }
 
         $(#[$attr])*
+        #[inline]
         pub fn $with_func(mut self, value: $type) -> Self {
             self.$set_func(value);
             self
@@ -191,11 +199,13 @@ macro_rules! creation_inner_field {
 
     ($(#[$attr:meta])* $set_func:ident, $with_func:ident -> $name:ident: optional String) => (
         $(#[$attr])*
+        #[inline]
         pub fn $set_func<S: Into<String>>(&mut self, value: S)  {
             self.inner.$name = Some(value.into());
         }
 
         $(#[$attr])*
+        #[inline]
         pub fn $with_func<S: Into<String>>(mut self, value: S) -> Self {
             self.$set_func(value);
             self
@@ -204,11 +214,13 @@ macro_rules! creation_inner_field {
 
     ($(#[$attr:meta])* $set_func:ident, $with_func:ident -> $name:ident: optional $type:ty) => (
         $(#[$attr])*
+        #[inline]
         pub fn $set_func(&mut self, value: $type)  {
             self.inner.$name = Some(value);
         }
 
         $(#[$attr])*
+        #[inline]
         pub fn $with_func(mut self, value: $type) -> Self {
             self.$set_func(value);
             self
@@ -227,11 +239,13 @@ macro_rules! creation_inner_vec {
         }
 
         $(#[$attr])*
+        #[inline]
         pub fn $name(&mut self) -> &mut Vec<String> {
             &mut self.inner.$name
         }
 
         $(#[$attr])*
+        #[inline]
         pub fn $with_func<S: Into<String>>(mut self, value: S) -> Self {
             self.$add_func(value);
             self
@@ -245,11 +259,13 @@ macro_rules! creation_inner_vec {
         }
 
         $(#[$attr])*
+        #[inline]
         pub fn $name(&mut self) -> &mut Vec<$type> {
             &mut self.inner.$name
         }
 
         $(#[$attr])*
+        #[inline]
         pub fn $with_func(mut self, value: $type) -> Self {
             self.$add_func(value);
             self
@@ -269,6 +285,7 @@ macro_rules! update_field {
         }
 
         $(#[$attr])*
+        #[inline]
         pub fn $with_func<S: Into<String>>(mut self, value: S) -> Self {
             self.$set_func(value);
             self
@@ -284,6 +301,7 @@ macro_rules! update_field {
         }
 
         $(#[$attr])*
+        #[inline]
         pub fn $with_func(mut self, value: $type) -> Self {
             self.$set_func(value);
             self
@@ -299,6 +317,7 @@ macro_rules! update_field {
         }
 
         $(#[$attr])*
+        #[inline]
         pub fn $with_func<S: Into<String>>(mut self, value: S) -> Self {
             self.$set_func(value);
             self
@@ -314,6 +333,7 @@ macro_rules! update_field {
         }
 
         $(#[$attr])*
+        #[inline]
         pub fn $with_func(mut self, value: $type) -> Self {
             self.$set_func(value);
             self
@@ -341,6 +361,7 @@ macro_rules! update_field_mut {
         }
 
         $(#[$attr])*
+        #[inline]
         pub fn $with_func(mut self, value: $type) -> Self {
             self.$set_func(value);
             self
