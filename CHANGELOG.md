@@ -1,5 +1,13 @@
 # Change Log
 
+## 0.2.2 (2018-12-30)
+
+#### Features
+
+* **common:**  Support services without version discovery ([598ceabd](https://github.com/dtantsur/rust-openstack/commit/598ceabd179dc35171e52e82fbb67bda67d71a9b))
+* **compute:**  finish creating key pairs, deprecate old names ([c88d7164](https://github.com/dtantsur/rust-openstack/commit/c88d71649173a3fb8075fe6a082035878487d194))
+* **network:**  add missing Network.status() (fixes #27) ([f1dc2e28](https://github.com/dtantsur/rust-openstack/commit/f1dc2e288292a85da25fa1f7f2bc54b972543e53))
+
 ## 0.2.1 (2018-11-25)
 
 #### Features
