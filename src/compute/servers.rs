@@ -93,7 +93,7 @@ pub struct NewServer {
     keypair: Option<KeyPairRef>,
     metadata: HashMap<String, String>,
     name: String,
-    networks: Vec<ServerNIC>,
+    nics: Vec<ServerNIC>,
 }
 
 /// Waiter for server to be created.
@@ -166,6 +166,7 @@ impl Server {
     }
 
     /// Flavor information used to create this server.
+    #[inline]
     pub fn flavor(&self) -> &protocol::ServerFlavor {
         &self.flavor
     }
@@ -191,6 +192,7 @@ impl Server {
     /// Whether the server has an image.
     ///
     /// May return `false` if the server was created from a volume.
+    #[inline]
     pub fn has_image(&self) -> bool {
         self.inner.image.is_some()
     }
@@ -366,14 +368,14 @@ impl<'server> WaiterCurrentState<Server> for ServerStatusWaiter<'server> {
 }
 
 impl ServerSummary {
-    /// Get a reference to server unique ID.
-    pub fn id(&self) -> &String {
-        &self.inner.id
+    transparent_property! {
+        #[doc = "Server unique ID."]
+        id: ref String
     }
 
-    /// Get a reference to server name.
-    pub fn name(&self) -> &String {
-        &self.inner.name
+    transparent_property! {
+        #[doc = "Server name."]
+        name: ref String
     }
 
     /// Get details.
@@ -423,79 +425,68 @@ impl ServerQuery {
         self
     }
 
-    /// Filter by IPv4 address that should be used to access the server.
-    pub fn with_access_ip_v4<T: Into<Ipv4Addr>>(mut self, value: T) -> Self {
-        self.query.push("access_ip_v4", value.into());
-        self
+    query_filter! {
+        #[doc = "Filter by IPv4 address that should be used to access the server."]
+        set_access_ip_v4, with_access_ip_v4 -> access_ip_v4: Ipv4Addr
     }
 
-    /// Filter by IPv6 address that should be used to access the server.
-    pub fn with_access_ip_v6<T: Into<Ipv6Addr>>(mut self, value: T) -> Self {
-        self.query.push("access_ipv6", value.into());
-        self
+    query_filter! {
+        #[doc = "Filter by IPv6 address that should be used to access the server."]
+        set_access_ip_v6, with_access_ip_v6 -> access_ip_v6: Ipv6Addr
     }
 
-    /// Filter by availability zone.
-    pub fn with_availability_zone<T: Into<String>>(mut self, value: T) -> Self {
-        self.query.push_str("availability_zone", value);
-        self
+    query_filter! {
+        #[doc = "Filter by availability zone."]
+        set_availability_zone, with_availability_zone -> availability_zone: String
     }
 
-    /// Filter by flavor.
-    pub fn with_flavor<T: Into<FlavorRef>>(mut self, value: T) -> Self {
-        self.query.push_str("flavor", value.into());
-        self
+    query_filter! {
+        #[doc = "Filter by flavor."]
+        set_flavor, with_flavor -> flavor: FlavorRef
     }
 
-    /// Filter by host name.
-    pub fn with_hostname<T: Into<String>>(mut self, value: T) -> Self {
-        self.query.push_str("hostname", value);
-        self
+    query_filter! {
+        #[doc = "Filter by host name."]
+        set_hostname, with_hostname -> hostname: String
     }
 
-    /// Filter by image ID.
-    pub fn with_image<T: Into<ImageRef>>(mut self, value: T) -> Self {
-        self.query.push_str("image", value.into());
-        self
+    query_filter! {
+        #[doc = "Filter by image used to build the server."]
+        set_image, with_image -> image: ImageRef
     }
 
-    /// Filter by an IPv4 address.
-    pub fn with_ip_v4<T: Into<Ipv4Addr>>(mut self, value: T) -> Self {
-        self.query.push("ip", value.into());
-        self
+    query_filter! {
+        #[doc = "Filter by an IPv4 address."]
+        set_ip_v4, with_ip_v4 -> ip: Ipv4Addr
     }
 
-    /// Filter by an IPv6 address.
-    pub fn with_ip_v6<T: Into<Ipv6Addr>>(mut self, value: T) -> Self {
-        self.query.push("ip6", value.into());
-        self
+    query_filter! {
+        #[doc = "Filter by an IPv6 address."]
+        set_ip_v6, with_ip_v6 -> ip6: Ipv6Addr
     }
 
-    /// Filter by server name (a database regular expression).
-    pub fn with_name<T: Into<String>>(mut self, value: T) -> Self {
-        self.query.push_str("name", value);
-        self
+    query_filter! {
+        #[doc = "Filter by name."]
+        set_name, with_name -> name: String
     }
 
-    /// Filter by project ID (also commonly known as tenant ID).
-    pub fn with_project<T: Into<ProjectRef>>(mut self, value: T) -> Self {
-        self.query.push_str("project_id", value.into());
-        self
+    query_filter! {
+        #[doc = "Filter by project (also commonly known as tenant)."]
+        set_project, with_project -> project_id: ProjectRef
     }
 
-    /// Filter by server status.
-    pub fn with_status(mut self, value: protocol::ServerStatus) -> Self {
-        self.query.push_str("status", value.to_string());
-        self
+    query_filter! {
+        #[doc = "Filter by server status."]
+        set_status, with_status -> status: protocol::ServerStatus
     }
 
-    /// Filter by user ID.
-    pub fn with_user<T: Into<UserRef>>(mut self, value: T) -> Self {
-        self.query.push_str("user_id", value.into());
-        self
+    query_filter! {
+        #[doc = "Filter by user."]
+        set_user, with_user -> user_id: UserRef
     }
 
     /// Convert this query into a detailed query.
+    #[inline]
     pub fn detailed(self) -> DetailedServerQuery {
         DetailedServerQuery { inner: self }
     }
@@ -509,6 +500,7 @@ impl ServerQuery {
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
+    #[inline]
     pub fn into_iter(self) -> ResourceIterator<ServerQuery> {
         debug!("Fetching servers with {:?}", self.query);
         ResourceIterator::new(self)
@@ -531,6 +523,7 @@ impl ServerQuery {
     /// Execute this request and return all results.
     ///
     /// A convenience shortcut for `self.into_iter().collect()`.
+    #[inline]
     pub fn all(self) -> Result<Vec<ServerSummary>> {
         self.into_iter().collect()
     }
@@ -658,7 +651,7 @@ impl NewServer {
             keypair: None,
             metadata: HashMap::new(),
             name,
-            networks: Vec::new(),
+            nics: Vec::new(),
         }
     }
 
@@ -676,7 +669,7 @@ impl NewServer {
             },
             metadata: self.metadata,
             name: self.name,
-            networks: convert_networks(&self.session, self.networks)?,
+            networks: convert_networks(&self.session, self.nics)?,
         };
 
         let server_ref = self.session.create_server(request)?;
@@ -686,35 +679,45 @@ impl NewServer {
     }
 
     /// Add a virtual NIC with given fixed IP to the new server.
-    ///
-    /// A shorthand for `add_nic`.
+    #[inline]
     pub fn add_fixed_ip(&mut self, fixed_ip: Ipv4Addr) {
-        self.add_nic(ServerNIC::WithFixedIp(fixed_ip));
+        self.nics.push(ServerNIC::WithFixedIp(fixed_ip));
     }
 
     /// Add a virtual NIC from this network to the new server.
-    ///
-    /// A shorthand for `add_nic`.
+    #[inline]
     pub fn add_network<N>(&mut self, network: N)
     where
         N: Into<NetworkRef>,
     {
-        self.add_nic(ServerNIC::FromNetwork(network.into()));
+        self.nics.push(ServerNIC::FromNetwork(network.into()));
     }
 
     /// Add a virtual NIC to the new server.
+    #[deprecated(since = "0.2.3", note = "Use nics().push")]
     pub fn add_nic(&mut self, nic: ServerNIC) {
-        self.networks.push(nic);
+        self.nics.push(nic);
     }
 
     /// Add a virtual NIC with this port to the new server.
-    ///
-    /// A shorthand for `add_nic`.
+    #[inline]
     pub fn add_port<P>(&mut self, port: P)
     where
         P: Into<PortRef>,
     {
-        self.add_nic(ServerNIC::WithPort(port.into()));
+        self.nics.push(ServerNIC::WithPort(port.into()));
+    }
+
+    /// Metadata assigned to this server.
+    #[inline]
+    pub fn metadata(&mut self) -> &mut HashMap<String, String> {
+        &mut self.metadata
+    }
+
+    /// NICs to attach to this server.
+    #[inline]
+    pub fn nics(&mut self) -> &mut Vec<ServerNIC> {
+        &mut self.nics
     }
 
     /// Use this image as a source for the new server.
@@ -734,12 +737,14 @@ impl NewServer {
     }
 
     /// Add a virtual NIC with given fixed IP to the new server.
+    #[inline]
     pub fn with_fixed_ip(mut self, fixed_ip: Ipv4Addr) -> NewServer {
         self.add_fixed_ip(fixed_ip);
         self
     }
 
     /// Use this image as a source for the new server.
+    #[inline]
     pub fn with_image<I>(mut self, image: I) -> NewServer
     where
         I: Into<ImageRef>,
@@ -749,29 +754,12 @@ impl NewServer {
     }
 
     /// Use this key pair for the new server.
+    #[inline]
     pub fn with_keypair<K>(mut self, keypair: K) -> NewServer
     where
         K: Into<KeyPairRef>,
     {
         self.set_keypair(keypair);
-        self
-    }
-
-    /// Add a virtual NIC from this network to the new server.
-    pub fn with_network<N>(mut self, network: N) -> NewServer
-    where
-        N: Into<NetworkRef>,
-    {
-        self.add_network(network);
-        self
-    }
-
-    /// Add a virtual NIC with this port to the new server.
-    pub fn with_port<P>(mut self, port: P) -> NewServer
-    where
-        P: Into<PortRef>,
-    {
-        self.add_port(port);
         self
     }
 
@@ -782,6 +770,26 @@ impl NewServer {
         S2: Into<String>,
     {
         let _ = self.metadata.insert(key.into(), value.into());
+        self
+    }
+
+    /// Add a virtual NIC from this network to the new server.
+    #[inline]
+    pub fn with_network<N>(mut self, network: N) -> NewServer
+    where
+        N: Into<NetworkRef>,
+    {
+        self.add_network(network);
+        self
+    }
+
+    /// Add a virtual NIC with this port to the new server.
+    #[inline]
+    pub fn with_port<P>(mut self, port: P) -> NewServer
+    where
+        P: Into<PortRef>,
+    {
+        self.add_port(port);
         self
     }
 }
