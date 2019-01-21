@@ -29,7 +29,8 @@ use super::Password;
 struct Auth {
     auth_url: String,
     password: String,
-    project_name: String,
+    #[serde(default)]
+    project_name: Option<String>,
     #[serde(default)]
     project_domain_name: Option<String>,
     username: String,
@@ -95,7 +96,7 @@ pub fn from_config<S: AsRef<str>>(cloud_name: S) -> Result<Session> {
             format!("Cannot read config.yaml: {}", e),
         )
     })?;
-    let mut clouds: Root = serde_yaml::from_reader(file).map_err(|e| {
+    let mut clouds_root: Root = serde_yaml::from_reader(file).map_err(|e| {
         Error::new(
             ErrorKind::InvalidConfig,
             format!("Cannot parse clouds.yaml: {}", e),
@@ -104,7 +105,7 @@ pub fn from_config<S: AsRef<str>>(cloud_name: S) -> Result<Session> {
 
     let name = cloud_name.as_ref();
     let cloud =
-        clouds.clouds.clouds.remove(name).ok_or_else(|| {
+        clouds_root.clouds.clouds.remove(name).ok_or_else(|| {
             Error::new(ErrorKind::InvalidConfig, format!("No such cloud: {}", name))
         })?;
 
@@ -115,8 +116,10 @@ pub fn from_config<S: AsRef<str>>(cloud_name: S) -> Result<Session> {
     let project_domain = auth
         .project_domain_name
         .unwrap_or_else(|| String::from("Default"));
-    let mut id = Password::new(&auth.auth_url, auth.username, auth.password, user_domain)?
-        .with_project_scope(auth.project_name, project_domain);
+    let mut id = Password::new(&auth.auth_url, auth.username, auth.password, user_domain)?;
+    if let Some(project_name) = auth.project_name {
+        id.set_project_scope(project_name, project_domain);
+    }
     if let Some(region) = cloud.region_name {
         id.set_region(region)
     }

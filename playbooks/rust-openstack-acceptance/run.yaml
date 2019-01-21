@@ -7,6 +7,11 @@
     - install-devstack
 
 - hosts: all
+  tasks:
+    - name: Dump clouds.yaml
+      command: grep -v password /etc/openstack/clouds.yaml
+
+- hosts: all
   environment:
     OS_CLOUD: devstack-admin
 
