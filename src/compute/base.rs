@@ -350,7 +350,7 @@ impl V2API for Session {
     fn pick_compute_api_version(&self, versions: &[ApiVersion]) -> Result<Option<ApiVersion>> {
         let info = self.get_service_info_ref::<V2>()?;
         Ok(versions
-            .into_iter()
+            .iter()
             .filter(|item| info.supports_api_version(**item))
             .max()
             .cloned())
