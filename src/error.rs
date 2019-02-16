@@ -179,20 +179,28 @@ impl ::std::error::Error for Error {
     }
 }
 
+impl From<StatusCode> for ErrorKind {
+    fn from(value: StatusCode) -> ErrorKind {
+        match value {
+            StatusCode::UNAUTHORIZED => ErrorKind::AuthenticationFailed,
+            StatusCode::FORBIDDEN => ErrorKind::AccessDenied,
+            StatusCode::NOT_FOUND => ErrorKind::ResourceNotFound,
+            StatusCode::NOT_ACCEPTABLE => ErrorKind::IncompatibleApiVersion,
+            StatusCode::CONFLICT => ErrorKind::Conflict,
+            c if c.is_client_error() => ErrorKind::InvalidInput,
+            c if c.is_server_error() => ErrorKind::InternalServerError,
+            _ => ErrorKind::InvalidResponse,
+        }
+    }
+}
+
 impl From<HttpClientError> for Error {
     fn from(value: HttpClientError) -> Error {
         let msg = value.to_string();
-        let kind = match value.status() {
-            Some(StatusCode::UNAUTHORIZED) => ErrorKind::AuthenticationFailed,
-            Some(StatusCode::FORBIDDEN) => ErrorKind::AccessDenied,
-            Some(StatusCode::NOT_FOUND) => ErrorKind::ResourceNotFound,
-            Some(StatusCode::NOT_ACCEPTABLE) => ErrorKind::IncompatibleApiVersion,
-            Some(StatusCode::CONFLICT) => ErrorKind::Conflict,
-            Some(c) if c.is_client_error() => ErrorKind::InvalidInput,
-            Some(c) if c.is_server_error() => ErrorKind::InternalServerError,
-            None => ErrorKind::ProtocolError,
-            _ => ErrorKind::InvalidResponse,
-        };
+        let kind = value
+            .status()
+            .map(From::from)
+            .unwrap_or(ErrorKind::ProtocolError);
 
         Error::new_with_details(kind, value.status(), Some(msg))
     }

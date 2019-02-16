@@ -15,6 +15,7 @@
 //! Session structure definition.
 
 use std::cell::Ref;
+use std::collections::HashMap;
 
 use reqwest::{Method, RequestBuilder, Response, Url};
 use serde::de::DeserializeOwned;
@@ -80,29 +81,47 @@ pub trait RequestBuilderExt {
     }
 }
 
-impl RequestBuilderExt for RequestBuilder {
-    fn send_checked(self) -> Result<Response> {
-        _log(self.send()?).error_for_status().map_err(From::from)
+#[derive(Debug, Clone, Deserialize)]
+struct Message {
+    message: String,
+}
+
+type ErrorMap = HashMap<String, Message>;
+
+fn extract_message(text: &str) -> Option<String> {
+    match serde_json::from_str::<ErrorMap>(text) {
+        Ok(map) => map.into_iter().next().map(|(_k, v)| v.message),
+        Err(..) => serde_json::from_str::<Message>(text)
+            .ok()
+            .map(|msg| msg.message),
     }
 }
 
-fn _log(mut resp: Response) -> Response {
-    if log_enabled!(log::Level::Trace) {
-        let details = if resp.status().is_client_error() || resp.status().is_server_error() {
-            resp.text().ok()
-        } else {
-            None
-        };
+impl RequestBuilderExt for RequestBuilder {
+    fn send_checked(self) -> Result<Response> {
+        let mut resp = self.send()?;
+        if resp.status().is_client_error() || resp.status().is_server_error() {
+            let message = resp
+                .text()
+                .ok()
+                .map(|text| extract_message(&text).unwrap_or(text));
+            trace!(
+                "HTTP request to {} returned {}; error: {:?}",
+                resp.url(),
+                resp.status(),
+                message
+            );
 
-        // TODO(dtantsur): proper error parsing
-        trace!(
-            "HTTP request to {} returned {}; error: {:?}",
-            resp.url(),
-            resp.status(),
-            details
-        );
+            Err(Error::new_with_details(
+                resp.status().into(),
+                Some(resp.status()),
+                message,
+            ))
+        } else {
+            trace!("HTTP request to {} returned {}", resp.url(), resp.status());
+            Ok(resp)
+        }
     }
-    resp
 }
 
 /// An OpenStack API session.
