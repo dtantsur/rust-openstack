@@ -1,5 +1,17 @@
 # Change Log
 
+### 0.2.3 (2019-02-16)
+
+#### Features
+
+* **compute:**  implement block device mapping (closes #76) ([19094080](https://github.com/dtantsur/rust-openstack/commit/19094080bdd08084a0c6cbe7026986f14cbeb64c))
+
+#### Bug Fixes
+
+*   allow inlining trivial accessors ([51a3286f](https://github.com/dtantsur/rust-openstack/commit/51a3286f4af43a0f321dfeed207d01f12572b137))
+* **auth:**  do not fail when clouds.yaml contain unscoped entries ([b41666ce](https://github.com/dtantsur/rust-openstack/commit/b41666ce84fb8a9232488b6ad3554d0dd08450c4))
+* **common:**  correctly parse JSON error messages (fixes #61) ([21b62c01](https://github.com/dtantsur/rust-openstack/commit/21b62c011fc52df1775d4d91b0f21d824bb82acd))
+
 ## 0.2.2 (2018-12-30)
 
 #### Features
