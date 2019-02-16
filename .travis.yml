@@ -1,25 +1,23 @@
 language: rust
-before_script:
-- rustup component add rustfmt
-- rustup component add clippy
-script:
-- cargo fmt -- --check
-- cargo test --verbose --lib
-- cargo test --verbose --doc
-- cargo test --verbose --no-default-features --lib
-after_success: |
-  echo "$TRAVIS_EVENT_TYPE -> $TRAVIS_BRANCH"
-  if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_EVENT_TYPE" = "push" ]; then
-    cd "$TRAVIS_BUILD_DIR"
-    cargo clean
-    cargo doc
-    cd target/doc
-    git init
-    git checkout -b gh-pages
-    git add .
-    git -c user.name='travis' -c user.email='travis' commit -q -m "Automatic update for $TRAVIS_COMMIT"
-    git push -f -q https://dtantsur:$GITHUB_API_KEY@github.com/dtantsur/rust-openstack gh-pages 2>/dev/null
-    cd "$TRAVIS_BUILD_DIR"
-  fi
+jobs:
+  allow_failures:
+    - script: cargo clippy --verbose --package openstack -- -D warnings
+  include:
+    - install: rustup component add rustfmt
+      script: cargo fmt -- --check
+      name: "Check formatting"
+    - install: rustup component add clippy
+      script: cargo clippy --verbose --package openstack -- -D warnings
+      name: "Check clippy warnings (non-voting)"
+    - script: cargo test --verbose --lib
+      name: "Run unit tests with default features"
+    - script: cargo test --verbose --doc
+      name: "Run doctests"
+    - script: cargo test --verbose --no-default-features --lib
+      name: "Run unit tests without default features"
+    - stage: docs
+      script: ./tools/build-docs.sh
+      if: branch = master AND type = push
+      name: "Publish documentation"
 env:
   secure: T/Ych5UPT7X/UoRW6mB2lQNQsT4N9bQtEWl12yDZVaO5dC3pPjt7Qf2s3bgEGG137/c7avs8QEpg9bzsNW7kRRXIWqSayWgRkphNMXzzODqf8vXkbaTIrDBC+H65aalHcRcLFUfNmcQEBJ5egV7ZqjItFvjS2g7aTPwPVgjJ48ZSworh8xrGduA56bc+lb6LFx2sseX7uomARf3qjskWr1wB5ykj7Tad/Uqfu53OdpNPaanvQM/HUoLINp/GMJ33PDY504KDdFjUTELhVw1FIXilyIMfOWHiflo8+VpXGSg0LtYcvS+qclDIheyHwjtsl4YSgOe8Ruexo31Jh9LHp+3+VTPwc8bgsfQkuRJhlBKczTGM7V7fnmah9pfCKrY3pTTHg4e+xjG1lG7JBXJL0gL6T7zexe5lYRUCYw60QZLcci2i/tq9A6vtyl32y3bKhEVOuCDTr2mtwafcbjYiKbUY3FOempwF/s5B/xWEejf4Y3RYjMWeHMwcKbzeavVYs3u9xBami04HN9jR0etg9X9GpgNg+uQ9Xlbac+JAzaE5oP8K62QfHGWfu+Oerhb4NXsPnc37XW9qVj7Avv/5qPJT3uDZ4O2xFn/lMrrKVafsuxAKR8jyu5aK/JHlyojboWHLoyoHzyu/DMfhKbxxFNsYKP8CSDRJU43wD/2JwsE=
