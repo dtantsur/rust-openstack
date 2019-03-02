@@ -14,7 +14,8 @@
 
 //! Low-level code to work with the service catalog.
 
-use super::super::{Error, Result};
+use super::super::utils;
+use super::super::Result;
 use super::protocol::{CatalogRecord, Endpoint};
 
 /// Find an endpoint in the service catalog.
@@ -26,7 +27,7 @@ pub fn find_endpoint<'c>(
 ) -> Result<&'c Endpoint> {
     let svc = match catalog.iter().find(|x| x.service_type == *service_type) {
         Some(s) => s,
-        None => return Err(Error::new_endpoint_not_found(service_type)),
+        None => return Err(utils::endpoint_not_found(service_type)),
     };
 
     let maybe_endp: Option<&Endpoint>;
@@ -42,7 +43,7 @@ pub fn find_endpoint<'c>(
             .find(|x| x.interface == *endpoint_interface);
     }
 
-    maybe_endp.ok_or_else(|| Error::new_endpoint_not_found(service_type))
+    maybe_endp.ok_or_else(|| utils::endpoint_not_found(service_type))
 }
 
 #[cfg(test)]

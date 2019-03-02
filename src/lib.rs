@@ -90,6 +90,7 @@ extern crate fallible_iterator;
 extern crate ipnet;
 #[macro_use]
 extern crate log;
+extern crate osauth;
 extern crate reqwest;
 extern crate serde;
 #[macro_use]
@@ -503,7 +504,6 @@ mod cloud;
 pub mod common;
 #[cfg(feature = "compute")]
 pub mod compute;
-mod error;
 mod identity;
 #[cfg(feature = "image")]
 pub mod image;
@@ -512,9 +512,13 @@ pub mod network;
 pub mod session;
 mod utils;
 
+pub use osauth::{Error, ErrorKind};
+
 pub use crate::cloud::Cloud;
 pub use crate::common::Refresh;
-pub use crate::error::{Error, ErrorKind, Result};
+
+/// Result of an OpenStack call.
+pub type Result<T> = ::std::result::Result<T, Error>;
 
 /// Sorting request.
 #[derive(Debug, Clone)]

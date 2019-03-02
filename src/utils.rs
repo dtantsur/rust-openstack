@@ -225,6 +225,13 @@ where
     }
 }
 
+pub fn endpoint_not_found<D: fmt::Display>(service_type: D) -> Error {
+    Error::new(
+        ErrorKind::EndpointNotFound,
+        format!("Endpoint for service {} was not found", service_type),
+    )
+}
+
 pub mod url {
     //! Handy primitives for working with URLs.
 

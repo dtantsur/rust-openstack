@@ -14,13 +14,13 @@
 
 //! Types and traits shared by all API parts.
 
-mod apiversion;
 pub(crate) mod protocol;
 mod resourceiterator;
 mod types;
 mod waiter;
 
-pub use self::apiversion::ApiVersion;
+pub use osauth::ApiVersion;
+
 pub use self::resourceiterator::{ResourceIterator, ResourceQuery};
 pub(crate) use self::types::IntoVerified;
 pub use self::types::{

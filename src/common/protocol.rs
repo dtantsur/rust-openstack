@@ -134,7 +134,7 @@ impl Root {
             Ok(mut resp) => resp.json::<Root>().map_err(From::from),
             Err(ref e) if e.kind() == ErrorKind::ResourceNotFound => {
                 if utils::url::is_root(&endpoint) {
-                    Err(Error::new_endpoint_not_found(Srv::catalog_type()))
+                    Err(utils::endpoint_not_found(Srv::catalog_type()))
                 } else {
                     debug!("Got HTTP 404 from {}, trying parent endpoint", endpoint);
                     Root::fetch::<Srv>(utils::url::pop(endpoint, true), auth)
@@ -178,7 +178,7 @@ impl Root {
                     .rfind(|x| x.is_stable() && Srv::major_version_supported(x.id))
                 {
                     Some(ver) => ver.into_service_info(),
-                    None => Err(Error::new_endpoint_not_found(Srv::catalog_type())),
+                    None => Err(utils::endpoint_not_found(Srv::catalog_type())),
                 }
             }
         }

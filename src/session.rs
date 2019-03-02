@@ -104,19 +104,16 @@ impl RequestBuilderExt for RequestBuilder {
             let message = resp
                 .text()
                 .ok()
-                .map(|text| extract_message(&text).unwrap_or(text));
+                .map(|text| extract_message(&text).unwrap_or(text))
+                .unwrap_or_else(|| "Unknown error".to_string());
             trace!(
-                "HTTP request to {} returned {}; error: {:?}",
+                "HTTP request to {} returned {}; error: {}",
                 resp.url(),
                 resp.status(),
                 message
             );
 
-            Err(Error::new_with_details(
-                resp.status().into(),
-                Some(resp.status()),
-                message,
-            ))
+            Err(Error::new(resp.status().into(), message).with_status(resp.status()))
         } else {
             trace!("HTTP request to {} returned {}", resp.url(), resp.status());
             Ok(resp)
