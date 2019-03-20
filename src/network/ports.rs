@@ -17,7 +17,7 @@
 use std::collections::HashSet;
 use std::mem;
 use std::net;
-use std::rc::Rc;
+use std::sync::Arc;
 use std::time::Duration;
 
 use chrono::{DateTime, FixedOffset};
@@ -37,7 +37,7 @@ use super::{protocol, Network, Subnet};
 /// A query to port list.
 #[derive(Clone, Debug)]
 pub struct PortQuery {
-    session: Rc<Session>,
+    session: Arc<Session>,
     query: Query,
     can_paginate: bool,
     network: Option<NetworkRef>,
@@ -46,7 +46,7 @@ pub struct PortQuery {
 /// A fixed IP address of a port.
 #[derive(Clone, Debug)]
 pub struct PortIpAddress {
-    session: Rc<Session>,
+    session: Arc<Session>,
     /// IP address.
     pub ip_address: net::IpAddr,
     /// ID of the subnet the address belongs to.
@@ -56,7 +56,7 @@ pub struct PortIpAddress {
 /// Structure representing a port - a virtual NIC.
 #[derive(Clone, Debug)]
 pub struct Port {
-    session: Rc<Session>,
+    session: Arc<Session>,
     inner: protocol::Port,
     fixed_ips: Vec<PortIpAddress>,
     dirty: HashSet<&'static str>,
@@ -76,13 +76,13 @@ pub enum PortIpRequest {
 /// A request to create a port
 #[derive(Clone, Debug)]
 pub struct NewPort {
-    session: Rc<Session>,
+    session: Arc<Session>,
     inner: protocol::Port,
     network: NetworkRef,
     fixed_ips: Vec<PortIpRequest>,
 }
 
-fn convert_fixed_ips(session: &Rc<Session>, inner: &mut protocol::Port) -> Vec<PortIpAddress> {
+fn convert_fixed_ips(session: &Arc<Session>, inner: &mut protocol::Port) -> Vec<PortIpAddress> {
     let mut fixed_ips = Vec::new();
     mem::swap(&mut inner.fixed_ips, &mut fixed_ips);
     fixed_ips
@@ -97,7 +97,7 @@ fn convert_fixed_ips(session: &Rc<Session>, inner: &mut protocol::Port) -> Vec<P
 
 impl Port {
     /// Load a Port object.
-    pub(crate) fn new(session: Rc<Session>, mut inner: protocol::Port) -> Port {
+    pub(crate) fn new(session: Arc<Session>, mut inner: protocol::Port) -> Port {
         let fixed_ips = convert_fixed_ips(&session, &mut inner);
         Port {
             session,
@@ -108,7 +108,7 @@ impl Port {
     }
 
     /// Load a Port object.
-    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id) -> Result<Port> {
+    pub(crate) fn load<Id: AsRef<str>>(session: Arc<Session>, id: Id) -> Result<Port> {
         let inner = session.get_port(id)?;
         Ok(Port::new(session, inner))
     }
@@ -306,7 +306,7 @@ impl PortIpAddress {
 }
 
 impl PortQuery {
-    pub(crate) fn new(session: Rc<Session>) -> PortQuery {
+    pub(crate) fn new(session: Arc<Session>) -> PortQuery {
         PortQuery {
             session,
             query: Query::new(),
@@ -455,7 +455,7 @@ impl ResourceQuery for PortQuery {
 
 impl NewPort {
     /// Start creating a port.
-    pub(crate) fn new(session: Rc<Session>, network: NetworkRef) -> NewPort {
+    pub(crate) fn new(session: Arc<Session>, network: NetworkRef) -> NewPort {
         NewPort {
             session,
             inner: protocol::Port {

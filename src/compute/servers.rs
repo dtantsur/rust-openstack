@@ -16,7 +16,7 @@
 
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-use std::rc::Rc;
+use std::sync::Arc;
 use std::time::Duration;
 
 use chrono::{DateTime, FixedOffset};
@@ -38,7 +38,7 @@ use super::{protocol, BlockDevice, KeyPair};
 /// A query to server list.
 #[derive(Clone, Debug)]
 pub struct ServerQuery {
-    session: Rc<Session>,
+    session: Arc<Session>,
     query: Query,
     can_paginate: bool,
 }
@@ -54,7 +54,7 @@ pub struct DetailedServerQuery {
 /// Structure representing a single server.
 #[derive(Clone, Debug)]
 pub struct Server {
-    session: Rc<Session>,
+    session: Arc<Session>,
     inner: protocol::Server,
     flavor: protocol::ServerFlavor,
 }
@@ -62,7 +62,7 @@ pub struct Server {
 /// Structure representing a summary of a single server.
 #[derive(Clone, Debug)]
 pub struct ServerSummary {
-    session: Rc<Session>,
+    session: Arc<Session>,
     inner: common::protocol::IdAndName,
 }
 
@@ -87,7 +87,7 @@ pub enum ServerNIC {
 /// A request to create a server.
 #[derive(Debug)]
 pub struct NewServer {
-    session: Rc<Session>,
+    session: Arc<Session>,
     flavor: FlavorRef,
     image: Option<ImageRef>,
     keypair: Option<KeyPairRef>,
@@ -113,7 +113,7 @@ impl Refresh for Server {
 
 impl Server {
     /// Create a new Server object.
-    pub(crate) fn new(session: Rc<Session>, inner: protocol::Server) -> Result<Server> {
+    pub(crate) fn new(session: Arc<Session>, inner: protocol::Server) -> Result<Server> {
         let flavor = session.get_flavor(&inner.flavor.id)?;
         Ok(Server {
             session,
@@ -131,7 +131,7 @@ impl Server {
     }
 
     /// Load a Server object.
-    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id) -> Result<Server> {
+    pub(crate) fn load<Id: AsRef<str>>(session: Arc<Session>, id: Id) -> Result<Server> {
         let inner = session.get_server(id)?;
         Server::new(session, inner)
     }
@@ -392,7 +392,7 @@ impl ServerSummary {
 }
 
 impl ServerQuery {
-    pub(crate) fn new(session: Rc<Session>) -> ServerQuery {
+    pub(crate) fn new(session: Arc<Session>) -> ServerQuery {
         ServerQuery {
             session,
             query: Query::new(),
@@ -644,7 +644,7 @@ fn convert_networks(
 
 impl NewServer {
     /// Start creating a server.
-    pub(crate) fn new(session: Rc<Session>, name: String, flavor: FlavorRef) -> NewServer {
+    pub(crate) fn new(session: Arc<Session>, name: String, flavor: FlavorRef) -> NewServer {
         NewServer {
             session,
             flavor,

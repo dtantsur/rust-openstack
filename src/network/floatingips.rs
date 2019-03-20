@@ -16,7 +16,7 @@
 
 use std::collections::HashSet;
 use std::net;
-use std::rc::Rc;
+use std::sync::Arc;
 use std::time::Duration;
 
 use chrono::{DateTime, FixedOffset};
@@ -36,7 +36,7 @@ use super::{protocol, Network, Port};
 /// Structure representing a single floating IP.
 #[derive(Clone, Debug)]
 pub struct FloatingIp {
-    session: Rc<Session>,
+    session: Arc<Session>,
     inner: protocol::FloatingIp,
     dirty: HashSet<&'static str>,
 }
@@ -44,7 +44,7 @@ pub struct FloatingIp {
 /// A query to floating IP list.
 #[derive(Clone, Debug)]
 pub struct FloatingIpQuery {
-    session: Rc<Session>,
+    session: Arc<Session>,
     query: Query,
     can_paginate: bool,
     floating_network: Option<NetworkRef>,
@@ -54,7 +54,7 @@ pub struct FloatingIpQuery {
 /// A request to create a floating IP.
 #[derive(Clone, Debug)]
 pub struct NewFloatingIp {
-    session: Rc<Session>,
+    session: Arc<Session>,
     inner: protocol::FloatingIp,
     floating_network: NetworkRef,
     port: Option<PortRef>,
@@ -63,7 +63,7 @@ pub struct NewFloatingIp {
 
 impl FloatingIp {
     /// Create a new floating IP object.
-    pub(crate) fn new(session: Rc<Session>, inner: protocol::FloatingIp) -> FloatingIp {
+    pub(crate) fn new(session: Arc<Session>, inner: protocol::FloatingIp) -> FloatingIp {
         FloatingIp {
             session,
             inner,
@@ -72,7 +72,7 @@ impl FloatingIp {
     }
 
     /// Load a FloatingIp object.
-    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id) -> Result<FloatingIp> {
+    pub(crate) fn load<Id: AsRef<str>>(session: Arc<Session>, id: Id) -> Result<FloatingIp> {
         let inner = session.get_floating_ip(id)?;
         Ok(FloatingIp::new(session, inner))
     }
@@ -255,7 +255,7 @@ impl Refresh for FloatingIp {
 }
 
 impl FloatingIpQuery {
-    pub(crate) fn new(session: Rc<Session>) -> FloatingIpQuery {
+    pub(crate) fn new(session: Arc<Session>) -> FloatingIpQuery {
         FloatingIpQuery {
             session,
             query: Query::new(),
@@ -424,7 +424,7 @@ impl ResourceQuery for FloatingIpQuery {
 
 impl NewFloatingIp {
     /// Start creating a floating IP.
-    pub(crate) fn new(session: Rc<Session>, floating_network: NetworkRef) -> NewFloatingIp {
+    pub(crate) fn new(session: Arc<Session>, floating_network: NetworkRef) -> NewFloatingIp {
         NewFloatingIp {
             session,
             inner: protocol::FloatingIp {

@@ -14,7 +14,7 @@
 
 //! Image management via Image API.
 
-use std::rc::Rc;
+use std::sync::Arc;
 
 use chrono::{DateTime, FixedOffset};
 use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
@@ -29,7 +29,7 @@ use super::protocol;
 /// A query to image list.
 #[derive(Clone, Debug)]
 pub struct ImageQuery {
-    session: Rc<Session>,
+    session: Arc<Session>,
     query: Query,
     can_paginate: bool,
     sort: Vec<String>,
@@ -38,13 +38,13 @@ pub struct ImageQuery {
 /// Structure representing a single image.
 #[derive(Clone, Debug)]
 pub struct Image {
-    session: Rc<Session>,
+    session: Arc<Session>,
     inner: protocol::Image,
 }
 
 impl Image {
     /// Load a Image object.
-    pub(crate) fn new<Id: AsRef<str>>(session: Rc<Session>, id: Id) -> Result<Image> {
+    pub(crate) fn new<Id: AsRef<str>>(session: Arc<Session>, id: Id) -> Result<Image> {
         let inner = session.get_image(id)?;
         Ok(Image { session, inner })
     }
@@ -133,7 +133,7 @@ impl Refresh for Image {
 }
 
 impl ImageQuery {
-    pub(crate) fn new(session: Rc<Session>) -> ImageQuery {
+    pub(crate) fn new(session: Arc<Session>) -> ImageQuery {
         ImageQuery {
             session,
             query: Query::new(),

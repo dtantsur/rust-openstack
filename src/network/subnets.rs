@@ -16,7 +16,7 @@
 
 use std::collections::HashSet;
 use std::net;
-use std::rc::Rc;
+use std::sync::Arc;
 use std::time::Duration;
 
 use chrono::{DateTime, FixedOffset};
@@ -35,7 +35,7 @@ use super::{protocol, Network};
 /// A query to subnet list.
 #[derive(Clone, Debug)]
 pub struct SubnetQuery {
-    session: Rc<Session>,
+    session: Arc<Session>,
     query: Query,
     can_paginate: bool,
     network: Option<NetworkRef>,
@@ -44,7 +44,7 @@ pub struct SubnetQuery {
 /// Structure representing a subnet - a virtual NIC.
 #[derive(Clone, Debug)]
 pub struct Subnet {
-    session: Rc<Session>,
+    session: Arc<Session>,
     inner: protocol::Subnet,
     dirty: HashSet<&'static str>,
 }
@@ -52,14 +52,14 @@ pub struct Subnet {
 /// A request to create a subnet.
 #[derive(Clone, Debug)]
 pub struct NewSubnet {
-    session: Rc<Session>,
+    session: Arc<Session>,
     inner: protocol::Subnet,
     network: NetworkRef,
 }
 
 impl Subnet {
     /// Create a subnet object.
-    pub(crate) fn new(session: Rc<Session>, inner: protocol::Subnet) -> Subnet {
+    pub(crate) fn new(session: Arc<Session>, inner: protocol::Subnet) -> Subnet {
         Subnet {
             session,
             inner,
@@ -68,7 +68,7 @@ impl Subnet {
     }
 
     /// Load a Subnet object.
-    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id) -> Result<Subnet> {
+    pub(crate) fn load<Id: AsRef<str>>(session: Arc<Session>, id: Id) -> Result<Subnet> {
         let inner = session.get_subnet(id)?;
         Ok(Subnet::new(session, inner))
     }
@@ -233,7 +233,7 @@ impl Refresh for Subnet {
 }
 
 impl SubnetQuery {
-    pub(crate) fn new(session: Rc<Session>) -> SubnetQuery {
+    pub(crate) fn new(session: Arc<Session>) -> SubnetQuery {
         SubnetQuery {
             session,
             query: Query::new(),
@@ -384,7 +384,7 @@ impl ResourceQuery for SubnetQuery {
 
 impl NewSubnet {
     /// Start creating a subnet.
-    pub(crate) fn new(session: Rc<Session>, network: NetworkRef, cidr: ipnet::IpNet) -> NewSubnet {
+    pub(crate) fn new(session: Arc<Session>, network: NetworkRef, cidr: ipnet::IpNet) -> NewSubnet {
         NewSubnet {
             session,
             inner: protocol::Subnet::empty(cidr),

@@ -14,7 +14,7 @@
 
 //! Cloud API.
 
-use std::rc::Rc;
+use std::sync::Arc;
 
 #[allow(unused_imports)]
 use ipnet;
@@ -42,7 +42,7 @@ use super::Result;
 /// Provides high-level API for working with OpenStack clouds.
 #[derive(Debug, Clone)]
 pub struct Cloud {
-    session: Rc<Session>,
+    session: Arc<Session>,
 }
 
 impl Cloud {
@@ -72,7 +72,7 @@ impl Cloud {
     /// * [from_env](#method.from_env) to create a Cloud from environment variables
     pub fn new<Auth: AuthMethod + 'static>(auth_method: Auth) -> Cloud {
         Cloud {
-            session: Rc::new(Session::new(auth_method)),
+            session: Arc::new(Session::new(auth_method)),
         }
     }
 
@@ -88,7 +88,7 @@ impl Cloud {
     /// ```
     pub fn from_config<S: AsRef<str>>(cloud_name: S) -> Result<Cloud> {
         Ok(Cloud {
-            session: Rc::new(auth::from_config(cloud_name)?),
+            session: Arc::new(auth::from_config(cloud_name)?),
         })
     }
 
@@ -104,7 +104,7 @@ impl Cloud {
     /// ```
     pub fn from_env() -> Result<Cloud> {
         Ok(Cloud {
-            session: Rc::new(auth::from_env()?),
+            session: Arc::new(auth::from_env()?),
         })
     }
 
@@ -124,13 +124,13 @@ impl Cloud {
     where
         S: Into<String>,
     {
-        Rc::make_mut(&mut self.session).set_endpoint_interface(endpoint_interface);
+        Arc::make_mut(&mut self.session).set_endpoint_interface(endpoint_interface);
         self
     }
 
     /// Refresh this `Cloud` object (renew token, refetch service catalog, etc).
     pub fn refresh(&mut self) -> Result<()> {
-        Rc::make_mut(&mut self.session).auth_method_mut().refresh()
+        Arc::make_mut(&mut self.session).auth_method_mut().refresh()
     }
 
     /// Build a query against flavor list.
@@ -580,7 +580,7 @@ impl Cloud {
 impl From<Session> for Cloud {
     fn from(value: Session) -> Cloud {
         Cloud {
-            session: Rc::new(value),
+            session: Arc::new(value),
         }
     }
 }

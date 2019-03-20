@@ -15,7 +15,7 @@
 //! Key pair management via Compute API.
 
 use std::io;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
 
@@ -29,14 +29,14 @@ use super::protocol;
 /// Structure representing a key pair.
 #[derive(Clone, Debug)]
 pub struct KeyPair {
-    session: Rc<Session>,
+    session: Arc<Session>,
     inner: protocol::KeyPair,
 }
 
 /// A query to server list.
 #[derive(Clone, Debug)]
 pub struct KeyPairQuery {
-    session: Rc<Session>,
+    session: Arc<Session>,
     query: Query,
     can_paginate: bool,
 }
@@ -44,13 +44,13 @@ pub struct KeyPairQuery {
 /// A request to create a key pair.
 #[derive(Clone, Debug)]
 pub struct NewKeyPair {
-    session: Rc<Session>,
+    session: Arc<Session>,
     inner: protocol::KeyPairCreate,
 }
 
 impl KeyPair {
     /// Load a KeyPair object.
-    pub(crate) fn new<Id: AsRef<str>>(session: Rc<Session>, id: Id) -> Result<KeyPair> {
+    pub(crate) fn new<Id: AsRef<str>>(session: Arc<Session>, id: Id) -> Result<KeyPair> {
         let inner = session.get_keypair(id)?;
         Ok(KeyPair { session, inner })
     }
@@ -85,7 +85,7 @@ impl Refresh for KeyPair {
 }
 
 impl KeyPairQuery {
-    pub(crate) fn new(session: Rc<Session>) -> KeyPairQuery {
+    pub(crate) fn new(session: Arc<Session>) -> KeyPairQuery {
         KeyPairQuery {
             session,
             query: Query::new(),
@@ -147,7 +147,7 @@ impl KeyPairQuery {
 
 impl NewKeyPair {
     /// Start creating a key pair.
-    pub(crate) fn new(session: Rc<Session>, name: String) -> NewKeyPair {
+    pub(crate) fn new(session: Arc<Session>, name: String) -> NewKeyPair {
         NewKeyPair {
             session,
             inner: protocol::KeyPairCreate::new(name),
