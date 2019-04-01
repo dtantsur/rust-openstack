@@ -31,8 +31,7 @@ use super::super::common::{
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::super::{Error, Result, Sort};
-use super::base::V2API;
-use super::{protocol, Network, Subnet};
+use super::{api, protocol, Network, Subnet};
 
 /// A query to port list.
 #[derive(Clone, Debug)]
@@ -109,7 +108,7 @@ impl Port {
 
     /// Load a Port object.
     pub(crate) fn load<Id: AsRef<str>>(session: Arc<Session>, id: Id) -> Result<Port> {
-        let inner = session.get_port(id)?;
+        let inner = api::get_port(&session, id)?;
         Ok(Port::new(session, inner))
     }
 
@@ -257,7 +256,7 @@ impl Port {
 
     /// Delete the port.
     pub fn delete(self) -> Result<DeletionWaiter<Port>> {
-        self.session.delete_port(&self.inner.id)?;
+        api::delete_port(&self.session, &self.inner.id)?;
         Ok(DeletionWaiter::new(
             self,
             Duration::new(60, 0),
@@ -280,7 +279,7 @@ impl Port {
             self -> update: description device_id device_owner dns_domain
                 dns_name name
         };
-        let mut inner = self.session.update_port(self.id(), update)?;
+        let mut inner = api::update_port(&self.session, self.id(), update)?;
         self.fixed_ips = convert_fixed_ips(&self.session, &mut inner);
         self.dirty.clear();
         self.inner = inner;
@@ -291,7 +290,7 @@ impl Port {
 impl Refresh for Port {
     /// Refresh the port.
     fn refresh(&mut self) -> Result<()> {
-        self.inner = self.session.get_port_by_id(&self.inner.id)?;
+        self.inner = api::get_port_by_id(&self.session, &self.inner.id)?;
         self.fixed_ips = convert_fixed_ips(&self.session, &mut self.inner);
         self.dirty.clear();
         Ok(())
@@ -436,9 +435,7 @@ impl ResourceQuery for PortQuery {
 
     fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
         let query = self.query.with_marker_and_limit(limit, marker);
-        Ok(self
-            .session
-            .list_ports(&query)?
+        Ok(api::list_ports(&self.session, &query)?
             .into_iter()
             .map(|item| Port::new(self.session.clone(), item))
             .collect())
@@ -504,7 +501,7 @@ impl NewPort {
             });
         }
 
-        let port = self.session.create_port(self.inner)?;
+        let port = api::create_port(&self.session, self.inner)?;
         Ok(Port::new(self.session, port))
     }
 
@@ -600,7 +597,7 @@ impl IntoVerified for PortRef {
         Ok(if self.verified {
             self
         } else {
-            PortRef::new_verified(session.get_port(&self.value)?.id)
+            PortRef::new_verified(api::get_port(session, &self.value)?.id)
         })
     }
 }

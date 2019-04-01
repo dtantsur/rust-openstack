@@ -32,8 +32,7 @@ use super::super::image::Image;
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::super::{Error, ErrorKind, Result, Sort};
-use super::base::V2API;
-use super::{protocol, BlockDevice, KeyPair};
+use super::{api, protocol, BlockDevice, KeyPair};
 
 /// A query to server list.
 #[derive(Clone, Debug)]
@@ -106,7 +105,7 @@ pub struct ServerCreationWaiter {
 impl Refresh for Server {
     /// Refresh the server.
     fn refresh(&mut self) -> Result<()> {
-        self.inner = self.session.get_server_by_id(&self.inner.id)?;
+        self.inner = api::get_server_by_id(&self.session, &self.inner.id)?;
         Ok(())
     }
 }
@@ -114,7 +113,7 @@ impl Refresh for Server {
 impl Server {
     /// Create a new Server object.
     pub(crate) fn new(session: Arc<Session>, inner: protocol::Server) -> Result<Server> {
-        let flavor = session.get_flavor(&inner.flavor.id)?;
+        let flavor = api::get_flavor(&session, &inner.flavor.id)?;
         Ok(Server {
             session,
             inner,
@@ -132,7 +131,7 @@ impl Server {
 
     /// Load a Server object.
     pub(crate) fn load<Id: AsRef<str>>(session: Arc<Session>, id: Id) -> Result<Server> {
-        let inner = session.get_server(id)?;
+        let inner = api::get_server(&session, id)?;
         Server::new(session, inner)
     }
 
@@ -270,7 +269,7 @@ impl Server {
 
     /// Delete the server.
     pub fn delete(self) -> Result<DeletionWaiter<Server>> {
-        self.session.delete_server(&self.inner.id)?;
+        api::delete_server(&self.session, &self.inner.id)?;
         Ok(DeletionWaiter::new(
             self,
             Duration::new(120, 0),
@@ -285,8 +284,7 @@ impl Server {
     ) -> Result<ServerStatusWaiter<'server>> {
         let mut args = HashMap::new();
         let _ = args.insert("type", reboot_type);
-        self.session
-            .server_action_with_args(&self.inner.id, "reboot", args)?;
+        api::server_action_with_args(&self.session, &self.inner.id, "reboot", args)?;
         Ok(ServerStatusWaiter {
             server: self,
             target: protocol::ServerStatus::Active,
@@ -295,8 +293,7 @@ impl Server {
 
     /// Start the server, optionally wait for it to be active.
     pub fn start<'server>(&'server mut self) -> Result<ServerStatusWaiter<'server>> {
-        self.session
-            .server_simple_action(&self.inner.id, "os-start")?;
+        api::server_simple_action(&self.session, &self.inner.id, "os-start")?;
         Ok(ServerStatusWaiter {
             server: self,
             target: protocol::ServerStatus::Active,
@@ -305,8 +302,7 @@ impl Server {
 
     /// Stop the server, optionally wait for it to be powered off.
     pub fn stop<'server>(&'server mut self) -> Result<ServerStatusWaiter<'server>> {
-        self.session
-            .server_simple_action(&self.inner.id, "os-stop")?;
+        api::server_simple_action(&self.session, &self.inner.id, "os-stop")?;
         Ok(ServerStatusWaiter {
             server: self,
             target: protocol::ServerStatus::ShutOff,
@@ -387,7 +383,7 @@ impl ServerSummary {
     /// Delete the server.
     pub fn delete(self) -> Result<()> {
         // TODO(dtantsur): implement wait
-        self.session.delete_server(&self.inner.id)
+        api::delete_server(&self.session, &self.inner.id)
     }
 }
 
@@ -560,9 +556,7 @@ impl ResourceQuery for ServerQuery {
 
     fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
         let query = self.query.with_marker_and_limit(limit, marker);
-        Ok(self
-            .session
-            .list_servers(&query)?
+        Ok(api::list_servers(&self.session, &query)?
             .into_iter()
             .map(|srv| ServerSummary {
                 session: self.session.clone(),
@@ -602,7 +596,7 @@ impl ResourceQuery for DetailedServerQuery {
 
     fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
         let query = self.inner.query.with_marker_and_limit(limit, marker);
-        let servers = self.inner.session.list_servers_detail(&query)?;
+        let servers = api::list_servers_detail(&self.inner.session, &query)?;
         let mut result = Vec::with_capacity(servers.len());
         for srv in servers {
             result.push(Server::new(self.inner.session.clone(), srv)?);
@@ -675,7 +669,7 @@ impl NewServer {
             networks: convert_networks(&self.session, self.nics)?,
         };
 
-        let server_ref = self.session.create_server(request)?;
+        let server_ref = api::create_server(&self.session, request)?;
         Ok(ServerCreationWaiter {
             server: Server::load(self.session, server_ref.id)?,
         })

@@ -27,8 +27,7 @@ use super::super::common::{
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::super::{Error, Result, Sort};
-use super::base::V2API;
-use super::protocol;
+use super::{api, protocol};
 
 /// A query to network list.
 #[derive(Clone, Debug)]
@@ -65,7 +64,7 @@ impl Network {
 
     /// Load a Network object.
     pub(crate) fn load<Id: AsRef<str>>(session: Arc<Session>, id: Id) -> Result<Network> {
-        let inner = session.get_network(id)?;
+        let inner = api::get_network(&session, id)?;
         Ok(Network::new(session, inner))
     }
 
@@ -197,7 +196,7 @@ impl Network {
 
     /// Delete the network.
     pub fn delete(self) -> Result<DeletionWaiter<Network>> {
-        self.session.delete_network(&self.inner.id)?;
+        api::delete_network(&self.session, &self.inner.id)?;
         Ok(DeletionWaiter::new(
             self,
             Duration::new(60, 0),
@@ -220,7 +219,7 @@ impl Network {
             self -> update: description external dns_domain is_default mtu name
                 port_security_enabled
         };
-        let inner = self.session.update_network(self.id(), update)?;
+        let inner = api::update_network(&self.session, self.id(), update)?;
         self.dirty.clear();
         self.inner = inner;
         Ok(())
@@ -230,7 +229,7 @@ impl Network {
 impl Refresh for Network {
     /// Refresh the network.
     fn refresh(&mut self) -> Result<()> {
-        self.inner = self.session.get_network_by_id(&self.inner.id)?;
+        self.inner = api::get_network_by_id(&self.session, &self.inner.id)?;
         self.dirty.clear();
         Ok(())
     }
@@ -326,9 +325,7 @@ impl ResourceQuery for NetworkQuery {
 
     fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
         let query = self.query.with_marker_and_limit(limit, marker);
-        Ok(self
-            .session
-            .list_networks(&query)?
+        Ok(api::list_networks(&self.session, &query)?
             .into_iter()
             .map(|item| Network::new(self.session.clone(), item))
             .collect())
@@ -346,7 +343,7 @@ impl NewNetwork {
 
     /// Request creation of a network.
     pub fn create(self) -> Result<Network> {
-        let inner = self.session.create_network(self.inner)?;
+        let inner = api::create_network(&self.session, self.inner)?;
         Ok(Network::new(self.session, inner))
     }
 
@@ -423,7 +420,7 @@ impl IntoVerified for NetworkRef {
         Ok(if self.verified {
             self
         } else {
-            NetworkRef::new_verified(session.get_network(&self.value)?.id)
+            NetworkRef::new_verified(api::get_network(session, &self.value)?.id)
         })
     }
 }

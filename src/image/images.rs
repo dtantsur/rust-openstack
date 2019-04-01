@@ -23,8 +23,7 @@ use super::super::common::{ImageRef, IntoVerified, Refresh, ResourceIterator, Re
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::super::{Error, Result, Sort};
-use super::base::V2API;
-use super::protocol;
+use super::{api, protocol};
 
 /// A query to image list.
 #[derive(Clone, Debug)]
@@ -43,9 +42,9 @@ pub struct Image {
 }
 
 impl Image {
-    /// Load a Image object.
+    /// Create an Image object.
     pub(crate) fn new<Id: AsRef<str>>(session: Arc<Session>, id: Id) -> Result<Image> {
-        let inner = session.get_image(id)?;
+        let inner = api::get_image(&session, id)?;
         Ok(Image { session, inner })
     }
 
@@ -127,7 +126,7 @@ impl Image {
 impl Refresh for Image {
     /// Refresh the image.
     fn refresh(&mut self) -> Result<()> {
-        self.inner = self.session.get_image_by_id(&self.inner.id)?;
+        self.inner = api::get_image_by_id(&self.session, &self.inner.id)?;
         Ok(())
     }
 }
@@ -234,9 +233,7 @@ impl ResourceQuery for ImageQuery {
 
     fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
         let query = self.query.with_marker_and_limit(limit, marker);
-        Ok(self
-            .session
-            .list_images(&query)?
+        Ok(api::list_images(&self.session, &query)?
             .into_iter()
             .map(|item| Image {
                 session: self.session.clone(),
@@ -271,7 +268,7 @@ impl IntoVerified for ImageRef {
         Ok(if self.verified {
             self
         } else {
-            ImageRef::new_verified(session.get_image(&self.value)?.id)
+            ImageRef::new_verified(api::get_image(session, &self.value)?.id)
         })
     }
 }

@@ -25,8 +25,7 @@ use super::super::common::{
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::super::{Error, Result};
-use super::base::V2API;
-use super::protocol;
+use super::{api, protocol};
 
 /// Structure representing a flavor.
 #[derive(Clone, Debug)]
@@ -62,7 +61,7 @@ impl Flavor {
     pub(crate) fn new(session: Arc<Session>, mut inner: protocol::Flavor) -> Result<Flavor> {
         let extra_specs = match inner.extra_specs.take() {
             Some(es) => es,
-            None => session.get_extra_specs_by_flavor_id(&inner.id)?,
+            None => api::get_extra_specs_by_flavor_id(&session, &inner.id)?,
         };
 
         Ok(Flavor {
@@ -74,7 +73,7 @@ impl Flavor {
 
     /// Load a Flavor object.
     pub(crate) fn load<Id: AsRef<str>>(session: Arc<Session>, id: Id) -> Result<Flavor> {
-        let inner = session.get_flavor(id)?;
+        let inner = api::get_flavor(&session, id)?;
         Flavor::new(session, inner)
     }
 
@@ -131,7 +130,7 @@ impl Flavor {
 impl Refresh for Flavor {
     /// Refresh the flavor.
     fn refresh(&mut self) -> Result<()> {
-        self.inner = self.session.get_flavor_by_id(&self.inner.id)?;
+        self.inner = api::get_flavor_by_id(&self.session, &self.inner.id)?;
         Ok(())
     }
 }
@@ -251,9 +250,7 @@ impl ResourceQuery for FlavorQuery {
 
     fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
         let query = self.query.with_marker_and_limit(limit, marker);
-        Ok(self
-            .session
-            .list_flavors(&query)?
+        Ok(api::list_flavors(&self.session, &query)?
             .into_iter()
             .map(|item| FlavorSummary {
                 session: self.session.clone(),
@@ -293,7 +290,7 @@ impl ResourceQuery for DetailedFlavorQuery {
 
     fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
         let query = self.inner.query.with_marker_and_limit(limit, marker);
-        let flavors = self.inner.session.list_flavors_detail(&query)?;
+        let flavors = api::list_flavors_detail(&self.inner.session, &query)?;
         let mut result = Vec::with_capacity(flavors.len());
         for item in flavors {
             result.push(Flavor::new(self.inner.session.clone(), item)?);
@@ -345,7 +342,7 @@ impl IntoVerified for FlavorRef {
         Ok(if self.verified {
             self
         } else {
-            FlavorRef::new_verified(session.get_flavor(&self.value)?.id)
+            FlavorRef::new_verified(api::get_flavor(session, &self.value)?.id)
         })
     }
 }

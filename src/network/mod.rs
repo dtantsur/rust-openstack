@@ -14,7 +14,7 @@
 
 //! Network API implementation bits.
 
-mod base;
+mod api;
 mod floatingips;
 mod networks;
 mod ports;

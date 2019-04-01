@@ -23,8 +23,7 @@ use super::super::common::{IntoVerified, KeyPairRef, Refresh, ResourceIterator, 
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::super::{Error, ErrorKind, Result};
-use super::base::V2API;
-use super::protocol;
+use super::{api, protocol};
 
 /// Structure representing a key pair.
 #[derive(Clone, Debug)]
@@ -51,13 +50,13 @@ pub struct NewKeyPair {
 impl KeyPair {
     /// Load a KeyPair object.
     pub(crate) fn new<Id: AsRef<str>>(session: Arc<Session>, id: Id) -> Result<KeyPair> {
-        let inner = session.get_keypair(id)?;
+        let inner = api::get_keypair(&session, id)?;
         Ok(KeyPair { session, inner })
     }
 
     /// Delete the key pair.
     pub fn delete(self) -> Result<()> {
-        self.session.delete_keypair(&self.inner.name)
+        api::delete_keypair(&self.session, &self.inner.name)
     }
 
     transparent_property! {
@@ -79,7 +78,7 @@ impl KeyPair {
 impl Refresh for KeyPair {
     /// Refresh the keypair.
     fn refresh(&mut self) -> Result<()> {
-        self.inner = self.session.get_keypair(&self.inner.name)?;
+        self.inner = api::get_keypair(&self.session, &self.inner.name)?;
         Ok(())
     }
 }
@@ -165,7 +164,7 @@ impl NewKeyPair {
             ));
         };
 
-        let keypair = self.session.create_keypair(self.inner)?;
+        let keypair = api::create_keypair(&self.session, self.inner)?;
         Ok(KeyPair {
             session: self.session,
             inner: keypair,
@@ -178,7 +177,7 @@ impl NewKeyPair {
     pub fn generate(mut self) -> Result<(KeyPair, String)> {
         self.inner.public_key = None;
 
-        let mut keypair = self.session.create_keypair(self.inner)?;
+        let mut keypair = api::create_keypair(&self.session, self.inner)?;
         if let Some(private_key) = keypair.private_key.take() {
             let result = KeyPair {
                 session: self.session,
@@ -246,7 +245,7 @@ impl ResourceQuery for KeyPairQuery {
 
     fn can_paginate(&self) -> Result<bool> {
         if self.can_paginate {
-            self.session.supports_keypair_pagination()
+            api::supports_keypair_pagination(&self.session)
         } else {
             Ok(false)
         }
@@ -258,9 +257,7 @@ impl ResourceQuery for KeyPairQuery {
 
     fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
         let query = self.query.with_marker_and_limit(limit, marker);
-        Ok(self
-            .session
-            .list_keypairs(&query)?
+        Ok(api::list_keypairs(&self.session, &query)?
             .into_iter()
             .map(|item| KeyPair {
                 session: self.session.clone(),
@@ -295,7 +292,7 @@ impl IntoVerified for KeyPairRef {
         Ok(if self.verified {
             self
         } else {
-            KeyPairRef::new_verified(session.get_keypair(&self.value)?.name)
+            KeyPairRef::new_verified(api::get_keypair(session, &self.value)?.name)
         })
     }
 }

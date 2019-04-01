@@ -29,8 +29,7 @@ use super::super::common::{
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::super::{Error, Result, Sort};
-use super::base::V2API;
-use super::{protocol, Network};
+use super::{api, protocol, Network};
 
 /// A query to subnet list.
 #[derive(Clone, Debug)]
@@ -69,7 +68,7 @@ impl Subnet {
 
     /// Load a Subnet object.
     pub(crate) fn load<Id: AsRef<str>>(session: Arc<Session>, id: Id) -> Result<Subnet> {
-        let inner = session.get_subnet(id)?;
+        let inner = api::get_subnet(&session, id)?;
         Ok(Subnet::new(session, inner))
     }
 
@@ -193,7 +192,7 @@ impl Subnet {
 
     /// Delete the subnet.
     pub fn delete(self) -> Result<DeletionWaiter<Subnet>> {
-        self.session.delete_subnet(&self.inner.id)?;
+        api::delete_subnet(&self.session, &self.inner.id)?;
         Ok(DeletionWaiter::new(
             self,
             Duration::new(60, 0),
@@ -216,7 +215,7 @@ impl Subnet {
         save_option_fields! {
             self -> update: description gateway_ip name
         };
-        let inner = self.session.update_subnet(self.id(), update)?;
+        let inner = api::update_subnet(&self.session, self.id(), update)?;
         self.dirty.clear();
         self.inner = inner;
         Ok(())
@@ -226,7 +225,7 @@ impl Subnet {
 impl Refresh for Subnet {
     /// Refresh the subnet.
     fn refresh(&mut self) -> Result<()> {
-        self.inner = self.session.get_subnet_by_id(&self.inner.id)?;
+        self.inner = api::get_subnet_by_id(&self.session, &self.inner.id)?;
         self.dirty.clear();
         Ok(())
     }
@@ -365,9 +364,7 @@ impl ResourceQuery for SubnetQuery {
 
     fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
         let query = self.query.with_marker_and_limit(limit, marker);
-        Ok(self
-            .session
-            .list_subnets(&query)?
+        Ok(api::list_subnets(&self.session, &query)?
             .into_iter()
             .map(|item| Subnet::new(self.session.clone(), item))
             .collect())
@@ -400,7 +397,7 @@ impl NewSubnet {
             ipnet::IpNet::V6(..) => protocol::IpVersion::V6,
         };
 
-        let subnet = self.session.create_subnet(self.inner)?;
+        let subnet = api::create_subnet(&self.session, self.inner)?;
         Ok(Subnet::new(self.session, subnet))
     }
 
@@ -494,7 +491,7 @@ impl IntoVerified for SubnetRef {
         Ok(if self.verified {
             self
         } else {
-            SubnetRef::new_verified(session.get_subnet(&self.value)?.id)
+            SubnetRef::new_verified(api::get_subnet(session, &self.value)?.id)
         })
     }
 }

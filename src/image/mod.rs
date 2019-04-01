@@ -14,7 +14,7 @@
 
 //! Image API implementation bits.
 
-mod base;
+mod api;
 mod images;
 mod protocol;
 

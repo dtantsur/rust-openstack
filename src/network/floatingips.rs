@@ -30,8 +30,7 @@ use super::super::common::{
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::super::{Error, ErrorKind, Result, Sort};
-use super::base::V2API;
-use super::{protocol, Network, Port};
+use super::{api, protocol, Network, Port};
 
 /// Structure representing a single floating IP.
 #[derive(Clone, Debug)]
@@ -73,7 +72,7 @@ impl FloatingIp {
 
     /// Load a FloatingIp object.
     pub(crate) fn load<Id: AsRef<str>>(session: Arc<Session>, id: Id) -> Result<FloatingIp> {
-        let inner = session.get_floating_ip(id)?;
+        let inner = api::get_floating_ip(&session, id)?;
         Ok(FloatingIp::new(session, inner))
     }
 
@@ -202,7 +201,7 @@ impl FloatingIp {
 
     /// Delete the floating IP.
     pub fn delete(self) -> Result<DeletionWaiter<FloatingIp>> {
-        self.session.delete_floating_ip(&self.inner.id)?;
+        api::delete_floating_ip(&self.session, &self.inner.id)?;
         Ok(DeletionWaiter::new(
             self,
             Duration::new(60, 0),
@@ -216,7 +215,7 @@ impl FloatingIp {
         save_option_fields! {
             self -> update: description fixed_ip_address
         };
-        self.inner = self.session.update_floating_ip(self.id(), update)?;
+        self.inner = api::update_floating_ip(&self.session, self.id(), update)?;
         self.dirty.clear();
         Ok(())
     }
@@ -231,7 +230,7 @@ impl FloatingIp {
             fixed_ip_address,
             port_id: Some(value),
         };
-        let mut inner = self.session.update_floating_ip(self.id(), update)?;
+        let mut inner = api::update_floating_ip(&self.session, self.id(), update)?;
 
         // NOTE(dtantsur): description is independent of port.
         let desc_changed = self.dirty.contains("description");
@@ -249,7 +248,7 @@ impl FloatingIp {
 impl Refresh for FloatingIp {
     /// Refresh the floating_ip.
     fn refresh(&mut self) -> Result<()> {
-        self.inner = self.session.get_floating_ip(&self.inner.id)?;
+        self.inner = api::get_floating_ip(&self.session, &self.inner.id)?;
         Ok(())
     }
 }
@@ -401,9 +400,7 @@ impl ResourceQuery for FloatingIpQuery {
 
     fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
         let query = self.query.with_marker_and_limit(limit, marker);
-        Ok(self
-            .session
-            .list_floating_ips(&query)?
+        Ok(api::list_floating_ips(&self.session, &query)?
             .into_iter()
             .map(|item| FloatingIp::new(self.session.clone(), item))
             .collect())
@@ -463,7 +460,7 @@ impl NewFloatingIp {
             self.inner.subnet_id = Some(subnet.into_verified(&self.session)?.into());
         }
 
-        let floating_ip = self.session.create_floating_ip(self.inner)?;
+        let floating_ip = api::create_floating_ip(&self.session, self.inner)?;
         Ok(FloatingIp::new(self.session, floating_ip))
     }
 
