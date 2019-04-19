@@ -264,7 +264,7 @@ impl From<Image> for ImageRef {
 #[cfg(feature = "image")]
 impl IntoVerified for ImageRef {
     /// Verify this reference and convert to an ID, if possible.
-    fn into_verified(self, session: &Session) -> Result<ImageRef> {
+    fn into_verified(self, session: &Arc<Session>) -> Result<ImageRef> {
         Ok(if self.verified {
             self
         } else {

@@ -14,6 +14,8 @@
 
 //! Block device mapping for the Compute API.
 
+use std::sync::Arc;
+
 use super::super::common;
 use super::super::session::Session;
 use super::super::Result;
@@ -65,7 +67,7 @@ impl BlockDeviceSource {
 }
 
 impl common::IntoVerified for BlockDeviceSource {
-    fn into_verified(self, session: &Session) -> Result<Self> {
+    fn into_verified(self, session: &Arc<Session>) -> Result<Self> {
         Ok(match self {
             BlockDeviceSource::Image(inner) => {
                 BlockDeviceSource::Image(inner.into_verified(session)?)
@@ -230,7 +232,7 @@ impl BlockDevice {
 }
 
 impl common::IntoVerified for BlockDevice {
-    fn into_verified(self, session: &Session) -> Result<Self> {
+    fn into_verified(self, session: &Arc<Session>) -> Result<Self> {
         Ok(if let Some(source) = self.source {
             BlockDevice {
                 source: Some(source.into_verified(session)?),
@@ -244,7 +246,7 @@ impl common::IntoVerified for BlockDevice {
 }
 
 impl common::IntoVerified for Vec<BlockDevice> {
-    fn into_verified(self, session: &Session) -> Result<Self> {
+    fn into_verified(self, session: &Arc<Session>) -> Result<Self> {
         let mut result = Vec::with_capacity(self.len());
         for item in self {
             result.push(item.into_verified(session)?);

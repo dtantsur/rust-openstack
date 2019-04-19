@@ -593,7 +593,7 @@ impl From<Port> for PortRef {
 #[cfg(feature = "network")]
 impl IntoVerified for PortRef {
     /// Verify this reference and convert to an ID, if possible.
-    fn into_verified(self, session: &Session) -> Result<PortRef> {
+    fn into_verified(self, session: &Arc<Session>) -> Result<PortRef> {
         Ok(if self.verified {
             self
         } else {

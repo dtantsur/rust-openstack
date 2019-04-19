@@ -338,7 +338,7 @@ impl From<FlavorSummary> for FlavorRef {
 #[cfg(feature = "compute")]
 impl IntoVerified for FlavorRef {
     /// Verify this reference and convert to an ID, if possible.
-    fn into_verified(self, session: &Session) -> Result<FlavorRef> {
+    fn into_verified(self, session: &Arc<Session>) -> Result<FlavorRef> {
         Ok(if self.verified {
             self
         } else {

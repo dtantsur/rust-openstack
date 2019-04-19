@@ -16,6 +16,7 @@
 
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::sync::Arc;
 
 use reqwest::RequestBuilder;
 use serde::Serialize;
@@ -58,7 +59,7 @@ impl ServiceType for ComputeService {
 
 /// Pick the highest API version or None if neither is supported.
 fn pick_compute_api_version(
-    session: &Session,
+    session: &Arc<Session>,
     versions: &[ApiVersion],
 ) -> Result<Option<ApiVersion>> {
     let info = session.get_service_info_ref::<ComputeService>()?;
@@ -69,7 +70,7 @@ fn pick_compute_api_version(
         .cloned())
 }
 
-fn flavor_api_version(session: &Session) -> Result<Option<ApiVersion>> {
+fn flavor_api_version(session: &Arc<Session>) -> Result<Option<ApiVersion>> {
     pick_compute_api_version(
         session,
         &[
@@ -79,14 +80,14 @@ fn flavor_api_version(session: &Session) -> Result<Option<ApiVersion>> {
     )
 }
 
-fn supports_compute_api_version(session: &Session, version: ApiVersion) -> Result<bool> {
+fn supports_compute_api_version(session: &Arc<Session>, version: ApiVersion) -> Result<bool> {
     let info = session.get_service_info_ref::<ComputeService>()?;
     Ok(info.supports_api_version(version))
 }
 
 /// Create a key pair.
 pub fn create_keypair(
-    session: &Session,
+    session: &Arc<Session>,
     request: protocol::KeyPairCreate,
 ) -> Result<protocol::KeyPair> {
     let version = if request.key_type.is_some() {
@@ -107,7 +108,7 @@ pub fn create_keypair(
 }
 
 /// Create a server.
-pub fn create_server(session: &Session, request: protocol::ServerCreate) -> Result<Ref> {
+pub fn create_server(session: &Arc<Session>, request: protocol::ServerCreate) -> Result<Ref> {
     debug!("Creating a server with {:?}", request);
     let body = protocol::ServerCreateRoot { server: request };
     let server = session
@@ -120,7 +121,7 @@ pub fn create_server(session: &Session, request: protocol::ServerCreate) -> Resu
 }
 
 /// Delete a key pair.
-pub fn delete_keypair<S: AsRef<str>>(session: &Session, name: S) -> Result<()> {
+pub fn delete_keypair<S: AsRef<str>>(session: &Arc<Session>, name: S) -> Result<()> {
     debug!("Deleting key pair {}", name.as_ref());
     session
         .delete::<ComputeService>(&["os-keypairs", name.as_ref()], None)?
@@ -130,7 +131,7 @@ pub fn delete_keypair<S: AsRef<str>>(session: &Session, name: S) -> Result<()> {
 }
 
 /// Delete a server.
-pub fn delete_server<S: AsRef<str>>(session: &Session, id: S) -> Result<()> {
+pub fn delete_server<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Result<()> {
     trace!("Deleting server {}", id.as_ref());
     session
         .delete::<ComputeService>(&["servers", id.as_ref()], None)?
@@ -141,7 +142,7 @@ pub fn delete_server<S: AsRef<str>>(session: &Session, id: S) -> Result<()> {
 
 /// Get a flavor by its ID.
 pub fn get_extra_specs_by_flavor_id<S: AsRef<str>>(
-    session: &Session,
+    session: &Arc<Session>,
     id: S,
 ) -> Result<HashMap<String, String>> {
     trace!("Get compute extra specs by ID {}", id.as_ref());
@@ -154,13 +155,16 @@ pub fn get_extra_specs_by_flavor_id<S: AsRef<str>>(
 }
 
 /// Get a flavor.
-pub fn get_flavor<S: AsRef<str>>(session: &Session, id_or_name: S) -> Result<protocol::Flavor> {
+pub fn get_flavor<S: AsRef<str>>(
+    session: &Arc<Session>,
+    id_or_name: S,
+) -> Result<protocol::Flavor> {
     let s = id_or_name.as_ref();
     get_flavor_by_id(session, s).if_not_found_then(|| get_flavor_by_name(session, s))
 }
 
 /// Get a flavor by its ID.
-pub fn get_flavor_by_id<S: AsRef<str>>(session: &Session, id: S) -> Result<protocol::Flavor> {
+pub fn get_flavor_by_id<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Result<protocol::Flavor> {
     trace!("Get compute flavor by ID {}", id.as_ref());
     let version = flavor_api_version(session)?;
     let flavor = session
@@ -172,7 +176,10 @@ pub fn get_flavor_by_id<S: AsRef<str>>(session: &Session, id: S) -> Result<proto
 }
 
 /// Get a flavor by its name.
-pub fn get_flavor_by_name<S: AsRef<str>>(session: &Session, name: S) -> Result<protocol::Flavor> {
+pub fn get_flavor_by_name<S: AsRef<str>>(
+    session: &Arc<Session>,
+    name: S,
+) -> Result<protocol::Flavor> {
     trace!("Get compute flavor by name {}", name.as_ref());
     let items = session
         .get::<ComputeService>(&["flavors"], None)?
@@ -189,7 +196,7 @@ pub fn get_flavor_by_name<S: AsRef<str>>(session: &Session, name: S) -> Result<p
 }
 
 /// Get a key pair by its name.
-pub fn get_keypair<S: AsRef<str>>(session: &Session, name: S) -> Result<protocol::KeyPair> {
+pub fn get_keypair<S: AsRef<str>>(session: &Arc<Session>, name: S) -> Result<protocol::KeyPair> {
     trace!("Get compute key pair by name {}", name.as_ref());
     let ver = pick_compute_api_version(session, &[API_VERSION_KEYPAIR_TYPE])?;
     let keypair = session
@@ -201,13 +208,16 @@ pub fn get_keypair<S: AsRef<str>>(session: &Session, name: S) -> Result<protocol
 }
 
 /// Get a server.
-pub fn get_server<S: AsRef<str>>(session: &Session, id_or_name: S) -> Result<protocol::Server> {
+pub fn get_server<S: AsRef<str>>(
+    session: &Arc<Session>,
+    id_or_name: S,
+) -> Result<protocol::Server> {
     let s = id_or_name.as_ref();
     get_server_by_id(session, s).if_not_found_then(|| get_server_by_name(session, s))
 }
 
 /// Get a server by its ID.
-pub fn get_server_by_id<S: AsRef<str>>(session: &Session, id: S) -> Result<protocol::Server> {
+pub fn get_server_by_id<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Result<protocol::Server> {
     trace!("Get compute server with ID {}", id.as_ref());
     let version = pick_compute_api_version(session, &[API_VERSION_SERVER_DESCRIPTION])?;
     let server = session
@@ -219,7 +229,10 @@ pub fn get_server_by_id<S: AsRef<str>>(session: &Session, id: S) -> Result<proto
 }
 
 /// Get a server by its name.
-pub fn get_server_by_name<S: AsRef<str>>(session: &Session, name: S) -> Result<protocol::Server> {
+pub fn get_server_by_name<S: AsRef<str>>(
+    session: &Arc<Session>,
+    name: S,
+) -> Result<protocol::Server> {
     trace!("Get compute server with name {}", name.as_ref());
     let items = session
         .get::<ComputeService>(&["servers"], None)?
@@ -238,7 +251,7 @@ pub fn get_server_by_name<S: AsRef<str>>(session: &Session, name: S) -> Result<p
 
 /// List flavors.
 pub fn list_flavors<Q: Serialize + Debug>(
-    session: &Session,
+    session: &Arc<Session>,
     query: &Q,
 ) -> Result<Vec<common::protocol::IdAndName>> {
     trace!("Listing compute flavors with {:?}", query);
@@ -253,7 +266,7 @@ pub fn list_flavors<Q: Serialize + Debug>(
 
 /// List flavors with details.
 pub fn list_flavors_detail<Q: Serialize + Debug>(
-    session: &Session,
+    session: &Arc<Session>,
     query: &Q,
 ) -> Result<Vec<protocol::Flavor>> {
     trace!("Listing compute flavors with {:?}", query);
@@ -269,7 +282,7 @@ pub fn list_flavors_detail<Q: Serialize + Debug>(
 
 /// List key pairs.
 pub fn list_keypairs<Q: Serialize + Debug>(
-    session: &Session,
+    session: &Arc<Session>,
     query: &Q,
 ) -> Result<Vec<protocol::KeyPair>> {
     trace!("Listing compute key pairs with {:?}", query);
@@ -291,7 +304,7 @@ pub fn list_keypairs<Q: Serialize + Debug>(
 
 /// List servers.
 pub fn list_servers<Q: Serialize + Debug>(
-    session: &Session,
+    session: &Arc<Session>,
     query: &Q,
 ) -> Result<Vec<common::protocol::IdAndName>> {
     trace!("Listing compute servers with {:?}", query);
@@ -306,7 +319,7 @@ pub fn list_servers<Q: Serialize + Debug>(
 
 /// List servers with details.
 pub fn list_servers_detail<Q: Serialize + Debug>(
-    session: &Session,
+    session: &Arc<Session>,
     query: &Q,
 ) -> Result<Vec<protocol::Server>> {
     trace!("Listing compute servers with {:?}", query);
@@ -322,7 +335,7 @@ pub fn list_servers_detail<Q: Serialize + Debug>(
 
 /// Run an action while providing some arguments.
 pub fn server_action_with_args<S1, S2, Q>(
-    session: &Session,
+    session: &Arc<Session>,
     id: S1,
     action: S2,
     args: Q,
@@ -353,7 +366,7 @@ where
 }
 
 /// Run an action on the server.
-pub fn server_simple_action<S1, S2>(session: &Session, id: S1, action: S2) -> Result<()>
+pub fn server_simple_action<S1, S2>(session: &Arc<Session>, id: S1, action: S2) -> Result<()>
 where
     S1: AsRef<str>,
     S2: AsRef<str>,
@@ -362,6 +375,6 @@ where
 }
 
 /// Whether key pair pagination is supported.
-pub fn supports_keypair_pagination(session: &Session) -> Result<bool> {
+pub fn supports_keypair_pagination(session: &Arc<Session>) -> Result<bool> {
     supports_compute_api_version(session, API_VERSION_KEYPAIR_PAGINATION)
 }

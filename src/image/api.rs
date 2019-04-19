@@ -15,6 +15,7 @@
 //! Foundation bits exposing the Image API.
 
 use std::fmt::Debug;
+use std::sync::Arc;
 
 use serde::Serialize;
 
@@ -39,13 +40,13 @@ impl ServiceType for ImageService {
 }
 
 /// Get an image.
-pub fn get_image<S: AsRef<str>>(session: &Session, id_or_name: S) -> Result<protocol::Image> {
+pub fn get_image<S: AsRef<str>>(session: &Arc<Session>, id_or_name: S) -> Result<protocol::Image> {
     let s = id_or_name.as_ref();
     get_image_by_id(session, s).if_not_found_then(|| get_image_by_name(session, s))
 }
 
 /// Get an image by its ID.
-pub fn get_image_by_id<S: AsRef<str>>(session: &Session, id: S) -> Result<protocol::Image> {
+pub fn get_image_by_id<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Result<protocol::Image> {
     trace!("Fetching image {}", id.as_ref());
     let image = session
         .get::<ImageService>(&["images", id.as_ref()], None)?
@@ -55,7 +56,10 @@ pub fn get_image_by_id<S: AsRef<str>>(session: &Session, id: S) -> Result<protoc
 }
 
 /// Get an image by its name.
-pub fn get_image_by_name<S: AsRef<str>>(session: &Session, name: S) -> Result<protocol::Image> {
+pub fn get_image_by_name<S: AsRef<str>>(
+    session: &Arc<Session>,
+    name: S,
+) -> Result<protocol::Image> {
     trace!("Get image by name {}", name.as_ref());
     let items = session
         .get::<ImageService>(&["images"], None)?
@@ -73,7 +77,7 @@ pub fn get_image_by_name<S: AsRef<str>>(session: &Session, name: S) -> Result<pr
 
 /// List images.
 pub fn list_images<Q: Serialize + Debug>(
-    session: &Session,
+    session: &Arc<Session>,
     query: &Q,
 ) -> Result<Vec<protocol::Image>> {
     trace!("Listing images with {:?}", query);
