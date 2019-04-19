@@ -20,7 +20,7 @@ use std::sync::Arc;
 use serde::Serialize;
 
 use super::super::common::ApiVersion;
-use super::super::session::{RequestBuilderExt, ServiceType, Session};
+use super::super::session::{ServiceType, Session};
 use super::super::utils::{self, ResultExt};
 use super::super::Result;
 use super::protocol;
@@ -48,9 +48,8 @@ pub fn get_image<S: AsRef<str>>(session: &Arc<Session>, id_or_name: S) -> Result
 /// Get an image by its ID.
 pub fn get_image_by_id<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Result<protocol::Image> {
     trace!("Fetching image {}", id.as_ref());
-    let image = session
-        .get::<ImageService>(&["images", id.as_ref()], None)?
-        .receive_json::<protocol::Image>()?;
+    let image =
+        session.get_json::<ImageService, protocol::Image>(&["images", id.as_ref()], None)?;
     trace!("Received {:?}", image);
     Ok(image)
 }
@@ -62,9 +61,11 @@ pub fn get_image_by_name<S: AsRef<str>>(
 ) -> Result<protocol::Image> {
     trace!("Get image by name {}", name.as_ref());
     let items = session
-        .get::<ImageService>(&["images"], None)?
-        .query(&[("name", name.as_ref())])
-        .receive_json::<protocol::ImagesRoot>()?
+        .get_json_query::<ImageService, _, protocol::ImagesRoot>(
+            &["images"],
+            &[("name", name.as_ref())],
+            None,
+        )?
         .images;
     let result = utils::one(
         items,
@@ -82,9 +83,7 @@ pub fn list_images<Q: Serialize + Debug>(
 ) -> Result<Vec<protocol::Image>> {
     trace!("Listing images with {:?}", query);
     let result = session
-        .get::<ImageService>(&["images"], None)?
-        .query(query)
-        .receive_json::<protocol::ImagesRoot>()?
+        .get_json_query::<ImageService, _, protocol::ImagesRoot>(&["images"], query, None)?
         .images;
     trace!("Received images: {:?}", result);
     Ok(result)

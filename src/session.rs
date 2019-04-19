@@ -19,6 +19,7 @@ use std::collections::HashMap;
 
 use reqwest::{Method, RequestBuilder, Response, Url};
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 
 use super::auth::AuthMethod;
 use super::common::protocol::ServiceInfo;
@@ -241,6 +242,27 @@ impl Session {
         api_version: Option<ApiVersion>,
     ) -> Result<RequestBuilder> {
         self.request::<Srv>(Method::GET, path, api_version)
+    }
+
+    /// Fetch a JSON using the GET request.
+    pub fn get_json<Srv: ServiceType, T: DeserializeOwned>(
+        &self,
+        path: &[&str],
+        api_version: Option<ApiVersion>,
+    ) -> Result<T> {
+        self.get::<Srv>(path, api_version)?.receive_json::<T>()
+    }
+
+    /// Fetch a JSON using the GET request with a query.
+    pub fn get_json_query<Srv: ServiceType, Q: Serialize, T: DeserializeOwned>(
+        &self,
+        path: &[&str],
+        query: Q,
+        api_version: Option<ApiVersion>,
+    ) -> Result<T> {
+        self.get::<Srv>(path, api_version)?
+            .query(&query)
+            .receive_json::<T>()
     }
 
     /// Start a POST request.

@@ -147,8 +147,10 @@ pub fn get_extra_specs_by_flavor_id<S: AsRef<str>>(
 ) -> Result<HashMap<String, String>> {
     trace!("Get compute extra specs by ID {}", id.as_ref());
     let extra_specs = session
-        .get::<ComputeService>(&["flavors", id.as_ref(), "os-extra_specs"], None)?
-        .receive_json::<protocol::ExtraSpecsRoot>()?
+        .get_json::<ComputeService, protocol::ExtraSpecsRoot>(
+            &["flavors", id.as_ref(), "os-extra_specs"],
+            None,
+        )?
         .extra_specs;
     trace!("Received {:?}", extra_specs);
     Ok(extra_specs)
@@ -168,8 +170,7 @@ pub fn get_flavor_by_id<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Result<
     trace!("Get compute flavor by ID {}", id.as_ref());
     let version = flavor_api_version(session)?;
     let flavor = session
-        .get::<ComputeService>(&["flavors", id.as_ref()], version)?
-        .receive_json::<protocol::FlavorRoot>()?
+        .get_json::<ComputeService, protocol::FlavorRoot>(&["flavors", id.as_ref()], version)?
         .flavor;
     trace!("Received {:?}", flavor);
     Ok(flavor)
@@ -182,8 +183,7 @@ pub fn get_flavor_by_name<S: AsRef<str>>(
 ) -> Result<protocol::Flavor> {
     trace!("Get compute flavor by name {}", name.as_ref());
     let items = session
-        .get::<ComputeService>(&["flavors"], None)?
-        .receive_json::<protocol::FlavorsRoot>()?
+        .get_json::<ComputeService, protocol::FlavorsRoot>(&["flavors"], None)?
         .flavors
         .into_iter()
         .filter(|item| item.name == name.as_ref());
@@ -200,8 +200,7 @@ pub fn get_keypair<S: AsRef<str>>(session: &Arc<Session>, name: S) -> Result<pro
     trace!("Get compute key pair by name {}", name.as_ref());
     let ver = pick_compute_api_version(session, &[API_VERSION_KEYPAIR_TYPE])?;
     let keypair = session
-        .get::<ComputeService>(&["os-keypairs", name.as_ref()], ver)?
-        .receive_json::<protocol::KeyPairRoot>()?
+        .get_json::<ComputeService, protocol::KeyPairRoot>(&["os-keypairs", name.as_ref()], ver)?
         .keypair;
     trace!("Received {:?}", keypair);
     Ok(keypair)
@@ -221,8 +220,7 @@ pub fn get_server_by_id<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Result<
     trace!("Get compute server with ID {}", id.as_ref());
     let version = pick_compute_api_version(session, &[API_VERSION_SERVER_DESCRIPTION])?;
     let server = session
-        .get::<ComputeService>(&["servers", id.as_ref()], version)?
-        .receive_json::<protocol::ServerRoot>()?
+        .get_json::<ComputeService, protocol::ServerRoot>(&["servers", id.as_ref()], version)?
         .server;
     trace!("Received {:?}", server);
     Ok(server)
@@ -235,9 +233,11 @@ pub fn get_server_by_name<S: AsRef<str>>(
 ) -> Result<protocol::Server> {
     trace!("Get compute server with name {}", name.as_ref());
     let items = session
-        .get::<ComputeService>(&["servers"], None)?
-        .query(&[("name", name.as_ref())])
-        .receive_json::<protocol::ServersRoot>()?
+        .get_json_query::<ComputeService, _, protocol::ServersRoot>(
+            &["servers"],
+            &[("name", name.as_ref())],
+            None,
+        )?
         .servers
         .into_iter()
         .filter(|item| item.name == name.as_ref());
@@ -256,9 +256,7 @@ pub fn list_flavors<Q: Serialize + Debug>(
 ) -> Result<Vec<common::protocol::IdAndName>> {
     trace!("Listing compute flavors with {:?}", query);
     let result = session
-        .get::<ComputeService>(&["flavors"], None)?
-        .query(query)
-        .receive_json::<protocol::FlavorsRoot>()?
+        .get_json_query::<ComputeService, _, protocol::FlavorsRoot>(&["flavors"], query, None)?
         .flavors;
     trace!("Received flavors: {:?}", result);
     Ok(result)
@@ -272,9 +270,11 @@ pub fn list_flavors_detail<Q: Serialize + Debug>(
     trace!("Listing compute flavors with {:?}", query);
     let version = pick_compute_api_version(session, &[API_VERSION_FLAVOR_EXTRA_SPECS])?;
     let result = session
-        .get::<ComputeService>(&["flavors", "detail"], version)?
-        .query(query)
-        .receive_json::<protocol::FlavorsDetailRoot>()?
+        .get_json_query::<ComputeService, _, protocol::FlavorsDetailRoot>(
+            &["flavors", "detail"],
+            query,
+            version,
+        )?
         .flavors;
     trace!("Received flavors: {:?}", result);
     Ok(result)
@@ -291,9 +291,7 @@ pub fn list_keypairs<Q: Serialize + Debug>(
         &[API_VERSION_KEYPAIR_TYPE, API_VERSION_KEYPAIR_PAGINATION],
     )?;
     let result = session
-        .get::<ComputeService>(&["os-keypairs"], ver)?
-        .query(query)
-        .receive_json::<protocol::KeyPairsRoot>()?
+        .get_json_query::<ComputeService, _, protocol::KeyPairsRoot>(&["os-keypairs"], query, ver)?
         .keypairs
         .into_iter()
         .map(|item| item.keypair)
@@ -309,9 +307,7 @@ pub fn list_servers<Q: Serialize + Debug>(
 ) -> Result<Vec<common::protocol::IdAndName>> {
     trace!("Listing compute servers with {:?}", query);
     let result = session
-        .get::<ComputeService>(&["servers"], None)?
-        .query(query)
-        .receive_json::<protocol::ServersRoot>()?
+        .get_json_query::<ComputeService, _, protocol::ServersRoot>(&["servers"], query, None)?
         .servers;
     trace!("Received servers: {:?}", result);
     Ok(result)
@@ -325,9 +321,11 @@ pub fn list_servers_detail<Q: Serialize + Debug>(
     trace!("Listing compute servers with {:?}", query);
     let version = pick_compute_api_version(session, &[API_VERSION_SERVER_DESCRIPTION])?;
     let result = session
-        .get::<ComputeService>(&["servers", "detail"], version)?
-        .query(query)
-        .receive_json::<protocol::ServersDetailRoot>()?
+        .get_json_query::<ComputeService, _, protocol::ServersDetailRoot>(
+            &["servers", "detail"],
+            query,
+            version,
+        )?
         .servers;
     trace!("Received servers: {:?}", result);
     Ok(result)
