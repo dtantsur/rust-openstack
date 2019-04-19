@@ -19,7 +19,6 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 
 use chrono::{Duration, Local};
-use reqwest::header::CONTENT_TYPE;
 use reqwest::{Client, IntoUrl, Method, RequestBuilder, Response, Url};
 
 use super::super::identity::{catalog, protocol};
@@ -240,7 +239,6 @@ impl Password {
                     .client
                     .post(&self.token_endpoint)
                     .json(&self.body)
-                    .header(CONTENT_TYPE, "application/json")
                     .send_checked()?;
                 self.token_from_response(resp)
             },
