@@ -265,13 +265,28 @@ impl Session {
             .receive_json::<T>()
     }
 
-    /// Start a POST request.
-    pub fn post<Srv: ServiceType>(
+    /// POST a JSON object.
+    pub fn post<Srv: ServiceType, T: Serialize>(
         &self,
         path: &[&str],
+        body: T,
         api_version: Option<ApiVersion>,
-    ) -> Result<RequestBuilder> {
-        self.request::<Srv>(Method::POST, path, api_version)
+    ) -> Result<Response> {
+        self.request::<Srv>(Method::POST, path, api_version)?
+            .json(&body)
+            .send_checked()
+    }
+
+    /// POST a JSON object and receive a JSON back.
+    pub fn post_json<Srv: ServiceType, T: Serialize, R: DeserializeOwned>(
+        &self,
+        path: &[&str],
+        body: T,
+        api_version: Option<ApiVersion>,
+    ) -> Result<R> {
+        self.request::<Srv>(Method::POST, path, api_version)?
+            .json(&body)
+            .receive_json()
     }
 
     /// Start a PUT request.
@@ -281,6 +296,18 @@ impl Session {
         api_version: Option<ApiVersion>,
     ) -> Result<RequestBuilder> {
         self.request::<Srv>(Method::PUT, path, api_version)
+    }
+
+    /// PUT a JSON object and receive a JSON back.
+    pub fn put_json<Srv: ServiceType, T: Serialize, R: DeserializeOwned>(
+        &self,
+        path: &[&str],
+        body: T,
+        api_version: Option<ApiVersion>,
+    ) -> Result<R> {
+        self.put::<Srv>(path, api_version)?
+            .json(&body)
+            .receive_json::<R>()
     }
 
     /// Start a DELETE request.

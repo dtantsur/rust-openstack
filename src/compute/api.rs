@@ -99,9 +99,7 @@ pub fn create_keypair(
     debug!("Creating a key pair with {:?}", request);
     let body = protocol::KeyPairCreateRoot { keypair: request };
     let keypair = session
-        .post::<ComputeService>(&["os-keypairs"], version)?
-        .json(&body)
-        .receive_json::<protocol::KeyPairRoot>()?
+        .post_json::<ComputeService, _, protocol::KeyPairRoot>(&["os-keypairs"], body, version)?
         .keypair;
     debug!("Created key pair {:?}", keypair);
     Ok(keypair)
@@ -112,9 +110,7 @@ pub fn create_server(session: &Arc<Session>, request: protocol::ServerCreate) ->
     debug!("Creating a server with {:?}", request);
     let body = protocol::ServerCreateRoot { server: request };
     let server = session
-        .post::<ComputeService>(&["servers"], None)?
-        .json(&body)
-        .receive_json::<protocol::CreatedServerRoot>()?
+        .post_json::<ComputeService, _, protocol::CreatedServerRoot>(&["servers"], body, None)?
         .server;
     trace!("Requested creation of server {:?}", server);
     Ok(server)
@@ -351,10 +347,7 @@ where
     );
     let mut body = HashMap::new();
     let _ = body.insert(action.as_ref(), args);
-    session
-        .post::<ComputeService>(&["servers", id.as_ref(), "action"], None)?
-        .json(&body)
-        .commit()?;
+    let _ = session.post::<ComputeService, _>(&["servers", id.as_ref(), "action"], body, None)?;
     debug!(
         "Successfully ran {} on server {}",
         action.as_ref(),

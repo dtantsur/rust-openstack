@@ -49,9 +49,7 @@ pub fn create_floating_ip(
         floatingip: request,
     };
     let floating_ip = session
-        .post::<NetworkService>(&["floatingips"], None)?
-        .json(&body)
-        .receive_json::<protocol::FloatingIpRoot>()?
+        .post_json::<NetworkService, _, protocol::FloatingIpRoot>(&["floatingips"], body, None)?
         .floatingip;
     debug!("Created floating IP {:?}", floating_ip);
     Ok(floating_ip)
@@ -65,9 +63,7 @@ pub fn create_network(
     debug!("Creating a new network with {:?}", request);
     let body = protocol::NetworkRoot { network: request };
     let network = session
-        .post::<NetworkService>(&["networks"], None)?
-        .json(&body)
-        .receive_json::<protocol::NetworkRoot>()?
+        .post_json::<NetworkService, _, protocol::NetworkRoot>(&["networks"], body, None)?
         .network;
     debug!("Created network {:?}", network);
     Ok(network)
@@ -78,9 +74,7 @@ pub fn create_port(session: &Arc<Session>, request: protocol::Port) -> Result<pr
     debug!("Creating a new port with {:?}", request);
     let body = protocol::PortRoot { port: request };
     let port = session
-        .post::<NetworkService>(&["ports"], None)?
-        .json(&body)
-        .receive_json::<protocol::PortRoot>()?
+        .post_json::<NetworkService, _, protocol::PortRoot>(&["ports"], body, None)?
         .port;
     debug!("Created port {:?}", port);
     Ok(port)
@@ -94,9 +88,7 @@ pub fn create_subnet(
     debug!("Creating a new subnet with {:?}", request);
     let body = protocol::SubnetRoot { subnet: request };
     let subnet = session
-        .post::<NetworkService>(&["subnets"], None)?
-        .json(&body)
-        .receive_json::<protocol::SubnetRoot>()?
+        .post_json::<NetworkService, _, protocol::SubnetRoot>(&["subnets"], body, None)?
         .subnet;
     debug!("Created subnet {:?}", subnet);
     Ok(subnet)
@@ -340,9 +332,11 @@ pub fn update_floating_ip<S: AsRef<str>>(
     debug!("Updating floatingIP {} with {:?}", id.as_ref(), update);
     let body = protocol::FloatingIpUpdateRoot { floatingip: update };
     let floating_ip = session
-        .put::<NetworkService>(&["floatingips", id.as_ref()], None)?
-        .json(&body)
-        .receive_json::<protocol::FloatingIpRoot>()?
+        .put_json::<NetworkService, _, protocol::FloatingIpRoot>(
+            &["floatingips", id.as_ref()],
+            body,
+            None,
+        )?
         .floatingip;
     debug!("Updated floating IP {:?}", floating_ip);
     Ok(floating_ip)
@@ -357,9 +351,11 @@ pub fn update_network<S: AsRef<str>>(
     debug!("Updating network {} with {:?}", id.as_ref(), update);
     let body = protocol::NetworkUpdateRoot { network: update };
     let network = session
-        .put::<NetworkService>(&["networks", id.as_ref()], None)?
-        .json(&body)
-        .receive_json::<protocol::NetworkRoot>()?
+        .put_json::<NetworkService, _, protocol::NetworkRoot>(
+            &["networks", id.as_ref()],
+            body,
+            None,
+        )?
         .network;
     debug!("Updated network {:?}", network);
     Ok(network)
@@ -374,9 +370,7 @@ pub fn update_port<S: AsRef<str>>(
     debug!("Updating port {} with {:?}", id.as_ref(), update);
     let body = protocol::PortUpdateRoot { port: update };
     let port = session
-        .put::<NetworkService>(&["ports", id.as_ref()], None)?
-        .json(&body)
-        .receive_json::<protocol::PortRoot>()?
+        .put_json::<NetworkService, _, protocol::PortRoot>(&["ports", id.as_ref()], body, None)?
         .port;
     debug!("Updated port {:?}", port);
     Ok(port)
@@ -391,9 +385,7 @@ pub fn update_subnet<S: AsRef<str>>(
     debug!("Updating subnet {} with {:?}", id.as_ref(), update);
     let body = protocol::SubnetUpdateRoot { subnet: update };
     let subnet = session
-        .put::<NetworkService>(&["subnets", id.as_ref()], None)?
-        .json(&body)
-        .receive_json::<protocol::SubnetRoot>()?
+        .put_json::<NetworkService, _, protocol::SubnetRoot>(&["subnets", id.as_ref()], body, None)?
         .subnet;
     debug!("Updated subnet {:?}", subnet);
     Ok(subnet)
