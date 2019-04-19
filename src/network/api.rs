@@ -20,7 +20,7 @@ use std::sync::Arc;
 use serde::Serialize;
 
 use super::super::common::ApiVersion;
-use super::super::session::{RequestBuilderExt, ServiceType, Session};
+use super::super::session::{ServiceType, Session};
 use super::super::utils::{self, ResultExt};
 use super::super::Result;
 use super::protocol;
@@ -97,9 +97,7 @@ pub fn create_subnet(
 /// Delete a floating IP.
 pub fn delete_floating_ip<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Result<()> {
     debug!("Deleting floating IP {}", id.as_ref());
-    session
-        .delete::<NetworkService>(&["floatingips", id.as_ref()], None)?
-        .commit()?;
+    let _ = session.delete::<NetworkService>(&["floatingips", id.as_ref()], None)?;
     debug!("Floating IP {} was deleted", id.as_ref());
     Ok(())
 }
@@ -107,9 +105,7 @@ pub fn delete_floating_ip<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Resul
 /// Delete a network.
 pub fn delete_network<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Result<()> {
     debug!("Deleting network {}", id.as_ref());
-    session
-        .delete::<NetworkService>(&["networks", id.as_ref()], None)?
-        .commit()?;
+    let _ = session.delete::<NetworkService>(&["networks", id.as_ref()], None)?;
     debug!("Network {} was deleted", id.as_ref());
     Ok(())
 }
@@ -117,9 +113,7 @@ pub fn delete_network<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Result<()
 /// Delete a port.
 pub fn delete_port<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Result<()> {
     debug!("Deleting port {}", id.as_ref());
-    session
-        .delete::<NetworkService>(&["ports", id.as_ref()], None)?
-        .commit()?;
+    let _ = session.delete::<NetworkService>(&["ports", id.as_ref()], None)?;
     debug!("Port {} was deleted", id.as_ref());
     Ok(())
 }
@@ -127,9 +121,7 @@ pub fn delete_port<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Result<()> {
 /// Delete a subnet.
 pub fn delete_subnet<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Result<()> {
     debug!("Deleting subnet {}", id.as_ref());
-    session
-        .delete::<NetworkService>(&["subnets", id.as_ref()], None)?
-        .commit()?;
+    let _ = session.delete::<NetworkService>(&["subnets", id.as_ref()], None)?;
     debug!("Subnet {} was deleted", id.as_ref());
     Ok(())
 }

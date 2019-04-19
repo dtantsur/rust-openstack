@@ -24,7 +24,7 @@ use serde_json;
 
 use super::super::common::protocol::Ref;
 use super::super::common::{self, ApiVersion};
-use super::super::session::{RequestBuilderExt, ServiceType, Session};
+use super::super::session::{ServiceType, Session};
 use super::super::utils::{self, ResultExt};
 use super::super::Result;
 use super::protocol;
@@ -119,9 +119,7 @@ pub fn create_server(session: &Arc<Session>, request: protocol::ServerCreate) ->
 /// Delete a key pair.
 pub fn delete_keypair<S: AsRef<str>>(session: &Arc<Session>, name: S) -> Result<()> {
     debug!("Deleting key pair {}", name.as_ref());
-    session
-        .delete::<ComputeService>(&["os-keypairs", name.as_ref()], None)?
-        .commit()?;
+    let _ = session.delete::<ComputeService>(&["os-keypairs", name.as_ref()], None)?;
     debug!("Key pair {} was deleted", name.as_ref());
     Ok(())
 }
@@ -129,9 +127,7 @@ pub fn delete_keypair<S: AsRef<str>>(session: &Arc<Session>, name: S) -> Result<
 /// Delete a server.
 pub fn delete_server<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Result<()> {
     trace!("Deleting server {}", id.as_ref());
-    session
-        .delete::<ComputeService>(&["servers", id.as_ref()], None)?
-        .commit()?;
+    let _ = session.delete::<ComputeService>(&["servers", id.as_ref()], None)?;
     debug!("Successfully requested deletion of server {}", id.as_ref());
     Ok(())
 }

@@ -289,13 +289,16 @@ impl Session {
             .receive_json()
     }
 
-    /// Start a PUT request.
-    pub fn put<Srv: ServiceType>(
+    /// Issue a PUT request.
+    pub fn put<Srv: ServiceType, T: Serialize>(
         &self,
         path: &[&str],
+        body: T,
         api_version: Option<ApiVersion>,
-    ) -> Result<RequestBuilder> {
-        self.request::<Srv>(Method::PUT, path, api_version)
+    ) -> Result<Response> {
+        self.request::<Srv>(Method::PUT, path, api_version)?
+            .json(&body)
+            .send_checked()
     }
 
     /// PUT a JSON object and receive a JSON back.
@@ -305,18 +308,19 @@ impl Session {
         body: T,
         api_version: Option<ApiVersion>,
     ) -> Result<R> {
-        self.put::<Srv>(path, api_version)?
+        self.request::<Srv>(Method::PUT, path, api_version)?
             .json(&body)
             .receive_json::<R>()
     }
 
-    /// Start a DELETE request.
+    /// Issue a DELETE request.
     pub fn delete<Srv: ServiceType>(
         &self,
         path: &[&str],
         api_version: Option<ApiVersion>,
-    ) -> Result<RequestBuilder> {
-        self.request::<Srv>(Method::DELETE, path, api_version)
+    ) -> Result<Response> {
+        self.request::<Srv>(Method::DELETE, path, api_version)?
+            .send_checked()
     }
 
     fn ensure_service_info<Srv>(&self) -> Result<()>
