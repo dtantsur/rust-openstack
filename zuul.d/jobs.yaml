@@ -15,6 +15,15 @@
     run: playbooks/rust-openstack-acceptance/run.yaml
 
 - job:
+    name: rust-openstack-acceptance-stein
+    parent: rust-openstack-acceptance
+    description: |
+      Run rust-openstack acceptance test on stein branch
+    vars:
+      global_env:
+        OS_BRANCH: stable/stein
+
+- job:
     name: rust-openstack-acceptance-rocky
     parent: rust-openstack-acceptance
     description: |
