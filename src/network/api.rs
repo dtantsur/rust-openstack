@@ -15,7 +15,6 @@
 //! Foundation bits exposing the Network API.
 
 use std::fmt::Debug;
-use std::sync::Arc;
 
 use serde::Serialize;
 
@@ -40,7 +39,7 @@ impl ServiceType for NetworkService {
 }
 
 /// Create a floating IP.
-pub fn create_floating_ip(session: &Arc<Session>, request: FloatingIp) -> Result<FloatingIp> {
+pub fn create_floating_ip(session: &Session, request: FloatingIp) -> Result<FloatingIp> {
     debug!("Creating a new floating IP with {:?}", request);
     let body = FloatingIpRoot {
         floatingip: request,
@@ -53,7 +52,7 @@ pub fn create_floating_ip(session: &Arc<Session>, request: FloatingIp) -> Result
 }
 
 /// Create a network.
-pub fn create_network(session: &Arc<Session>, request: Network) -> Result<Network> {
+pub fn create_network(session: &Session, request: Network) -> Result<Network> {
     debug!("Creating a new network with {:?}", request);
     let body = NetworkRoot { network: request };
     let network = session
@@ -64,7 +63,7 @@ pub fn create_network(session: &Arc<Session>, request: Network) -> Result<Networ
 }
 
 /// Create a port.
-pub fn create_port(session: &Arc<Session>, request: Port) -> Result<Port> {
+pub fn create_port(session: &Session, request: Port) -> Result<Port> {
     debug!("Creating a new port with {:?}", request);
     let body = PortRoot { port: request };
     let port = session
@@ -75,7 +74,7 @@ pub fn create_port(session: &Arc<Session>, request: Port) -> Result<Port> {
 }
 
 /// Create a subnet.
-pub fn create_subnet(session: &Arc<Session>, request: Subnet) -> Result<Subnet> {
+pub fn create_subnet(session: &Session, request: Subnet) -> Result<Subnet> {
     debug!("Creating a new subnet with {:?}", request);
     let body = SubnetRoot { subnet: request };
     let subnet = session
@@ -86,7 +85,7 @@ pub fn create_subnet(session: &Arc<Session>, request: Subnet) -> Result<Subnet> 
 }
 
 /// Delete a floating IP.
-pub fn delete_floating_ip<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Result<()> {
+pub fn delete_floating_ip<S: AsRef<str>>(session: &Session, id: S) -> Result<()> {
     debug!("Deleting floating IP {}", id.as_ref());
     let _ = session.delete::<NetworkService>(&["floatingips", id.as_ref()], None)?;
     debug!("Floating IP {} was deleted", id.as_ref());
@@ -94,7 +93,7 @@ pub fn delete_floating_ip<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Resul
 }
 
 /// Delete a network.
-pub fn delete_network<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Result<()> {
+pub fn delete_network<S: AsRef<str>>(session: &Session, id: S) -> Result<()> {
     debug!("Deleting network {}", id.as_ref());
     let _ = session.delete::<NetworkService>(&["networks", id.as_ref()], None)?;
     debug!("Network {} was deleted", id.as_ref());
@@ -102,7 +101,7 @@ pub fn delete_network<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Result<()
 }
 
 /// Delete a port.
-pub fn delete_port<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Result<()> {
+pub fn delete_port<S: AsRef<str>>(session: &Session, id: S) -> Result<()> {
     debug!("Deleting port {}", id.as_ref());
     let _ = session.delete::<NetworkService>(&["ports", id.as_ref()], None)?;
     debug!("Port {} was deleted", id.as_ref());
@@ -110,7 +109,7 @@ pub fn delete_port<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Result<()> {
 }
 
 /// Delete a subnet.
-pub fn delete_subnet<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Result<()> {
+pub fn delete_subnet<S: AsRef<str>>(session: &Session, id: S) -> Result<()> {
     debug!("Deleting subnet {}", id.as_ref());
     let _ = session.delete::<NetworkService>(&["subnets", id.as_ref()], None)?;
     debug!("Subnet {} was deleted", id.as_ref());
@@ -118,7 +117,7 @@ pub fn delete_subnet<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Result<()>
 }
 
 /// Get a floating IP.
-pub fn get_floating_ip<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Result<FloatingIp> {
+pub fn get_floating_ip<S: AsRef<str>>(session: &Session, id: S) -> Result<FloatingIp> {
     trace!("Get floating IP by ID {}", id.as_ref());
     let floatingip = session
         .get_json::<NetworkService, FloatingIpRoot>(&["floatingips", id.as_ref()], None)?
@@ -128,13 +127,13 @@ pub fn get_floating_ip<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Result<F
 }
 
 /// Get a network.
-pub fn get_network<S: AsRef<str>>(session: &Arc<Session>, id_or_name: S) -> Result<Network> {
+pub fn get_network<S: AsRef<str>>(session: &Session, id_or_name: S) -> Result<Network> {
     let s = id_or_name.as_ref();
     get_network_by_id(session, s).if_not_found_then(|| get_network_by_name(session, s))
 }
 
 /// Get a network by its ID.
-pub fn get_network_by_id<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Result<Network> {
+pub fn get_network_by_id<S: AsRef<str>>(session: &Session, id: S) -> Result<Network> {
     trace!("Get network by ID {}", id.as_ref());
     let network = session
         .get_json::<NetworkService, NetworkRoot>(&["networks", id.as_ref()], None)?
@@ -144,7 +143,7 @@ pub fn get_network_by_id<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Result
 }
 
 /// Get a network by its name.
-pub fn get_network_by_name<S: AsRef<str>>(session: &Arc<Session>, name: S) -> Result<Network> {
+pub fn get_network_by_name<S: AsRef<str>>(session: &Session, name: S) -> Result<Network> {
     trace!("Get network by name {}", name.as_ref());
     let items = session
         .get_json_query::<NetworkService, _, NetworksRoot>(
@@ -163,13 +162,13 @@ pub fn get_network_by_name<S: AsRef<str>>(session: &Arc<Session>, name: S) -> Re
 }
 
 /// Get a port.
-pub fn get_port<S: AsRef<str>>(session: &Arc<Session>, id_or_name: S) -> Result<Port> {
+pub fn get_port<S: AsRef<str>>(session: &Session, id_or_name: S) -> Result<Port> {
     let s = id_or_name.as_ref();
     get_port_by_id(session, s).if_not_found_then(|| get_port_by_name(session, s))
 }
 
 /// Get a port by its ID.
-pub fn get_port_by_id<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Result<Port> {
+pub fn get_port_by_id<S: AsRef<str>>(session: &Session, id: S) -> Result<Port> {
     trace!("Get port by ID {}", id.as_ref());
     let port = session
         .get_json::<NetworkService, PortRoot>(&["ports", id.as_ref()], None)?
@@ -179,7 +178,7 @@ pub fn get_port_by_id<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Result<Po
 }
 
 /// Get a port by its name.
-pub fn get_port_by_name<S: AsRef<str>>(session: &Arc<Session>, name: S) -> Result<Port> {
+pub fn get_port_by_name<S: AsRef<str>>(session: &Session, name: S) -> Result<Port> {
     trace!("Get port by name {}", name.as_ref());
     let items = session
         .get_json_query::<NetworkService, _, PortsRoot>(
@@ -198,13 +197,13 @@ pub fn get_port_by_name<S: AsRef<str>>(session: &Arc<Session>, name: S) -> Resul
 }
 
 /// Get a subnet.
-pub fn get_subnet<S: AsRef<str>>(session: &Arc<Session>, id_or_name: S) -> Result<Subnet> {
+pub fn get_subnet<S: AsRef<str>>(session: &Session, id_or_name: S) -> Result<Subnet> {
     let s = id_or_name.as_ref();
     get_subnet_by_id(session, s).if_not_found_then(|| get_subnet_by_name(session, s))
 }
 
 /// Get a subnet by its ID.
-pub fn get_subnet_by_id<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Result<Subnet> {
+pub fn get_subnet_by_id<S: AsRef<str>>(session: &Session, id: S) -> Result<Subnet> {
     trace!("Get subnet by ID {}", id.as_ref());
     let subnet = session
         .get_json::<NetworkService, SubnetRoot>(&["subnets", id.as_ref()], None)?
@@ -214,7 +213,7 @@ pub fn get_subnet_by_id<S: AsRef<str>>(session: &Arc<Session>, id: S) -> Result<
 }
 
 /// Get a subnet by its name.
-pub fn get_subnet_by_name<S: AsRef<str>>(session: &Arc<Session>, name: S) -> Result<Subnet> {
+pub fn get_subnet_by_name<S: AsRef<str>>(session: &Session, name: S) -> Result<Subnet> {
     trace!("Get subnet by name {}", name.as_ref());
     let items = session
         .get_json_query::<NetworkService, _, SubnetsRoot>(
@@ -234,7 +233,7 @@ pub fn get_subnet_by_name<S: AsRef<str>>(session: &Arc<Session>, name: S) -> Res
 
 /// List floating IPs.
 pub fn list_floating_ips<Q: Serialize + Debug>(
-    session: &Arc<Session>,
+    session: &Session,
     query: &Q,
 ) -> Result<Vec<FloatingIp>> {
     trace!("Listing floating IPs with {:?}", query);
@@ -246,10 +245,7 @@ pub fn list_floating_ips<Q: Serialize + Debug>(
 }
 
 /// List networks.
-pub fn list_networks<Q: Serialize + Debug>(
-    session: &Arc<Session>,
-    query: &Q,
-) -> Result<Vec<Network>> {
+pub fn list_networks<Q: Serialize + Debug>(session: &Session, query: &Q) -> Result<Vec<Network>> {
     trace!("Listing networks with {:?}", query);
     let result = session
         .get_json_query::<NetworkService, _, NetworksRoot>(&["networks"], query, None)?
@@ -259,7 +255,7 @@ pub fn list_networks<Q: Serialize + Debug>(
 }
 
 /// List ports.
-pub fn list_ports<Q: Serialize + Debug>(session: &Arc<Session>, query: &Q) -> Result<Vec<Port>> {
+pub fn list_ports<Q: Serialize + Debug>(session: &Session, query: &Q) -> Result<Vec<Port>> {
     trace!("Listing ports with {:?}", query);
     let result = session
         .get_json_query::<NetworkService, _, PortsRoot>(&["ports"], query, None)?
@@ -269,10 +265,7 @@ pub fn list_ports<Q: Serialize + Debug>(session: &Arc<Session>, query: &Q) -> Re
 }
 
 /// List subnets.
-pub fn list_subnets<Q: Serialize + Debug>(
-    session: &Arc<Session>,
-    query: &Q,
-) -> Result<Vec<Subnet>> {
+pub fn list_subnets<Q: Serialize + Debug>(session: &Session, query: &Q) -> Result<Vec<Subnet>> {
     trace!("Listing subnets with {:?}", query);
     let result = session
         .get_json_query::<NetworkService, _, SubnetsRoot>(&["subnets"], query, None)?
@@ -283,7 +276,7 @@ pub fn list_subnets<Q: Serialize + Debug>(
 
 /// Update a floating IP.
 pub fn update_floating_ip<S: AsRef<str>>(
-    session: &Arc<Session>,
+    session: &Session,
     id: S,
     update: FloatingIpUpdate,
 ) -> Result<FloatingIp> {
@@ -298,7 +291,7 @@ pub fn update_floating_ip<S: AsRef<str>>(
 
 /// Update a network.
 pub fn update_network<S: AsRef<str>>(
-    session: &Arc<Session>,
+    session: &Session,
     id: S,
     update: NetworkUpdate,
 ) -> Result<Network> {
@@ -312,11 +305,7 @@ pub fn update_network<S: AsRef<str>>(
 }
 
 /// Update a port.
-pub fn update_port<S: AsRef<str>>(
-    session: &Arc<Session>,
-    id: S,
-    update: PortUpdate,
-) -> Result<Port> {
+pub fn update_port<S: AsRef<str>>(session: &Session, id: S, update: PortUpdate) -> Result<Port> {
     debug!("Updating port {} with {:?}", id.as_ref(), update);
     let body = PortUpdateRoot { port: update };
     let port = session
@@ -328,7 +317,7 @@ pub fn update_port<S: AsRef<str>>(
 
 /// Update a subnet.
 pub fn update_subnet<S: AsRef<str>>(
-    session: &Arc<Session>,
+    session: &Session,
     id: S,
     update: SubnetUpdate,
 ) -> Result<Subnet> {

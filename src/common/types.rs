@@ -14,8 +14,6 @@
 
 //! Types and traits shared between services.
 
-use std::sync::Arc;
-
 use super::super::session::Session;
 use super::super::Result;
 
@@ -26,9 +24,9 @@ pub trait Refresh {
 }
 
 /// A type that can be converted into a verified representation.
-pub(crate) trait IntoVerified {
+pub trait IntoVerified {
     /// Conver this object into the same object with verification.
-    fn into_verified(self, session: &Arc<Session>) -> Result<Self>
+    fn into_verified(self, session: &Session) -> Result<Self>
     where
         Self: Sized;
 }
@@ -117,7 +115,7 @@ macro_rules! opaque_resource_type {
         #[cfg(not(feature = $service))]
         #[allow(dead_code)]
         impl $crate::common::IntoVerified for $name {
-            fn into_verified(self, _session: &::std::sync::Arc<$crate::session::Session>)
+            fn into_verified(self, _session: &$crate::session::Session)
                     -> $crate::Result<$name> {
                 Ok(self)
             }

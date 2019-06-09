@@ -487,7 +487,7 @@ impl From<Subnet> for SubnetRef {
 #[cfg(feature = "network")]
 impl IntoVerified for SubnetRef {
     /// Verify this reference and convert to an ID, if possible.
-    fn into_verified(self, session: &Arc<Session>) -> Result<SubnetRef> {
+    fn into_verified(self, session: &Session) -> Result<SubnetRef> {
         Ok(if self.verified {
             self
         } else {

@@ -288,7 +288,7 @@ impl From<KeyPair> for KeyPairRef {
 #[cfg(feature = "compute")]
 impl IntoVerified for KeyPairRef {
     /// Verify this reference and convert to an ID, if possible.
-    fn into_verified(self, session: &Arc<Session>) -> Result<KeyPairRef> {
+    fn into_verified(self, session: &Session) -> Result<KeyPairRef> {
         Ok(if self.verified {
             self
         } else {

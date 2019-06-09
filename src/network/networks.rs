@@ -416,7 +416,7 @@ impl From<Network> for NetworkRef {
 #[cfg(feature = "network")]
 impl IntoVerified for NetworkRef {
     /// Verify this reference and convert to an ID, if possible.
-    fn into_verified(self, session: &Arc<Session>) -> Result<NetworkRef> {
+    fn into_verified(self, session: &Session) -> Result<NetworkRef> {
         Ok(if self.verified {
             self
         } else {

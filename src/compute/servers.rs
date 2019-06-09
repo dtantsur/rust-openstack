@@ -618,7 +618,7 @@ impl From<ServerQuery> for DetailedServerQuery {
 }
 
 fn convert_networks(
-    session: &Arc<Session>,
+    session: &Session,
     networks: Vec<ServerNIC>,
 ) -> Result<Vec<protocol::ServerNetwork>> {
     let mut result = Vec::with_capacity(networks.len());
