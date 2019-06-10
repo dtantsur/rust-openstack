@@ -15,13 +15,12 @@
 //! Flavor management via Compute API.
 
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::rc::Rc;
 
 use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
+use osproto::common::IdAndName;
 
-use super::super::common::{
-    self, FlavorRef, IntoVerified, Refresh, ResourceIterator, ResourceQuery,
-};
+use super::super::common::{FlavorRef, IntoVerified, Refresh, ResourceIterator, ResourceQuery};
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::super::{Error, Result};
@@ -30,7 +29,7 @@ use super::{api, protocol};
 /// Structure representing a flavor.
 #[derive(Clone, Debug)]
 pub struct Flavor {
-    session: Arc<Session>,
+    session: Rc<Session>,
     inner: protocol::Flavor,
     extra_specs: HashMap<String, String>,
 }
@@ -38,14 +37,14 @@ pub struct Flavor {
 /// Structure representing a summary of a flavor.
 #[derive(Clone, Debug)]
 pub struct FlavorSummary {
-    session: Arc<Session>,
-    inner: common::protocol::IdAndName,
+    session: Rc<Session>,
+    inner: IdAndName,
 }
 
 /// A query to flavor list.
 #[derive(Clone, Debug)]
 pub struct FlavorQuery {
-    session: Arc<Session>,
+    session: Rc<Session>,
     query: Query,
     can_paginate: bool,
 }
@@ -58,7 +57,7 @@ pub struct DetailedFlavorQuery {
 
 impl Flavor {
     /// Create a flavor object.
-    pub(crate) fn new(session: Arc<Session>, mut inner: protocol::Flavor) -> Result<Flavor> {
+    pub(crate) fn new(session: Rc<Session>, mut inner: protocol::Flavor) -> Result<Flavor> {
         let extra_specs = match inner.extra_specs.take() {
             Some(es) => es,
             None => api::get_extra_specs_by_flavor_id(&session, &inner.id)?,
@@ -72,7 +71,7 @@ impl Flavor {
     }
 
     /// Load a Flavor object.
-    pub(crate) fn load<Id: AsRef<str>>(session: Arc<Session>, id: Id) -> Result<Flavor> {
+    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id) -> Result<Flavor> {
         let inner = api::get_flavor(&session, id)?;
         Flavor::new(session, inner)
     }
@@ -153,7 +152,7 @@ impl FlavorSummary {
 }
 
 impl FlavorQuery {
-    pub(crate) fn new(session: Arc<Session>) -> FlavorQuery {
+    pub(crate) fn new(session: Rc<Session>) -> FlavorQuery {
         FlavorQuery {
             session,
             query: Query::new(),

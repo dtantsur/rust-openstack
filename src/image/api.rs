@@ -16,27 +16,13 @@
 
 use std::fmt::Debug;
 
+use osauth::services::IMAGE;
 use serde::Serialize;
 
-use super::super::common::ApiVersion;
-use super::super::session::{ServiceType, Session};
+use super::super::session::Session;
 use super::super::utils::{self, ResultExt};
 use super::super::Result;
 use super::protocol::*;
-
-/// Service type of Image API ImageService.
-#[derive(Copy, Clone, Debug)]
-pub struct ImageService;
-
-impl ServiceType for ImageService {
-    fn catalog_type() -> &'static str {
-        "image"
-    }
-
-    fn major_version_supported(version: ApiVersion) -> bool {
-        version.0 == 2
-    }
-}
 
 /// Get an image.
 pub fn get_image<S: AsRef<str>>(session: &Session, id_or_name: S) -> Result<Image> {
@@ -47,7 +33,7 @@ pub fn get_image<S: AsRef<str>>(session: &Session, id_or_name: S) -> Result<Imag
 /// Get an image by its ID.
 pub fn get_image_by_id<S: AsRef<str>>(session: &Session, id: S) -> Result<Image> {
     trace!("Fetching image {}", id.as_ref());
-    let image = session.get_json::<ImageService, Image>(&["images", id.as_ref()], None)?;
+    let image: Image = session.get_json(IMAGE, &["images", id.as_ref()], None)?;
     trace!("Received {:?}", image);
     Ok(image)
 }
@@ -55,15 +41,10 @@ pub fn get_image_by_id<S: AsRef<str>>(session: &Session, id: S) -> Result<Image>
 /// Get an image by its name.
 pub fn get_image_by_name<S: AsRef<str>>(session: &Session, name: S) -> Result<Image> {
     trace!("Get image by name {}", name.as_ref());
-    let items = session
-        .get_json_query::<ImageService, _, ImagesRoot>(
-            &["images"],
-            &[("name", name.as_ref())],
-            None,
-        )?
-        .images;
+    let root: ImagesRoot =
+        session.get_json_query(IMAGE, &["images"], &[("name", name.as_ref())], None)?;
     let result = utils::one(
-        items,
+        root.images,
         "Image with given name or ID not found",
         "Too many images found with given name",
     )?;
@@ -72,11 +53,12 @@ pub fn get_image_by_name<S: AsRef<str>>(session: &Session, name: S) -> Result<Im
 }
 
 /// List images.
-pub fn list_images<Q: Serialize + Debug>(session: &Session, query: &Q) -> Result<Vec<Image>> {
+pub fn list_images<Q: Serialize + Sync + Debug>(
+    session: &Session,
+    query: &Q,
+) -> Result<Vec<Image>> {
     trace!("Listing images with {:?}", query);
-    let result = session
-        .get_json_query::<ImageService, _, ImagesRoot>(&["images"], query, None)?
-        .images;
-    trace!("Received images: {:?}", result);
-    Ok(result)
+    let root: ImagesRoot = session.get_json_query(IMAGE, &["images"], query, None)?;
+    trace!("Received images: {:?}", root.images);
+    Ok(root.images)
 }

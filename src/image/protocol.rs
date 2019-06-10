@@ -19,6 +19,7 @@
 
 use chrono::{DateTime, FixedOffset};
 use reqwest::Url;
+use serde::Deserialize;
 
 use super::super::common;
 

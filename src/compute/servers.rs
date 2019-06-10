@@ -16,16 +16,17 @@
 
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-use std::sync::Arc;
+use std::rc::Rc;
 use std::time::Duration;
 
 use chrono::{DateTime, FixedOffset};
 use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
+use osproto::common::IdAndName;
 use waiter::{Waiter, WaiterCurrentState};
 
 use super::super::common::{
-    self, DeletionWaiter, FlavorRef, ImageRef, IntoVerified, KeyPairRef, NetworkRef, PortRef,
-    ProjectRef, Refresh, ResourceIterator, ResourceQuery, UserRef, VolumeRef,
+    DeletionWaiter, FlavorRef, ImageRef, IntoVerified, KeyPairRef, NetworkRef, PortRef, ProjectRef,
+    Refresh, ResourceIterator, ResourceQuery, UserRef, VolumeRef,
 };
 #[cfg(feature = "image")]
 use super::super::image::Image;
@@ -37,7 +38,7 @@ use super::{api, protocol, BlockDevice, KeyPair};
 /// A query to server list.
 #[derive(Clone, Debug)]
 pub struct ServerQuery {
-    session: Arc<Session>,
+    session: Rc<Session>,
     query: Query,
     can_paginate: bool,
 }
@@ -53,7 +54,7 @@ pub struct DetailedServerQuery {
 /// Structure representing a single server.
 #[derive(Clone, Debug)]
 pub struct Server {
-    session: Arc<Session>,
+    session: Rc<Session>,
     inner: protocol::Server,
     flavor: protocol::ServerFlavor,
 }
@@ -61,8 +62,8 @@ pub struct Server {
 /// Structure representing a summary of a single server.
 #[derive(Clone, Debug)]
 pub struct ServerSummary {
-    session: Arc<Session>,
-    inner: common::protocol::IdAndName,
+    session: Rc<Session>,
+    inner: IdAndName,
 }
 
 /// Waiter for server status to change.
@@ -86,7 +87,7 @@ pub enum ServerNIC {
 /// A request to create a server.
 #[derive(Debug)]
 pub struct NewServer {
-    session: Arc<Session>,
+    session: Rc<Session>,
     flavor: FlavorRef,
     image: Option<ImageRef>,
     keypair: Option<KeyPairRef>,
@@ -112,7 +113,7 @@ impl Refresh for Server {
 
 impl Server {
     /// Create a new Server object.
-    pub(crate) fn new(session: Arc<Session>, inner: protocol::Server) -> Result<Server> {
+    pub(crate) fn new(session: Rc<Session>, inner: protocol::Server) -> Result<Server> {
         let flavor = api::get_flavor(&session, &inner.flavor.id)?;
         Ok(Server {
             session,
@@ -130,7 +131,7 @@ impl Server {
     }
 
     /// Load a Server object.
-    pub(crate) fn load<Id: AsRef<str>>(session: Arc<Session>, id: Id) -> Result<Server> {
+    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id) -> Result<Server> {
         let inner = api::get_server(&session, id)?;
         Server::new(session, inner)
     }
@@ -388,7 +389,7 @@ impl ServerSummary {
 }
 
 impl ServerQuery {
-    pub(crate) fn new(session: Arc<Session>) -> ServerQuery {
+    pub(crate) fn new(session: Rc<Session>) -> ServerQuery {
         ServerQuery {
             session,
             query: Query::new(),
@@ -638,7 +639,7 @@ fn convert_networks(
 
 impl NewServer {
     /// Start creating a server.
-    pub(crate) fn new(session: Arc<Session>, name: String, flavor: FlavorRef) -> NewServer {
+    pub(crate) fn new(session: Rc<Session>, name: String, flavor: FlavorRef) -> NewServer {
         NewServer {
             session,
             flavor,

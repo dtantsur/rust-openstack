@@ -274,21 +274,3 @@ pub mod url {
         url
     }
 }
-
-#[cfg(test)]
-pub mod test {
-    //! Common primitives for testing.
-
-    use reqwest::IntoUrl;
-
-    use super::super::auth::NoAuth;
-    use super::super::session::Session;
-
-    /// Create a session with fake authentication.
-    pub fn new_session<U: IntoUrl>(endpoint: U) -> Session {
-        let auth = NoAuth::new(endpoint).expect("Invalid URL in tests");
-        Session::new(auth)
-    }
-
-    pub const URL: &'static str = "https://127.0.0.1:5000/";
-}

@@ -23,7 +23,7 @@
   environment:
     OS_CLOUD: devstack
     RUST_BACKTRACE: 1
-    RUST_LOG: openstack
+    RUST_LOG: openstack,osauth,osproto
 
   tasks:
     - name: Find a public SSH key file

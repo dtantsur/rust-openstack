@@ -93,8 +93,6 @@ extern crate log;
 extern crate osauth;
 extern crate reqwest;
 extern crate serde;
-#[macro_use]
-extern crate serde_derive;
 extern crate serde_json;
 extern crate serde_yaml;
 extern crate waiter;
@@ -499,26 +497,30 @@ macro_rules! protocol_enum {
     );
 }
 
-pub mod auth;
+/// Reimports of authentication bits from `osauth`.
+pub mod auth {
+    pub use osauth::identity::{Identity, Password};
+    pub use osauth::{from_config, from_env, AuthType, NoAuth};
+}
 mod cloud;
 pub mod common;
 #[cfg(feature = "compute")]
 pub mod compute;
-mod identity;
 #[cfg(feature = "image")]
 pub mod image;
 #[cfg(feature = "network")]
 pub mod network;
-pub mod session;
+/// Reimport of the synchronous session from `osauth`.
+pub mod session {
+    pub use osauth::sync::SyncSession as Session;
+}
 mod utils;
 
+pub use osauth::sync::Result;
 pub use osauth::{Error, ErrorKind};
 
 pub use crate::cloud::Cloud;
 pub use crate::common::Refresh;
-
-/// Result of an OpenStack call.
-pub type Result<T> = ::std::result::Result<T, Error>;
 
 /// Sorting request.
 #[derive(Debug, Clone)]

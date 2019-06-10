@@ -21,8 +21,9 @@ use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 use chrono::{DateTime, FixedOffset};
+use osproto::common::{empty_as_default, IdAndName, Ref};
+use serde::{Deserialize, Serialize};
 
-use super::super::common;
 use super::BlockDevice;
 
 protocol_enum! {
@@ -160,17 +161,9 @@ pub struct ServerFlavor {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Server {
-    #[serde(
-        deserialize_with = "common::protocol::empty_as_none",
-        default,
-        rename = "accessIPv4"
-    )]
+    #[serde(deserialize_with = "empty_as_default", default, rename = "accessIPv4")]
     pub access_ipv4: Option<Ipv4Addr>,
-    #[serde(
-        deserialize_with = "common::protocol::empty_as_none",
-        default,
-        rename = "accessIPv6"
-    )]
+    #[serde(deserialize_with = "empty_as_default", default, rename = "accessIPv6")]
     pub access_ipv6: Option<Ipv6Addr>,
     #[serde(default)]
     pub addresses: HashMap<String, Vec<ServerAddress>>,
@@ -178,23 +171,16 @@ pub struct Server {
     pub availability_zone: String,
     #[serde(rename = "created")]
     pub created_at: DateTime<FixedOffset>,
-    #[serde(deserialize_with = "common::protocol::empty_as_none", default)]
+    #[serde(deserialize_with = "empty_as_default", default)]
     pub description: Option<String>,
     // TODO(dtantsur): flavor in newer versions
-    pub flavor: common::protocol::Ref,
-    #[serde(
-        deserialize_with = "common::protocol::empty_as_default",
-        rename = "config_drive"
-    )]
+    pub flavor: Ref,
+    #[serde(deserialize_with = "empty_as_default", rename = "config_drive")]
     pub has_config_drive: bool,
     pub id: String,
-    #[serde(deserialize_with = "common::protocol::empty_as_none", default)]
-    pub image: Option<common::protocol::Ref>,
-    #[serde(
-        rename = "key_name",
-        deserialize_with = "common::protocol::empty_as_none",
-        default
-    )]
+    #[serde(deserialize_with = "empty_as_default", default)]
+    pub image: Option<Ref>,
+    #[serde(rename = "key_name", deserialize_with = "empty_as_default", default)]
     pub key_pair_name: Option<String>,
     pub name: String,
     #[serde(default)]
@@ -210,7 +196,7 @@ pub struct Server {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct ServersRoot {
-    pub servers: Vec<common::protocol::IdAndName>,
+    pub servers: Vec<IdAndName>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -256,14 +242,14 @@ pub struct ServerCreateRoot {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct CreatedServerRoot {
-    pub server: common::protocol::Ref,
+    pub server: Ref,
 }
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Flavor {
     #[serde(rename = "OS-FLV-EXT-DATA:ephemeral", default)]
     pub ephemeral: u64,
-    #[serde(default, deserialize_with = "common::protocol::empty_as_none")]
+    #[serde(default, deserialize_with = "empty_as_default")]
     pub description: Option<String>,
     pub disk: u64,
     #[serde(default)]
@@ -277,14 +263,14 @@ pub struct Flavor {
     pub name: String,
     pub ram: u64,
     pub rxtx_factor: f32,
-    #[serde(deserialize_with = "common::protocol::empty_as_default")]
+    #[serde(deserialize_with = "empty_as_default")]
     pub swap: u64,
     pub vcpus: u32,
 }
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct FlavorsRoot {
-    pub flavors: Vec<common::protocol::IdAndName>,
+    pub flavors: Vec<IdAndName>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

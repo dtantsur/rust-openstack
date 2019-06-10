@@ -15,7 +15,7 @@
 //! Network management via Network API.
 
 use std::collections::HashSet;
-use std::sync::Arc;
+use std::rc::Rc;
 use std::time::Duration;
 
 use chrono::{DateTime, FixedOffset};
@@ -32,7 +32,7 @@ use super::{api, protocol};
 /// A query to network list.
 #[derive(Clone, Debug)]
 pub struct NetworkQuery {
-    session: Arc<Session>,
+    session: Rc<Session>,
     query: Query,
     can_paginate: bool,
 }
@@ -40,7 +40,7 @@ pub struct NetworkQuery {
 /// Structure representing a single network.
 #[derive(Clone, Debug)]
 pub struct Network {
-    session: Arc<Session>,
+    session: Rc<Session>,
     inner: protocol::Network,
     dirty: HashSet<&'static str>,
 }
@@ -48,13 +48,13 @@ pub struct Network {
 /// A request to create a network
 #[derive(Clone, Debug)]
 pub struct NewNetwork {
-    session: Arc<Session>,
+    session: Rc<Session>,
     inner: protocol::Network,
 }
 
 impl Network {
     /// Create a network object.
-    fn new(session: Arc<Session>, inner: protocol::Network) -> Network {
+    fn new(session: Rc<Session>, inner: protocol::Network) -> Network {
         Network {
             session,
             inner,
@@ -63,7 +63,7 @@ impl Network {
     }
 
     /// Load a Network object.
-    pub(crate) fn load<Id: AsRef<str>>(session: Arc<Session>, id: Id) -> Result<Network> {
+    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id) -> Result<Network> {
         let inner = api::get_network(&session, id)?;
         Ok(Network::new(session, inner))
     }
@@ -236,7 +236,7 @@ impl Refresh for Network {
 }
 
 impl NetworkQuery {
-    pub(crate) fn new(session: Arc<Session>) -> NetworkQuery {
+    pub(crate) fn new(session: Rc<Session>) -> NetworkQuery {
         NetworkQuery {
             session,
             query: Query::new(),
@@ -334,7 +334,7 @@ impl ResourceQuery for NetworkQuery {
 
 impl NewNetwork {
     /// Start creating a network.
-    pub(crate) fn new(session: Arc<Session>) -> NewNetwork {
+    pub(crate) fn new(session: Rc<Session>) -> NewNetwork {
         NewNetwork {
             session,
             inner: protocol::Network::default(),

@@ -14,12 +14,13 @@
 
 //! Cloud API.
 
-use std::sync::Arc;
+use std::rc::Rc;
 
 #[allow(unused_imports)]
 use ipnet;
+use osauth::sync::SyncSession;
+use osauth::{AuthType, Session};
 
-use super::auth::{self, AuthMethod};
 #[allow(unused_imports)]
 use super::common::{FlavorRef, NetworkRef};
 #[cfg(feature = "compute")]
@@ -34,7 +35,6 @@ use super::network::{
     FloatingIp, FloatingIpQuery, Network, NetworkQuery, NewFloatingIp, NewNetwork, NewPort,
     NewSubnet, Port, PortQuery, Subnet, SubnetQuery,
 };
-use super::session::Session;
 use super::Result;
 
 /// OpenStack cloud API.
@@ -42,7 +42,7 @@ use super::Result;
 /// Provides high-level API for working with OpenStack clouds.
 #[derive(Debug, Clone)]
 pub struct Cloud {
-    session: Arc<Session>,
+    session: Rc<SyncSession>,
 }
 
 impl Cloud {
@@ -70,9 +70,9 @@ impl Cloud {
     ///
     /// * [from_config](#method.from_config) to create a Cloud from clouds.yaml
     /// * [from_env](#method.from_env) to create a Cloud from environment variables
-    pub fn new<Auth: AuthMethod + 'static>(auth_method: Auth) -> Cloud {
+    pub fn new<Auth: AuthType + 'static>(auth_type: Auth) -> Cloud {
         Cloud {
-            session: Arc::new(Session::new(auth_method)),
+            session: Rc::new(SyncSession::new(Session::new(auth_type))),
         }
     }
 
@@ -88,7 +88,7 @@ impl Cloud {
     /// ```
     pub fn from_config<S: AsRef<str>>(cloud_name: S) -> Result<Cloud> {
         Ok(Cloud {
-            session: Arc::new(auth::from_config(cloud_name)?),
+            session: Rc::new(SyncSession::new(osauth::from_config(cloud_name)?)),
         })
     }
 
@@ -104,7 +104,7 @@ impl Cloud {
     /// ```
     pub fn from_env() -> Result<Cloud> {
         Ok(Cloud {
-            session: Arc::new(auth::from_env()?),
+            session: Rc::new(SyncSession::new(osauth::from_env()?)),
         })
     }
 
@@ -124,13 +124,13 @@ impl Cloud {
     where
         S: Into<String>,
     {
-        Arc::make_mut(&mut self.session).set_endpoint_interface(endpoint_interface);
+        Rc::make_mut(&mut self.session).set_endpoint_interface(endpoint_interface);
         self
     }
 
     /// Refresh this `Cloud` object (renew token, refetch service catalog, etc).
     pub fn refresh(&mut self) -> Result<()> {
-        Arc::make_mut(&mut self.session).auth_method_mut().refresh()
+        Rc::make_mut(&mut self.session).refresh()
     }
 
     /// Build a query against flavor list.
@@ -580,7 +580,15 @@ impl Cloud {
 impl From<Session> for Cloud {
     fn from(value: Session) -> Cloud {
         Cloud {
-            session: Arc::new(value),
+            session: Rc::new(SyncSession::new(value)),
+        }
+    }
+}
+
+impl From<SyncSession> for Cloud {
+    fn from(value: SyncSession) -> Cloud {
+        Cloud {
+            session: Rc::new(value),
         }
     }
 }

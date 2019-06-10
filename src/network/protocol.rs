@@ -24,6 +24,8 @@ use std::ops::Not;
 use chrono::{DateTime, FixedOffset};
 use eui48::MacAddress;
 use ipnet;
+use osproto::common::empty_as_default;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::super::common;
@@ -130,13 +132,13 @@ pub struct Network {
     #[serde(default, skip_serializing)]
     pub created_at: Option<DateTime<FixedOffset>>,
     #[serde(
-        deserialize_with = "common::protocol::empty_as_none",
+        deserialize_with = "empty_as_default",
         default,
         skip_serializing_if = "Option::is_none"
     )]
     pub description: Option<String>,
     #[serde(
-        deserialize_with = "common::protocol::empty_as_none",
+        deserialize_with = "empty_as_default",
         default,
         skip_serializing_if = "Option::is_none"
     )]
@@ -152,7 +154,7 @@ pub struct Network {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mtu: Option<u32>,
     #[serde(
-        deserialize_with = "common::protocol::empty_as_none",
+        deserialize_with = "empty_as_default",
         skip_serializing_if = "Option::is_none"
     )]
     pub name: Option<String>,
@@ -305,31 +307,31 @@ pub struct Port {
     #[serde(default, skip_serializing)]
     pub created_at: Option<DateTime<FixedOffset>>,
     #[serde(
-        deserialize_with = "common::protocol::empty_as_none",
+        deserialize_with = "empty_as_default",
         default,
         skip_serializing_if = "Option::is_none"
     )]
     pub description: Option<String>,
     #[serde(
-        deserialize_with = "common::protocol::empty_as_none",
+        deserialize_with = "empty_as_default",
         default,
         skip_serializing_if = "Option::is_none"
     )]
     pub device_id: Option<String>,
     #[serde(
-        deserialize_with = "common::protocol::empty_as_none",
+        deserialize_with = "empty_as_default",
         default,
         skip_serializing_if = "Option::is_none"
     )]
     pub device_owner: Option<String>,
     #[serde(
-        deserialize_with = "common::protocol::empty_as_none",
+        deserialize_with = "empty_as_default",
         default,
         skip_serializing_if = "Option::is_none"
     )]
     pub dns_domain: Option<String>,
     #[serde(
-        deserialize_with = "common::protocol::empty_as_none",
+        deserialize_with = "empty_as_default",
         default,
         skip_serializing_if = "Option::is_none"
     )]
@@ -346,7 +348,7 @@ pub struct Port {
     )]
     pub mac_address: MacAddress,
     #[serde(
-        deserialize_with = "common::protocol::empty_as_none",
+        deserialize_with = "empty_as_default",
         skip_serializing_if = "Option::is_none"
     )]
     pub name: Option<String>,
@@ -437,7 +439,7 @@ pub struct Subnet {
     #[serde(default, skip_serializing)]
     pub created_at: Option<DateTime<FixedOffset>>,
     #[serde(
-        deserialize_with = "common::protocol::empty_as_none",
+        deserialize_with = "empty_as_default",
         default,
         skip_serializing_if = "Option::is_none"
     )]
@@ -462,7 +464,7 @@ pub struct Subnet {
     )]
     pub ipv6_router_advertisement_mode: Option<Ipv6Mode>,
     #[serde(
-        deserialize_with = "common::protocol::empty_as_none",
+        deserialize_with = "empty_as_default",
         skip_serializing_if = "Option::is_none"
     )]
     pub name: Option<String>,
@@ -554,19 +556,19 @@ pub struct FloatingIp {
     #[serde(default, skip_serializing)]
     pub created_at: Option<DateTime<FixedOffset>>,
     #[serde(
-        deserialize_with = "common::protocol::empty_as_none",
+        deserialize_with = "empty_as_default",
         default,
         skip_serializing_if = "Option::is_none"
     )]
     pub description: Option<String>,
     #[serde(
-        deserialize_with = "common::protocol::empty_as_none",
+        deserialize_with = "empty_as_default",
         default,
         skip_serializing_if = "Option::is_none"
     )]
     pub dns_domain: Option<String>,
     #[serde(
-        deserialize_with = "common::protocol::empty_as_none",
+        deserialize_with = "empty_as_default",
         default,
         skip_serializing_if = "Option::is_none"
     )]
