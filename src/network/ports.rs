@@ -577,9 +577,9 @@ impl IntoFallibleIterator for PortQuery {
 
     type Error = Error;
 
-    type IntoIter = ResourceIterator<PortQuery>;
+    type IntoFallibleIter = ResourceIterator<PortQuery>;
 
-    fn into_fallible_iterator(self) -> Self::IntoIter {
+    fn into_fallible_iter(self) -> Self::IntoFallibleIter {
         self.into_iter()
     }
 }

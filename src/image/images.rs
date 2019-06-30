@@ -248,9 +248,9 @@ impl IntoFallibleIterator for ImageQuery {
 
     type Error = Error;
 
-    type IntoIter = ResourceIterator<ImageQuery>;
+    type IntoFallibleIter = ResourceIterator<ImageQuery>;
 
-    fn into_fallible_iterator(self) -> Self::IntoIter {
+    fn into_fallible_iter(self) -> Self::IntoFallibleIter {
         self.into_iter()
     }
 }

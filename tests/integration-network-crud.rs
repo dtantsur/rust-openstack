@@ -363,7 +363,7 @@ fn test_floating_ip_create_delete() {
         .find_floating_ips()
         .with_floating_network(net.name().clone().expect("Floating network has no name"))
         .into_iter()
-        .find(|ip| ip.id() == floating_ip.id())
+        .find(|ip| Ok(ip.id() == floating_ip.id()))
         .expect("Cannot list floating IPs")
         .expect("Floating IP was not found");
     assert_eq!(floating_ip_found.id(), floating_ip.id());

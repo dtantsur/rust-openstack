@@ -400,9 +400,9 @@ impl IntoFallibleIterator for NetworkQuery {
 
     type Error = Error;
 
-    type IntoIter = ResourceIterator<NetworkQuery>;
+    type IntoFallibleIter = ResourceIterator<NetworkQuery>;
 
-    fn into_fallible_iterator(self) -> Self::IntoIter {
+    fn into_fallible_iter(self) -> Self::IntoFallibleIter {
         self.into_iter()
     }
 }

@@ -529,9 +529,9 @@ impl IntoFallibleIterator for FloatingIpQuery {
 
     type Error = Error;
 
-    type IntoIter = ResourceIterator<FloatingIpQuery>;
+    type IntoFallibleIter = ResourceIterator<FloatingIpQuery>;
 
-    fn into_fallible_iterator(self) -> Self::IntoIter {
+    fn into_fallible_iter(self) -> Self::IntoFallibleIter {
         self.into_iter()
     }
 }

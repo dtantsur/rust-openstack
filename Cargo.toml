@@ -23,9 +23,8 @@ network = []
 [dependencies]
 
 chrono = { version = "^0.4", features = ["serde"] }
-dirs = "^1.0"
-eui48 = { version = "^0.3.1", features = ["serde"] }
-fallible-iterator = "^0.1"
+eui48 = { version = "^0.4.0", features = ["serde"] }
+fallible-iterator = "^0.2.0"
 ipnet = { version = "^2.0", features = ["serde"] }
 log = "^0.4"
 reqwest = "^0.9"

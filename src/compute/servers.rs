@@ -879,9 +879,9 @@ impl IntoFallibleIterator for ServerQuery {
 
     type Error = Error;
 
-    type IntoIter = ResourceIterator<ServerQuery>;
+    type IntoFallibleIter = ResourceIterator<ServerQuery>;
 
-    fn into_fallible_iterator(self) -> Self::IntoIter {
+    fn into_fallible_iter(self) -> Self::IntoFallibleIter {
         self.into_iter()
     }
 }
@@ -891,9 +891,9 @@ impl IntoFallibleIterator for DetailedServerQuery {
 
     type Error = Error;
 
-    type IntoIter = ResourceIterator<DetailedServerQuery>;
+    type IntoFallibleIter = ResourceIterator<DetailedServerQuery>;
 
-    fn into_fallible_iterator(self) -> Self::IntoIter {
+    fn into_fallible_iter(self) -> Self::IntoFallibleIter {
         self.into_iter()
     }
 }

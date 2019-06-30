@@ -303,9 +303,9 @@ impl IntoFallibleIterator for FlavorQuery {
 
     type Error = Error;
 
-    type IntoIter = ResourceIterator<FlavorQuery>;
+    type IntoFallibleIter = ResourceIterator<FlavorQuery>;
 
-    fn into_fallible_iterator(self) -> Self::IntoIter {
+    fn into_fallible_iter(self) -> Self::IntoFallibleIter {
         self.into_iter()
     }
 }
@@ -315,9 +315,9 @@ impl IntoFallibleIterator for DetailedFlavorQuery {
 
     type Error = Error;
 
-    type IntoIter = ResourceIterator<DetailedFlavorQuery>;
+    type IntoFallibleIter = ResourceIterator<DetailedFlavorQuery>;
 
-    fn into_fallible_iterator(self) -> Self::IntoIter {
+    fn into_fallible_iter(self) -> Self::IntoFallibleIter {
         self.into_iter()
     }
 }

@@ -84,7 +84,6 @@
 )]
 
 extern crate chrono;
-extern crate dirs;
 extern crate eui48;
 extern crate fallible_iterator;
 extern crate ipnet;
