@@ -504,20 +504,6 @@ impl ServerQuery {
         ResourceIterator::new(self)
     }
 
-    /// Convert this query into an iterator executing the request.
-    ///
-    /// This iterator yields full `Server` objects. If you only need IDs
-    /// and/or names, use `into_iter` to save bandwidth.
-    ///
-    /// Returns a `FallibleIterator`, which is an iterator with each `next`
-    /// call returning a `Result`.
-    ///
-    /// Note that no requests are done until you start iterating.
-    #[deprecated(since = "0.2.0", note = "Use .detailed().into_iter()")]
-    pub fn into_iter_detailed(self) -> ResourceIterator<DetailedServerQuery> {
-        self.detailed().into_iter()
-    }
-
     /// Execute this request and return all results.
     ///
     /// A convenience shortcut for `self.into_iter().collect()`.
@@ -689,12 +675,6 @@ impl NewServer {
         N: Into<NetworkRef>,
     {
         self.nics.push(ServerNIC::FromNetwork(network.into()));
-    }
-
-    /// Add a virtual NIC to the new server.
-    #[deprecated(since = "0.2.3", note = "Use nics().push")]
-    pub fn add_nic(&mut self, nic: ServerNIC) {
-        self.nics.push(nic);
     }
 
     /// Add a virtual NIC with this port to the new server.

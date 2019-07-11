@@ -197,20 +197,6 @@ impl FlavorQuery {
         ResourceIterator::new(self)
     }
 
-    /// Convert this query into an iterator executing the request.
-    ///
-    /// This iterator yields full `Flavor` objects. If you only need IDs
-    /// and/or names, use `into_iter` to save bandwidth.
-    ///
-    /// Returns a `FallibleIterator`, which is an iterator with each `next`
-    /// call returning a `Result`.
-    ///
-    /// Note that no requests are done until you start iterating.
-    #[deprecated(since = "0.2.0", note = "Use .detailed().into_iter()")]
-    pub fn into_iter_detailed(self) -> ResourceIterator<DetailedFlavorQuery> {
-        self.detailed().into_iter()
-    }
-
     /// Execute this request and return all results.
     ///
     /// A convenience shortcut for `self.into_iter().collect()`.

@@ -14,7 +14,6 @@
 
 //! Key pair management via Compute API.
 
-use std::io;
 use std::rc::Rc;
 
 use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
@@ -206,35 +205,6 @@ impl NewKeyPair {
     creation_inner_field! {
         #[doc = "Set name of the key pair."]
         set_public_key, with_public_key -> public_key: optional String
-    }
-
-    /// Add public key from a reader.
-    #[deprecated(since = "0.2.2", note = "Use with_public_key")]
-    pub fn from_reader<R>(self, reader: &mut R) -> io::Result<NewKeyPair>
-    where
-        R: io::Read,
-    {
-        let mut s = String::new();
-        let _ = reader.read_to_string(&mut s)?;
-        Ok(self.with_public_key(s))
-    }
-
-    /// Add public key from a string.
-    #[deprecated(since = "0.2.2", note = "Use with_public_key")]
-    pub fn from_string<S>(self, public_key: S) -> NewKeyPair
-    where
-        S: Into<String>,
-    {
-        self.with_public_key(public_key)
-    }
-
-    /// Add public key from a string.
-    #[deprecated(since = "0.2.2", note = "Use set_public_key")]
-    pub fn set_string<S>(&mut self, public_key: S)
-    where
-        S: Into<String>,
-    {
-        self.set_public_key(public_key);
     }
 }
 
