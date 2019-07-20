@@ -1,6 +1,27 @@
 # Change Log
 
-### 0.2.3 (2019-02-16)
+## 0.3.0 (2019-07-20)
+
+#### Breaking Changes
+
+*   switch to osauth for session and authentication ([61d55ec6](https://github.com/dtantsur/rust-openstack/commit/61d55ec61930988d650b0dfdc64d1cc4680d94ed))
+
+    This is a major breaking change. Starting with 0.3.0, rust-openstack no
+    longer contains the authentication code. Instead, the rust-osauth crate
+    is used.
+
+    The `Session` structure has been removed in favour of the synchronous
+    session from rust-osauth.
+
+    Most of removed structures are reimported in their old locations. However,
+    `RequestBuilderExt` is gone and `AuthMethod` has been renamed to `AuthType`
+    to match the official Python SDK.
+
+*   bump fallible-iterator to 0.2 and update other dependencies ([7ecf317f](https://github.com/dtantsur/rust-openstack/commit/7ecf317f0d18e27818ee47a5a7bf73b677aad416)
+
+    The new version of fallible-iterator has slightly different public API.
+
+## 0.2.3 (2019-02-16)
 
 #### Features
 

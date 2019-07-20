@@ -22,7 +22,9 @@
 //! Start with [authentication](auth/index.html), then create a
 //! [Cloud](struct.Cloud.html) object and use it for OpenStack API calls.
 //!
-//! # Example
+//! # Examples
+//!
+//! ## List servers
 //!
 //! Get authentication parameters from the environment and get UUIDs of all
 //! servers.
@@ -32,13 +34,74 @@
 //!
 //! fn get_server_uuids() -> openstack::Result<Vec<String>> {
 //!     let os = openstack::Cloud::from_env()?;
-//!     let servers = os.list_servers()?;
-//!     Ok(servers.into_iter().map(|server| server.id().clone()).collect())
+//!     let server_names = os
+//!         .list_servers()?
+//!         .into_iter()
+//!         .map(|server| server.id().clone())
+//!         .collect();
+//!     Ok(server_names)
 //! }
 //! # fn main() { get_server_uuids().unwrap(); }
 //! ```
 //!
-//! See [Cloud struct](struct.Cloud.html) for more examples.
+//! ## Find images
+//!
+//! Find public images using Identity password authentication with the default region:
+//!
+//! ```rust,no_run
+//! extern crate fallible_iterator;
+//! extern crate openstack;
+//!
+//! use fallible_iterator::FallibleIterator;
+//!
+//! fn get_public_image_names() -> openstack::Result<Vec<String>> {
+//!     let auth = openstack::auth::Password::new(
+//!         "https://cloud.local/identity",
+//!         "admin",
+//!         "pa$$w0rd",
+//!         "Default"
+//!     )
+//!     .expect("Invalid auth_url")
+//!     .with_project_scope("project1", "Default");
+//!
+//!     let os = openstack::Cloud::new(auth);
+//!     let image_names = os
+//!         .find_images()
+//!         .with_visibility(openstack::image::ImageVisibility::Public)
+//!         .into_iter()
+//!         // This `map` comes from fallible-iterator, thus the closure returns a `Result`.
+//!         .map(|image| Ok(image.name().clone()))
+//!         .collect()?;
+//!     Ok(image_names)
+//! }
+//! # fn main() { get_public_image_names().unwrap(); }
+//! ```
+//!
+//! Notice the difference between `list_*` methods (return a result with a vector) and `find_*`
+//! methods (return a query builder that can be used to create a fallible iterator).
+//!
+//! ## Create server
+//!
+//! Create a server with authentication from a `clouds.yaml` file:
+//!
+//! ```rust,no_run
+//! extern crate openstack;
+//! extern crate waiter;
+//!
+//! // Required for the `wait` call.
+//! use waiter::Waiter;
+//!
+//! fn create_server() -> openstack::Result<openstack::compute::Server> {
+//!     openstack::Cloud::from_config("my-cloud-1")?
+//!         .new_server("test-server-1", "x-large")
+//!         .with_image("centos-7")
+//!         .with_network("private")
+//!         .with_keypair("default")
+//!         .create()?
+//!         .wait()
+//! }
+//! # fn main() { create_server().unwrap(); }
+//! ```
 
 #![crate_name = "openstack"]
 #![crate_type = "lib"]
@@ -497,6 +560,8 @@ macro_rules! protocol_enum {
 }
 
 /// Reimports of authentication bits from `osauth`.
+///
+/// See [osauth documentation](https://docs.rs/osauth/) for details.
 pub mod auth {
     pub use osauth::identity::{Identity, Password};
     pub use osauth::{from_config, from_env, AuthType, NoAuth};
@@ -510,7 +575,10 @@ pub mod image;
 #[cfg(feature = "network")]
 pub mod network;
 /// Reimport of the synchronous session from `osauth`.
+///
+/// See [osauth documentation](https://docs.rs/osauth/) for details.
 pub mod session {
+    pub use osauth::services::ServiceType;
     pub use osauth::sync::SyncSession as Session;
 }
 mod utils;
