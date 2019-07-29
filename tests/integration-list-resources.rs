@@ -30,6 +30,12 @@ fn set_up() -> openstack::Cloud {
 }
 
 #[test]
+fn test_list_containers() {
+    let os = set_up();
+    let _ = os.list_containers().expect("Cannot list containers");
+}
+
+#[test]
 fn test_list_flavors() {
     let os = set_up();
     let items = os.list_flavors().expect("Cannot list flavors");

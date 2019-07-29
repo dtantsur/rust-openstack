@@ -1,4 +1,4 @@
-// Copyright 2018 Dmitry Tantsur <divius.inside@gmail.com>
+// Copyright 2019 Dmitry Tantsur <divius.inside@gmail.com>
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Types and traits shared by all API parts.
+//! Object storage API implementation bits.
 
-pub(crate) mod protocol;
-mod resourceiterator;
-mod types;
-mod waiter;
+mod api;
+mod containers;
+mod objects;
+mod protocol;
 
-pub use osauth::ApiVersion;
-
-pub use self::resourceiterator::{ResourceIterator, ResourceQuery};
-pub(crate) use self::types::IntoVerified;
-pub use self::types::{
-    ContainerRef, FlavorRef, ImageRef, KeyPairRef, NetworkRef, ObjectRef, PortRef, ProjectRef,
-    Refresh, RouterRef, SecurityGroupRef, SnapshotRef, SubnetRef, UserRef, VolumeRef,
-};
-pub use self::waiter::DeletionWaiter;
+pub use containers::{Container, ContainerQuery};
+pub use objects::{Object, ObjectQuery};

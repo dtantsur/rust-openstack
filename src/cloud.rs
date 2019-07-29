@@ -14,6 +14,8 @@
 
 //! Cloud API.
 
+#[allow(unused_imports)]
+use std::io;
 use std::rc::Rc;
 
 #[allow(unused_imports)]
@@ -22,7 +24,7 @@ use osauth::sync::SyncSession;
 use osauth::{AuthType, Session};
 
 #[allow(unused_imports)]
-use super::common::{FlavorRef, NetworkRef};
+use super::common::{ContainerRef, FlavorRef, NetworkRef};
 #[cfg(feature = "compute")]
 use super::compute::{
     Flavor, FlavorQuery, FlavorSummary, KeyPair, KeyPairQuery, NewKeyPair, NewServer, Server,
@@ -35,6 +37,8 @@ use super::network::{
     FloatingIp, FloatingIpQuery, Network, NetworkQuery, NewFloatingIp, NewNetwork, NewPort,
     NewSubnet, Port, PortQuery, Subnet, SubnetQuery,
 };
+#[cfg(feature = "object-storage")]
+use super::object_storage::{Container, ContainerQuery, Object, ObjectQuery};
 use super::Result;
 
 /// OpenStack cloud API.
@@ -133,6 +137,47 @@ impl Cloud {
         Rc::make_mut(&mut self.session).refresh()
     }
 
+    /// Create a new container.
+    ///
+    /// If the container already exists, this call returns successfully.
+    #[cfg(feature = "object-storage")]
+    pub fn create_container<Id: AsRef<str>>(&self, name: Id) -> Result<Container> {
+        Container::create(self.session.clone(), name)
+    }
+
+    /// Create a new object.
+    #[cfg(feature = "object-storage")]
+    pub fn create_object<C, Id, R>(&self, container: C, name: Id, body: R) -> Result<Object>
+    where
+        C: Into<ContainerRef>,
+        Id: AsRef<str>,
+        R: io::Read + Send + 'static,
+    {
+        Object::create(self.session.clone(), container, name, body)
+    }
+
+    /// Build a query against container list.
+    ///
+    /// The returned object is a builder that should be used to construct
+    /// the query.
+    #[cfg(feature = "object-storage")]
+    #[inline]
+    pub fn find_containers(&self) -> ContainerQuery {
+        ContainerQuery::new(self.session.clone())
+    }
+
+    /// Build a query against object list.
+    ///
+    /// The returned object is a builder that should be used to construct
+    /// the query.
+    #[cfg(feature = "object-storage")]
+    pub fn find_objects<C>(&self, container: C) -> ObjectQuery
+    where
+        C: Into<ContainerRef>,
+    {
+        ObjectQuery::new(self.session.clone(), container)
+    }
+
     /// Build a query against flavor list.
     ///
     /// The returned object is a builder that should be used to construct
@@ -217,6 +262,40 @@ impl Cloud {
     #[cfg(feature = "network")]
     pub fn find_subnets(&self) -> SubnetQuery {
         SubnetQuery::new(self.session.clone())
+    }
+
+    /// Get object container metadata by its name.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
+    /// let ctr = os.get_container("www").expect("Unable to get a container");
+    /// ```
+    #[cfg(feature = "object-storage")]
+    pub fn get_container<Id: AsRef<str>>(&self, name: Id) -> Result<Container> {
+        Container::load(self.session.clone(), name)
+    }
+
+    /// Get object metadata by its name.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
+    /// let obj = os.get_object("www", "/foo/bar").expect("Unable to get an object");
+    /// ```
+    #[cfg(feature = "object-storage")]
+    pub fn get_object<C, Id>(&self, container: C, name: Id) -> Result<Object>
+    where
+        C: Into<ContainerRef>,
+        Id: AsRef<str>,
+    {
+        Object::load(self.session.clone(), container, name)
     }
 
     /// Find a flavor by its name or ID.
@@ -341,6 +420,47 @@ impl Cloud {
     #[cfg(feature = "network")]
     pub fn get_subnet<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Subnet> {
         Subnet::load(self.session.clone(), id_or_name)
+    }
+
+    /// List all containers.
+    ///
+    /// This call can yield a lot of results, use the
+    /// [find_containers](#method.find_containers) call to limit the number of
+    /// containers to receive.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
+    /// let server_list = os.list_containers().expect("Unable to fetch containers");
+    /// ```
+    #[cfg(feature = "object-storage")]
+    pub fn list_containers(&self) -> Result<Vec<Container>> {
+        self.find_containers().all()
+    }
+
+    /// List all objects.
+    ///
+    /// This call can yield a lot of results, use the
+    /// [find_objects](#method.find_objects) call to limit the number of
+    /// objects to receive.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
+    /// let server_list = os.list_objects("www").expect("Unable to fetch objects");
+    /// ```
+    #[cfg(feature = "object-storage")]
+    pub fn list_objects<C>(&self, container: C) -> Result<Vec<Object>>
+    where
+        C: Into<ContainerRef>,
+    {
+        self.find_objects(container).all()
     }
 
     /// List all flavors.

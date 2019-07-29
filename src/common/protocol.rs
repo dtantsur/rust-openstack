@@ -20,9 +20,12 @@
 use std::collections::HashMap;
 
 use eui48::MacAddress;
+use reqwest::header::{HeaderMap, HeaderName};
 use reqwest::Url;
 use serde::de::Error as DeserError;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+use super::super::{Error, ErrorKind};
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct KeyValue {
@@ -70,4 +73,31 @@ where
     S: Serializer,
 {
     value.map(|m| m.to_hex_string()).serialize(serializer)
+}
+
+/// Get a header as a string.
+#[inline]
+pub fn get_header<'m>(headers: &'m HeaderMap, key: &HeaderName) -> Result<Option<&'m str>, Error> {
+    Ok(if let Some(ref hdr) = headers.get(key) {
+        Some(hdr.to_str().map_err(|e| {
+            Error::new(
+                ErrorKind::InvalidResponse,
+                format!("{} header is invalid string: {}", key.as_str(), e),
+            )
+        })?)
+    } else {
+        None
+    })
+}
+
+/// Get a header as a string, failing if it's not present.
+#[inline]
+pub fn get_required_header<'m>(headers: &'m HeaderMap, key: &HeaderName) -> Result<&'m str, Error> {
+    match get_header(headers, key)? {
+        Some(ref hdr) => Ok(hdr),
+        None => Err(Error::new(
+            ErrorKind::InvalidResponse,
+            format!("Missing {} header", key.as_str()),
+        )),
+    }
 }

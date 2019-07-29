@@ -660,6 +660,8 @@ pub mod compute;
 pub mod image;
 #[cfg(feature = "network")]
 pub mod network;
+#[cfg(feature = "object-storage")]
+pub mod object_storage;
 /// Reimport of the synchronous session from `osauth`.
 ///
 /// See [osauth documentation](https://docs.rs/osauth/) for details.

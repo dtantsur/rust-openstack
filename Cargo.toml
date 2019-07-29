@@ -15,11 +15,12 @@ edition = "2018"
 
 [features]
 
-default = ["compute", "image", "network", "native-tls"]
+default = ["compute", "image", "network", "native-tls", "object-storage"]
 compute = []
 image = []
 network = []
 native-tls = ["reqwest/default-tls", "osauth/native-tls"]
+object-storage = []
 rustls = ["reqwest/rustls-tls", "osauth/rustls"]
 
 [dependencies]
@@ -29,7 +30,7 @@ eui48 = { version = "^0.4.0", features = ["serde"] }
 fallible-iterator = "^0.2.0"
 ipnet = { version = "^2.0", features = ["serde"] }
 log = "^0.4"
-osauth = { version = "^0.2.3", default-features = false, features = ["sync"] }
+osauth = { version = "^0.2.5", default-features = false, features = ["sync"] }
 osproto = "^0.1.2"
 reqwest = { version = "^0.9", default-features = false }
 serde = "^1.0"

@@ -121,6 +121,8 @@ macro_rules! opaque_resource_type {
     )
 }
 
+opaque_resource_type!(#[doc = "An ID of a `Container`"] ContainerRef ? "object-storage");
+
 opaque_resource_type!(#[doc = "An ID of a `Flavor`"] FlavorRef ? "compute");
 
 opaque_resource_type!(#[doc = "An ID of an `Image`"] ImageRef ? "image");
@@ -128,6 +130,8 @@ opaque_resource_type!(#[doc = "An ID of an `Image`"] ImageRef ? "image");
 opaque_resource_type!(#[doc = "An ID of a `KeyPair`"] KeyPairRef ? "compute");
 
 opaque_resource_type!(#[doc = "An ID of a `Network`"] NetworkRef ? "network");
+
+opaque_resource_type!(#[doc = "An ID of an `Object`"] ObjectRef ? "object-storage");
 
 opaque_resource_type!(#[doc = "An ID of a `Project`"] ProjectRef ? "identity");
 
