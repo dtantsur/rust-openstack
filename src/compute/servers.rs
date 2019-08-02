@@ -95,6 +95,8 @@ pub struct NewServer {
     name: String,
     nics: Vec<ServerNIC>,
     block_devices: Vec<BlockDevice>,
+    user_data: Option<String>,
+    config_drive: Option<bool>,
 }
 
 /// Waiter for server to be created.
@@ -635,6 +637,8 @@ impl NewServer {
             name,
             nics: Vec::new(),
             block_devices: Vec::new(),
+            user_data: None,
+            config_drive: None,
         }
     }
 
@@ -801,6 +805,28 @@ impl NewServer {
         P: Into<PortRef>,
     {
         self.add_port(port);
+        self
+    }
+
+    /// Use this user-data for the new server.
+    pub fn set_user_data(&mut self, user_data: String) {
+        self.user_data = Some(user_data);
+    }
+
+    /// Use this user-data for the new server.
+    pub fn with_user_data(mut self, user_data: String) -> Self {
+        self.set_user_data(user_data);
+        self
+    }
+
+    /// Enable/disable config-drive for the new server.
+    pub fn set_config_drive(&mut self, config_drive: bool) {
+        self.config_drive = Some(config_drive);
+    }
+
+    /// Enable/disable config-drive for the new server.
+    pub fn with_config_drive(mut self, config_drive: bool) -> Self {
+        self.set_config_drive(config_drive);
         self
     }
 }
