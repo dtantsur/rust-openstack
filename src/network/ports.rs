@@ -457,6 +457,7 @@ impl NewPort {
             session,
             inner: protocol::Port {
                 admin_state_up: true,
+                allowed_address_pairs: Vec::new(),
                 created_at: None,
                 description: None,
                 device_id: None,
@@ -569,7 +570,16 @@ impl NewPort {
         set_name, with_name -> name: optional String
     }
 
-    // TODO(dtantsur): security groups
+    /// Add a new security group to the request.
+    pub fn add_security_group(&mut self, security_group_id: String) {
+        self.inner.security_groups.push(security_group_id);
+    }
+
+    /// Add a new security group to the request.
+    pub fn with_security_group(mut self, security_group_id: String) -> Self {
+        self.inner.security_groups.push(security_group_id);
+        self
+    }
 }
 
 impl IntoFallibleIterator for PortQuery {

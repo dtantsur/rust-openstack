@@ -654,6 +654,8 @@ impl NewServer {
             metadata: self.metadata,
             name: self.name,
             networks: convert_networks(&self.session, self.nics)?,
+            user_data: None,
+            config_drive: None,
         };
 
         let server_ref = api::create_server(&self.session, request)?;

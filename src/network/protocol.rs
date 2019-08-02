@@ -300,10 +300,20 @@ pub struct FixedIp {
     pub subnet_id: String,
 }
 
+/// A port's IP address.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct AllowedAddressPair {
+    pub ip_address: net::IpAddr,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub mac_address: String,
+}
+
 /// A port.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Port {
     pub admin_state_up: bool,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub allowed_address_pairs: Vec<AllowedAddressPair>,
     #[serde(default, skip_serializing)]
     pub created_at: Option<DateTime<FixedOffset>>,
     #[serde(

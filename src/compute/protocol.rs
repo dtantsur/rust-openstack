@@ -233,6 +233,10 @@ pub struct ServerCreate {
     pub metadata: HashMap<String, String>,
     pub name: String,
     pub networks: Vec<ServerNetwork>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub config_drive: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_data: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize)]
