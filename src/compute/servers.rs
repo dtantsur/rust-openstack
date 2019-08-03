@@ -96,7 +96,7 @@ pub struct NewServer {
     nics: Vec<ServerNIC>,
     block_devices: Vec<BlockDevice>,
     user_data: Option<String>,
-    config_drive: Option<bool>,
+    config_drive: Option<&'static str>,
 }
 
 /// Waiter for server to be created.
@@ -658,8 +658,8 @@ impl NewServer {
             metadata: self.metadata,
             name: self.name,
             networks: convert_networks(&self.session, self.nics)?,
-            user_data: None,
-            config_drive: None,
+            user_data: self.user_data,
+            config_drive: self.config_drive.map(|s| s.to_string()),
         };
 
         let server_ref = api::create_server(&self.session, request)?;
@@ -821,7 +821,7 @@ impl NewServer {
 
     /// Enable/disable config-drive for the new server.
     pub fn set_config_drive(&mut self, config_drive: bool) {
-        self.config_drive = Some(config_drive);
+        self.config_drive = Some(if config_drive { "True" } else { "" });
     }
 
     /// Enable/disable config-drive for the new server.
