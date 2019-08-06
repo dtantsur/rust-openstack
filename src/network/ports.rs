@@ -511,7 +511,10 @@ impl NewPort {
         set_admin_state_up, with_admin_state_up -> admin_state_up: bool
     }
 
-    // TODO(dtantsur): allowed_address_pairs
+    creation_inner_vec! {
+        #[doc = "Set allowed addresses for the port."]
+        add_allowed_address_pair, with_allowed_address_pair -> allowed_address_pairs: protocol::AllowedAddressPair
+    }
 
     creation_inner_field! {
         #[doc = "Set description of the port."]

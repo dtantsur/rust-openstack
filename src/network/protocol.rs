@@ -302,11 +302,11 @@ pub struct FixedIp {
 }
 
 /// A port's IP address.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Copy)]
 pub struct AllowedAddressPair {
     pub ip_address: net::IpAddr,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub mac_address: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mac_address: Option<MacAddress>,
 }
 
 /// A port.
