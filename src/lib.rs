@@ -398,6 +398,27 @@ macro_rules! creation_inner_vec {
         }
     );
 
+    ($(#[$attr:meta])* $add_func:ident, $with_func:ident -> $name:ident: into $type:ty) => (
+        $(#[$attr])*
+        pub fn $add_func<S: Into<$type>>(&mut self, value: S)  {
+            self.inner.$name.push(value.into());
+        }
+
+        $(#[$attr])*
+        #[inline]
+        pub fn $name(&mut self) -> &mut Vec<$type> {
+            &mut self.inner.$name
+        }
+
+        $(#[$attr])*
+        #[inline]
+        pub fn $with_func<S: Into<$type>>(mut self, value: S) -> Self {
+            self.$add_func(value);
+            self
+        }
+    );
+
+
 }
 
 #[allow(unused_macros)]

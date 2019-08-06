@@ -26,7 +26,7 @@ use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
 
 use super::super::common::{
     DeletionWaiter, IntoVerified, NetworkRef, PortRef, Refresh, ResourceIterator, ResourceQuery,
-    SubnetRef,
+    SecurityGroupRef, SubnetRef,
 };
 use super::super::session::Session;
 use super::super::utils::Query;
@@ -570,15 +570,9 @@ impl NewPort {
         set_name, with_name -> name: optional String
     }
 
-    /// Add a new security group to the request.
-    pub fn add_security_group(&mut self, security_group_id: String) {
-        self.inner.security_groups.push(security_group_id);
-    }
-
-    /// Add a new security group to the request.
-    pub fn with_security_group(mut self, security_group_id: String) -> Self {
-        self.inner.security_groups.push(security_group_id);
-        self
+    creation_inner_vec! {
+        #[doc = "Set security groups for the port."]
+        add_security_group, with_security_group -> security_groups: into SecurityGroupRef
     }
 }
 
