@@ -96,7 +96,7 @@ pub struct NewServer {
     nics: Vec<ServerNIC>,
     block_devices: Vec<BlockDevice>,
     user_data: Option<String>,
-    config_drive: Option<&'static str>,
+    config_drive: Option<bool>,
 }
 
 /// Waiter for server to be created.
@@ -659,7 +659,7 @@ impl NewServer {
             name: self.name,
             networks: convert_networks(&self.session, self.nics)?,
             user_data: self.user_data,
-            config_drive: self.config_drive.map(|s| s.to_string()),
+            config_drive: self.config_drive,
         };
 
         let server_ref = api::create_server(&self.session, request)?;
@@ -808,26 +808,14 @@ impl NewServer {
         self
     }
 
-    /// Use this user-data for the new server.
-    pub fn set_user_data(&mut self, user_data: String) {
-        self.user_data = Some(user_data);
+    creation_field! {
+        #[doc = "Use this user-data for the new server."]
+        set_user_data, with_user_data -> user_data: optional String
     }
 
-    /// Use this user-data for the new server.
-    pub fn with_user_data(mut self, user_data: String) -> Self {
-        self.set_user_data(user_data);
-        self
-    }
-
-    /// Enable/disable config-drive for the new server.
-    pub fn set_config_drive(&mut self, config_drive: bool) {
-        self.config_drive = Some(if config_drive { "True" } else { "" });
-    }
-
-    /// Enable/disable config-drive for the new server.
-    pub fn with_config_drive(mut self, config_drive: bool) -> Self {
-        self.set_config_drive(config_drive);
-        self
+    creation_field! {
+        #[doc = "Enable/disable config-drive for the new server."]
+        set_config_drive, with_config_drive -> config_drive: optional bool
     }
 }
 

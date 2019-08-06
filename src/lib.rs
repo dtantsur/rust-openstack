@@ -226,6 +226,71 @@ macro_rules! query_filter {
 }
 
 #[allow(unused_macros)]
+macro_rules! creation_field {
+
+    ($(#[$attr:meta])* $set_func:ident, $with_func:ident -> $name:ident) => (
+        $(#[$attr])*
+        #[inline]
+        pub fn $set_func<S: Into<String>>(&mut self, value: S)  {
+            self.$name = value.into();
+        }
+
+        $(#[$attr])*
+        #[inline]
+        pub fn $with_func<S: Into<String>>(mut self, value: S) -> Self {
+            self.$set_func(value);
+            self
+        }
+    );
+
+    ($(#[$attr:meta])* $set_func:ident, $with_func:ident -> $name:ident: $type:ty) => (
+        $(#[$attr])*
+        #[inline]
+        pub fn $set_func(&mut self, value: $type)  {
+            self.$name = value;
+        }
+
+        $(#[$attr])*
+        #[inline]
+        pub fn $with_func(mut self, value: $type) -> Self {
+            self.$set_func(value);
+            self
+        }
+    );
+
+    ($(#[$attr:meta])* $set_func:ident, $with_func:ident -> $name:ident: optional String) => (
+        $(#[$attr])*
+        #[inline]
+        pub fn $set_func<S: Into<String>>(&mut self, value: S)  {
+            self.$name = Some(value.into());
+        }
+
+        $(#[$attr])*
+        #[inline]
+        pub fn $with_func<S: Into<String>>(mut self, value: S) -> Self {
+            self.$set_func(value);
+            self
+        }
+    );
+
+    ($(#[$attr:meta])* $set_func:ident, $with_func:ident -> $name:ident: optional $type:ty) => (
+        $(#[$attr])*
+        #[inline]
+        pub fn $set_func(&mut self, value: $type)  {
+            self.$name = Some(value);
+        }
+
+        $(#[$attr])*
+        #[inline]
+        pub fn $with_func(mut self, value: $type) -> Self {
+            self.$set_func(value);
+            self
+        }
+    );
+
+}
+
+#[allow(unused_macros)]
 macro_rules! creation_inner_field {
 
     ($(#[$attr:meta])* $set_func:ident, $with_func:ident -> $name:ident) => (
