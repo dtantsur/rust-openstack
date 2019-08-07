@@ -22,7 +22,7 @@ use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 use chrono::{DateTime, FixedOffset};
 use osproto::common::{empty_as_default, IdAndName, Ref};
-use serde::{Deserialize, Serialize};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 use super::BlockDevice;
 
@@ -159,6 +159,29 @@ pub struct ServerFlavor {
     pub vcpu_count: u32,
 }
 
+fn bool_from_config_drive_string<'de, D>(deserializer: D) -> Result<bool, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    match String::deserialize(deserializer)?.as_ref() {
+        "True" => Ok(true),
+        "" => Ok(false),
+        other => Err(de::Error::invalid_value(
+            de::Unexpected::Str(other),
+            &"True or empty",
+        )),
+    }
+}
+
+fn config_drive_string_to_bool<S>(has_config_drive: &Option<bool>, s: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    has_config_drive
+        .map(|b| if b { "True" } else { "" })
+        .serialize(s)
+}
+
 #[derive(Clone, Debug, Deserialize)]
 pub struct Server {
     #[serde(deserialize_with = "empty_as_default", default, rename = "accessIPv4")]
@@ -175,7 +198,10 @@ pub struct Server {
     pub description: Option<String>,
     // TODO(dtantsur): flavor in newer versions
     pub flavor: Ref,
-    #[serde(deserialize_with = "empty_as_default", rename = "config_drive")]
+    #[serde(
+        deserialize_with = "bool_from_config_drive_string",
+        rename = "config_drive"
+    )]
     pub has_config_drive: bool,
     pub id: String,
     #[serde(deserialize_with = "empty_as_default", default)]
@@ -224,6 +250,11 @@ pub struct ServerCreate {
         skip_serializing_if = "Vec::is_empty"
     )]
     pub block_devices: Vec<BlockDevice>,
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "config_drive_string_to_bool"
+    )]
+    pub config_drive: Option<bool>,
     pub flavorRef: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub imageRef: Option<String>,
@@ -233,6 +264,8 @@ pub struct ServerCreate {
     pub metadata: HashMap<String, String>,
     pub name: String,
     pub networks: Vec<ServerNetwork>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_data: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize)]

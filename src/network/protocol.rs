@@ -29,6 +29,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::super::common;
+use super::super::common::SecurityGroupRef;
 
 protocol_enum! {
     #[doc = "IP protocol version."]
@@ -300,10 +301,20 @@ pub struct FixedIp {
     pub subnet_id: String,
 }
 
+/// A port's IP address.
+#[derive(Debug, Clone, Deserialize, Serialize, Copy)]
+pub struct AllowedAddressPair {
+    pub ip_address: net::IpAddr,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mac_address: Option<MacAddress>,
+}
+
 /// A port.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Port {
     pub admin_state_up: bool,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub allowed_address_pairs: Vec<AllowedAddressPair>,
     #[serde(default, skip_serializing)]
     pub created_at: Option<DateTime<FixedOffset>>,
     #[serde(
@@ -356,7 +367,7 @@ pub struct Port {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub project_id: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub security_groups: Vec<String>,
+    pub security_groups: Vec<SecurityGroupRef>,
     #[serde(skip_serializing)]
     pub status: NetworkStatus,
     #[serde(default, skip_serializing)]
@@ -390,7 +401,7 @@ pub struct PortUpdate {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub security_groups: Option<Vec<String>>,
+    pub security_groups: Option<Vec<SecurityGroupRef>>,
 }
 
 /// A port.

@@ -26,7 +26,7 @@ use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
 
 use super::super::common::{
     DeletionWaiter, IntoVerified, NetworkRef, PortRef, Refresh, ResourceIterator, ResourceQuery,
-    SubnetRef,
+    SecurityGroupRef, SubnetRef,
 };
 use super::super::session::Session;
 use super::super::utils::Query;
@@ -457,6 +457,7 @@ impl NewPort {
             session,
             inner: protocol::Port {
                 admin_state_up: true,
+                allowed_address_pairs: Vec::new(),
                 created_at: None,
                 description: None,
                 device_id: None,
@@ -510,7 +511,10 @@ impl NewPort {
         set_admin_state_up, with_admin_state_up -> admin_state_up: bool
     }
 
-    // TODO(dtantsur): allowed_address_pairs
+    creation_inner_vec! {
+        #[doc = "Set allowed addresses for the port."]
+        add_allowed_address_pair, with_allowed_address_pair -> allowed_address_pairs: protocol::AllowedAddressPair
+    }
 
     creation_inner_field! {
         #[doc = "Set description of the port."]
@@ -569,7 +573,10 @@ impl NewPort {
         set_name, with_name -> name: optional String
     }
 
-    // TODO(dtantsur): security groups
+    creation_inner_vec! {
+        #[doc = "Set security groups for the port."]
+        add_security_group, with_security_group -> security_groups: into SecurityGroupRef
+    }
 }
 
 impl IntoFallibleIterator for PortQuery {

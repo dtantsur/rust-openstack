@@ -137,6 +137,8 @@ opaque_resource_type!(#[doc = "An ID of a `Port`"] PortRef ? "network");
 
 opaque_resource_type!(#[doc = "An ID of a `Router`"] RouterRef ? "network");
 
+opaque_resource_type!(#[doc = "An ID of a `SecurityGroup`"] SecurityGroupRef ? "network");
+
 opaque_resource_type!(#[doc = "An ID of a `Snapshot`"] SnapshotRef ? "volume");
 
 opaque_resource_type!(#[doc = "An ID of a `Subnet`"] SubnetRef ? "network");

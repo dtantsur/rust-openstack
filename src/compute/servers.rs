@@ -95,6 +95,8 @@ pub struct NewServer {
     name: String,
     nics: Vec<ServerNIC>,
     block_devices: Vec<BlockDevice>,
+    user_data: Option<String>,
+    config_drive: Option<bool>,
 }
 
 /// Waiter for server to be created.
@@ -635,6 +637,8 @@ impl NewServer {
             name,
             nics: Vec::new(),
             block_devices: Vec::new(),
+            user_data: None,
+            config_drive: None,
         }
     }
 
@@ -654,6 +658,8 @@ impl NewServer {
             metadata: self.metadata,
             name: self.name,
             networks: convert_networks(&self.session, self.nics)?,
+            user_data: self.user_data,
+            config_drive: self.config_drive,
         };
 
         let server_ref = api::create_server(&self.session, request)?;
@@ -800,6 +806,16 @@ impl NewServer {
     {
         self.add_port(port);
         self
+    }
+
+    creation_field! {
+        #[doc = "Use this user-data for the new server."]
+        set_user_data, with_user_data -> user_data: optional String
+    }
+
+    creation_field! {
+        #[doc = "Enable/disable config-drive for the new server."]
+        set_config_drive, with_config_drive -> config_drive: optional bool
     }
 }
 
