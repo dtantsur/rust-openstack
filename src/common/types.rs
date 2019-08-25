@@ -25,10 +25,13 @@ pub trait Refresh {
 
 /// A type that can be converted into a verified representation.
 pub trait IntoVerified {
-    /// Conver this object into the same object with verification.
-    fn into_verified(self, session: &Session) -> Result<Self>
+    /// Convert this object into the same object with verification.
+    fn into_verified(self, _session: &Session) -> Result<Self>
     where
-        Self: Sized;
+        Self: Sized,
+    {
+        Ok(self)
+    }
 }
 
 macro_rules! opaque_resource_type {
@@ -114,12 +117,7 @@ macro_rules! opaque_resource_type {
 
         #[cfg(not(feature = $service))]
         #[allow(dead_code)]
-        impl $crate::common::IntoVerified for $name {
-            fn into_verified(self, _session: &$crate::session::Session)
-                    -> $crate::Result<$name> {
-                Ok(self)
-            }
-        }
+        impl $crate::common::IntoVerified for $name {}
     )
 }
 
