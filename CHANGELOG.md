@@ -1,5 +1,13 @@
 # Change Log
 
+## 0.3.1 (2019-10-13)
+
+#### Features
+
+*   implement basic Object Storage API ([92d730f1](https://github.com/dtantsur/rust-openstack/commit/92d730f1399acaf89699647a4033540d37fef70b))
+*   support rustls instead of native-tls to avoid non-Rust dependencies (#96) ([24c8a0c43](https://github.com/dtantsur/rust-openstack/commit/24c8a0c43955cd75b082187d07fd207c02342efb))
+* **compute:**  add config_drive, user_data and security_groups fields (#95) ([c58772aa](https://github.com/dtantsur/rust-openstack/commit/c58772aa2c9f28373d3a789cf47903aabddcaa79))
+
 ## 0.3.0 (2019-07-20)
 
 #### Breaking Changes
