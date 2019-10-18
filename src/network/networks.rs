@@ -389,6 +389,12 @@ impl NewNetwork {
     }
 
     creation_inner_field! {
+        #[doc = "Configure whether the network is shared across all projects."]
+        set_shared, with_shared
+            -> shared: bool
+    }
+
+    creation_inner_field! {
         #[doc = "Configure VLAN transparency mode of the network."]
         set_vlan_transparent, with_vlan_transparent
             -> vlan_transparent: optional bool
