@@ -18,13 +18,13 @@ extern crate ipnet;
 extern crate openstack;
 
 use std::io::{Cursor, Read};
-use std::sync::{Once, ONCE_INIT};
+use std::sync::Once;
 
 use fallible_iterator::FallibleIterator;
 
 use openstack::Refresh;
 
-static INIT: Once = ONCE_INIT;
+static INIT: Once = Once::new();
 
 fn set_up() -> openstack::Cloud {
     INIT.call_once(|| {

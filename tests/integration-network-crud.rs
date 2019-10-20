@@ -20,14 +20,14 @@ extern crate waiter;
 
 use std::env;
 use std::net;
-use std::sync::{Once, ONCE_INIT};
+use std::sync::Once;
 
 use fallible_iterator::FallibleIterator;
 use waiter::Waiter;
 
 use openstack::Refresh;
 
-static INIT: Once = ONCE_INIT;
+static INIT: Once = Once::new();
 
 fn set_up() -> openstack::Cloud {
     INIT.call_once(|| {
