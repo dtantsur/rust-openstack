@@ -15,6 +15,15 @@
     run: playbooks/rust-openstack-acceptance/run.yaml
 
 - job:
+    name: rust-openstack-acceptance-train
+    parent: rust-openstack-acceptance
+    description: |
+      Run rust-openstack acceptance test on train branch
+    vars:
+      global_env:
+        OS_BRANCH: stable/train
+
+- job:
     name: rust-openstack-acceptance-stein
     parent: rust-openstack-acceptance
     description: |
@@ -40,6 +49,7 @@
     vars:
       global_env:
         OS_BRANCH: stable/queens
+    voting: false
 
 - job:
     name: rust-openstack-acceptance-nightly
