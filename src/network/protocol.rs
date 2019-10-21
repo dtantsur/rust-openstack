@@ -423,7 +423,7 @@ pub struct PortsRoot {
 }
 
 /// An allocation pool.
-#[derive(Copy, Debug, Clone, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct AllocationPool {
     /// Start IP address.
     pub start: net::IpAddr,
@@ -431,8 +431,8 @@ pub struct AllocationPool {
     pub end: net::IpAddr,
 }
 
-/// A host router.
-#[derive(Copy, Debug, Clone, Deserialize, Serialize)]
+/// A host route.
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct HostRoute {
     /// Destination network.
     pub destination: ipnet::IpNet,
@@ -549,7 +549,7 @@ pub struct SubnetsRoot {
     pub subnets: Vec<Subnet>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub struct PortForwarding {
     /// TCP or UDP port used by floating IP.
     pub external_port: u16,
