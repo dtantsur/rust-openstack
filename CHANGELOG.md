@@ -1,5 +1,12 @@
 # Change Log
 
+## 0.3.2 (2019-12-03)
+
+* **compute:** Allow to set availability zone for new servers
+* **network:**
+  * Derive Eq and PartialEq for trivial networking API protocol bits
+  * Allow setting 'shared' on NewNetwork
+
 ## 0.3.1 (2019-10-13)
 
 #### Features
