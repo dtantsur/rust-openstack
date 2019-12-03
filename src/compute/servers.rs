@@ -97,6 +97,7 @@ pub struct NewServer {
     block_devices: Vec<BlockDevice>,
     user_data: Option<String>,
     config_drive: Option<bool>,
+    availability_zone: Option<String>,
 }
 
 /// Waiter for server to be created.
@@ -639,6 +640,7 @@ impl NewServer {
             block_devices: Vec::new(),
             user_data: None,
             config_drive: None,
+            availability_zone: None,
         }
     }
 
@@ -660,6 +662,7 @@ impl NewServer {
             networks: convert_networks(&self.session, self.nics)?,
             user_data: self.user_data,
             config_drive: self.config_drive,
+            availability_zone: self.availability_zone,
         };
 
         let server_ref = api::create_server(&self.session, request)?;
@@ -726,6 +729,14 @@ impl NewServer {
         self.keypair = Some(keypair.into());
     }
 
+    /// Use this availability_zone for the new server.
+    pub fn set_availability_zone<A>(&mut self, availability_zone: A)
+    where
+        A: Into<String>,
+    {
+        self.availability_zone = Some(availability_zone.into());
+    }
+
     /// Add a block device to attach to the server.
     #[inline]
     pub fn with_block_device(mut self, block_device: BlockDevice) -> Self {
@@ -766,6 +777,16 @@ impl NewServer {
         K: Into<KeyPairRef>,
     {
         self.set_keypair(keypair);
+        self
+    }
+
+    /// Use this availability zone for the new server.
+    #[inline]
+    pub fn with_availability_zone<K>(mut self, availability_zone: K) -> NewServer
+    where
+        K: Into<String>,
+    {
+        self.set_availability_zone(availability_zone);
         self
     }
 

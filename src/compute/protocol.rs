@@ -266,6 +266,8 @@ pub struct ServerCreate {
     pub networks: Vec<ServerNetwork>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user_data: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub availability_zone: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize)]
