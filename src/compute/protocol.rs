@@ -206,6 +206,8 @@ pub struct Server {
     pub id: String,
     #[serde(deserialize_with = "empty_as_default", default)]
     pub image: Option<Ref>,
+    #[serde(rename = "OS-EXT-SRV-ATTR:instance_name", default)]
+    pub instance_name: Option<String>,
     #[serde(rename = "key_name", deserialize_with = "empty_as_default", default)]
     pub key_pair_name: Option<String>,
     pub name: String,

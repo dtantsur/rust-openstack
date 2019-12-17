@@ -230,6 +230,11 @@ impl Server {
         }
     }
 
+    transparent_property! {
+        #[doc = "Instance name."]
+        instance_name: ref Option<String>
+    }
+
     /// Fetch the key pair used for the server.
     pub fn key_pair(&self) -> Result<KeyPair> {
         match self.inner.key_pair_name {
