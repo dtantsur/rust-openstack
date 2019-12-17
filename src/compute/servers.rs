@@ -160,6 +160,11 @@ impl Server {
     }
 
     transparent_property! {
+        #[doc = "Instance name."]
+        instance_name: ref String
+    }
+
+    transparent_property! {
         #[doc = "Creation date and time."]
         created_at: DateTime<FixedOffset>
     }
