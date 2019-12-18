@@ -161,7 +161,7 @@ impl Server {
 
     transparent_property! {
         #[doc = "Instance name."]
-        instance_name: ref String
+        instance_name: ref Option<String>
     }
 
     transparent_property! {

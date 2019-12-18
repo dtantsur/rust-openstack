@@ -218,8 +218,8 @@ pub struct Server {
     #[serde(rename = "updated")]
     pub updated_at: DateTime<FixedOffset>,
     pub user_id: String,
-    #[serde(rename = "OS-EXT-SRV-ATTR:instance_name")]
-    pub instance_name: String,
+    #[serde(rename = "OS-EXT-SRV-ATTR:instance_name", default)]
+    pub instance_name: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
