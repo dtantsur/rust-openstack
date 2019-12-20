@@ -21,28 +21,30 @@ compute = []
 image = []
 network = []
 native-tls = ["reqwest/default-tls", "osauth/native-tls"]
-object-storage = []
+object-storage = ["tokio", "tokio-util"]
 rustls = ["reqwest/rustls-tls", "osauth/rustls"]
 
 [dependencies]
 
 bytes = { version = "^0.5" }
+async-trait = "^0.1"
 chrono = { version = "^0.4", features = ["serde"] }
 eui48 = { version = "^1.0", features = ["disp_hexstring", "serde"] }
 fallible-iterator = "^0.2.0"
 ipnet = { version = "^2.0", features = ["serde"] }
 futures = "^0.3"
 log = "^0.4"
-osauth = { version = "^0.3.3", default-features = false }
-osproto = "^0.2.1"
+osauth = { path = "../osauth", default-features = false, features = ["stream"] }
+osproto = "^0.2.0"
 pin-project = "^1.0"
 reqwest = { version = "^0.10", default-features = false, features = ["gzip", "json", "stream"] }
 serde = "^1.0"
 serde_derive = "^1.0"
 serde_json = "^1.0"
 serde_yaml = "^0.8"
-tokio = { version = "^0.2.23", features = ["io-driver", "rt-core"] }
-waiter = "^0.1"
+tokio = { version = "^0.2", optional = true }
+tokio-util = { version = "^0.2", features = ["codec"], optional = true }
+waiter = { path = "../waiter" }
 
 [dev-dependencies]
 env_logger = "^0.7"

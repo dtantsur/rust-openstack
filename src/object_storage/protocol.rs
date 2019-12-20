@@ -16,6 +16,7 @@
 
 #![allow(missing_docs)]
 
+use osauth::stream::Resource;
 use reqwest::header::{self, HeaderMap, HeaderName};
 use serde::Deserialize;
 
@@ -28,6 +29,14 @@ pub struct Container {
     pub name: String,
     #[serde(rename = "count")]
     pub object_count: u64,
+}
+
+impl Resource for Container {
+    type Id = String;
+    type Root = Vec<Self>;
+    fn resource_id(&self) -> Self::Id {
+        self.name.clone()
+    }
 }
 
 // TODO(dtantsur): implement last_modified. It seems to be complicated by the fact that different
@@ -43,6 +52,14 @@ pub struct Object {
 static CONTENT_LENGTH: HeaderName = header::CONTENT_LENGTH;
 static CONTENT_TYPE: HeaderName = header::CONTENT_TYPE;
 static ETAG: HeaderName = header::ETAG;
+
+impl Resource for Object {
+    type Id = String;
+    type Root = Vec<Self>;
+    fn resource_id(&self) -> Self::Id {
+        self.name.clone()
+    }
+}
 
 impl Container {
     pub fn from_headers(name: &str, value: &HeaderMap) -> Result<Container, Error> {

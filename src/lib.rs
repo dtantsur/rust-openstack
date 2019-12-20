@@ -669,14 +669,17 @@ pub mod network;
 pub mod object_storage;
 /// Synchronous sessions based on one from [osauth](https://docs.rs/osauth/).
 pub mod session {
-    pub use crate::sync::SyncSession as Session;
     pub use osauth::services::ServiceType;
+    pub use osauth::Session;
 }
 mod sync;
 mod utils;
 
 pub use osauth::identity::IdOrName;
 pub use osauth::{EndpointFilters, Error, ErrorKind, InterfaceType, ValidInterfaces};
+
+/// A result of an OpenStack operation.
+pub type Result<T> = ::std::result::Result<T, Error>;
 
 pub use crate::cloud::Cloud;
 pub use crate::common::Refresh;

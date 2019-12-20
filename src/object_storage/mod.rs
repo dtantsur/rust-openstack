@@ -18,6 +18,7 @@ mod api;
 mod containers;
 mod objects;
 mod protocol;
+mod utils;
 
 pub use containers::{Container, ContainerQuery};
 pub use objects::{NewObject, Object, ObjectQuery};

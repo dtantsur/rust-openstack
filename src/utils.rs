@@ -21,6 +21,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::hash::Hash;
 
+use futures::{pin_mut, Stream, TryStreamExt};
 use serde::{Serialize, Serializer};
 
 use super::{Error, ErrorKind, Result};
@@ -230,6 +231,29 @@ pub fn endpoint_not_found<D: fmt::Display>(service_type: D) -> Error {
         ErrorKind::EndpointNotFound,
         format!("Endpoint for service {} was not found", service_type),
     )
+}
+
+pub async fn try_one<T, S>(mut stream: S) -> Result<T>
+where
+    S: Stream<Item = Result<T>>,
+{
+    pin_mut!(stream);
+    match stream.try_next().await? {
+        Some(result) => {
+            if stream.try_next().await?.is_some() {
+                Err(Error::new(
+                    ErrorKind::TooManyItems,
+                    "Query returned more than one result",
+                ))
+            } else {
+                Ok(result)
+            }
+        }
+        None => Err(Error::new(
+            ErrorKind::ResourceNotFound,
+            "Query returned no results",
+        )),
+    }
 }
 
 pub mod url {

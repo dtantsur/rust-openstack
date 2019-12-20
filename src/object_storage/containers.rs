@@ -14,13 +14,12 @@
 
 //! Containers of objects.
 
-use std::rc::Rc;
+use async_trait::async_trait;
+use futures::{pin_mut, Stream, TryStreamExt};
 
-use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
-
-use super::super::common::{ContainerRef, IntoVerified, Refresh, ResourceIterator, ResourceQuery};
+use super::super::common::{ContainerRef, IntoVerified, Refresh};
 use super::super::session::Session;
-use super::super::utils::Query;
+use super::super::utils::{try_one, Query};
 use super::super::{Error, ErrorKind, Result};
 use super::objects::{Object, ObjectQuery};
 use super::{api, protocol};
@@ -28,35 +27,36 @@ use super::{api, protocol};
 /// A query to containers.
 #[derive(Clone, Debug)]
 pub struct ContainerQuery {
-    session: Rc<Session>,
+    session: Session,
     query: Query,
-    can_paginate: bool,
+    limit: Option<usize>,
+    marker: Option<String>,
 }
 
 /// Structure representing a single container.
 #[derive(Clone, Debug)]
 pub struct Container {
-    session: Rc<Session>,
+    session: Session,
     inner: protocol::Container,
 }
 
 impl Container {
     /// Create a new Container object.
-    pub(crate) fn new(session: Rc<Session>, inner: protocol::Container) -> Container {
+    pub(crate) fn new(session: Session, inner: protocol::Container) -> Container {
         Container { session, inner }
     }
 
     /// Create a new container.
-    pub(crate) fn create<Id: AsRef<str>>(session: Rc<Session>, name: Id) -> Result<Container> {
+    pub(crate) async fn create<Id: AsRef<str>>(session: Session, name: Id) -> Result<Container> {
         let c_id = name.as_ref();
-        let _ = api::create_container(&session, c_id)?;
-        let inner = api::get_container(&session, c_id)?;
+        let _ = api::create_container(&session, c_id).await?;
+        let inner = api::get_container(&session, c_id).await?;
         Ok(Container::new(session, inner))
     }
 
     /// Load a Container object.
-    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, name: Id) -> Result<Container> {
-        let inner = api::get_container(&session, name)?;
+    pub(crate) async fn load<Id: AsRef<str>>(session: Session, name: Id) -> Result<Container> {
+        let inner = api::get_container(&session, name).await?;
         Ok(Container::new(session, inner))
     }
 
@@ -64,12 +64,12 @@ impl Container {
     ///
     /// If `delete_objects` is `true`, all objects inside the container are deleted first.
     /// Otherwise deletion will fail if the container is non-empty.
-    pub fn delete(self, delete_objects: bool) -> Result<()> {
+    pub async fn delete(self, delete_objects: bool) -> Result<()> {
         if delete_objects {
-            debug!("Deleting all objects from container {}", self.inner.name);
-            let mut iter = self.find_objects().into_iter();
-            while let Some(obj) = iter.next()? {
-                obj.delete().or_else(|err| {
+            let mut iter = self.find_objects().into_stream().await?;
+            pin_mut!(iter);
+            while let Some(obj) = iter.try_next().await? {
+                obj.delete().await.or_else(|err| {
                     if err.kind() == ErrorKind::ResourceNotFound {
                         Ok(())
                     } else {
@@ -78,7 +78,7 @@ impl Container {
                 })?;
             }
         }
-        api::delete_container(&self.session, self.inner.name)
+        api::delete_container(&self.session, self.inner.name).await
     }
 
     /// Find objects inside this container.
@@ -91,8 +91,8 @@ impl Container {
 
     /// List all objects inside this container.
     #[inline]
-    pub fn list_objects(&self) -> Result<Vec<Object>> {
-        self.find_objects().all()
+    pub async fn list_objects(&self) -> Result<Vec<Object>> {
+        self.find_objects().all().await
     }
 
     transparent_property! {
@@ -111,20 +111,22 @@ impl Container {
     }
 }
 
+#[async_trait]
 impl Refresh for Container {
     /// Refresh the container.
-    fn refresh(&mut self) -> Result<()> {
-        self.inner = api::get_container(&self.session, &self.inner.name)?;
+    async fn refresh(&mut self) -> Result<()> {
+        self.inner = api::get_container(&self.session, &self.inner.name).await?;
         Ok(())
     }
 }
 
 impl ContainerQuery {
-    pub(crate) fn new(session: Rc<Session>) -> ContainerQuery {
+    pub(crate) fn new(session: Session) -> ContainerQuery {
         ContainerQuery {
             session,
             query: Query::new(),
-            can_paginate: true,
+            limit: None,
+            marker: None,
         }
     }
 
@@ -132,8 +134,7 @@ impl ContainerQuery {
     ///
     /// Using this disables automatic pagination.
     pub fn with_marker<T: Into<String>>(mut self, marker: T) -> Self {
-        self.can_paginate = false;
-        self.query.push_str("marker", marker);
+        self.marker = Some(marker.into());
         self
     }
 
@@ -141,8 +142,7 @@ impl ContainerQuery {
     ///
     /// Using this disables automatic pagination.
     pub fn with_limit(mut self, limit: usize) -> Self {
-        self.can_paginate = false;
-        self.query.push("limit", limit);
+        self.limit = Some(limit);
         self
     }
 
@@ -151,74 +151,34 @@ impl ContainerQuery {
         with_prefix -> prefix
     }
 
-    /// Convert this query into an iterator executing the request.
-    ///
-    /// Returns a `FallibleIterator`, which is an iterator with each `next`
-    /// call returning a `Result`.
-    ///
-    /// Note that no requests are done until you start iterating.
-    pub fn into_iter(self) -> ResourceIterator<ContainerQuery> {
-        debug!("Fetching containers with {:?}", self.query);
-        ResourceIterator::new(self)
+    /// Convert this query into a stream of containers.
+    pub async fn into_stream(self) -> Result<impl Stream<Item = Result<Container>>> {
+        debug!(
+            "Fetching containers with {:?}",
+            self.query
+        );
+        Ok(
+            api::list_containers(&self.session, self.query, self.limit, self.marker)
+                .await?
+                .map_ok(|c| Container::new(self.session.clone(), c)),
+        )
     }
 
     /// Execute this request and return all results.
-    ///
-    /// A convenience shortcut for `self.into_iter().collect()`.
-    pub fn all(self) -> Result<Vec<Container>> {
-        self.into_iter().collect()
+    pub async fn all(self) -> Result<Vec<Container>> {
+        self.into_stream().await?.try_collect().await
     }
 
     /// Return one and exactly one result.
     ///
     /// Fails with `ResourceNotFound` if the query produces no results and
     /// with `TooManyItems` if the query produces more than one result.
-    pub fn one(mut self) -> Result<Container> {
+    pub async fn one(mut self) -> Result<Container> {
         debug!("Fetching one container with {:?}", self.query);
-        if self.can_paginate {
-            // We need only one result. We fetch maximum two to be able
-            // to check if the query yieled more than one result.
-            self.query.push("limit", 2);
-        }
-
-        self.into_iter().one()
-    }
-}
-
-impl ResourceQuery for ContainerQuery {
-    type Item = Container;
-
-    const DEFAULT_LIMIT: usize = 100;
-
-    fn can_paginate(&self) -> Result<bool> {
-        Ok(self.can_paginate)
-    }
-
-    fn extract_marker(&self, resource: &Self::Item) -> String {
-        resource.name().clone()
-    }
-
-    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
-        let query = self.query.with_marker_and_limit(limit, marker);
-        Ok(api::list_containers(&self.session, query)?
-            .into_iter()
-            .map(|item| Container {
-                session: self.session.clone(),
-                inner: item,
-            })
-            .collect())
-    }
-}
-
-impl IntoFallibleIterator for ContainerQuery {
-    type Item = Container;
-
-    type Error = Error;
-
-    type IntoFallibleIter = ResourceIterator<ContainerQuery>;
-
-    fn into_fallible_iter(self) -> Self::IntoFallibleIter {
-        self.into_iter()
+        // We need only one result. We fetch maximum two to be able
+        // to check if the query yieled more than one result.
+        self.limit = Some(2);
+        try_one(self.into_stream().await?).await
     }
 }
 

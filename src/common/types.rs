@@ -14,19 +14,23 @@
 
 //! Types and traits shared between services.
 
+use async_trait::async_trait;
+
 use super::super::session::Session;
 use super::super::Result;
 
 /// Trait representing something that can be refreshed.
+#[async_trait]
 pub trait Refresh {
     /// Refresh the resource representation.
-    fn refresh(&mut self) -> Result<()>;
+    async fn refresh(&mut self) -> Result<()>;
 }
 
 /// A type that can be converted into a verified representation.
+#[async_trait]
 pub trait IntoVerified {
     /// Convert this object into the same object with verification.
-    fn into_verified(self, _session: &Session) -> Result<Self>
+    async fn into_verified(self, _session: &Session) -> Result<Self>
     where
         Self: Sized,
     {
