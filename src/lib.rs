@@ -667,12 +667,13 @@ pub mod object_storage;
 /// See [osauth documentation](https://docs.rs/osauth/) for details.
 pub mod session {
     pub use osauth::services::ServiceType;
-    pub use osauth::sync::SyncSession as Session;
+    pub use osauth::Session;
 }
 mod utils;
 
-pub use osauth::sync::Result;
 pub use osauth::{Error, ErrorKind};
+/// A result of an OpenStack operation.
+pub type Result<T> = ::std::result::Result<T, Error>;
 
 pub use crate::cloud::Cloud;
 pub use crate::common::Refresh;

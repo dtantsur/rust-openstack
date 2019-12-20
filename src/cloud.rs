@@ -1,4 +1,4 @@
-// Copyright 2018 Dmitry Tantsur <divius.inside@gmail.com>
+// Copyright 2018-2019 Dmitry Tantsur <divius.inside@gmail.com>
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,13 +16,11 @@
 
 #[allow(unused_imports)]
 use std::io;
-use std::rc::Rc;
 
 #[allow(unused_imports)]
 use ipnet;
-use osauth::sync::SyncSession;
-use osauth::{AuthType, Session};
 
+use super::auth::AuthType;
 #[allow(unused_imports)]
 use super::common::{ContainerRef, FlavorRef, NetworkRef};
 #[cfg(feature = "compute")]
@@ -39,6 +37,7 @@ use super::network::{
 };
 #[cfg(feature = "object-storage")]
 use super::object_storage::{Container, ContainerQuery, Object, ObjectQuery};
+use super::session::Session;
 use super::Result;
 
 /// OpenStack cloud API.
@@ -46,7 +45,7 @@ use super::Result;
 /// Provides high-level API for working with OpenStack clouds.
 #[derive(Debug, Clone)]
 pub struct Cloud {
-    session: Rc<SyncSession>,
+    session: Session,
 }
 
 impl Cloud {
@@ -76,7 +75,7 @@ impl Cloud {
     /// * [from_env](#method.from_env) to create a Cloud from environment variables
     pub fn new<Auth: AuthType + 'static>(auth_type: Auth) -> Cloud {
         Cloud {
-            session: Rc::new(SyncSession::new(Session::new(auth_type))),
+            session: Session::new(auth_type),
         }
     }
 
@@ -92,7 +91,7 @@ impl Cloud {
     /// ```
     pub fn from_config<S: AsRef<str>>(cloud_name: S) -> Result<Cloud> {
         Ok(Cloud {
-            session: Rc::new(SyncSession::new(osauth::from_config(cloud_name)?)),
+            session: osauth::from_config(cloud_name)?,
         })
     }
 
@@ -108,7 +107,7 @@ impl Cloud {
     /// ```
     pub fn from_env() -> Result<Cloud> {
         Ok(Cloud {
-            session: Rc::new(SyncSession::new(osauth::from_env()?)),
+            session: osauth::from_env()?,
         })
     }
 
@@ -128,13 +127,13 @@ impl Cloud {
     where
         S: Into<String>,
     {
-        Rc::make_mut(&mut self.session).set_endpoint_interface(endpoint_interface);
+        self.session.set_endpoint_interface(endpoint_interface);
         self
     }
 
     /// Refresh this `Cloud` object (renew token, refetch service catalog, etc).
-    pub fn refresh(&mut self) -> Result<()> {
-        Rc::make_mut(&mut self.session).refresh()
+    pub async fn refresh(&mut self) -> Result<()> {
+        self.session.refresh().await
     }
 
     /// Create a new container.
@@ -699,16 +698,6 @@ impl Cloud {
 
 impl From<Session> for Cloud {
     fn from(value: Session) -> Cloud {
-        Cloud {
-            session: Rc::new(SyncSession::new(value)),
-        }
-    }
-}
-
-impl From<SyncSession> for Cloud {
-    fn from(value: SyncSession) -> Cloud {
-        Cloud {
-            session: Rc::new(value),
-        }
+        Cloud { session: value }
     }
 }

@@ -16,6 +16,7 @@
 
 #![allow(missing_docs)]
 
+use osauth::stream::Resource;
 use reqwest::header::{self, HeaderMap, HeaderName};
 use serde::Deserialize;
 
@@ -30,6 +31,14 @@ pub struct Container {
     pub object_count: u64,
 }
 
+impl Resource for Container {
+    type Id = String;
+    type Root = Vec<Self>;
+    fn resource_id(&self) -> Self::Id {
+        self.name.clone()
+    }
+}
+
 // TODO(dtantsur): implement last_modified. It seems to be complicated by the fact that different
 // clouds use different formats (UTC vs naive) or skip it completely (for containers).
 #[derive(Debug, Clone, Deserialize)]
@@ -37,6 +46,14 @@ pub struct Object {
     pub bytes: u64,
     pub content_type: Option<String>,
     pub name: String,
+}
+
+impl Resource for Object {
+    type Id = String;
+    type Root = Vec<Self>;
+    fn resource_id(&self) -> Self::Id {
+        self.name.clone()
+    }
 }
 
 impl Container {
