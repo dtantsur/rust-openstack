@@ -6,6 +6,7 @@
     pre-run: playbooks/rust-base/pre.yaml
     vars:
       rustup_toolchain: stable
+    nodeset: ubuntu-bionic
 
 - job:
     name: rust-openstack-acceptance
@@ -31,6 +32,7 @@
     vars:
       global_env:
         OS_BRANCH: stable/stein
+    nodeset: ubuntu-xenial
 
 - job:
     name: rust-openstack-acceptance-rocky
@@ -40,6 +42,7 @@
     vars:
       global_env:
         OS_BRANCH: stable/rocky
+    nodeset: ubuntu-xenial
 
 - job:
     name: rust-openstack-acceptance-queens
@@ -49,6 +52,7 @@
     vars:
       global_env:
         OS_BRANCH: stable/queens
+    nodeset: ubuntu-xenial
     voting: false
 
 - job:
