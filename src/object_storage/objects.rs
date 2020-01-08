@@ -26,6 +26,7 @@ use super::super::session::Session;
 use super::super::utils::Query;
 use super::super::{Error, Result};
 use super::{api, protocol};
+use std::collections::HashMap;
 
 /// A query to objects.
 #[derive(Clone, Debug)]
@@ -69,6 +70,25 @@ impl Object {
         let c_ref = container.into();
         let c_name = c_ref.to_string();
         let inner = api::create_object(&session, c_ref, name, body)?;
+        Ok(Object::new(session, inner, c_name))
+    }
+
+    /// Create an object with headers sent with the request.
+    pub(crate) fn create_with_headers<C, Id, R>(
+        session: Rc<Session>,
+        container: C,
+        name: Id,
+        body: R,
+        headers: HashMap<String, String>
+    ) -> Result<Object>
+        where
+            C: Into<ContainerRef>,
+            Id: AsRef<str>,
+            R: Read + Send + 'static,
+    {
+        let c_ref = container.into();
+        let c_name = c_ref.to_string();
+        let inner = api::create_object_with_headers(&session, c_ref, name, body, headers)?;
         Ok(Object::new(session, inner, c_name))
     }
 

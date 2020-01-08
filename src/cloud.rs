@@ -40,6 +40,7 @@ use super::network::{
 #[cfg(feature = "object-storage")]
 use super::object_storage::{Container, ContainerQuery, Object, ObjectQuery};
 use super::Result;
+use std::collections::HashMap;
 
 /// OpenStack cloud API.
 ///
@@ -154,6 +155,17 @@ impl Cloud {
         R: io::Read + Send + 'static,
     {
         Object::create(self.session.clone(), container, name, body)
+    }
+
+    /// Create a new object providing specified headers to the request.
+    #[cfg(feature = "object-storage")]
+    pub fn create_object_with_headers<C, Id, R>(&self, container: C, name: Id, body: R, headers: HashMap<String, String>) -> Result<Object>
+        where
+            C: Into<ContainerRef>,
+            Id: AsRef<str>,
+            R: io::Read + Send + 'static,
+    {
+        Object::create_with_headers(self.session.clone(), container, name, body, headers)
     }
 
     /// Build a query against container list.
