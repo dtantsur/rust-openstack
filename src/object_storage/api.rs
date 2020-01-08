@@ -67,11 +67,17 @@ where
 }
 
 /// Create a new object providing specified headers into the request.
-pub fn create_object_with_headers<C, O, R>(session: &Session, container: C, object: O, body: R, headers: HashMap<String, String>) -> Result<Object>
-    where
-        C: AsRef<str>,
-        O: AsRef<str>,
-        R: io::Read + Send + 'static,
+pub fn create_object_with_headers<C, O, R>(
+    session: &Session,
+    container: C,
+    object: O,
+    body: R,
+    headers: HashMap<String, String>,
+) -> Result<Object>
+where
+    C: AsRef<str>,
+    O: AsRef<str>,
+    R: io::Read + Send + 'static,
 {
     let c_id = container.as_ref();
     let o_id = object.as_ref();
@@ -79,7 +85,7 @@ pub fn create_object_with_headers<C, O, R>(session: &Session, container: C, obje
     let mut req = session.request(OBJECT_STORAGE, Method::PUT, &[c_id, o_id], None)?;
 
     // add custom headers to the request
-    for (key, val) in headers.iter(){
+    for (key, val) in headers.iter() {
         req = req.header(key, val);
     }
 
@@ -88,7 +94,6 @@ pub fn create_object_with_headers<C, O, R>(session: &Session, container: C, obje
     // We need to retrieve the size, issue HEAD.
     get_object(session, c_id, o_id)
 }
-
 
 /// Delete an empty container.
 pub fn delete_container<C>(session: &Session, container: C) -> Result<()>

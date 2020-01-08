@@ -79,12 +79,12 @@ impl Object {
         container: C,
         name: Id,
         body: R,
-        headers: HashMap<String, String>
+        headers: HashMap<String, String>,
     ) -> Result<Object>
-        where
-            C: Into<ContainerRef>,
-            Id: AsRef<str>,
-            R: Read + Send + 'static,
+    where
+        C: Into<ContainerRef>,
+        Id: AsRef<str>,
+        R: Read + Send + 'static,
     {
         let c_ref = container.into();
         let c_name = c_ref.to_string();
