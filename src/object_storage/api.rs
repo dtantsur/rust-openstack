@@ -14,8 +14,8 @@
 
 //! Foundation bits exposing the object storage API.
 
-use std::io;
 use std::collections::HashMap;
+use std::io;
 
 use osauth::request::NO_PATH;
 use osauth::services::OBJECT_STORAGE;

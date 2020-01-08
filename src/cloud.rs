@@ -15,9 +15,10 @@
 //! Cloud API.
 
 #[allow(unused_imports)]
+use std::collections::HashMap;
+#[allow(unused_imports)]
 use std::io;
 use std::rc::Rc;
-use std::collections::HashMap;
 
 #[allow(unused_imports)]
 use ipnet;

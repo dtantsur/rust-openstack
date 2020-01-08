@@ -14,9 +14,9 @@
 
 //! Stored objects.
 
+use std::collections::HashMap;
 use std::io::Read;
 use std::rc::Rc;
-use std::collections::HashMap;
 
 use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
 
