@@ -16,6 +16,7 @@
 
 use std::io::Read;
 use std::rc::Rc;
+use std::collections::HashMap;
 
 use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
 
@@ -26,7 +27,6 @@ use super::super::session::Session;
 use super::super::utils::Query;
 use super::super::{Error, Result};
 use super::{api, protocol};
-use std::collections::HashMap;
 
 /// A query to objects.
 #[derive(Clone, Debug)]

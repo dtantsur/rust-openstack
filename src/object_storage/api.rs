@@ -15,6 +15,7 @@
 //! Foundation bits exposing the object storage API.
 
 use std::io;
+use std::collections::HashMap;
 
 use osauth::request::NO_PATH;
 use osauth::services::OBJECT_STORAGE;
@@ -25,7 +26,6 @@ use super::super::session::Session;
 use super::super::utils::Query;
 use super::super::Result;
 use super::protocol::*;
-use std::collections::HashMap;
 
 /// Create a new container.
 ///

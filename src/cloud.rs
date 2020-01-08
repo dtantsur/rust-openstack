@@ -17,6 +17,7 @@
 #[allow(unused_imports)]
 use std::io;
 use std::rc::Rc;
+use std::collections::HashMap;
 
 #[allow(unused_imports)]
 use ipnet;
@@ -40,7 +41,6 @@ use super::network::{
 #[cfg(feature = "object-storage")]
 use super::object_storage::{Container, ContainerQuery, Object, ObjectQuery};
 use super::Result;
-use std::collections::HashMap;
 
 /// OpenStack cloud API.
 ///
