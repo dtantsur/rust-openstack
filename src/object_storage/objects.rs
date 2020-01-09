@@ -18,8 +18,8 @@ use std::io::Read;
 use std::rc::Rc;
 
 use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
-
 use osauth::services::OBJECT_STORAGE;
+use reqwest::Url;
 
 use super::super::common::{
     ContainerRef, IntoVerified, ObjectRef, Refresh, ResourceIterator, ResourceQuery,
@@ -28,7 +28,6 @@ use super::super::session::Session;
 use super::super::utils::Query;
 use super::super::{Error, Result};
 use super::{api, protocol};
-use reqwest::Url;
 
 /// A query to objects.
 #[derive(Clone, Debug)]
@@ -112,13 +111,6 @@ impl Object {
         &self.c_name
     }
 
-    /// Object url
-    #[inline]
-    pub fn url(&self) -> Result<Url> {
-        self.session
-            .get_endpoint(OBJECT_STORAGE, &[self.container_name(), self.name()])
-    }
-
     transparent_property! {
         #[doc = "Object content type (if set)."]
         content_type: ref Option<String>
@@ -127,6 +119,13 @@ impl Object {
     transparent_property! {
         #[doc = "Object name."]
         name: ref String
+    }
+
+    /// Object url.
+    #[inline]
+    pub fn url(&self) -> Result<Url> {
+        self.session
+            .get_endpoint(OBJECT_STORAGE, &[self.container_name(), self.name()])
     }
 }
 
