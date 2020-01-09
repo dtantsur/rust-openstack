@@ -18,6 +18,8 @@ use std::io::Read;
 use std::rc::Rc;
 
 use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
+use osauth::services::OBJECT_STORAGE;
+use reqwest::Url;
 
 use super::super::common::{
     ContainerRef, IntoVerified, ObjectRef, Refresh, ResourceIterator, ResourceQuery,
@@ -117,6 +119,13 @@ impl Object {
     transparent_property! {
         #[doc = "Object name."]
         name: ref String
+    }
+
+    /// Object url.
+    #[inline]
+    pub fn url(&self) -> Result<Url> {
+        self.session
+            .get_endpoint(OBJECT_STORAGE, &[self.container_name(), self.name()])
     }
 }
 
