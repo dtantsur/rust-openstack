@@ -42,7 +42,6 @@ use super::network::{
 #[cfg(feature = "object-storage")]
 use super::object_storage::{Container, ContainerQuery, NewObject, Object, ObjectQuery};
 use super::Result;
-use std::io::Read;
 
 /// OpenStack cloud API.
 ///
@@ -154,7 +153,7 @@ impl Cloud {
     where
         C: Into<ContainerRef>,
         Id: AsRef<str>,
-        R: Read + Send + 'static,
+        R: io::Read + Send + 'static,
     {
         Object::create(self.session.clone(), container, name, body)
     }
@@ -623,7 +622,7 @@ impl Cloud {
     where
         C: Into<String>,
         O: Into<String>,
-        B: Read + Send + 'static,
+        B: io::Read + Send + 'static,
     {
         NewObject::new(
             self.session.clone(),
