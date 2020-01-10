@@ -14,7 +14,6 @@
 
 //! Stored objects.
 
-use std::collections::HashMap;
 use std::io::Read;
 use std::rc::Rc;
 
@@ -35,6 +34,17 @@ pub struct ObjectQuery {
     c_name: String,
     query: Query,
     can_paginate: bool,
+}
+
+/// A request to create an object.
+#[derive(Debug)]
+pub struct NewObject<R> {
+    session: Rc<Session>,
+    name: String,
+    c_name: String,
+    body: R,
+    delete_after: Option<u32>,
+    delete_at: Option<i64>,
 }
 
 /// Structure representing an object.
@@ -67,29 +77,13 @@ impl Object {
         Id: AsRef<str>,
         R: Read + Send + 'static,
     {
-        let c_ref = container.into();
-        let c_name = c_ref.to_string();
-        let inner = api::create_object(&session, c_ref, name, body)?;
-        Ok(Object::new(session, inner, c_name))
-    }
-
-    /// Create an object with headers sent with the request.
-    pub(crate) fn create_with_headers<C, Id, R>(
-        session: Rc<Session>,
-        container: C,
-        name: Id,
-        body: R,
-        headers: HashMap<String, String>,
-    ) -> Result<Object>
-    where
-        C: Into<ContainerRef>,
-        Id: AsRef<str>,
-        R: Read + Send + 'static,
-    {
-        let c_ref = container.into();
-        let c_name = c_ref.to_string();
-        let inner = api::create_object_with_headers(&session, c_ref, name, body, headers)?;
-        Ok(Object::new(session, inner, c_name))
+        let new_object: NewObject<R> = NewObject::new(
+            session,
+            container.into().to_string(),
+            name.as_ref().to_string(),
+            body.into(),
+        );
+        new_object.create()
     }
 
     /// Load an Object.
@@ -251,6 +245,49 @@ impl IntoFallibleIterator for ObjectQuery {
 
     fn into_fallible_iter(self) -> Self::IntoFallibleIter {
         self.into_iter()
+    }
+}
+
+impl<R: Read + Send + 'static> NewObject<R> {
+    /// Start creating an object.
+    pub(crate) fn new(session: Rc<Session>, c_name: String, name: String, body: R) -> NewObject<R> {
+        NewObject {
+            session,
+            name,
+            c_name,
+            body,
+            delete_after: None,
+            delete_at: None,
+        }
+    }
+
+    /// Request creation of the object.
+    pub fn create(self) -> Result<Object> {
+        let c_name = self.c_name.clone();
+        let object_create = protocol::ObjectCreate {
+            body: self.body,
+            c_name: self.c_name,
+            name: self.name,
+            delete_after: self.delete_after,
+            delete_at: self.delete_at,
+        };
+
+        let inner = api::create_object(&self.session, object_create)?;
+        Ok(Object::new(self.session, inner, c_name))
+    }
+
+    /// Set ttl for object
+    #[inline]
+    pub fn with_delete_after(mut self, ttl: u32) -> NewObject<R> {
+        self.delete_after = Option::from(ttl);
+        self
+    }
+
+    /// Set the datetime when the object must be deleted
+    #[inline]
+    pub fn with_delete_at(mut self, timestamp: i64) -> NewObject<R> {
+        self.delete_at = Option::from(timestamp);
+        self
     }
 }
 

@@ -39,6 +39,14 @@ pub struct Object {
     pub name: String,
 }
 
+pub struct ObjectCreate<R> {
+    pub name: String,
+    pub c_name: String,
+    pub body: R,
+    pub delete_after: Option<u32>,
+    pub delete_at: Option<i64>,
+}
+
 impl Container {
     pub fn from_headers(name: &str, value: &HeaderMap) -> Result<Container, Error> {
         let bytes_header = HeaderName::from_static("x-container-bytes-used");

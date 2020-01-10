@@ -14,7 +14,6 @@
 
 //! Foundation bits exposing the object storage API.
 
-use std::collections::HashMap;
 use std::io;
 
 use osauth::request::NO_PATH;
@@ -47,49 +46,24 @@ where
 }
 
 /// Create a new object.
-pub fn create_object<C, O, R>(session: &Session, container: C, object: O, body: R) -> Result<Object>
+pub fn create_object<R>(session: &Session, object_create: ObjectCreate<R>) -> Result<Object>
 where
-    C: AsRef<str>,
-    O: AsRef<str>,
     R: io::Read + Send + 'static,
 {
-    let c_id = container.as_ref();
-    let o_id = object.as_ref();
+    let c_id = object_create.c_name;
+    let o_id = object_create.name;
     debug!("Creating object {} in container {}", o_id, c_id);
-    let _ = session.send_checked(
-        session
-            .request(OBJECT_STORAGE, Method::PUT, &[c_id, o_id], None)?
-            .body(SyncBody::new(body)),
-    )?;
-    debug!("Successfully created object {} in container {}", o_id, c_id);
-    // We need to retrieve the size, issue HEAD.
-    get_object(session, c_id, o_id)
-}
+    let mut req = session.request(OBJECT_STORAGE, Method::PUT, &[&c_id, &o_id], None)?;
 
-/// Create a new object providing specified headers into the request.
-pub fn create_object_with_headers<C, O, R>(
-    session: &Session,
-    container: C,
-    object: O,
-    body: R,
-    headers: HashMap<String, String>,
-) -> Result<Object>
-where
-    C: AsRef<str>,
-    O: AsRef<str>,
-    R: io::Read + Send + 'static,
-{
-    let c_id = container.as_ref();
-    let o_id = object.as_ref();
-    debug!("Creating object {} in container {}", o_id, c_id);
-    let mut req = session.request(OBJECT_STORAGE, Method::PUT, &[c_id, o_id], None)?;
-
-    // add custom headers to the request
-    for (key, val) in headers.iter() {
-        req = req.header(key, val);
+    if object_create.delete_after.is_some() {
+        req = req.header("X-Delete-After", object_create.delete_after.unwrap());
     }
 
-    let _ = session.send_checked(req.body(SyncBody::new(body)))?;
+    if object_create.delete_at.is_some() {
+        req = req.header("X-Delete-At", object_create.delete_at.unwrap());
+    }
+
+    let _ = session.send_checked(req.body(SyncBody::new(object_create.body)))?;
     debug!("Successfully created object {} in container {}", o_id, c_id);
     // We need to retrieve the size, issue HEAD.
     get_object(session, c_id, o_id)

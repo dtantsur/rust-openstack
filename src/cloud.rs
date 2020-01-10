@@ -40,8 +40,9 @@ use super::network::{
     NewSubnet, Port, PortQuery, Subnet, SubnetQuery,
 };
 #[cfg(feature = "object-storage")]
-use super::object_storage::{Container, ContainerQuery, Object, ObjectQuery};
+use super::object_storage::{Container, ContainerQuery, NewObject, Object, ObjectQuery};
 use super::Result;
+use std::io::Read;
 
 /// OpenStack cloud API.
 ///
@@ -153,26 +154,9 @@ impl Cloud {
     where
         C: Into<ContainerRef>,
         Id: AsRef<str>,
-        R: io::Read + Send + 'static,
+        R: Read + Send + 'static,
     {
         Object::create(self.session.clone(), container, name, body)
-    }
-
-    /// Create a new object providing specified headers to the request.
-    #[cfg(feature = "object-storage")]
-    pub fn create_object_with_headers<C, Id, R>(
-        &self,
-        container: C,
-        name: Id,
-        body: R,
-        headers: HashMap<String, String>,
-    ) -> Result<Object>
-    where
-        C: Into<ContainerRef>,
-        Id: AsRef<str>,
-        R: io::Read + Send + 'static,
-    {
-        Object::create_with_headers(self.session.clone(), container, name, body, headers)
     }
 
     /// Build a query against container list.
@@ -628,6 +612,25 @@ impl Cloud {
     #[cfg(feature = "network")]
     pub fn list_subnets(&self) -> Result<Vec<Subnet>> {
         self.find_subnets().all()
+    }
+
+    /// Prepare a new object for creation.
+    ///
+    /// This call returns a `NewObject` object, which is a builder
+    /// to create object in object storage.
+    #[cfg(feature = "network")]
+    pub fn new_object<C, O, B>(&self, container: C, object: O, body: B) -> NewObject<B>
+    where
+        C: Into<String>,
+        O: Into<String>,
+        B: Read + Send + 'static,
+    {
+        NewObject::new(
+            self.session.clone(),
+            container.into(),
+            object.into(),
+            body.into(),
+        )
     }
 
     /// Prepare a new floating IP for creation.
