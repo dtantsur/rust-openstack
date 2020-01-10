@@ -26,6 +26,7 @@ use super::super::session::Session;
 use super::super::utils::Query;
 use super::super::{Error, Result};
 use super::{api, protocol};
+use chrono::{DateTime, Utc};
 
 /// A query to objects.
 #[derive(Clone, Debug)]
@@ -43,8 +44,14 @@ pub struct NewObject<R> {
     name: String,
     c_name: String,
     body: R,
-    delete_after: Option<u32>,
-    delete_at: Option<i64>,
+    headers: ObjectHeaders,
+}
+
+/// Represents optional headers for an object creation.
+#[derive(Debug)]
+pub struct ObjectHeaders {
+    pub delete_after: Option<u32>,
+    pub delete_at: Option<DateTime<Utc>>,
 }
 
 /// Structure representing an object.
@@ -256,37 +263,38 @@ impl<R: Read + Send + 'static> NewObject<R> {
             name,
             c_name,
             body,
-            delete_after: None,
-            delete_at: None,
+            headers: ObjectHeaders {
+                delete_at: None,
+                delete_after: None,
+            },
         }
     }
 
     /// Request creation of the object.
     pub fn create(self) -> Result<Object> {
         let c_name = self.c_name.clone();
-        let object_create = protocol::ObjectCreate {
-            body: self.body,
-            c_name: self.c_name,
-            name: self.name,
-            delete_after: self.delete_after,
-            delete_at: self.delete_at,
-        };
 
-        let inner = api::create_object(&self.session, object_create)?;
+        let inner = api::create_object(
+            &self.session,
+            self.c_name,
+            self.name,
+            self.body,
+            self.headers,
+        )?;
         Ok(Object::new(self.session, inner, c_name))
     }
 
     /// Set ttl for object
     #[inline]
     pub fn with_delete_after(mut self, ttl: u32) -> NewObject<R> {
-        self.delete_after = Option::from(ttl);
+        self.headers.delete_after = Option::from(ttl);
         self
     }
 
     /// Set the datetime when the object must be deleted
     #[inline]
-    pub fn with_delete_at(mut self, timestamp: i64) -> NewObject<R> {
-        self.delete_at = Option::from(timestamp);
+    pub fn with_delete_at(mut self, datetime: DateTime<Utc>) -> NewObject<R> {
+        self.headers.delete_at = Option::from(datetime);
         self
     }
 }
