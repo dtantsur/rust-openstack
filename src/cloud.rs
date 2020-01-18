@@ -15,6 +15,8 @@
 //! Cloud API.
 
 #[allow(unused_imports)]
+use std::collections::HashMap;
+#[allow(unused_imports)]
 use std::io;
 use std::rc::Rc;
 
@@ -38,7 +40,7 @@ use super::network::{
     NewSubnet, Port, PortQuery, Subnet, SubnetQuery,
 };
 #[cfg(feature = "object-storage")]
-use super::object_storage::{Container, ContainerQuery, Object, ObjectQuery};
+use super::object_storage::{Container, ContainerQuery, NewObject, Object, ObjectQuery};
 use super::Result;
 
 /// OpenStack cloud API.
@@ -609,6 +611,25 @@ impl Cloud {
     #[cfg(feature = "network")]
     pub fn list_subnets(&self) -> Result<Vec<Subnet>> {
         self.find_subnets().all()
+    }
+
+    /// Prepare a new object for creation.
+    ///
+    /// This call returns a `NewObject` object, which is a builder
+    /// to create object in object storage.
+    #[cfg(feature = "network")]
+    pub fn new_object<C, O, B>(&self, container: C, object: O, body: B) -> NewObject<B>
+    where
+        C: Into<String>,
+        O: Into<String>,
+        B: io::Read + Send + 'static,
+    {
+        NewObject::new(
+            self.session.clone(),
+            container.into(),
+            object.into(),
+            body.into(),
+        )
     }
 
     /// Prepare a new floating IP for creation.

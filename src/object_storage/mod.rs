@@ -20,4 +20,4 @@ mod objects;
 mod protocol;
 
 pub use containers::{Container, ContainerQuery};
-pub use objects::{Object, ObjectQuery};
+pub use objects::{NewObject, Object, ObjectQuery};
