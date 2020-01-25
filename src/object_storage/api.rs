@@ -64,12 +64,16 @@ where
     debug!("Creating object {} in container {}", o_id, c_id);
     let mut req = session.request(OBJECT_STORAGE, Method::PUT, &[&c_id, &o_id], None)?;
 
-    if headers.delete_after.is_some() {
-        req = req.header("X-Delete-After", headers.delete_after.unwrap());
+    if let Some(delete_after) = headers.delete_after {
+        req = req.header("X-Delete-After", delete_after);
     }
 
-    if headers.delete_at.is_some() {
-        req = req.header("X-Delete-At", headers.delete_at.unwrap().timestamp());
+    if let Some(delete_at) = headers.delete_at {
+        req = req.header("X-Delete-At", delete_at);
+    }
+
+    for (key, value) in headers.metadata {
+        req = req.header(&format!("X-Object-Meta-{}", key), value);
     }
 
     let _ = session.send_checked(req.body(SyncBody::new(body)))?;

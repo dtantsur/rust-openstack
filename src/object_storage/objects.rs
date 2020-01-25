@@ -14,9 +14,11 @@
 
 //! Stored objects.
 
+use std::collections::HashMap;
 use std::io::Read;
 use std::rc::Rc;
 
+use chrono::{DateTime, TimeZone};
 use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
 use osauth::services::OBJECT_STORAGE;
 use reqwest::Url;
@@ -28,7 +30,6 @@ use super::super::session::Session;
 use super::super::utils::Query;
 use super::super::{Error, Result};
 use super::{api, protocol};
-use chrono::{DateTime, Utc};
 
 /// A query to objects.
 #[derive(Clone, Debug)]
@@ -43,17 +44,18 @@ pub struct ObjectQuery {
 #[derive(Debug)]
 pub struct NewObject<R> {
     session: Rc<Session>,
+    c_name: ContainerRef,
     name: String,
-    c_name: String,
     body: R,
     headers: ObjectHeaders,
 }
 
-/// Represents optional headers for an object creation.
-#[derive(Debug)]
+/// Optional headers for an object.
+#[derive(Debug, Default)]
 pub struct ObjectHeaders {
     pub delete_after: Option<u32>,
-    pub delete_at: Option<DateTime<Utc>>,
+    pub delete_at: Option<i64>,
+    pub metadata: HashMap<String, String>,
 }
 
 /// Structure representing an object.
@@ -86,9 +88,10 @@ impl Object {
         Id: AsRef<str>,
         R: Read + Send + 'static,
     {
-        let new_object: NewObject<R> = NewObject::new(
+        let new_object = NewObject::new(
             session,
-            container.into().to_string(),
+            container.into(),
+            // TODO(dtantsur): get rid of to_string here.
             name.as_ref().to_string(),
             body,
         );
@@ -266,16 +269,18 @@ impl IntoFallibleIterator for ObjectQuery {
 
 impl<R: Read + Send + 'static> NewObject<R> {
     /// Start creating an object.
-    pub(crate) fn new(session: Rc<Session>, c_name: String, name: String, body: R) -> NewObject<R> {
+    pub(crate) fn new(
+        session: Rc<Session>,
+        c_name: ContainerRef,
+        name: String,
+        body: R,
+    ) -> NewObject<R> {
         NewObject {
             session,
-            name,
             c_name,
+            name,
             body,
-            headers: ObjectHeaders {
-                delete_at: None,
-                delete_after: None,
-            },
+            headers: ObjectHeaders::default(),
         }
     }
 
@@ -290,20 +295,37 @@ impl<R: Read + Send + 'static> NewObject<R> {
             self.body,
             self.headers,
         )?;
-        Ok(Object::new(self.session, inner, c_name))
+        Ok(Object::new(self.session, inner, c_name.into()))
     }
 
-    /// Set ttl for object
+    /// Metadata to set on the object.
+    #[inline]
+    pub fn metadata(&mut self) -> &mut HashMap<String, String> {
+        &mut self.headers.metadata
+    }
+
+    /// Set TTL in seconds for the object.
     #[inline]
     pub fn with_delete_after(mut self, ttl: u32) -> NewObject<R> {
-        self.headers.delete_after = Option::from(ttl);
+        self.headers.delete_after = Some(ttl);
         self
     }
 
-    /// Set the datetime when the object must be deleted
+    /// Set the date and time when the object must be deleted.
     #[inline]
-    pub fn with_delete_at(mut self, datetime: DateTime<Utc>) -> NewObject<R> {
-        self.headers.delete_at = Option::from(datetime);
+    pub fn with_delete_at<T: TimeZone>(mut self, datetime: DateTime<T>) -> NewObject<R> {
+        self.headers.delete_at = Some(datetime.timestamp());
+        self
+    }
+
+    /// Insert a new metadata item.
+    #[inline]
+    pub fn with_metadata<K, V>(mut self, key: K, item: V) -> NewObject<R>
+    where
+        K: Into<String>,
+        V: Into<String>,
+    {
+        let _ = self.headers.metadata.insert(key.into(), item.into());
         self
     }
 }

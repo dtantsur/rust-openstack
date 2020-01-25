@@ -21,7 +21,7 @@ use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
 use super::super::common::{ContainerRef, IntoVerified, Refresh, ResourceIterator, ResourceQuery};
 use super::super::session::Session;
 use super::super::utils::Query;
-use super::super::{Error, Result};
+use super::super::{Error, ErrorKind, Result};
 use super::objects::{Object, ObjectQuery};
 use super::{api, protocol};
 
@@ -66,9 +66,16 @@ impl Container {
     /// Otherwise deletion will fail if the container is non-empty.
     pub fn delete(self, delete_objects: bool) -> Result<()> {
         if delete_objects {
+            debug!("Deleting all objects from container {}", self.inner.name);
             let mut iter = self.find_objects().into_iter();
             while let Some(obj) = iter.next()? {
-                obj.delete()?;
+                obj.delete().or_else(|err| {
+                    if err.kind() == ErrorKind::ResourceNotFound {
+                        Ok(())
+                    } else {
+                        Err(err)
+                    }
+                })?;
             }
         }
         api::delete_container(&self.session, self.inner.name)

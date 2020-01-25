@@ -15,8 +15,6 @@
 //! Cloud API.
 
 #[allow(unused_imports)]
-use std::collections::HashMap;
-#[allow(unused_imports)]
 use std::io;
 use std::rc::Rc;
 
@@ -611,10 +609,10 @@ impl Cloud {
     ///
     /// This call returns a `NewObject` object, which is a builder
     /// to create object in object storage.
-    #[cfg(feature = "network")]
+    #[cfg(feature = "object-storage")]
     pub fn new_object<C, O, B>(&self, container: C, object: O, body: B) -> NewObject<B>
     where
-        C: Into<String>,
+        C: Into<ContainerRef>,
         O: Into<String>,
         B: io::Read + Send + 'static,
     {

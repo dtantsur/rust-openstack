@@ -19,6 +19,8 @@ extern crate openstack;
 
 use std::io::{Cursor, Read};
 use std::sync::Once;
+use std::thread;
+use std::time::Duration;
 
 use fallible_iterator::FallibleIterator;
 
@@ -143,6 +145,44 @@ fn test_object_create() {
     assert!(found.is_none());
 
     ctr.delete(false).expect("Failed to delete the container");
+}
+
+#[test]
+fn test_object_with_metadata_and_delete_after() {
+    let os = set_up();
+    let name = "rust-openstack-integration-3";
+
+    let ctr = os
+        .create_container(name)
+        .expect("Failed to create a container");
+
+    let buf = Cursor::new(vec![1, 2, 3, 4, 5]);
+
+    os.new_object(ctr.clone(), "test1", buf)
+        .with_delete_after(5)
+        .with_metadata("answer", "42")
+        .create()
+        .expect("Failed to create an object");
+    os.get_object(ctr.clone(), "test1")
+        .expect("Failed to fetch object");
+
+    thread::sleep(Duration::from_secs(1));
+    let mut maybe_obj = None;
+
+    for _i in 0..60 {
+        maybe_obj = os.get_object(ctr.clone(), "test1").ok();
+        if maybe_obj.is_some() {
+            thread::sleep(Duration::from_secs(1));
+            maybe_obj = os.get_object(ctr.clone(), "test1").ok();
+        } else {
+            break;
+        }
+    }
+    if let Some(still_obj) = maybe_obj {
+        panic!("Object {:?} still exists after 60 seconds", still_obj);
+    }
+
+    ctr.delete(true).expect("Failed to delete the container");
 }
 
 #[test]
