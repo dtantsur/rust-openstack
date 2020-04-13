@@ -90,7 +90,7 @@ impl Object {
             session,
             container.into().to_string(),
             name.as_ref().to_string(),
-            body.into(),
+            body,
         );
         new_object.create()
     }

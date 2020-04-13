@@ -68,8 +68,6 @@ impl Cloud {
     ///         .with_project_scope("project1", "Default");
     ///     Ok(openstack::Cloud::new(auth))
     /// }
-    ///
-    /// # fn main() { cloud().unwrap(); }
     /// ```
     ///
     /// # See Also
@@ -90,7 +88,6 @@ impl Cloud {
     /// # fn cloud_from_config() -> openstack::Result<()> {
     /// let os = openstack::Cloud::from_config("cloud-1")?;
     /// # Ok(()) }
-    /// # fn main() { cloud_from_config().unwrap(); }
     /// ```
     pub fn from_config<S: AsRef<str>>(cloud_name: S) -> Result<Cloud> {
         Ok(Cloud {
@@ -106,7 +103,6 @@ impl Cloud {
     /// # fn cloud_from_env() -> openstack::Result<()> {
     /// let os = openstack::Cloud::from_env()?;
     /// # Ok(()) }
-    /// # fn main() { cloud_from_env().unwrap(); }
     /// ```
     pub fn from_env() -> Result<Cloud> {
         Ok(Cloud {
@@ -123,8 +119,6 @@ impl Cloud {
     ///     openstack::Cloud::from_env()
     ///         .map(|os| os.with_endpoint_interface("internal"))
     /// }
-    ///
-    /// # fn main() { cloud_from_env().unwrap(); }
     /// ```
     pub fn with_endpoint_interface<S>(mut self, endpoint_interface: S) -> Cloud
     where
@@ -624,12 +618,7 @@ impl Cloud {
         O: Into<String>,
         B: io::Read + Send + 'static,
     {
-        NewObject::new(
-            self.session.clone(),
-            container.into(),
-            object.into(),
-            body.into(),
-        )
+        NewObject::new(self.session.clone(), container.into(), object.into(), body)
     }
 
     /// Prepare a new floating IP for creation.

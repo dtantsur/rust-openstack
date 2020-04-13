@@ -173,6 +173,7 @@ where
     }
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
 fn config_drive_string_to_bool<S>(has_config_drive: &Option<bool>, s: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
