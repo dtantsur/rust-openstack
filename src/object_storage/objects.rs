@@ -86,7 +86,7 @@ impl Object {
     where
         C: Into<ContainerRef>,
         Id: AsRef<str>,
-        R: Read + Send + 'static,
+        R: Read + Sync + Send + 'static,
     {
         let new_object = NewObject::new(
             session,
@@ -267,7 +267,7 @@ impl IntoFallibleIterator for ObjectQuery {
     }
 }
 
-impl<R: Read + Send + 'static> NewObject<R> {
+impl<R: Read + Sync + Send + 'static> NewObject<R> {
     /// Start creating an object.
     pub(crate) fn new(
         session: Rc<Session>,

@@ -16,9 +16,10 @@
 
 use std::io;
 
+use futures::stream::Stream;
 use osauth::request::NO_PATH;
 use osauth::services::OBJECT_STORAGE;
-use osauth::sync::{SyncBody, SyncStream};
+use osauth::sync::{SyncBody, SyncStream, SyncStreamItem};
 use reqwest::{Method, StatusCode};
 
 use super::super::session::Session;
@@ -57,7 +58,7 @@ pub fn create_object<C, O, R>(
 where
     C: AsRef<str>,
     O: AsRef<str>,
-    R: io::Read + Send + 'static,
+    R: io::Read + Sync + Send + 'static,
 {
     let c_id = container.as_ref();
     let o_id = object.as_ref();
@@ -143,7 +144,11 @@ where
 }
 
 /// Download the requested object.
-pub fn download_object<C, O>(session: &Session, container: C, object: O) -> Result<SyncStream>
+pub fn download_object<C, O>(
+    session: &Session,
+    container: C,
+    object: O,
+) -> Result<SyncStream<impl Stream<Item = SyncStreamItem>>>
 where
     C: AsRef<str>,
     O: AsRef<str>,

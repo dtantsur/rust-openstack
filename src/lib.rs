@@ -55,6 +55,10 @@
 //! use fallible_iterator::FallibleIterator;
 //!
 //! fn get_public_image_names() -> openstack::Result<Vec<String>> {
+//!     let scope = openstack::auth::Scope::Project {
+//!         project: openstack::IdOrName::from_name("project1"),
+//!         domain: Some(openstack::IdOrName::from_id("default")),
+//!     };
 //!     let auth = openstack::auth::Password::new(
 //!         "https://cloud.local/identity",
 //!         "admin",
@@ -62,7 +66,7 @@
 //!         "Default"
 //!     )
 //!     .expect("Invalid auth_url")
-//!     .with_project_scope("project1", "Default");
+//!     .with_scope(scope);
 //!
 //!     let os = openstack::Cloud::new(auth);
 //!     let image_names = os
@@ -645,7 +649,7 @@ macro_rules! protocol_enum {
 ///
 /// See [osauth documentation](https://docs.rs/osauth/) for details.
 pub mod auth {
-    pub use osauth::identity::{Identity, Password};
+    pub use osauth::identity::{Identity, Password, Scope};
     pub use osauth::{from_config, from_env, AuthType, NoAuth};
 }
 mod cloud;
@@ -667,8 +671,9 @@ pub mod session {
 }
 mod utils;
 
+pub use osauth::identity::IdOrName;
 pub use osauth::sync::Result;
-pub use osauth::{Error, ErrorKind};
+pub use osauth::{EndpointFilters, Error, ErrorKind, InterfaceType, ValidInterfaces};
 
 pub use crate::cloud::Cloud;
 pub use crate::common::Refresh;

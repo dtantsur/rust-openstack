@@ -39,7 +39,7 @@ use super::network::{
 };
 #[cfg(feature = "object-storage")]
 use super::object_storage::{Container, ContainerQuery, NewObject, Object, ObjectQuery};
-use super::Result;
+use super::{EndpointFilters, InterfaceType, Result};
 
 /// OpenStack cloud API.
 ///
@@ -59,11 +59,15 @@ impl Cloud {
     ///
     /// ```rust,no_run
     /// fn cloud() -> openstack::Result<openstack::Cloud> {
+    ///     let scope = openstack::auth::Scope::Project {
+    ///         project: openstack::IdOrName::from_name("project1"),
+    ///         domain: Some(openstack::IdOrName::from_name("Default")),
+    ///     };
     ///     let auth = openstack::auth::Password::new(
     ///             "https://cloud.example.com",
     ///             "user1", "pa$$word", "Default")
     ///         .expect("Invalid authentication URL")
-    ///         .with_project_scope("project1", "Default");
+    ///         .with_scope(scope);
     ///     Ok(openstack::Cloud::new(auth))
     /// }
     /// ```
@@ -108,6 +112,37 @@ impl Cloud {
         })
     }
 
+    /// Endpoint filters for this cloud.
+    #[inline]
+    pub fn endpoint_filters(&self) -> &EndpointFilters {
+        self.session.endpoint_filters()
+    }
+
+    /// Modify endpoint filters for this cloud.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// fn cloud_from_env() -> openstack::Result<openstack::Cloud> {
+    ///     let mut cloud = openstack::Cloud::from_env()?;
+    ///     {
+    ///         let mut filters = cloud.endpoint_filters_mut();
+    ///         filters.set_region("internal-1");
+    ///         // Give priority to internal endpoints.
+    ///         filters.set_interfaces(&[
+    ///             openstack::InterfaceType::Internal,
+    ///             openstack::InterfaceType::Public,
+    ///         ][..])
+    ///     }
+    ///     Ok(cloud)
+    /// }
+    /// ```
+    ///
+    /// Removes cached endpoint information and detaches this object from a shared `Session`.
+    pub fn endpoint_filters_mut(&mut self) -> &mut EndpointFilters {
+        Rc::make_mut(&mut self.session).endpoint_filters_mut()
+    }
+
     /// Convert this cloud into one using the given endpoint interface.
     ///
     /// # Example
@@ -115,14 +150,22 @@ impl Cloud {
     /// ```rust,no_run
     /// fn cloud_from_env() -> openstack::Result<openstack::Cloud> {
     ///     openstack::Cloud::from_env()
-    ///         .map(|os| os.with_endpoint_interface("internal"))
+    ///         .map(|os| os.with_endpoint_interface(openstack::InterfaceType::Internal))
     /// }
     /// ```
-    pub fn with_endpoint_interface<S>(mut self, endpoint_interface: S) -> Cloud
-    where
-        S: Into<String>,
-    {
+    ///
+    /// Removes cached endpoint information and detaches this object from a shared `Session`.
+    pub fn with_endpoint_interface(mut self, endpoint_interface: InterfaceType) -> Cloud {
         Rc::make_mut(&mut self.session).set_endpoint_interface(endpoint_interface);
+        self
+    }
+
+    /// Convert this cloud into one using the given endpoint filters.
+    ///
+    /// Removes cached endpoint information and detaches this object from a shared `Session`.
+    #[inline]
+    pub fn with_endpoint_filters(mut self, endpoint_filters: EndpointFilters) -> Cloud {
+        *self.endpoint_filters_mut() = endpoint_filters;
         self
     }
 
@@ -145,7 +188,7 @@ impl Cloud {
     where
         C: Into<ContainerRef>,
         Id: AsRef<str>,
-        R: io::Read + Send + 'static,
+        R: io::Read + Sync + Send + 'static,
     {
         Object::create(self.session.clone(), container, name, body)
     }
@@ -614,7 +657,7 @@ impl Cloud {
     where
         C: Into<ContainerRef>,
         O: Into<String>,
-        B: io::Read + Send + 'static,
+        B: io::Read + Sync + Send + 'static,
     {
         NewObject::new(self.session.clone(), container.into(), object.into(), body)
     }
