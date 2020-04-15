@@ -1,5 +1,14 @@
 # Change Log
 
+## 0.3.3 (2020-04-15)
+
+#### Features
+
+* **compute:**  support OS-EXT-SRV-ATTR:instance_name ([40546499](https://github.com/dtantsur/rust-openstack/commit/4054649930e864fc67979c698d3e180ef24404c1))
+* **object-storage:**
+  *  add support for X-Delete-After and X-Delete-At (#109) ([a65598c5](https://github.com/dtantsur/rust-openstack/commit/a65598c55491e8fa664317278a5cfd78f5ed0b65))
+  *  add url method to Object (#110) ([e465058f](https://github.com/dtantsur/rust-openstack/commit/e465058f5464eb264bb875a045fff205029e0675))
+
 ## 0.3.2 (2019-12-03)
 
 * **compute:** Allow to set availability zone for new servers
