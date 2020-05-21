@@ -28,7 +28,6 @@ use osproto::common::empty_as_default;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::super::common;
 use super::super::common::SecurityGroupRef;
 
 protocol_enum! {
@@ -353,10 +352,7 @@ pub struct Port {
     pub fixed_ips: Vec<FixedIp>,
     #[serde(skip_serializing)]
     pub id: String,
-    #[serde(
-        skip_serializing_if = "MacAddress::is_nil",
-        serialize_with = "common::protocol::ser_mac"
-    )]
+    #[serde(skip_serializing_if = "MacAddress::is_nil")]
     pub mac_address: MacAddress,
     #[serde(
         deserialize_with = "empty_as_default",
@@ -393,10 +389,7 @@ pub struct PortUpdate {
     pub extra_dhcp_opts: Option<Vec<PortExtraDhcpOption>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fixed_ips: Option<Vec<FixedIp>>,
-    #[serde(
-        skip_serializing_if = "Option::is_none",
-        serialize_with = "common::protocol::ser_opt_mac"
-    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub mac_address: Option<MacAddress>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,

@@ -26,7 +26,7 @@ rustls = ["reqwest/rustls-tls", "osauth/rustls"]
 [dependencies]
 
 chrono = { version = "^0.4", features = ["serde"] }
-eui48 = { version = "^0.4.0", features = ["serde"] }
+eui48 = { version = "^1.0", features = ["disp_hexstring", "serde"] }
 fallible-iterator = "^0.2.0"
 ipnet = { version = "^2.0", features = ["serde"] }
 futures = "^0.3"
@@ -41,7 +41,7 @@ serde_yaml = "^0.8"
 waiter = "^0.1"
 
 [dev-dependencies]
-env_logger = "^0.6"
+env_logger = "^0.7"
 
 [lib]
 

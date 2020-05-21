@@ -19,11 +19,10 @@
 
 use std::collections::HashMap;
 
-use eui48::MacAddress;
 use reqwest::header::{HeaderMap, HeaderName};
 use reqwest::Url;
 use serde::de::Error as DeserError;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Deserializer};
 
 use super::super::{Error, ErrorKind};
 
@@ -52,27 +51,6 @@ where
 {
     let value: Vec<KeyValue> = Deserialize::deserialize(des)?;
     Ok(value.into_iter().map(|kv| (kv.key, kv.value)).collect())
-}
-
-/// Serialize a MAC address in its HEX format.
-#[allow(clippy::trivially_copy_pass_by_ref)]
-pub fn ser_mac<S>(value: &MacAddress, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    value.to_hex_string().serialize(serializer)
-}
-
-/// Serialize a MAC address in its HEX format.
-#[allow(clippy::trivially_copy_pass_by_ref)]
-pub fn ser_opt_mac<S>(
-    value: &Option<MacAddress>,
-    serializer: S,
-) -> ::std::result::Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    value.map(|m| m.to_hex_string()).serialize(serializer)
 }
 
 /// Get a header as a string.
