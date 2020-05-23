@@ -1,5 +1,19 @@
 # Change Log
 
+## 0.4.0 (2020-05-23)
+
+#### Breaking Changes
+
+* Update to osauth 0.3.0 brings some breaking changes in `Session` and authentication. See
+  [changelog](https://github.com/dtantsur/rust-osauth/blob/master/CHANGELOG.md#030-2020-05-21).
+* When creating objects from a reader, the reader must be Sync.
+* An endpoint interface is now an [InterfaceType](https://docs.rs/osauth/0.3.0/osauth/enum.InterfaceType.html)
+  rather than a string. Non-standard interfaces are now impossible.
+
+#### Features
+
+*   update to osauth 0.3, osproto 0.2 and reqwest 0.10 ([9ab38089](https://github.com/dtantsur/rust-openstack/commit/9ab38089f925434ea33dc9b2c5d4ca8a23d0eec5), breaks [#](https://github.com/dtantsur/rust-openstack/issues/))
+
 ## 0.3.3 (2020-04-15)
 
 #### Features
