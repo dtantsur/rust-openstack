@@ -2,6 +2,7 @@
     check:
       jobs:
         - rust-openstack-acceptance
+        - rust-openstack-acceptance-ussuri
         - rust-openstack-acceptance-train
         - rust-openstack-acceptance-stein
         - rust-openstack-acceptance-rocky

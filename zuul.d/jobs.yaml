@@ -16,6 +16,15 @@
     run: playbooks/rust-openstack-acceptance/run.yaml
 
 - job:
+    name: rust-openstack-acceptance-ussuri
+    parent: rust-openstack-acceptance
+    description: |
+      Run rust-openstack acceptance test on ussuri branch
+    vars:
+      global_env:
+        OS_BRANCH: stable/ussuri
+
+- job:
     name: rust-openstack-acceptance-train
     parent: rust-openstack-acceptance
     description: |
@@ -43,6 +52,7 @@
       global_env:
         OS_BRANCH: stable/rocky
     nodeset: ubuntu-xenial
+    voting: false
 
 - job:
     name: rust-openstack-acceptance-queens
