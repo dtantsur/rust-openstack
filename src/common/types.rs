@@ -46,7 +46,7 @@ macro_rules! opaque_resource_type {
         impl From<String> for $name {
             fn from(value: String) -> $name {
                 $name {
-                    value: value,
+                    value,
                     verified: false
                 }
             }
@@ -109,7 +109,7 @@ macro_rules! opaque_resource_type {
             #[allow(dead_code)]
             pub(crate) fn new_verified(value: String) -> $name {
                 $name {
-                    value: value,
+                    value,
                     verified: true
                 }
             }

@@ -18,8 +18,6 @@
 use std::io;
 use std::rc::Rc;
 
-#[allow(unused_imports)]
-use ipnet;
 use osauth::sync::SyncSession;
 use osauth::{AuthType, Session};
 

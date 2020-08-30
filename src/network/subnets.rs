@@ -21,7 +21,6 @@ use std::time::Duration;
 
 use chrono::{DateTime, FixedOffset};
 use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
-use ipnet;
 
 use super::super::common::{
     DeletionWaiter, IntoVerified, NetworkRef, Refresh, ResourceIterator, ResourceQuery, SubnetRef,

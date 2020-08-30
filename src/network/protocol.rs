@@ -23,7 +23,6 @@ use std::ops::Not;
 
 use chrono::{DateTime, FixedOffset};
 use eui48::MacAddress;
-use ipnet;
 use osproto::common::empty_as_default;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

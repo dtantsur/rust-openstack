@@ -39,6 +39,9 @@ pub struct Object {
     pub name: String,
 }
 
+static CONTENT_LENGTH: HeaderName = header::CONTENT_LENGTH;
+static CONTENT_TYPE: HeaderName = header::CONTENT_TYPE;
+
 impl Container {
     pub fn from_headers(name: &str, value: &HeaderMap) -> Result<Container, Error> {
         let bytes_header = HeaderName::from_static("x-container-bytes-used");
@@ -69,7 +72,7 @@ impl Container {
 
 impl Object {
     pub fn from_headers(name: &str, value: &HeaderMap) -> Result<Object, Error> {
-        let size: u64 = protocol::get_required_header(value, &header::CONTENT_LENGTH)?
+        let size: u64 = protocol::get_required_header(value, &CONTENT_LENGTH)?
             .parse()
             .map_err(|e| {
                 Error::new(
@@ -77,7 +80,7 @@ impl Object {
                     format!("ContentLength is not an integer: {}", e),
                 )
             })?;
-        let ct = protocol::get_header(value, &header::CONTENT_TYPE)?.map(From::from);
+        let ct = protocol::get_header(value, &CONTENT_TYPE)?.map(From::from);
         Ok(Object {
             bytes: size,
             content_type: ct,

@@ -547,10 +547,9 @@ macro_rules! protocol_enum {
     }} => (
         $(#[$attr])*
         #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        #[non_exhaustive]
         pub enum $name {
             $($(#[$iattr])* $item),+,
-            #[doc(hidden)]
-            __Nonexhaustive,
         }
 
         impl<'de> ::serde::de::Deserialize<'de> for $name {
@@ -575,7 +574,6 @@ macro_rules! protocol_enum {
                     where S: ::serde::ser::Serializer {
                 match self {
                     $($name::$item => $val),+,
-                    _ => unreachable!()
                 }.serialize(serializer)
             }
         }
@@ -584,7 +582,6 @@ macro_rules! protocol_enum {
             fn from(value: $name) -> $carrier {
                 match value {
                     $($name::$item => $val),+,
-                    _ => unreachable!()
                 }
             }
         }
@@ -595,17 +592,15 @@ macro_rules! protocol_enum {
     }} => (
         $(#[$attr])*
         #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        #[non_exhaustive]
         pub enum $name {
             $($(#[$iattr])* $item),+,
-            #[doc(hidden)]
-            __Nonexhaustive,
         }
 
         impl $name {
             fn as_ref(&self) -> &'static str {
                 match *self {
                     $($name::$item => $val),+,
-                    _ => unreachable!()
                 }
             }
         }

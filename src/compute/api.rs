@@ -20,7 +20,6 @@ use std::fmt::Debug;
 use osauth::services::COMPUTE;
 use osproto::common::{IdAndName, Ref};
 use serde::Serialize;
-use serde_json;
 
 use super::super::common::ApiVersion;
 use super::super::session::Session;

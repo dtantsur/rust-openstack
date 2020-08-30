@@ -82,6 +82,7 @@ impl common::IntoVerified for BlockDeviceSource {
 
 /// A block device to attach to a server.
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct BlockDevice {
     /// Boot index of the device if it's intended to be bootable.
     ///
@@ -108,9 +109,6 @@ pub struct BlockDevice {
 
     /// A source for this block device (if any).
     pub source: Option<BlockDeviceSource>,
-
-    // Do not create directly, will be extended in the future.
-    __nonexhaustive: (),
 }
 
 impl BlockDevice {
@@ -126,7 +124,6 @@ impl BlockDevice {
             guest_format: None,
             size_gib: None,
             source: Some(source),
-            __nonexhaustive: (),
         }
     }
 
@@ -139,7 +136,6 @@ impl BlockDevice {
             guest_format: Some("swap".into()),
             size_gib: Some(size_gib),
             source: None,
-            __nonexhaustive: (),
         }
     }
 
@@ -160,7 +156,6 @@ impl BlockDevice {
             guest_format: None,
             size_gib: None,
             source: Some(BlockDeviceSource::Image(image.into())),
-            __nonexhaustive: (),
         }
     }
 
@@ -178,7 +173,6 @@ impl BlockDevice {
             guest_format: None,
             size_gib: None,
             source: Some(BlockDeviceSource::Volume(volume.into())),
-            __nonexhaustive: (),
         }
     }
 
@@ -191,7 +185,6 @@ impl BlockDevice {
             guest_format: None,
             size_gib: Some(size_gib),
             source: None,
-            __nonexhaustive: (),
         }
     }
 
@@ -209,7 +202,6 @@ impl BlockDevice {
             guest_format: None,
             size_gib: Some(size_gib),
             source: Some(BlockDeviceSource::Image(image.into())),
-            __nonexhaustive: (),
         }
     }
 
