@@ -18,6 +18,8 @@ extern crate waiter;
 
 use std::env;
 
+use openstack::Refresh;
+
 #[cfg(feature = "network")]
 fn main() {
     env_logger::init();
@@ -27,18 +29,25 @@ fn main() {
 
     let name = env::args().nth(1).expect("Provide a router name");
 
-    let router = os
+    let mut router = os
         .new_router()
         .with_name(name)
         .create()
         .expect("Cannot create a router");
 
+    router.set_description("Updated description.");
+    router.save().expect("Failed to update router description.");
+    router.refresh().expect("Failed to refresh router object.");
+
     println!(
-        "ID = {}, Name = {}, Status = {:?}",
+        "ID = {}, Name = {}, Status = {:?}, Description = {}",
         router.id(),
         router.name().as_ref().unwrap(),
         router.status(),
+        router.description().as_ref().unwrap()
     );
+
+    router.delete().expect("Failed to delete router.");
 }
 
 #[cfg(not(feature = "network"))]
