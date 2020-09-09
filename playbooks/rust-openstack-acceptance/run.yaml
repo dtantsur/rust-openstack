@@ -66,6 +66,7 @@
         chdir: '{{ zuul.project.src_dir }}'
       with_items:
         - create-delete-port private private-subnet
+        - create-router test-router
         - get-flavor test-flavor
         - get-image {{ cirros_image_result.stdout }}
         - get-network private
@@ -74,5 +75,6 @@
         - list-keypairs
         - list-networks
         - list-ports
+        - list-routers
         - list-servers
         - list-subnets
