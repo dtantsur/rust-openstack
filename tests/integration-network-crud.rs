@@ -376,3 +376,214 @@ fn test_floating_ip_create_delete() {
         .wait()
         .expect("Floating IP was not deleted");
 }
+#[test]
+fn test_router_create_delete_simple() {
+    let os = set_up();
+
+    let router = os.new_router().create().expect("Could not create router.");
+    assert!(router.admin_state_up());
+    assert_eq!(router.availability_zone_hints(), &Some(vec![]));
+    assert_eq!(router.availability_zones(), &Some(vec![]));
+    assert!(router.created_at().is_some());
+    assert!(router.conntrack_helpers().is_none());
+    assert!(router.description().is_none());
+    assert!(router.distributed().is_none());
+    assert!(router.external_gateway_info().is_none());
+    assert!(router.flavor_id().is_none());
+    assert!(router.ha().is_none());
+    assert!(router.name().is_none());
+    assert!(router.revision_number().is_some());
+    assert_eq!(*router.routes(), Some(vec![]));
+    assert!(router.service_type_id().is_none());
+    assert_eq!(router.status(), openstack::network::RouterStatus::Active);
+
+    let network = os.new_network().create().expect("Could not create network");
+    let cidr = ipnet::Ipv4Net::new(net::Ipv4Addr::new(192, 168, 1, 0), 24)
+        .unwrap()
+        .into();
+    let mut subnet = os
+        .new_subnet(network.clone(), cidr)
+        .create()
+        .expect("Could not create subnet");
+
+    subnet.refresh().expect("Cannot refresh subnet");
+
+    let _ = router.delete();
+
+    subnet
+        .delete()
+        .expect("Cannot request subnet deletion")
+        .wait()
+        .expect("Subnet was not deleted");
+
+    network
+        .delete()
+        .expect("Cannot request network deletion")
+        .wait()
+        .expect("Network was not deleted");
+}
+
+#[test]
+fn test_router_create_update_delete_with_fields() {
+    let os = set_up();
+
+    let mut router = os
+        .new_router()
+        .with_admin_state_up(false)
+        .with_availability_zone_hints(vec![String::from("nova")])
+        .with_description("rust openstack integration")
+        .with_name("rust-openstack-integration")
+        .create()
+        .expect("Could not create router.");
+
+    assert!(!router.admin_state_up());
+    assert_eq!(router.availability_zone_hints(), &Some(vec![]));
+    assert_eq!(router.availability_zones(), &Some(vec![]));
+    assert!(router.created_at().is_some());
+    assert!(router.conntrack_helpers().is_none());
+    assert_eq!(
+        router.description(),
+        &Some(String::from("rust openstack integration"))
+    );
+    assert!(router.distributed().is_none());
+    assert!(router.external_gateway_info().is_none());
+    assert!(router.flavor_id().is_none());
+    assert!(router.ha().is_none());
+    assert_eq!(
+        router.name().as_ref().unwrap(),
+        "rust-openstack-integration"
+    );
+    assert!(router.project_id().is_some());
+    assert!(router.revision_number().is_some());
+    assert_eq!(*router.routes(), Some(vec![]));
+    assert!(router.service_type_id().is_none());
+    assert_eq!(router.status(), openstack::network::RouterStatus::Active);
+
+    let network = os
+        .new_network()
+        .with_admin_state_up(false)
+        .with_name("rust-openstack-integration-new")
+        .with_description("New network for testing")
+        .create()
+        .expect("Could not create network");
+
+    let cidr = ipnet::Ipv4Net::new(net::Ipv4Addr::new(192, 168, 1, 0), 24)
+        .unwrap()
+        .into();
+    let subnet = os
+        .new_subnet("rust-openstack-integration-new", cidr)
+        .with_name("rust-openstack-integration-new")
+        .with_dhcp_enabled(false)
+        .with_dns_nameserver("8.8.8.8")
+        .create()
+        .expect("Could not create subnet");
+
+    let ports = os.find_ports().with_device_id(router.id()).all();
+    assert_eq!(ports.unwrap().len(), 0);
+    let _ = router.add_router_interface(Some(subnet.id()), None);
+    let ports = os.find_ports().with_device_id(router.id()).all();
+    assert_eq!(ports.unwrap().len(), 1);
+    let _ = router.remove_router_interface(Some(subnet.id()), None);
+    let ports = os.find_ports().with_device_id(router.id()).all();
+    assert_eq!(ports.unwrap().len(), 0);
+
+    let port = os.new_port(network.id().as_ref()).create().unwrap();
+    let _ = router.add_router_interface(None, Some(port.id()));
+    let ports = os.find_ports().with_device_id(router.id()).all();
+    assert_eq!(ports.unwrap().len(), 1);
+    let _ = router.remove_router_interface(None, Some(port.id()));
+    let ports = os.find_ports().with_device_id(router.id()).all();
+    assert_eq!(ports.unwrap().len(), 0);
+
+    let routers = os
+        .find_routers()
+        .with_name("rust-openstack-integration")
+        .all()
+        .expect("Cannot find routers by router name.");
+    assert_eq!(routers.len(), 1);
+    assert_eq!(routers[0].id(), router.id());
+    assert_eq!(routers[0].name(), router.name());
+
+    subnet
+        .delete()
+        .expect("Cannot request subnet deletion")
+        .wait()
+        .expect("Subnet was not deleted");
+
+    network
+        .delete()
+        .expect("Cannot request network deletion")
+        .wait()
+        .expect("Network was not deleted");
+
+    router
+        .delete()
+        .expect("Cannot request router deletetion.")
+        .wait()
+        .expect("Router was not deleted.");
+}
+
+#[test]
+fn test_router_update() {
+    let os = set_up();
+
+    let mut router = os
+        .new_router()
+        .with_admin_state_up(false)
+        .with_name("rust-openstack-integration-new")
+        .with_description("New router for testing")
+        .create()
+        .expect("Could not create router");
+    assert!(!router.is_dirty());
+
+    router.set_admin_state_up(true);
+    router.set_name("rust-openstack-integration-new2");
+    router.set_description("Updated router for testing.");
+
+    assert!(router.is_dirty());
+    assert!(router.admin_state_up());
+    assert_eq!(
+        router.name().as_ref().unwrap(),
+        "rust-openstack-integration-new2"
+    );
+    assert_eq!(
+        router.description().as_ref().unwrap(),
+        "Updated router for testing."
+    );
+
+    router.save().expect("Could not save router");
+
+    assert!(!router.is_dirty());
+    assert!(router.admin_state_up());
+    assert_eq!(
+        router.name().as_ref().unwrap(),
+        "rust-openstack-integration-new2"
+    );
+    assert_eq!(
+        router.description().as_ref().unwrap(),
+        "Updated router for testing."
+    );
+
+    router.set_name("rust-openstack-integration-new3");
+    router.set_description("This will be reverted by a refresh.");
+    assert!(router.is_dirty());
+
+    router.refresh().expect("Could not refresh router.");
+
+    assert!(!router.is_dirty());
+    assert!(router.admin_state_up());
+    assert_eq!(
+        router.name().as_ref().unwrap(),
+        "rust-openstack-integration-new2"
+    );
+    assert_eq!(
+        router.description().as_ref().unwrap(),
+        "Updated router for testing."
+    );
+
+    router
+        .delete()
+        .expect("Cannot request router deletion.")
+        .wait()
+        .expect("Router was not deleted.");
+}

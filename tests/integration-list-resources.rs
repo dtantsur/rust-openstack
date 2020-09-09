@@ -79,3 +79,9 @@ fn test_list_subnets() {
     let os = set_up();
     let _ = os.list_subnets().expect("Cannot list subnets");
 }
+
+#[test]
+fn test_list_routers() {
+    let os = set_up();
+    let _ = os.list_routers().expect("Cannot list routers");
+}

@@ -100,6 +100,27 @@ protocol_enum! {
 
 protocol_enum! {
     #[doc = "Available sort keys."]
+    enum RouterSortKey {
+        AdminStateUp = "admin_state_up",
+        FlavorId = "flavor_id",
+        Id = "id",
+        Name = "name",
+        ProjectId = "project_id",
+        Status = "status"
+    }
+}
+
+protocol_enum! {
+    #[doc = "Possible router statuses."]
+    enum RouterStatus {
+        Active = "ACTIVE",
+        Allocating = "ALLOCATING",
+        Error = "ERROR"
+    }
+}
+
+protocol_enum! {
+    #[doc = "Available sort keys."]
     enum SubnetSortKey {
         Cidr = "cidr",
         DhcpEnabled = "enable_dhcp",
@@ -412,6 +433,149 @@ pub struct PortUpdateRoot {
 #[derive(Debug, Clone, Deserialize)]
 pub struct PortsRoot {
     pub ports: Vec<Port>,
+}
+
+/// ConntrackHelper.
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub struct ConntrackHelper {
+    pub helper: String,
+    pub protocol: String,
+    pub port: u16,
+}
+
+/// External gateway information.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ExternalGatewayInfo {
+    pub network_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_snat: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub external_fixed_ips: Option<Vec<FixedIp>>,
+}
+
+/// A route.
+#[derive(Debug, Clone, Deserialize, Serialize, Copy, PartialEq)]
+pub struct Route {
+    pub destination: ipnet::IpNet,
+    pub nexthop: net::IpAddr,
+}
+
+/// Routes.
+#[derive(Debug, Serialize)]
+pub struct Routes {
+    pub routes: Vec<Route>,
+}
+
+/// A router.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Router {
+    pub admin_state_up: bool,
+    #[serde(default, skip_serializing)]
+    pub availability_zone_hints: Option<Vec<String>>,
+    #[serde(default, skip_serializing)]
+    pub availability_zones: Option<Vec<String>>,
+    #[serde(skip_serializing)]
+    pub conntrack_helpers: Option<Vec<ConntrackHelper>>,
+    #[serde(default, skip_serializing)]
+    pub created_at: Option<DateTime<FixedOffset>>,
+    #[serde(
+        deserialize_with = "empty_as_default",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub distributed: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub external_gateway_info: Option<ExternalGatewayInfo>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub flavor_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ha: Option<bool>,
+    #[serde(skip_serializing)]
+    pub id: String,
+    #[serde(
+        deserialize_with = "empty_as_default",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub project_id: Option<String>,
+    #[serde(default, skip_serializing)]
+    pub revision_number: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub routes: Option<Vec<Route>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_type_id: Option<String>,
+    #[serde(skip_serializing)]
+    pub status: RouterStatus,
+    #[serde(skip_serializing)]
+    pub tags: Option<Vec<String>>,
+    #[serde(default, skip_serializing)]
+    pub updated_at: Option<DateTime<FixedOffset>>,
+}
+
+impl Default for Router {
+    fn default() -> Router {
+        Router {
+            admin_state_up: true,
+            availability_zones: None,
+            availability_zone_hints: None,
+            created_at: None,
+            conntrack_helpers: None,
+            description: None,
+            distributed: None,
+            external_gateway_info: None,
+            flavor_id: None,
+            ha: None,
+            id: String::new(),
+            name: None,
+            project_id: None,
+            revision_number: None,
+            routes: None,
+            service_type_id: None,
+            status: RouterStatus::Active,
+            tags: None,
+            updated_at: None,
+        }
+    }
+}
+
+/// A router.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct RouterRoot {
+    pub router: Router,
+}
+
+/// A Router.
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct RouterUpdate {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub admin_state_up: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub distributed: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub external_gateway_info: Option<ExternalGatewayInfo>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ha: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub routes: Option<Vec<Route>>,
+}
+
+/// A router.
+#[derive(Debug, Clone, Serialize)]
+pub struct RouterUpdateRoot {
+    pub router: RouterUpdate,
+}
+
+/// A list of routers.
+#[derive(Debug, Clone, Deserialize)]
+pub struct RoutersRoot {
+    pub routers: Vec<Router>,
 }
 
 /// An allocation pool.

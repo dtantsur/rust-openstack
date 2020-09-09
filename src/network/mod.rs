@@ -19,14 +19,16 @@ mod floatingips;
 mod networks;
 mod ports;
 mod protocol;
+mod routers;
 mod subnets;
 
 pub use self::floatingips::{FloatingIp, FloatingIpQuery, NewFloatingIp};
 pub use self::networks::{Network, NetworkQuery, NewNetwork};
 pub use self::ports::{NewPort, Port, PortIpAddress, PortIpRequest, PortQuery};
 pub use self::protocol::{
-    AllocationPool, AllowedAddressPair, FloatingIpSortKey, FloatingIpStatus, HostRoute, IpVersion,
-    Ipv6Mode, NetworkSortKey, NetworkStatus, PortExtraDhcpOption, PortForwarding, PortSortKey,
-    SubnetSortKey,
+    AllocationPool, AllowedAddressPair, ExternalGatewayInfo, FloatingIpSortKey, FloatingIpStatus,
+    HostRoute, IpVersion, Ipv6Mode, NetworkSortKey, NetworkStatus, PortExtraDhcpOption,
+    PortForwarding, PortSortKey, Route, RouterSortKey, RouterStatus, SubnetSortKey,
 };
+pub use self::routers::{NewRouter, Router, RouterQuery};
 pub use self::subnets::{NewSubnet, Subnet, SubnetQuery};

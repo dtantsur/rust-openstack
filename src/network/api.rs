@@ -14,6 +14,7 @@
 
 //! Foundation bits exposing the Network API.
 
+use std::collections::HashMap;
 use std::fmt::Debug;
 
 use osauth::services::NETWORK;
@@ -21,8 +22,94 @@ use serde::Serialize;
 
 use super::super::session::Session;
 use super::super::utils::{self, ResultExt};
-use super::super::Result;
+use super::super::{Error, ErrorKind, Result};
 use super::protocol::*;
+
+/// Add extra routes to a router.
+pub fn add_extraroutes<S>(session: &Session, id: S, routes: Vec<Route>) -> Result<()>
+where
+    S: AsRef<str>,
+{
+    trace!("Add extra routes {:?} to router {}", routes, id.as_ref());
+    let mut body = HashMap::new();
+    let _ = body.insert("router", Routes { routes });
+
+    let _ = session.put(
+        NETWORK,
+        &["routers", id.as_ref(), "add_extraroutes"],
+        body,
+        None,
+    )?;
+
+    Ok(())
+}
+
+/// Remove extra routes from a router.
+pub fn remove_extraroutes<S>(session: &Session, id: S, routes: Vec<Route>) -> Result<()>
+where
+    S: AsRef<str>,
+{
+    trace!(
+        "Rmove extra routes {:?} from router {}",
+        routes,
+        id.as_ref()
+    );
+    let mut body = HashMap::new();
+    let _ = body.insert("router", Routes { routes });
+
+    let _ = session.put(
+        NETWORK,
+        &["routers", id.as_ref(), "remove_extraroutes"],
+        body,
+        None,
+    )?;
+
+    Ok(())
+}
+
+/// Add an interface to a router.
+pub fn add_router_interface<S>(
+    session: &Session,
+    id: S,
+    subnet_id: Option<S>,
+    port_id: Option<S>,
+) -> Result<()>
+where
+    S: AsRef<str>,
+{
+    let mut body = HashMap::new();
+    match (&subnet_id, &port_id) {
+        (Some(subnet_id), None) => {
+            trace!(
+                "Add subnet {} to router {}.",
+                subnet_id.as_ref(),
+                id.as_ref()
+            );
+            let _ = body.insert("subnet_id", subnet_id.as_ref());
+        }
+        (None, Some(port_id)) => {
+            trace!("Add port {} to router {}.", port_id.as_ref(), id.as_ref());
+            let _ = body.insert("port_id", port_id.as_ref());
+        }
+        _ => {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "Requires either subnet_id or port_id but not both.",
+            ));
+        }
+    }
+
+    let _ = session.put(
+        NETWORK,
+        &["routers", id.as_ref(), "add_router_interface"],
+        body,
+        None,
+    )?;
+
+    debug!("Successfully added interface to router {}", id.as_ref());
+
+    Ok(())
+}
 
 /// Create a floating IP.
 pub fn create_floating_ip(session: &Session, request: FloatingIp) -> Result<FloatingIp> {
@@ -51,6 +138,15 @@ pub fn create_port(session: &Session, request: Port) -> Result<Port> {
     let root: PortRoot = session.post_json(NETWORK, &["ports"], body, None)?;
     debug!("Created port {:?}", root.port);
     Ok(root.port)
+}
+
+/// Create a router.
+pub fn create_router(session: &Session, request: Router) -> Result<Router> {
+    debug!("Creating a new router with {:?}", request);
+    let body = RouterRoot { router: request };
+    let root: RouterRoot = session.post_json(NETWORK, &["routers"], body, None)?;
+    debug!("Created router {:?}", root.router);
+    Ok(root.router)
 }
 
 /// Create a subnet.
@@ -83,6 +179,14 @@ pub fn delete_port<S: AsRef<str>>(session: &Session, id: S) -> Result<()> {
     debug!("Deleting port {}", id.as_ref());
     let _ = session.delete(NETWORK, &["ports", id.as_ref()], None)?;
     debug!("Port {} was deleted", id.as_ref());
+    Ok(())
+}
+
+/// Delete a router.
+pub fn delete_router<S: AsRef<str>>(session: &Session, id: S) -> Result<()> {
+    debug!("Deleting router {}", id.as_ref());
+    let _ = session.delete(NETWORK, &["routers", id.as_ref()], None)?;
+    debug!("Router {} was deleted", id.as_ref());
     Ok(())
 }
 
@@ -158,6 +262,34 @@ pub fn get_port_by_name<S: AsRef<str>>(session: &Session, name: S) -> Result<Por
     Ok(result)
 }
 
+/// Get a router.
+pub fn get_router<S: AsRef<str>>(session: &Session, id_or_name: S) -> Result<Router> {
+    let s = id_or_name.as_ref();
+    get_router_by_id(session, s).if_not_found_then(|| get_router_by_name(session, s))
+}
+
+/// Get a router by its ID.
+pub fn get_router_by_id<S: AsRef<str>>(session: &Session, id: S) -> Result<Router> {
+    trace!("Get router by ID {}", id.as_ref());
+    let root: RouterRoot = session.get_json(NETWORK, &["routers", id.as_ref()], None)?;
+    trace!("Received {:?}", root.router);
+    Ok(root.router)
+}
+
+/// Get a router by its name.
+pub fn get_router_by_name<S: AsRef<str>>(session: &Session, name: S) -> Result<Router> {
+    trace!("Get router by name {}", name.as_ref());
+    let root: RoutersRoot =
+        session.get_json_query(NETWORK, &["routers"], &[("name", name.as_ref())], None)?;
+    let result = utils::one(
+        root.routers,
+        "Router with given name or ID not found",
+        "Too many routers found with given name",
+    )?;
+    trace!("Received {:?}", result);
+    Ok(result)
+}
+
 /// Get a subnet.
 pub fn get_subnet<S: AsRef<str>>(session: &Session, id_or_name: S) -> Result<Subnet> {
     let s = id_or_name.as_ref();
@@ -216,6 +348,17 @@ pub fn list_ports<Q: Serialize + Sync + Debug>(session: &Session, query: &Q) -> 
     Ok(root.ports)
 }
 
+/// List routers.
+pub fn list_routers<Q: Serialize + Sync + Debug>(
+    session: &Session,
+    query: &Q,
+) -> Result<Vec<Router>> {
+    trace!("Listing routers with {:?}", query);
+    let root: RoutersRoot = session.get_json_query(NETWORK, &["routers"], query, None)?;
+    trace!("Received routers: {:?}", root.routers);
+    Ok(root.routers)
+}
+
 /// List subnets.
 pub fn list_subnets<Q: Serialize + Sync + Debug>(
     session: &Session,
@@ -225,6 +368,54 @@ pub fn list_subnets<Q: Serialize + Sync + Debug>(
     let root: SubnetsRoot = session.get_json_query(NETWORK, &["subnets"], query, None)?;
     trace!("Received subnets: {:?}", root.subnets);
     Ok(root.subnets)
+}
+
+/// Remove an interface from a router.
+pub fn remove_router_interface<S>(
+    session: &Session,
+    id: S,
+    subnet_id: Option<S>,
+    port_id: Option<S>,
+) -> Result<()>
+where
+    S: AsRef<str>,
+{
+    let mut body = HashMap::new();
+    match (&subnet_id, &port_id) {
+        (Some(subnet_id), None) => {
+            trace!(
+                "Remove subnet {} from router {}.",
+                subnet_id.as_ref(),
+                id.as_ref()
+            );
+            let _ = body.insert("subnet_id", subnet_id.as_ref());
+        }
+        (None, Some(port_id)) => {
+            trace!(
+                "Remove port {} from router {}.",
+                port_id.as_ref(),
+                id.as_ref()
+            );
+            let _ = body.insert("port_id", port_id.as_ref());
+        }
+        _ => {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "Requires either subnet_id or port_id but not both.",
+            ));
+        }
+    }
+
+    let _ = session.put(
+        NETWORK,
+        &["routers", id.as_ref(), "remove_router_interface"],
+        body,
+        None,
+    )?;
+
+    debug!("Successfully removed interface to router {}", id.as_ref());
+
+    Ok(())
 }
 
 /// Update a floating IP.
@@ -261,6 +452,19 @@ pub fn update_port<S: AsRef<str>>(session: &Session, id: S, update: PortUpdate) 
     let root: PortRoot = session.put_json(NETWORK, &["ports", id.as_ref()], body, None)?;
     debug!("Updated port {:?}", root.port);
     Ok(root.port)
+}
+
+/// Update a router.
+pub fn update_router<S: AsRef<str>>(
+    session: &Session,
+    id: S,
+    update: RouterUpdate,
+) -> Result<Router> {
+    debug!("Updating router {} with {:?}", id.as_ref(), update);
+    let body = RouterUpdateRoot { router: update };
+    let root: RouterRoot = session.put_json(NETWORK, &["routers", id.as_ref()], body, None)?;
+    debug!("Updated router {:?}", root.router);
+    Ok(root.router)
 }
 
 /// Update a subnet.
