@@ -28,10 +28,16 @@ fn main() {
         .expect("Failed to create an identity provider from the environment");
 
     let name = env::args().nth(1).expect("Provide a router name");
-    let external_network = env::args().nth(2).expect("Provide an external network ID");
+    let external_network = env::args()
+        .nth(2)
+        .expect("Provide an external network name or ID");
+
+    let external_network = os
+        .get_network(&external_network)
+        .unwrap_or_else(|_| panic!("Network {} not found", &external_network.to_string()));
 
     let external_gateway_info = ExternalGatewayInfo {
-        network_id: external_network,
+        network_id: external_network.id().clone(),
         enable_snat: None,
         external_fixed_ips: None,
     };
@@ -50,6 +56,8 @@ fn main() {
         router.status(),
         router.external_gateway_info().as_ref().unwrap()
     );
+
+    let _ = router.delete();
 }
 
 #[cfg(not(feature = "network"))]

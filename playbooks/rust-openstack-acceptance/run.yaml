@@ -67,6 +67,7 @@
       with_items:
         - create-delete-port private private-subnet
         - create-update-delete-router test-router
+        - create-router-with-external-gateway test-router public
         - get-flavor test-flavor
         - get-image {{ cirros_image_result.stdout }}
         - get-network private
