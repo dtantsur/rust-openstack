@@ -91,7 +91,7 @@ impl Cloud {
     /// ```
     pub fn from_config<S: AsRef<str>>(cloud_name: S) -> Result<Cloud> {
         Ok(Cloud {
-            session: Rc::new(SyncSession::new(osauth::from_config(cloud_name)?)),
+            session: Rc::new(SyncSession::from_config(cloud_name)?),
         })
     }
 
@@ -106,7 +106,7 @@ impl Cloud {
     /// ```
     pub fn from_env() -> Result<Cloud> {
         Ok(Cloud {
-            session: Rc::new(SyncSession::new(osauth::from_env()?)),
+            session: Rc::new(SyncSession::from_env()?),
         })
     }
 

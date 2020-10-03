@@ -646,7 +646,10 @@ macro_rules! protocol_enum {
 /// See [osauth documentation](https://docs.rs/osauth/) for details.
 pub mod auth {
     pub use osauth::identity::{Identity, Password, Scope};
-    pub use osauth::{from_config, from_env, AuthType, NoAuth};
+    #[deprecated(since = "0.4.1", note = "use methods on Session")]
+    #[doc(hidden)]
+    pub use osauth::{from_config, from_env};
+    pub use osauth::{AuthType, NoAuth};
 }
 mod cloud;
 pub mod common;
