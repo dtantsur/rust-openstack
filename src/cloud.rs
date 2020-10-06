@@ -33,7 +33,7 @@ use super::image::{Image, ImageQuery};
 #[cfg(feature = "network")]
 use super::network::{
     FloatingIp, FloatingIpQuery, Network, NetworkQuery, NewFloatingIp, NewNetwork, NewPort,
-    NewSubnet, Port, PortQuery, Subnet, SubnetQuery,
+    NewRouter, NewSubnet, Port, PortQuery, Router, RouterQuery, Subnet, SubnetQuery,
 };
 #[cfg(feature = "object-storage")]
 use super::object_storage::{Container, ContainerQuery, NewObject, Object, ObjectQuery};
@@ -267,6 +267,15 @@ impl Cloud {
         PortQuery::new(self.session.clone())
     }
 
+    /// Build a query against router list.
+    ///
+    /// The returned object is a builder that should be used to construct
+    /// the query.
+    #[cfg(feature = "network")]
+    pub fn find_routers(&self) -> RouterQuery {
+        RouterQuery::new(self.session.clone())
+    }
+
     /// Build a query against server list.
     ///
     /// The returned object is a builder that should be used to construct
@@ -423,6 +432,21 @@ impl Cloud {
     #[cfg(feature = "network")]
     pub fn get_port<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Port> {
         Port::load(self.session.clone(), id_or_name)
+    }
+
+    /// Find a router by its name or ID.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
+    /// let router = os.get_router("router_name").expect("Unable to get a router");
+    /// ```
+    #[cfg(feature = "network")]
+    pub fn get_router<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Router> {
+        Router::load(self.session.clone(), id_or_name)
     }
 
     /// Find a server by its name or ID.
@@ -608,6 +632,25 @@ impl Cloud {
         self.find_ports().all()
     }
 
+    /// List all routers.
+    ///
+    /// This call can yield a lot of results, use the
+    /// [find_routers](#method.find_routers) call to limit the number of
+    /// routers to receive.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
+    /// let router_list = os.list_routers().expect("Unable to fetch routers");
+    /// ```
+    #[cfg(feature = "network")]
+    pub fn list_routers(&self) -> Result<Vec<Router>> {
+        self.find_routers().all()
+    }
+
     /// List all servers.
     ///
     /// This call can yield a lot of results, use the
@@ -703,6 +746,15 @@ impl Cloud {
         N: Into<NetworkRef>,
     {
         NewPort::new(self.session.clone(), network.into())
+    }
+
+    /// Prepare a new router for creation.
+    ///
+    /// This call returns a `NewRouter` object, which is a builder to populate
+    /// router fields.
+    #[cfg(feature = "network")]
+    pub fn new_router(&self) -> NewRouter {
+        NewRouter::new(self.session.clone())
     }
 
     /// Prepare a new server for creation.
