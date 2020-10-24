@@ -444,6 +444,7 @@ pub struct ConntrackHelper {
 }
 
 /// External gateway information.
+#[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ExternalGatewayInfo {
     pub network_id: String,
@@ -451,6 +452,25 @@ pub struct ExternalGatewayInfo {
     pub enable_snat: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub external_fixed_ips: Option<Vec<FixedIp>>,
+}
+
+impl Default for ExternalGatewayInfo {
+    fn default() -> ExternalGatewayInfo {
+        ExternalGatewayInfo {
+            network_id: String::new(),
+            enable_snat: None,
+            external_fixed_ips: None,
+        }
+    }
+}
+
+impl ExternalGatewayInfo {
+    pub fn new(external_network: String) -> ExternalGatewayInfo {
+        ExternalGatewayInfo {
+            network_id: external_network,
+            ..Default::default()
+        }
+    }
 }
 
 /// A route.

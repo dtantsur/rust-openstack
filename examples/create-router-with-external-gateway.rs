@@ -36,11 +36,7 @@ fn main() {
         .get_network(&external_network)
         .unwrap_or_else(|_| panic!("Network {} not found", &external_network.to_string()));
 
-    let external_gateway_info = ExternalGatewayInfo {
-        network_id: external_network.id().clone(),
-        enable_snat: None,
-        external_fixed_ips: None,
-    };
+    let external_gateway_info = ExternalGatewayInfo::new(external_network.id().clone());
 
     let router = os
         .new_router()
