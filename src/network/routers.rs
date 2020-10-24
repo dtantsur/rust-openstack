@@ -245,13 +245,13 @@ impl Router {
     }
 
     /// Add route to router.
-    pub fn add_extraroutes(&mut self, routes: Vec<protocol::Route>) -> Result<()> {
-        api::add_extraroutes(&self.session, self.id(), routes)
+    pub fn add_extra_routes(&mut self, routes: Vec<protocol::Route>) -> Result<()> {
+        api::add_extra_routes(&self.session, self.id(), routes)
     }
 
     /// Remove route from router.
-    pub fn remove_extraroutes(&mut self, routes: Vec<protocol::Route>) -> Result<()> {
-        api::remove_extraroutes(&self.session, self.id(), routes)
+    pub fn remove_extra_routes(&mut self, routes: Vec<protocol::Route>) -> Result<()> {
+        api::remove_extra_routes(&self.session, self.id(), routes)
     }
 }
 
