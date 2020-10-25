@@ -40,6 +40,14 @@ protocol_enum! {
 }
 
 protocol_enum! {
+    #[doc = "Network IP protocol."]
+    enum NetworkProtocol {
+        TCP = "tcp",
+        UDP = "udp"
+    }
+}
+
+protocol_enum! {
     #[doc = "Possible network statuses."]
     enum NetworkStatus {
         Active = "ACTIVE",
@@ -437,11 +445,32 @@ pub struct PortsRoot {
     pub ports: Vec<Port>,
 }
 
-/// ConntrackHelper.
-#[derive(Debug, Clone, Deserialize, PartialEq)]
+protocol_enum! {
+    #[doc = "Allowed conntrack helpers as defined [here](https://opendev.org/openstack/neutron/src/branch/master/neutron/conf/extensions/conntrack_helper.py)"]
+    enum Helper {
+        Amanda = "amanda",
+        FTP = "ftp",
+        H323 = "h323",
+        IRC = "irc",
+        NetbiosNS = "netbios-ns",
+        PPTP = "pptp",
+        SANE = "sane",
+        SIP = "sip",
+        SNMP = "snmp",
+        TFTP = "tftp"
+    }
+}
+
+/// ConntrackHelper object.
+/// See [here](https://home.regit.org/netfilter-en/secure-use-of-helpers/) for in-depth info about
+/// conntrack helpers.
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq)]
 pub struct ConntrackHelper {
-    pub helper: String,
-    pub protocol: String,
+    /// Conntrack Helper
+    pub helper: Helper,
+    /// Network IP protocol.
+    pub protocol: NetworkProtocol,
+    /// TCP or UDP port
     pub port: u16,
 }
 
