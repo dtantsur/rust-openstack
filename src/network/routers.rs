@@ -78,17 +78,17 @@ impl Router {
 
     transparent_property! {
         #[doc = "Availability zone candidates for the router"]
-        availability_zone_hints: ref Option<Vec<String>>
+        availability_zone_hints: ref Vec<String>
     }
 
     transparent_property! {
         #[doc = "The availability zones for the router (if available)."]
-        availability_zones: ref Option<Vec<String>>
+        availability_zones: ref Vec<String>
     }
 
     transparent_property! {
         #[doc = "The associated conntrack helper resources for the router."]
-        conntrack_helpers: ref Option<Vec<protocol::ConntrackHelper>>
+        conntrack_helpers: ref Vec<protocol::ConntrackHelper>
     }
 
     transparent_property! {
@@ -383,7 +383,7 @@ impl NewRouter {
 
     creation_inner_field! {
         #[doc = "Set the availability zone candidates for the router."]
-        set_availability_zone_hints, with_availability_zone_hints -> availability_zone_hints: optional Vec<String>
+        set_availability_zone_hints, with_availability_zone_hints -> availability_zone_hints: Vec<String>
     }
 
     creation_inner_field! {
