@@ -471,11 +471,11 @@ pub struct Routes {
 pub struct Router {
     pub admin_state_up: bool,
     #[serde(default, skip_serializing)]
-    pub availability_zone_hints: Option<Vec<String>>,
+    pub availability_zone_hints: Vec<String>,
     #[serde(default, skip_serializing)]
-    pub availability_zones: Option<Vec<String>>,
-    #[serde(skip_serializing)]
-    pub conntrack_helpers: Option<Vec<ConntrackHelper>>,
+    pub availability_zones: Vec<String>,
+    #[serde(default, skip_serializing)]
+    pub conntrack_helpers: Vec<ConntrackHelper>,
     #[serde(default, skip_serializing)]
     pub created_at: Option<DateTime<FixedOffset>>,
     #[serde(
@@ -519,10 +519,10 @@ impl Default for Router {
     fn default() -> Router {
         Router {
             admin_state_up: true,
-            availability_zones: None,
-            availability_zone_hints: None,
+            availability_zones: vec![],
+            availability_zone_hints: vec![],
             created_at: None,
-            conntrack_helpers: None,
+            conntrack_helpers: vec![],
             description: None,
             distributed: None,
             external_gateway_info: None,

@@ -382,10 +382,10 @@ fn test_router_create_delete_simple() {
 
     let router = os.new_router().create().expect("Could not create router.");
     assert!(router.admin_state_up());
-    assert_eq!(router.availability_zone_hints(), &Some(vec![]));
-    assert_eq!(router.availability_zones(), &Some(vec![]));
+    assert!(router.availability_zone_hints().is_empty());
+    assert!(router.availability_zones().is_empty());
     assert!(router.created_at().is_some());
-    assert!(router.conntrack_helpers().is_none());
+    assert!(router.conntrack_helpers().is_empty());
     assert!(router.description().is_none());
     assert!(router.distributed().is_none());
     assert!(router.external_gateway_info().is_none());
@@ -437,10 +437,10 @@ fn test_router_create_update_delete_with_fields() {
         .expect("Could not create router.");
 
     assert!(!router.admin_state_up());
-    assert_eq!(router.availability_zone_hints(), &Some(vec![]));
-    assert_eq!(router.availability_zones(), &Some(vec![]));
+    assert!(router.availability_zone_hints().is_empty());
+    assert!(router.availability_zones().is_empty());
     assert!(router.created_at().is_some());
-    assert!(router.conntrack_helpers().is_none());
+    assert!(router.conntrack_helpers().is_empty());
     assert_eq!(
         router.description(),
         &Some(String::from("rust openstack integration"))
