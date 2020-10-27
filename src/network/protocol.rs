@@ -473,17 +473,10 @@ impl ExternalGatewayInfo {
     }
 }
 
-/// A route.
-#[derive(Debug, Clone, Deserialize, Serialize, Copy, PartialEq)]
-pub struct Route {
-    pub destination: ipnet::IpNet,
-    pub nexthop: net::IpAddr,
-}
-
 /// Routes.
 #[derive(Debug, Serialize)]
 pub struct Routes {
-    pub routes: Vec<Route>,
+    pub routes: Vec<HostRoute>,
 }
 
 /// A router.
@@ -524,7 +517,7 @@ pub struct Router {
     #[serde(default, skip_serializing)]
     pub revision_number: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub routes: Option<Vec<Route>>,
+    pub routes: Option<Vec<HostRoute>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub service_type_id: Option<String>,
     #[serde(skip_serializing)]
@@ -583,7 +576,7 @@ pub struct RouterUpdate {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub routes: Option<Vec<Route>>,
+    pub routes: Option<Vec<HostRoute>>,
 }
 
 /// A router.

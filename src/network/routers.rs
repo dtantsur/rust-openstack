@@ -168,12 +168,12 @@ impl Router {
 
     transparent_property! {
         #[doc = "Extra routes."]
-        routes: ref Option<Vec<protocol::Route>>
+        routes: ref Option<Vec<protocol::HostRoute>>
     }
 
     update_field! {
         #[doc = "Update extra routes."]
-        set_routes, with_routes -> routes: optional Vec<protocol::Route>
+        set_routes, with_routes -> routes: optional Vec<protocol::HostRoute>
     }
 
     transparent_property! {
@@ -245,12 +245,12 @@ impl Router {
     }
 
     /// Add route to router.
-    pub fn add_extra_routes(&mut self, routes: Vec<protocol::Route>) -> Result<()> {
+    pub fn add_extra_routes(&mut self, routes: Vec<protocol::HostRoute>) -> Result<()> {
         api::add_extra_routes(&self.session, self.id(), routes)
     }
 
     /// Remove route from router.
-    pub fn remove_extra_routes(&mut self, routes: Vec<protocol::Route>) -> Result<()> {
+    pub fn remove_extra_routes(&mut self, routes: Vec<protocol::HostRoute>) -> Result<()> {
         api::remove_extra_routes(&self.session, self.id(), routes)
     }
 }
