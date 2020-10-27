@@ -26,7 +26,7 @@ use super::super::{Error, ErrorKind, Result};
 use super::protocol::*;
 
 /// Add extra routes to a router.
-pub fn add_extra_routes<S>(session: &Session, id: S, routes: Vec<Route>) -> Result<()>
+pub fn add_extra_routes<S>(session: &Session, id: S, routes: Vec<HostRoute>) -> Result<()>
 where
     S: AsRef<str>,
 {
@@ -45,7 +45,7 @@ where
 }
 
 /// Remove extra routes from a router.
-pub fn remove_extra_routes<S>(session: &Session, id: S, routes: Vec<Route>) -> Result<()>
+pub fn remove_extra_routes<S>(session: &Session, id: S, routes: Vec<HostRoute>) -> Result<()>
 where
     S: AsRef<str>,
 {
