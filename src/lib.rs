@@ -570,7 +570,7 @@ macro_rules! protocol_enum {
         }
 
         impl ::serde::ser::Serialize for $name {
-            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
                     where S: ::serde::ser::Serializer {
                 match self {
                     $($name::$item => $val),+,
