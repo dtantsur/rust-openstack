@@ -24,8 +24,8 @@ use super::super::common::{
 };
 use super::super::session::Session;
 use super::super::utils::Query;
-use super::super::{Error, Result, Sort};
-use super::{api, protocol};
+use super::super::{Error, ErrorKind, Result, Sort};
+use super::{api, protocol, Network};
 
 /// A query to router list.
 #[derive(Clone, Debug)]
@@ -118,12 +118,26 @@ impl Router {
 
     transparent_property! {
         #[doc = "External gateway information."]
-        external_gateway_info: ref Option<protocol::ExternalGatewayInfo>
+        external_gateway: ref Option<protocol::ExternalGateway>
+    }
+
+    /// Get external network associated with this router.
+    ///
+    /// Fails if external gateway information is not provided.
+    pub fn external_network(&self) -> Result<Network> {
+        if let Some(ref gw) = self.inner.external_gateway {
+            Network::load(self.session.clone(), &gw.network_id)
+        } else {
+            Err(Error::new(
+                ErrorKind::ResourceNotFound,
+                format!("No external gateway for router {}", self.inner.id),
+            ))
+        }
     }
 
     update_field! {
         #[doc = "Update the external gateway information."]
-        set_external_gateway_info, with_external_gateway_info -> external_gateway_info: optional protocol::ExternalGatewayInfo
+        set_external_gateway, with_external_gateway -> external_gateway: optional protocol::ExternalGateway
     }
 
     transparent_property! {
@@ -214,11 +228,14 @@ impl Router {
     /// Save the changes to the router.
     pub fn save(&mut self) -> Result<()> {
         let mut update = protocol::RouterUpdate::default();
+        if let Some(ref gw) = self.inner.external_gateway {
+            update.external_gateway = Some(gw.clone().into_verified(&self.session)?);
+        }
         save_fields! {
             self -> update: admin_state_up
         };
         save_option_fields! {
-            self -> update: description distributed external_gateway_info ha name routes
+            self -> update: description distributed ha name routes
         };
         let inner = api::update_router(&self.session, self.id(), update)?;
         self.dirty.clear();
@@ -372,7 +389,7 @@ impl NewRouter {
 
     /// Request creation of a router.
     pub fn create(self) -> Result<Router> {
-        let inner = api::create_router(&self.session, self.inner)?;
+        let inner = api::create_router(&self.session, self.inner.into_verified(&self.session)?)?;
         Ok(Router::new(self.session, inner))
     }
 
@@ -398,7 +415,7 @@ impl NewRouter {
 
     creation_inner_field! {
         #[doc = "Set the external gateway information."]
-        set_external_gateway_info, with_external_gateway_info -> external_gateway_info: optional protocol::ExternalGatewayInfo
+        set_external_gateway, with_external_gateway -> external_gateway: optional protocol::ExternalGateway
     }
 
     creation_inner_field! {

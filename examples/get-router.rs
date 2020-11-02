@@ -34,7 +34,7 @@ fn main() {
         router.admin_state_up(),
         router.description(),
         router.status(),
-        router.external_gateway_info(),
+        router.external_gateway(),
         router.routes(),
         router.distributed(),
         router.ha()

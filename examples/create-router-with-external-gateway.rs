@@ -18,8 +18,6 @@ extern crate waiter;
 
 use std::env;
 
-use openstack::network::ExternalGatewayInfo;
-
 #[cfg(feature = "network")]
 fn main() {
     env_logger::init();
@@ -32,16 +30,12 @@ fn main() {
         .nth(2)
         .expect("Provide an external network name or ID");
 
-    let external_network = os
-        .get_network(&external_network)
-        .unwrap_or_else(|_| panic!("Network {} not found", &external_network.to_string()));
-
-    let external_gateway_info = ExternalGatewayInfo::new(external_network.id().clone());
+    let external_gateway = openstack::network::ExternalGateway::new(external_network);
 
     let router = os
         .new_router()
         .with_name(name)
-        .with_external_gateway_info(external_gateway_info)
+        .with_external_gateway(external_gateway)
         .create()
         .expect("Cannot create a router");
 
@@ -50,8 +44,12 @@ fn main() {
         router.id(),
         router.name().as_ref().unwrap(),
         router.status(),
-        router.external_gateway_info().as_ref().unwrap()
+        router.external_gateway().as_ref().unwrap()
     );
+
+    let _ = router
+        .external_network()
+        .expect("Cannot load external network");
 
     let _ = router.delete();
 }

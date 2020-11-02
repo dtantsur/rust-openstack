@@ -26,7 +26,7 @@ pub use self::floatingips::{FloatingIp, FloatingIpQuery, NewFloatingIp};
 pub use self::networks::{Network, NetworkQuery, NewNetwork};
 pub use self::ports::{NewPort, Port, PortIpAddress, PortIpRequest, PortQuery};
 pub use self::protocol::{
-    AllocationPool, AllowedAddressPair, ExternalGatewayInfo, FloatingIpSortKey, FloatingIpStatus,
+    AllocationPool, AllowedAddressPair, ExternalGateway, FloatingIpSortKey, FloatingIpStatus,
     HostRoute, IpVersion, Ipv6Mode, NetworkSortKey, NetworkStatus, PortExtraDhcpOption,
     PortForwarding, PortSortKey, RouterSortKey, RouterStatus, SubnetSortKey,
 };

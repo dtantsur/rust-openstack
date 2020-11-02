@@ -27,7 +27,9 @@ use osproto::common::empty_as_default;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::super::common::SecurityGroupRef;
+use super::super::common::{IntoVerified, NetworkRef, SecurityGroupRef};
+use super::super::Result;
+use crate::session::Session;
 
 protocol_enum! {
     #[doc = "IP protocol version."]
@@ -446,30 +448,34 @@ pub struct ConntrackHelper {
 /// External gateway information.
 #[non_exhaustive]
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct ExternalGatewayInfo {
-    pub network_id: String,
+pub struct ExternalGateway {
+    /// External network.
+    pub network_id: NetworkRef,
+    /// Whether to enable source NAT.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub enable_snat: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub external_fixed_ips: Option<Vec<FixedIp>>,
+    /// A list of external fixed IPs.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub external_fixed_ips: Vec<FixedIp>,
 }
 
-impl Default for ExternalGatewayInfo {
-    fn default() -> ExternalGatewayInfo {
-        ExternalGatewayInfo {
-            network_id: String::new(),
+impl ExternalGateway {
+    /// Create a new external gateway.
+    pub fn new<N: Into<NetworkRef>>(external_network: N) -> ExternalGateway {
+        ExternalGateway {
+            network_id: external_network.into(),
             enable_snat: None,
-            external_fixed_ips: None,
+            external_fixed_ips: Vec::new(),
         }
     }
 }
 
-impl ExternalGatewayInfo {
-    pub fn new(external_network: String) -> ExternalGatewayInfo {
-        ExternalGatewayInfo {
-            network_id: external_network,
-            ..Default::default()
-        }
+impl IntoVerified for ExternalGateway {
+    fn into_verified(self, session: &Session) -> Result<Self> {
+        Ok(ExternalGateway {
+            network_id: self.network_id.into_verified(session)?,
+            ..self
+        })
     }
 }
 
@@ -499,8 +505,12 @@ pub struct Router {
     pub description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub distributed: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub external_gateway_info: Option<ExternalGatewayInfo>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        rename = "external_gateway_info"
+    )]
+    pub external_gateway: Option<ExternalGateway>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub flavor_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -538,7 +548,7 @@ impl Default for Router {
             conntrack_helpers: vec![],
             description: None,
             distributed: None,
-            external_gateway_info: None,
+            external_gateway: None,
             flavor_id: None,
             ha: None,
             id: String::new(),
@@ -551,6 +561,18 @@ impl Default for Router {
             tags: None,
             updated_at: None,
         }
+    }
+}
+
+impl IntoVerified for Router {
+    fn into_verified(self, session: &Session) -> Result<Self> {
+        Ok(Router {
+            external_gateway: match self.external_gateway {
+                Some(gw) => Some(gw.into_verified(session)?),
+                None => None,
+            },
+            ..self
+        })
     }
 }
 
@@ -569,8 +591,12 @@ pub struct RouterUpdate {
     pub description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub distributed: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub external_gateway_info: Option<ExternalGatewayInfo>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        rename = "external_gateway_info"
+    )]
+    pub external_gateway: Option<ExternalGateway>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ha: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]

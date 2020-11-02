@@ -388,7 +388,7 @@ fn test_router_create_delete_simple() {
     assert!(router.conntrack_helpers().is_empty());
     assert!(router.description().is_none());
     assert!(router.distributed().is_none());
-    assert!(router.external_gateway_info().is_none());
+    assert!(router.external_gateway().is_none());
     assert!(router.flavor_id().is_none());
     assert!(router.ha().is_none());
     assert!(router.name().is_none());
@@ -446,7 +446,7 @@ fn test_router_create_update_delete_with_fields() {
         &Some(String::from("rust openstack integration"))
     );
     assert!(router.distributed().is_none());
-    assert!(router.external_gateway_info().is_none());
+    assert!(router.external_gateway().is_none());
     assert!(router.flavor_id().is_none());
     assert!(router.ha().is_none());
     assert_eq!(
