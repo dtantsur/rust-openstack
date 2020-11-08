@@ -2,6 +2,7 @@ language: rust
 jobs:
   allow_failures:
     - script: cargo clippy --verbose --package openstack -- -D warnings
+    - rust: nightly
   include:
     - install: rustup component add rustfmt
       script: cargo fmt -- --check
@@ -11,10 +12,16 @@ jobs:
       name: "Check clippy warnings (non-voting)"
     - script: cargo test --verbose --lib
       name: "Run unit tests with default features"
-    - script: cargo test --verbose --doc
-      name: "Run doctests"
     - script: cargo test --verbose --no-default-features --lib
       name: "Run unit tests without default features"
+    - script: cargo test --verbose --doc
+      name: "Run doctests"
+    - script: cargo test --verbose --lib
+      name: "Run unit tests on MSRV"
+      rust: 1.43.0
+    - script: cargo test --verbose
+      name: "Run unit tests on nightly"
+      rust: nightly
     - stage: docs
       script: ./tools/build-docs.sh
       if: branch = master AND type = push

@@ -106,6 +106,10 @@
 //! }
 //! # fn main() { create_server().unwrap(); }
 //! ```
+//!
+//! # Requirements
+//!
+//! This crate requires Rust 2018 edition and rustc version 1.43.0 or newer.
 
 #![crate_name = "openstack"]
 #![crate_type = "lib"]
