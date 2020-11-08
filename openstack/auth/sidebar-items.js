@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["Scope","A scope of a token."]],"struct":[["NoAuth","Authentication type that provides no authentication."],["Password","Password authentication using Identity API V3."]],"trait":[["AuthType","Trait for an authentication type."],["Identity","Generic trait for authentication using Identity API V3."]]});

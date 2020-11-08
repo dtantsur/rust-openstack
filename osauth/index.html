@@ -1,0 +1,64 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `osauth` crate."><meta name="keywords" content="rust, rustlang, rust-lang, osauth"><title>osauth - Rust</title><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../ayu.css" disabled ><script src="../storage.js"></script><noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="shortcut icon" href="../favicon.ico"><style type="text/css">#crate-search{background-image:url("../down-arrow.svg");}</style></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../osauth/index.html'><div class='logo-container rust-logo'><img src='../rust-logo.png' alt='logo'></div></a><p class='location'>Crate osauth</p><div class='block version'><p>Version 0.3.3</p></div><div class="sidebar-elems"><a id='all-types' href='all.html'><p>See all osauth's items</p></a><div class="block items"><ul><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li></ul></div><p class='location'></p><script>window.sidebarCurrent = {name: 'osauth', ty: 'mod', relpath: '../'};</script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><span class="help-button">?</span>
+                <a id="settings-menu" href="../settings.html"><img src="../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../src/osauth/lib.rs.html#15-123' title='goto source code'>[src]</a></span><span class='in-band'>Crate <a class="mod" href=''>osauth</a></span></h1><div class='docblock'><p>Asynchronous OpenStack session and authentication.</p>
+<h1 id="introduction" class="section-header"><a href="#introduction">Introduction</a></h1>
+<p>This crate provides low-level asynchronous access to OpenStack API. It features:</p>
+<ol>
+<li>Authentication and token caching.</li>
+<li>Major and microversion handling.</li>
+<li>Service catalog integration.</li>
+<li>JSON API error handling.</li>
+<li>Service types for supported services.</li>
+</ol>
+<p>It does NOT provide:</p>
+<ol>
+<li>Protocol structures for any services.</li>
+<li>Automatic microversion negotiation.</li>
+<li>High-level object-oriented API.</li>
+</ol>
+<p>See <a href="https://crates.io/crates/openstack">openstack crate</a> for these features.</p>
+<h1 id="requirements" class="section-header"><a href="#requirements">Requirements</a></h1>
+<p>This crate requires Rust 2018 edition and compiler version 1.40.0 or newer.</p>
+<h1 id="usage" class="section-header"><a href="#usage">Usage</a></h1>
+<p>Your entry point to the API is the <a href="struct.Session.html">Session</a> structure. To create it you
+need an authentication type object first. It can be obtained by:</p>
+<ul>
+<li>Using <a href="identity/struct.Password.html">Password</a> authentication against the Identity service.</li>
+<li>Using <a href="struct.NoAuth.html">NoAuth</a> authentication type, allowing access to standalone
+services without authentication.</li>
+<li>Using HTTP <a href="struct.BasicAuth.html">BasicAuth</a> authentication type for services supporting it
+(only ironic and ironic-inspector at the moment).</li>
+<li>By loading both authentication parameters and a session from:
+<ul>
+<li><code>clouds.yaml</code>, <code>clouds-public.yaml</code> and <code>secure.yaml</code> configuration files using
+<a href="struct.Session.html#method.from_config">from_config</a>.</li>
+<li>environment variables using <a href="struct.Session.html#method.from_env">from_env</a>.</li>
+</ul>
+</li>
+</ul>
+<p>See <a href="struct.Session.html">Session</a> documentation for the details on using a <code>Session</code> for making
+OpenStack calls.</p>
+<p>If you need to work with a small number of servics, <a href="struct.Adapter.html">Adapter</a> provides a
+more convenient interface. An adapter can be created directly using
+<a href="struct.Adapter.html#method.new">Adapter::new</a> or from an existing <code>Session</code> using
+<a href="struct.Session.html#method.adapter">Session::adapter</a> or
+<a href="struct.Session.html#method.into_adapter">Session::into_adapter</a>.</p>
+</div><h2 id='modules' class='section-header'><a href="#modules">Modules</a></h2>
+<table><tr class='module-item'><td><a class="mod" href="identity/index.html" title='osauth::identity mod'>identity</a></td><td class='docblock-short'><p>Authentication using Identity API v3.</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="request/index.html" title='osauth::request mod'>request</a></td><td class='docblock-short'><p>Utilities to work with OpenStack requests.</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="services/index.html" title='osauth::services mod'>services</a></td><td class='docblock-short'><p>OpenStack service types.</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="sync/index.html" title='osauth::sync mod'>sync</a></td><td class='docblock-short'><p>Synchronous wrapper for a session.</p>
+</td></tr></table><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+<table><tr class='module-item'><td><a class="struct" href="struct.Adapter.html" title='osauth::Adapter struct'>Adapter</a></td><td class='docblock-short'><p>Adapter for a specific service.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.ApiVersion.html" title='osauth::ApiVersion struct'>ApiVersion</a></td><td class='docblock-short'><p>API version (major, minor).</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.BasicAuth.html" title='osauth::BasicAuth struct'>BasicAuth</a></td><td class='docblock-short'><p>Authentication type that uses HTTP basic authentication.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.EndpointFilters.html" title='osauth::EndpointFilters struct'>EndpointFilters</a></td><td class='docblock-short'><p>Endpoint filters for looking up endpoints.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Error.html" title='osauth::Error struct'>Error</a></td><td class='docblock-short'><p>Error from an OpenStack call.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.NoAuth.html" title='osauth::NoAuth struct'>NoAuth</a></td><td class='docblock-short'><p>Authentication type that provides no authentication.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Session.html" title='osauth::Session struct'>Session</a></td><td class='docblock-short'><p>An OpenStack API session.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.ValidInterfaces.html" title='osauth::ValidInterfaces struct'>ValidInterfaces</a></td><td class='docblock-short'><p>A list of acceptable interface types.</p>
+</td></tr></table><h2 id='enums' class='section-header'><a href="#enums">Enums</a></h2>
+<table><tr class='module-item'><td><a class="enum" href="enum.ErrorKind.html" title='osauth::ErrorKind enum'>ErrorKind</a></td><td class='docblock-short'><p>Kind of an error.</p>
+</td></tr><tr class='module-item'><td><a class="enum" href="enum.InterfaceType.html" title='osauth::InterfaceType enum'>InterfaceType</a></td><td class='docblock-short'><p>Interface type: public, internal or admin.</p>
+</td></tr></table><h2 id='traits' class='section-header'><a href="#traits">Traits</a></h2>
+<table><tr class='module-item'><td><a class="trait" href="trait.AuthType.html" title='osauth::AuthType trait'>AuthType</a></td><td class='docblock-short'><p>Trait for an authentication type.</p>
+</td></tr></table></section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../";window.currentCrate = "osauth";</script><script src="../main.js"></script><script defer src="../search-index.js"></script></body></html>

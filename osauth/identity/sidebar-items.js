@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["IdOrName","A reference to a resource by its ID or name."],["Scope","A scope of a token."]],"struct":[["Password","Password authentication using Identity API V3."]],"trait":[["Identity","Generic trait for authentication using Identity API V3."]]});

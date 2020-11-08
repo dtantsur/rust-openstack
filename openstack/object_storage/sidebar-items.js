@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Container","Structure representing a single container."],["ContainerQuery","A query to containers."],["NewObject","A request to create an object."],["Object","Structure representing an object."],["ObjectQuery","A query to objects."]]});

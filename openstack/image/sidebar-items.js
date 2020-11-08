@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["ImageContainerFormat","Possible container formats."],["ImageDiskFormat","Possible disk formats."],["ImageSortKey","Available sort keys."],["ImageStatus","Possible image statuses."],["ImageVisibility","Possible image visibility values."]],"struct":[["Image","Structure representing a single image."],["ImageQuery","A query to image list."]]});

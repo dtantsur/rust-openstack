@@ -1,0 +1,102 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `openstack` crate."><meta name="keywords" content="rust, rustlang, rust-lang, openstack"><title>openstack - Rust</title><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../ayu.css" disabled ><script src="../storage.js"></script><noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="shortcut icon" href="../favicon.ico"><style type="text/css">#crate-search{background-image:url("../down-arrow.svg");}</style></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../openstack/index.html'><div class='logo-container rust-logo'><img src='../rust-logo.png' alt='logo'></div></a><p class='location'>Crate openstack</p><div class='block version'><p>Version 0.4.0</p></div><div class="sidebar-elems"><a id='all-types' href='all.html'><p>See all openstack's items</p></a><div class="block items"><ul><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li><li><a href="#types">Type Definitions</a></li></ul></div><p class='location'></p><script>window.sidebarCurrent = {name: 'openstack', ty: 'mod', relpath: '../'};</script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><span class="help-button">?</span>
+                <a id="settings-menu" href="../settings.html"><img src="../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../src/openstack/lib.rs.html#15-700' title='goto source code'>[src]</a></span><span class='in-band'>Crate <a class="mod" href=''>openstack</a></span></h1><div class='docblock'><p>OpenStack SDK in Rust.</p>
+<p>The goal of this project is to provide a simple API for working with
+OpenStack clouds.</p>
+<h1 id="usage" class="section-header"><a href="#usage">Usage</a></h1>
+<p>Start with <a href="auth/index.html">authentication</a>, then create a
+<a href="struct.Cloud.html">Cloud</a> object and use it for OpenStack API calls.</p>
+<h1 id="examples" class="section-header"><a href="#examples">Examples</a></h1><h2 id="list-servers" class="section-header"><a href="#list-servers">List servers</a></h2>
+<p>Get authentication parameters from the environment and get UUIDs of all
+servers.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered">
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">openstack</span>;
+
+<span class="kw">fn</span> <span class="ident">get_server_uuids</span>() <span class="op">-&gt;</span> <span class="ident">openstack</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;&gt;</span> {
+    <span class="kw">let</span> <span class="ident">os</span> <span class="op">=</span> <span class="ident">openstack</span>::<span class="ident">Cloud</span>::<span class="ident">from_env</span>()<span class="question-mark">?</span>;
+    <span class="kw">let</span> <span class="ident">server_names</span> <span class="op">=</span> <span class="ident">os</span>
+        .<span class="ident">list_servers</span>()<span class="question-mark">?</span>
+        .<span class="ident">into_iter</span>()
+        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">server</span><span class="op">|</span> <span class="ident">server</span>.<span class="ident">id</span>().<span class="ident">clone</span>())
+        .<span class="ident">collect</span>();
+    <span class="prelude-val">Ok</span>(<span class="ident">server_names</span>)
+}</pre></div>
+<h2 id="find-images" class="section-header"><a href="#find-images">Find images</a></h2>
+<p>Find public images using Identity password authentication with the default region:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered">
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">fallible_iterator</span>;
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">openstack</span>;
+
+<span class="kw">use</span> <span class="ident">fallible_iterator</span>::<span class="ident">FallibleIterator</span>;
+
+<span class="kw">fn</span> <span class="ident">get_public_image_names</span>() <span class="op">-&gt;</span> <span class="ident">openstack</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;&gt;</span> {
+    <span class="kw">let</span> <span class="ident">scope</span> <span class="op">=</span> <span class="ident">openstack</span>::<span class="ident">auth</span>::<span class="ident">Scope</span>::<span class="ident">Project</span> {
+        <span class="ident">project</span>: <span class="ident">openstack</span>::<span class="ident">IdOrName</span>::<span class="ident">from_name</span>(<span class="string">&quot;project1&quot;</span>),
+        <span class="ident">domain</span>: <span class="prelude-val">Some</span>(<span class="ident">openstack</span>::<span class="ident">IdOrName</span>::<span class="ident">from_id</span>(<span class="string">&quot;default&quot;</span>)),
+    };
+    <span class="kw">let</span> <span class="ident">auth</span> <span class="op">=</span> <span class="ident">openstack</span>::<span class="ident">auth</span>::<span class="ident">Password</span>::<span class="ident">new</span>(
+        <span class="string">&quot;https://cloud.local/identity&quot;</span>,
+        <span class="string">&quot;admin&quot;</span>,
+        <span class="string">&quot;pa$$w0rd&quot;</span>,
+        <span class="string">&quot;Default&quot;</span>
+    )
+    .<span class="ident">expect</span>(<span class="string">&quot;Invalid auth_url&quot;</span>)
+    .<span class="ident">with_scope</span>(<span class="ident">scope</span>);
+
+    <span class="kw">let</span> <span class="ident">os</span> <span class="op">=</span> <span class="ident">openstack</span>::<span class="ident">Cloud</span>::<span class="ident">new</span>(<span class="ident">auth</span>);
+    <span class="kw">let</span> <span class="ident">image_names</span> <span class="op">=</span> <span class="ident">os</span>
+        .<span class="ident">find_images</span>()
+        .<span class="ident">with_visibility</span>(<span class="ident">openstack</span>::<span class="ident">image</span>::<span class="ident">ImageVisibility</span>::<span class="ident">Public</span>)
+        .<span class="ident">into_iter</span>()
+        <span class="comment">// This `map` comes from fallible-iterator, thus the closure returns a `Result`.</span>
+        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">image</span><span class="op">|</span> <span class="prelude-val">Ok</span>(<span class="ident">image</span>.<span class="ident">name</span>().<span class="ident">clone</span>()))
+        .<span class="ident">collect</span>()<span class="question-mark">?</span>;
+    <span class="prelude-val">Ok</span>(<span class="ident">image_names</span>)
+}</pre></div>
+<p>Notice the difference between <code>list_*</code> methods (return a result with a vector) and <code>find_*</code>
+methods (return a query builder that can be used to create a fallible iterator).</p>
+<h2 id="create-server" class="section-header"><a href="#create-server">Create server</a></h2>
+<p>Create a server with authentication from a <code>clouds.yaml</code> file:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered">
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">openstack</span>;
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">waiter</span>;
+
+<span class="comment">// Required for the `wait` call.</span>
+<span class="kw">use</span> <span class="ident">waiter</span>::<span class="ident">Waiter</span>;
+
+<span class="kw">fn</span> <span class="ident">create_server</span>() <span class="op">-&gt;</span> <span class="ident">openstack</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">openstack</span>::<span class="ident">compute</span>::<span class="ident">Server</span><span class="op">&gt;</span> {
+    <span class="ident">openstack</span>::<span class="ident">Cloud</span>::<span class="ident">from_config</span>(<span class="string">&quot;my-cloud-1&quot;</span>)<span class="question-mark">?</span>
+        .<span class="ident">new_server</span>(<span class="string">&quot;test-server-1&quot;</span>, <span class="string">&quot;x-large&quot;</span>)
+        .<span class="ident">with_image</span>(<span class="string">&quot;centos-7&quot;</span>)
+        .<span class="ident">with_network</span>(<span class="string">&quot;private&quot;</span>)
+        .<span class="ident">with_keypair</span>(<span class="string">&quot;default&quot;</span>)
+        .<span class="ident">create</span>()<span class="question-mark">?</span>
+        .<span class="ident">wait</span>()
+}</pre></div>
+<h1 id="requirements" class="section-header"><a href="#requirements">Requirements</a></h1>
+<p>This crate requires Rust 2018 edition and rustc version 1.43.0 or newer.</p>
+</div><h2 id='modules' class='section-header'><a href="#modules">Modules</a></h2>
+<table><tr class='module-item'><td><a class="mod" href="auth/index.html" title='openstack::auth mod'>auth</a></td><td class='docblock-short'><p>Reimports of authentication bits from <code>osauth</code>.</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="common/index.html" title='openstack::common mod'>common</a></td><td class='docblock-short'><p>Types and traits shared by all API parts.</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="compute/index.html" title='openstack::compute mod'>compute</a></td><td class='docblock-short'><p>Compute API implementation bits.</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="image/index.html" title='openstack::image mod'>image</a></td><td class='docblock-short'><p>Image API implementation bits.</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="network/index.html" title='openstack::network mod'>network</a></td><td class='docblock-short'><p>Network API implementation bits.</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="object_storage/index.html" title='openstack::object_storage mod'>object_storage</a></td><td class='docblock-short'><p>Object storage API implementation bits.</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="session/index.html" title='openstack::session mod'>session</a></td><td class='docblock-short'><p>Reimport of the synchronous session from <code>osauth</code>.</p>
+</td></tr></table><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+<table><tr class='module-item'><td><a class="struct" href="struct.Cloud.html" title='openstack::Cloud struct'>Cloud</a></td><td class='docblock-short'><p>OpenStack cloud API.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.EndpointFilters.html" title='openstack::EndpointFilters struct'>EndpointFilters</a></td><td class='docblock-short'><p>Endpoint filters for looking up endpoints.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Error.html" title='openstack::Error struct'>Error</a></td><td class='docblock-short'><p>Error from an OpenStack call.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.ValidInterfaces.html" title='openstack::ValidInterfaces struct'>ValidInterfaces</a></td><td class='docblock-short'><p>A list of acceptable interface types.</p>
+</td></tr></table><h2 id='enums' class='section-header'><a href="#enums">Enums</a></h2>
+<table><tr class='module-item'><td><a class="enum" href="enum.ErrorKind.html" title='openstack::ErrorKind enum'>ErrorKind</a></td><td class='docblock-short'><p>Kind of an error.</p>
+</td></tr><tr class='module-item'><td><a class="enum" href="enum.IdOrName.html" title='openstack::IdOrName enum'>IdOrName</a></td><td class='docblock-short'><p>A reference to a resource by its ID or name.</p>
+</td></tr><tr class='module-item'><td><a class="enum" href="enum.InterfaceType.html" title='openstack::InterfaceType enum'>InterfaceType</a></td><td class='docblock-short'><p>Interface type: public, internal or admin.</p>
+</td></tr><tr class='module-item'><td><a class="enum" href="enum.Sort.html" title='openstack::Sort enum'>Sort</a></td><td class='docblock-short'><p>Sorting request.</p>
+</td></tr></table><h2 id='traits' class='section-header'><a href="#traits">Traits</a></h2>
+<table><tr class='module-item'><td><a class="trait" href="trait.Refresh.html" title='openstack::Refresh trait'>Refresh</a></td><td class='docblock-short'><p>Trait representing something that can be refreshed.</p>
+</td></tr></table><h2 id='types' class='section-header'><a href="#types">Type Definitions</a></h2>
+<table><tr class='module-item'><td><a class="type" href="type.Result.html" title='openstack::Result type'>Result</a></td><td class='docblock-short'><p>A result of an OpenStack operation.</p>
+</td></tr></table></section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../";window.currentCrate = "openstack";</script><script src="../main.js"></script><script defer src="../search-index.js"></script></body></html>

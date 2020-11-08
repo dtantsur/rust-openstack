@@ -1,0 +1,1 @@
+initSidebarItems({"constant":[["EUI48LEN","A 48-bit (6 byte) buffer containing the EUI address"],["EUI64LEN","A 64-bit (8 byte) buffer containing the EUI address"]],"enum":[["MacAddressFormat","Format to display MacAddress"],["ParseError","Parsing errors"]],"struct":[["MacAddress","A MAC address (EUI-48)"]],"type":[["Eui48",""],["Eui64",""]]});

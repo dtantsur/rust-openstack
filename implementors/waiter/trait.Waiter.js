@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["openstack"] = [{"text":"impl&lt;T:&nbsp;Refresh + Debug&gt; Waiter&lt;(), Error&gt; for DeletionWaiter&lt;T&gt;","synthetic":false,"types":[]},{"text":"impl&lt;'server&gt; Waiter&lt;(), Error&gt; for ServerStatusWaiter&lt;'server&gt;","synthetic":false,"types":[]},{"text":"impl Waiter&lt;Server, Error&gt; for ServerCreationWaiter","synthetic":false,"types":[]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

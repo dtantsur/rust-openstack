@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["GzipDecoder","A gzip  decoder, or decompressor."],["GzipEncoder","A gzip  encoder, or compressor."]]});

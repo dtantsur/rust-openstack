@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["SyncBody","A synchronous body that can be used with asynchronous code."],["SyncSession","A synchronous wrapper for an asynchronous session."],["SyncStream","A reader into an asynchronous stream."]],"type":[["Result","A result of an OpenStack operation."],["SyncStreamItem","An item in a `SyncStream`."]]});

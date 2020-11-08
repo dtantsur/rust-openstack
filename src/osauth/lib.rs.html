@@ -1,0 +1,250 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `/home/travis/.cargo/registry/src/github.com-1ecc6299db9ec823/osauth-0.3.3/src/lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled ><script src="../../storage.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="shortcut icon" href="../../favicon.ico"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../../osauth/index.html'><div class='logo-container rust-logo'><img src='../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><span class="help-button">?</span>
+                <a id="settings-menu" href="../../settings.html"><img src="../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
+<span id="2">  2</span>
+<span id="3">  3</span>
+<span id="4">  4</span>
+<span id="5">  5</span>
+<span id="6">  6</span>
+<span id="7">  7</span>
+<span id="8">  8</span>
+<span id="9">  9</span>
+<span id="10"> 10</span>
+<span id="11"> 11</span>
+<span id="12"> 12</span>
+<span id="13"> 13</span>
+<span id="14"> 14</span>
+<span id="15"> 15</span>
+<span id="16"> 16</span>
+<span id="17"> 17</span>
+<span id="18"> 18</span>
+<span id="19"> 19</span>
+<span id="20"> 20</span>
+<span id="21"> 21</span>
+<span id="22"> 22</span>
+<span id="23"> 23</span>
+<span id="24"> 24</span>
+<span id="25"> 25</span>
+<span id="26"> 26</span>
+<span id="27"> 27</span>
+<span id="28"> 28</span>
+<span id="29"> 29</span>
+<span id="30"> 30</span>
+<span id="31"> 31</span>
+<span id="32"> 32</span>
+<span id="33"> 33</span>
+<span id="34"> 34</span>
+<span id="35"> 35</span>
+<span id="36"> 36</span>
+<span id="37"> 37</span>
+<span id="38"> 38</span>
+<span id="39"> 39</span>
+<span id="40"> 40</span>
+<span id="41"> 41</span>
+<span id="42"> 42</span>
+<span id="43"> 43</span>
+<span id="44"> 44</span>
+<span id="45"> 45</span>
+<span id="46"> 46</span>
+<span id="47"> 47</span>
+<span id="48"> 48</span>
+<span id="49"> 49</span>
+<span id="50"> 50</span>
+<span id="51"> 51</span>
+<span id="52"> 52</span>
+<span id="53"> 53</span>
+<span id="54"> 54</span>
+<span id="55"> 55</span>
+<span id="56"> 56</span>
+<span id="57"> 57</span>
+<span id="58"> 58</span>
+<span id="59"> 59</span>
+<span id="60"> 60</span>
+<span id="61"> 61</span>
+<span id="62"> 62</span>
+<span id="63"> 63</span>
+<span id="64"> 64</span>
+<span id="65"> 65</span>
+<span id="66"> 66</span>
+<span id="67"> 67</span>
+<span id="68"> 68</span>
+<span id="69"> 69</span>
+<span id="70"> 70</span>
+<span id="71"> 71</span>
+<span id="72"> 72</span>
+<span id="73"> 73</span>
+<span id="74"> 74</span>
+<span id="75"> 75</span>
+<span id="76"> 76</span>
+<span id="77"> 77</span>
+<span id="78"> 78</span>
+<span id="79"> 79</span>
+<span id="80"> 80</span>
+<span id="81"> 81</span>
+<span id="82"> 82</span>
+<span id="83"> 83</span>
+<span id="84"> 84</span>
+<span id="85"> 85</span>
+<span id="86"> 86</span>
+<span id="87"> 87</span>
+<span id="88"> 88</span>
+<span id="89"> 89</span>
+<span id="90"> 90</span>
+<span id="91"> 91</span>
+<span id="92"> 92</span>
+<span id="93"> 93</span>
+<span id="94"> 94</span>
+<span id="95"> 95</span>
+<span id="96"> 96</span>
+<span id="97"> 97</span>
+<span id="98"> 98</span>
+<span id="99"> 99</span>
+<span id="100">100</span>
+<span id="101">101</span>
+<span id="102">102</span>
+<span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+</pre><div class="example-wrap"><pre class="rust ">
+<span class="comment">// Copyright 2019 Dmitry Tantsur &lt;divius.inside@gmail.com&gt;</span>
+<span class="comment">//</span>
+<span class="comment">// Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="comment">// you may not use this file except in compliance with the License.</span>
+<span class="comment">// You may obtain a copy of the License at</span>
+<span class="comment">//</span>
+<span class="comment">//     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="comment">//</span>
+<span class="comment">// Unless required by applicable law or agreed to in writing, software</span>
+<span class="comment">// distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="comment">// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="comment">// See the License for the specific language governing permissions and</span>
+<span class="comment">// limitations under the License.</span>
+
+<span class="doccomment">//! Asynchronous OpenStack session and authentication.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! # Introduction</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! This crate provides low-level asynchronous access to OpenStack API. It features:</span>
+<span class="doccomment">//! 1. Authentication and token caching.</span>
+<span class="doccomment">//! 2. Major and microversion handling.</span>
+<span class="doccomment">//! 3. Service catalog integration.</span>
+<span class="doccomment">//! 4. JSON API error handling.</span>
+<span class="doccomment">//! 5. Service types for supported services.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! It does NOT provide:</span>
+<span class="doccomment">//! 1. Protocol structures for any services.</span>
+<span class="doccomment">//! 2. Automatic microversion negotiation.</span>
+<span class="doccomment">//! 3. High-level object-oriented API.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! See [openstack crate](https://crates.io/crates/openstack) for these features.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! # Requirements</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! This crate requires Rust 2018 edition and compiler version 1.40.0 or newer.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! # Usage</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! Your entry point to the API is the [Session](struct.Session.html) structure. To create it you</span>
+<span class="doccomment">//! need an authentication type object first. It can be obtained by:</span>
+<span class="doccomment">//! * Using [Password](identity/struct.Password.html) authentication against the Identity service.</span>
+<span class="doccomment">//! * Using [NoAuth](struct.NoAuth.html) authentication type, allowing access to standalone</span>
+<span class="doccomment">//!   services without authentication.</span>
+<span class="doccomment">//! * Using HTTP [BasicAuth](struct.BasicAuth.html) authentication type for services supporting it</span>
+<span class="doccomment">//!   (only ironic and ironic-inspector at the moment).</span>
+<span class="doccomment">//! * By loading both authentication parameters and a session from:</span>
+<span class="doccomment">//!   * `clouds.yaml`, `clouds-public.yaml` and `secure.yaml` configuration files using</span>
+<span class="doccomment">//!     [from_config](struct.Session.html#method.from_config).</span>
+<span class="doccomment">//!   * environment variables using [from_env](struct.Session.html#method.from_env).</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! See [Session](struct.Session.html) documentation for the details on using a `Session` for making</span>
+<span class="doccomment">//! OpenStack calls.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! If you need to work with a small number of servics, [Adapter](struct.Adapter.html) provides a</span>
+<span class="doccomment">//! more convenient interface. An adapter can be created directly using</span>
+<span class="doccomment">//! [Adapter::new](struct.Adapter.html#method.new) or from an existing `Session` using</span>
+<span class="doccomment">//! [Session::adapter](struct.Session.html#method.adapter) or</span>
+<span class="doccomment">//! [Session::into_adapter](struct.Session.html#method.into_adapter).</span>
+
+<span class="attribute">#![<span class="ident">crate_name</span> <span class="op">=</span> <span class="string">&quot;osauth&quot;</span>]</span>
+<span class="attribute">#![<span class="ident">crate_type</span> <span class="op">=</span> <span class="string">&quot;lib&quot;</span>]</span>
+<span class="attribute">#![<span class="ident">doc</span>(<span class="ident">html_root_url</span> <span class="op">=</span> <span class="string">&quot;https://docs.rs/osauth/0.3.3&quot;</span>)]</span>
+<span class="comment">// NOTE: we do not use generic deny(warnings) to avoid breakages with new</span>
+<span class="comment">// versions of the compiler. Add more warnings here as you discover them.</span>
+<span class="comment">// Taken from https://github.com/rust-unofficial/patterns/</span>
+<span class="attribute">#![<span class="ident">deny</span>(
+    <span class="ident">bare_trait_objects</span>,
+    <span class="ident">const_err</span>,
+    <span class="ident">dead_code</span>,
+    <span class="ident">improper_ctypes</span>,
+    <span class="ident">missing_copy_implementations</span>,
+    <span class="ident">missing_debug_implementations</span>,
+    <span class="ident">missing_docs</span>,
+    <span class="ident">non_shorthand_field_patterns</span>,
+    <span class="ident">no_mangle_generic_items</span>,
+    <span class="ident">overflowing_literals</span>,
+    <span class="ident">path_statements</span>,
+    <span class="ident">patterns_in_fns_without_body</span>,
+    <span class="ident">private_in_public</span>,
+    <span class="ident">trivial_casts</span>,
+    <span class="ident">trivial_numeric_casts</span>,
+    <span class="ident">unconditional_recursion</span>,
+    <span class="ident">unsafe_code</span>,
+    <span class="ident">unused</span>,
+    <span class="ident">unused_allocation</span>,
+    <span class="ident">unused_comparisons</span>,
+    <span class="ident">unused_doc_comments</span>,
+    <span class="ident">unused_import_braces</span>,
+    <span class="ident">unused_parens</span>,
+    <span class="ident">unused_qualifications</span>,
+    <span class="ident">unused_results</span>,
+    <span class="ident">while_true</span>
+)]</span>
+
+<span class="kw">mod</span> <span class="ident">adapter</span>;
+<span class="kw">mod</span> <span class="ident">apiversion</span>;
+<span class="kw">mod</span> <span class="ident">auth</span>;
+<span class="kw">mod</span> <span class="ident">basic</span>;
+<span class="kw">mod</span> <span class="ident">endpointfilters</span>;
+<span class="kw">mod</span> <span class="ident">error</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">identity</span>;
+<span class="kw">mod</span> <span class="ident">loading</span>;
+<span class="kw">mod</span> <span class="ident">protocol</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">request</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">services</span>;
+<span class="kw">mod</span> <span class="ident">session</span>;
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;stream&quot;</span>)]</span>
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">stream</span>;
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sync&quot;</span>)]</span>
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">sync</span>;
+<span class="kw">mod</span> <span class="ident">url</span>;
+<span class="kw">mod</span> <span class="ident">utils</span>;
+
+<span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">adapter</span>::<span class="ident">Adapter</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">apiversion</span>::<span class="ident">ApiVersion</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">auth</span>::{<span class="ident">AuthType</span>, <span class="ident">NoAuth</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">basic</span>::<span class="ident">BasicAuth</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">endpointfilters</span>::{<span class="ident">EndpointFilters</span>, <span class="ident">InterfaceType</span>, <span class="ident">ValidInterfaces</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">error</span>::{<span class="ident">Error</span>, <span class="ident">ErrorKind</span>};
+<span class="attribute">#[<span class="ident">deprecated</span>(<span class="ident">since</span> <span class="op">=</span> <span class="string">&quot;0.3.3&quot;</span>, <span class="ident">note</span> <span class="op">=</span> <span class="string">&quot;use osauth::Session::from_env/config&quot;</span>)]</span>
+<span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
+<span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">loading</span>::{<span class="ident">from_config</span>, <span class="ident">from_env</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">session</span>::<span class="ident">Session</span>;
+</pre></div>
+</section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../";window.currentCrate = "osauth";</script><script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script><script defer src="../../search-index.js"></script></body></html>

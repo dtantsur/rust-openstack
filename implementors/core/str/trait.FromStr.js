@@ -1,0 +1,19 @@
+(function() {var implementors = {};
+implementors["chrono"] = [{"text":"impl FromStr for NaiveDate","synthetic":false,"types":[]},{"text":"impl FromStr for NaiveDateTime","synthetic":false,"types":[]},{"text":"impl FromStr for NaiveTime","synthetic":false,"types":[]},{"text":"impl FromStr for DateTime&lt;Utc&gt;","synthetic":false,"types":[]},{"text":"impl FromStr for DateTime&lt;Local&gt;","synthetic":false,"types":[]},{"text":"impl FromStr for DateTime&lt;FixedOffset&gt;","synthetic":false,"types":[]},{"text":"impl FromStr for Weekday","synthetic":false,"types":[]},{"text":"impl FromStr for Month","synthetic":false,"types":[]}];
+implementors["eui48"] = [{"text":"impl FromStr for MacAddress","synthetic":false,"types":[]}];
+implementors["http"] = [{"text":"impl FromStr for HeaderName","synthetic":false,"types":[]},{"text":"impl FromStr for HeaderValue","synthetic":false,"types":[]},{"text":"impl FromStr for Method","synthetic":false,"types":[]},{"text":"impl FromStr for StatusCode","synthetic":false,"types":[]},{"text":"impl FromStr for Authority","synthetic":false,"types":[]},{"text":"impl FromStr for PathAndQuery","synthetic":false,"types":[]},{"text":"impl FromStr for Scheme","synthetic":false,"types":[]},{"text":"impl FromStr for Uri","synthetic":false,"types":[]}];
+implementors["httpdate"] = [{"text":"impl FromStr for HttpDate","synthetic":false,"types":[]}];
+implementors["hyper"] = [{"text":"impl FromStr for Name","synthetic":false,"types":[]}];
+implementors["ipnet"] = [{"text":"impl FromStr for IpNet","synthetic":false,"types":[]},{"text":"impl FromStr for Ipv4Net","synthetic":false,"types":[]},{"text":"impl FromStr for Ipv6Net","synthetic":false,"types":[]}];
+implementors["log"] = [{"text":"impl FromStr for Level","synthetic":false,"types":[]},{"text":"impl FromStr for LevelFilter","synthetic":false,"types":[]}];
+implementors["mime"] = [{"text":"impl FromStr for Mime","synthetic":false,"types":[]}];
+implementors["osauth"] = [{"text":"impl FromStr for ApiVersion","synthetic":false,"types":[]},{"text":"impl FromStr for InterfaceType","synthetic":false,"types":[]}];
+implementors["osproto"] = [{"text":"impl&lt;T&gt; FromStr for XdotY&lt;T&gt; <span class=\"where fmt-newline\">where<br>&nbsp;&nbsp;&nbsp;&nbsp;T: FromStr + Default,<br>&nbsp;&nbsp;&nbsp;&nbsp;T::Err: Display,&nbsp;</span>","synthetic":false,"types":[]}];
+implementors["proc_macro2"] = [{"text":"impl FromStr for TokenStream","synthetic":false,"types":[]}];
+implementors["regex"] = [{"text":"impl FromStr for Regex","synthetic":false,"types":[]},{"text":"impl FromStr for Regex","synthetic":false,"types":[]}];
+implementors["rustc_serialize"] = [{"text":"impl FromStr for Json","synthetic":false,"types":[]}];
+implementors["serde_json"] = [{"text":"impl FromStr for Number","synthetic":false,"types":[]},{"text":"impl FromStr for Value","synthetic":false,"types":[]}];
+implementors["tracing_core"] = [{"text":"impl FromStr for Level","synthetic":false,"types":[]},{"text":"impl FromStr for LevelFilter","synthetic":false,"types":[]}];
+implementors["unicase"] = [{"text":"impl&lt;S:&nbsp;FromStr&gt; FromStr for Ascii&lt;S&gt;","synthetic":false,"types":[]},{"text":"impl&lt;S:&nbsp;FromStr + AsRef&lt;str&gt;&gt; FromStr for UniCase&lt;S&gt;","synthetic":false,"types":[]}];
+implementors["url"] = [{"text":"impl FromStr for Url","synthetic":false,"types":[]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
