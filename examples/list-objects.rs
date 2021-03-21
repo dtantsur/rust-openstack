@@ -40,9 +40,10 @@ fn main() {
 
     println!("first 10 objects");
     for o in objects {
-        println!("Name = {}, Bytes = {}",
+        println!("Name = {}, Bytes = {}, Hash = {}",
             o.name(),
             o.bytes(),
+            o.hash(),
         );
     }
 }

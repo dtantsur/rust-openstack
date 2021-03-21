@@ -26,6 +26,8 @@ use fallible_iterator::FallibleIterator;
 
 use openstack::Refresh;
 
+use md5::{Digest, Md5};
+
 static INIT: Once = Once::new();
 
 fn set_up() -> openstack::Cloud {
@@ -106,7 +108,13 @@ fn test_object_create() {
         .create_container(name)
         .expect("Failed to create a container");
 
-    let buf = Cursor::new(vec![1, 2, 3, 4, 5]);
+    // fake data
+    let data: [u8; 5] = [1, 2, 3, 4, 5];
+    let buf: Cursor<Vec<u8>> = Cursor::new(data.into());
+    // calculate md5 for thos data
+    let mut hasher = Md5::new();
+    hasher.update(data);
+    let data_hash = hasher.finalize();
 
     let mut obj = os
         .create_object(ctr.clone(), "test1", buf)
@@ -114,6 +122,7 @@ fn test_object_create() {
     assert_eq!(obj.name(), "test1");
     assert_eq!(obj.container_name(), name);
     assert_eq!(obj.bytes(), 5);
+    assert_eq!(String::from(obj.hash()), hex::encode(data_hash));
 
     ctr.refresh().expect("Failed to refresh container");
     assert!(ctr.object_count() > 0);

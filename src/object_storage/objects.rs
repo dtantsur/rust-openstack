@@ -145,6 +145,11 @@ impl Object {
         name: ref String
     }
 
+    transparent_property! {
+        #[doc = "Object hash or ETag."]
+        hash: ref String
+    }
+
     /// Object url.
     #[inline]
     pub fn url(&self) -> Result<Url> {
