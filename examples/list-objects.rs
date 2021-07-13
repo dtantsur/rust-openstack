@@ -43,7 +43,7 @@ fn main() {
         println!("Name = {}, Bytes = {}, Hash = {}",
             o.name(),
             o.bytes(),
-            o.hash(),
+            o.hash().as_ref().unwrap_or(&String::from("")),
         );
     }
 }

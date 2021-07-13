@@ -139,15 +139,15 @@ impl Object {
         #[doc = "Object content type (if set)."]
         content_type: ref Option<String>
     }
+    
+    transparent_property! {
+        #[doc = "Object hash or ETag, which is a content's md5 hash"]
+        hash: ref Option<String>
+    }
 
     transparent_property! {
         #[doc = "Object name."]
         name: ref String
-    }
-
-    transparent_property! {
-        #[doc = "Object hash or ETag."]
-        hash: ref String
     }
 
     /// Object url.

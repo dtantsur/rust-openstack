@@ -122,7 +122,7 @@ fn test_object_create() {
     assert_eq!(obj.name(), "test1");
     assert_eq!(obj.container_name(), name);
     assert_eq!(obj.bytes(), 5);
-    assert_eq!(String::from(obj.hash()), hex::encode(data_hash));
+    assert_eq!(obj.hash(), &Some(hex::encode(data_hash)));
 
     ctr.refresh().expect("Failed to refresh container");
     assert!(ctr.object_count() > 0);

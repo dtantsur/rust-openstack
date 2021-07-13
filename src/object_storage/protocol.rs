@@ -37,7 +37,7 @@ pub struct Object {
     pub bytes: u64,
     pub content_type: Option<String>,
     pub name: String,
-    pub hash: String,
+    pub hash: Option<String>,
 }
 
 static CONTENT_LENGTH: HeaderName = header::CONTENT_LENGTH;
@@ -83,12 +83,12 @@ impl Object {
                 )
             })?;
         let ct = protocol::get_header(value, &CONTENT_TYPE)?.map(From::from);
-        let hash = protocol::get_header(value, &ETAG)?.unwrap();
+        let hash = protocol::get_header(value, &ETAG)?.map(From::from);
         Ok(Object {
             bytes: size,
             content_type: ct,
             name: name.into(),
-            hash: hash.into()
+            hash: hash,
         })
     }
 }
