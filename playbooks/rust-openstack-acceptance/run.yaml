@@ -41,6 +41,7 @@
       shell: |
         openstack image list -f value -c ID -c Name \
           | awk '/cirros/ { print $1; exit 0; }'
+          | tail -n1
       register: cirros_image_result
       failed_when: cirros_image_result.stdout == ""
 

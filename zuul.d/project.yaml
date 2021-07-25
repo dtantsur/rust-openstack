@@ -2,6 +2,9 @@
     check:
       jobs:
         - rust-openstack-acceptance
+        - rust-openstack-acceptance-xena
+        - rust-openstack-acceptance-wallaby
+        - rust-openstack-acceptance-victoria
         - rust-openstack-acceptance-ussuri
         - rust-openstack-acceptance-train
         - rust-openstack-acceptance-stein

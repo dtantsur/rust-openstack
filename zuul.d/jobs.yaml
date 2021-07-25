@@ -6,7 +6,7 @@
     pre-run: playbooks/rust-base/pre.yaml
     vars:
       rustup_toolchain: stable
-    nodeset: ubuntu-bionic
+    nodeset: ubuntu-focal
 
 - job:
     name: rust-openstack-acceptance
@@ -16,6 +16,34 @@
     run: playbooks/rust-openstack-acceptance/run.yaml
 
 - job:
+    name: rust-openstack-acceptance-xena
+    parent: rust-openstack-acceptance
+    description: |
+      Run rust-openstack acceptance test on xena branch
+    vars:
+      global_env:
+        OS_BRANCH: stable/xena
+
+- job:
+    name: rust-openstack-acceptance-wallaby
+    parent: rust-openstack-acceptance
+    description: |
+      Run rust-openstack acceptance test on wallaby branch
+    vars:
+      global_env:
+        OS_BRANCH: stable/wallaby
+
+- job:
+    name: rust-openstack-acceptance-victoria
+    parent: rust-openstack-acceptance
+    description: |
+      Run rust-openstack acceptance test on victoria branch
+    vars:
+      global_env:
+        OS_BRANCH: stable/victoria
+    nodeset: ubuntu-bionic
+
+- job:
     name: rust-openstack-acceptance-ussuri
     parent: rust-openstack-acceptance
     description: |
@@ -23,6 +51,8 @@
     vars:
       global_env:
         OS_BRANCH: stable/ussuri
+    nodeset: ubuntu-bionic
+    voting: false
 
 - job:
     name: rust-openstack-acceptance-train
@@ -32,6 +62,8 @@
     vars:
       global_env:
         OS_BRANCH: stable/train
+    nodeset: ubuntu-bionic
+    voting: false
 
 - job:
     name: rust-openstack-acceptance-stein
@@ -42,6 +74,7 @@
       global_env:
         OS_BRANCH: stable/stein
     nodeset: ubuntu-xenial
+    voting: false
 
 - job:
     name: rust-openstack-acceptance-rocky
