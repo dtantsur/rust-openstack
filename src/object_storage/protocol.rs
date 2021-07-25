@@ -37,10 +37,12 @@ pub struct Object {
     pub bytes: u64,
     pub content_type: Option<String>,
     pub name: String,
+    pub hash: Option<String>,
 }
 
 static CONTENT_LENGTH: HeaderName = header::CONTENT_LENGTH;
 static CONTENT_TYPE: HeaderName = header::CONTENT_TYPE;
+static ETAG: HeaderName = header::ETAG;
 
 impl Container {
     pub fn from_headers(name: &str, value: &HeaderMap) -> Result<Container, Error> {
@@ -81,10 +83,12 @@ impl Object {
                 )
             })?;
         let ct = protocol::get_header(value, &CONTENT_TYPE)?.map(From::from);
+        let hash = protocol::get_header(value, &ETAG)?.map(From::from);
         Ok(Object {
             bytes: size,
             content_type: ct,
             name: name.into(),
+            hash: hash,
         })
     }
 }
