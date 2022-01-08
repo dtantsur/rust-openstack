@@ -1,0 +1,54 @@
+name: functional-basic
+on:
+  - pull_request
+  - push
+jobs:
+  functional-basic:
+    strategy:
+      fail-fast: false
+      matrix:
+        name: ["master"]
+        openstack_version: ["master"]
+        ubuntu_version: ["20.04"]
+        include:
+          - name: "xena"
+            openstack_version: "stable/xena"
+            ubuntu_version: "20.04"
+          - name: "wallaby"
+            openstack_version: "stable/wallaby"
+            ubuntu_version: "20.04"
+          - name: "victoria"
+            openstack_version: "stable/victoria"
+            ubuntu_version: "20.04"
+          - name: "ussuri"
+            openstack_version: "stable/ussuri"
+            ubuntu_version: "18.04"
+          - name: "train"
+            openstack_version: "stable/train"
+            ubuntu_version: "18.04"
+    runs-on: ubuntu-${{ matrix.ubuntu_version }}
+    name: Deploy OpenStack ${{ matrix.name }} with defaults and run cargo tests
+    steps:
+      - name: Checkout rust-openstack
+        uses: actions/checkout@v2
+      - name: Deploy devstack
+        uses: EmilienM/devstack-action@v0.6
+        with:
+          branch: ${{ matrix.openstack_version }}
+      - name: Setup | Rust
+        uses: ATiltedTree/setup-rust@v1
+        with:
+          rust-version: stable
+      - name: Build the project
+        run: cargo build --release --all-features
+      - name: Run tests
+        run: cargo test -- --test-threads=1
+      - name: Generate logs on failure
+        run: ./tools/collectlogs.sh
+        if: failure()
+      - name: Upload logs artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v2
+        with:
+          name: functional-basic-${{ matrix.name }}
+          path: /tmp/devstack-logs/*
