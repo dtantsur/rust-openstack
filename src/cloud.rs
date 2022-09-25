@@ -18,8 +18,9 @@
 use std::io;
 use std::rc::Rc;
 
-use osauth::sync::SyncSession;
 use osauth::{AuthType, Session};
+
+use super::sync::SyncSession;
 
 #[allow(unused_imports)]
 use super::common::{ContainerRef, FlavorRef, NetworkRef};

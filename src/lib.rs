@@ -667,21 +667,20 @@ pub mod image;
 pub mod network;
 #[cfg(feature = "object-storage")]
 pub mod object_storage;
-/// Reimport of the synchronous session from `osauth`.
-///
-/// See [osauth documentation](https://docs.rs/osauth/) for details.
+/// Synchronous sessions based on one from [osauth](https://docs.rs/osauth/).
 pub mod session {
+    pub use crate::sync::SyncSession as Session;
     pub use osauth::services::ServiceType;
-    pub use osauth::sync::SyncSession as Session;
 }
+mod sync;
 mod utils;
 
 pub use osauth::identity::IdOrName;
-pub use osauth::sync::Result;
 pub use osauth::{EndpointFilters, Error, ErrorKind, InterfaceType, ValidInterfaces};
 
 pub use crate::cloud::Cloud;
 pub use crate::common::Refresh;
+pub use crate::sync::Result;
 
 /// Sorting request.
 #[derive(Debug, Clone)]

@@ -19,10 +19,10 @@ use std::io;
 use futures::stream::Stream;
 use osauth::request::NO_PATH;
 use osauth::services::OBJECT_STORAGE;
-use osauth::sync::{SyncBody, SyncStream, SyncStreamItem};
 use reqwest::{Method, StatusCode};
 
 use super::super::session::Session;
+use super::super::sync::{SyncBody, SyncStream, SyncStreamItem};
 use super::super::utils::Query;
 use super::super::Result;
 use super::objects::ObjectHeaders;
