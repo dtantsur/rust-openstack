@@ -1,0 +1,48 @@
+name: Build and test
+on: [push, pull_request]
+
+jobs:
+  test:
+    name: Unit tests on ${{ matrix.rust }} ${{ matrix.flags}}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust: [stable, nightly, 1.58.0]
+        flags:
+          - ""
+          - "--no-default-features"
+          - "--no-default-features --features rustls"
+    steps:
+    - uses: actions/checkout@master
+    - name: Install Rust
+      run: |
+        rustup update ${{ matrix.rust }} --no-self-update
+        rustup default ${{ matrix.rust }}
+    - name: Run unit tests
+      run: cargo test --lib --verbose ${{ matrix.flags }}
+
+  rustfmt:
+    name: Formatting
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Install Rust
+      run: |
+        rustup update stable --no-self-update
+        rustup default stable
+        rustup component add rustfmt
+    - run: cargo fmt -- --check
+
+  docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: Install Rust
+        run: |
+          rustup update stable --no-self-update
+          rustup default stable
+      - name: Run doc tests
+        run: cargo test --doc --verbose
+      - name: Build the docs
+        run: cargo doc --verbose

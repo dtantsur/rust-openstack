@@ -25,9 +25,12 @@ fn main() {
         .expect("Failed to create an identity provider from the environment");
 
     let container_name = env::args().nth(1).expect("Provide a container name");
-    let container = os.get_container(&container_name).expect("Cannot get a container");
+    let container = os
+        .get_container(&container_name)
+        .expect("Cannot get a container");
 
-    println!("Found container with Name = {}, Number of object = {}",
+    println!(
+        "Found container with Name = {}, Number of object = {}",
         container.name(),
         container.object_count()
     );
@@ -40,7 +43,8 @@ fn main() {
 
     println!("first 10 objects");
     for o in objects {
-        println!("Name = {}, Bytes = {}, Hash = {}",
+        println!(
+            "Name = {}, Bytes = {}, Hash = {}",
             o.name(),
             o.bytes(),
             o.hash().as_ref().unwrap_or(&String::from("")),

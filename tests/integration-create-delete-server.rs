@@ -20,6 +20,7 @@ use std::env;
 use std::fs::File;
 use std::io::Read;
 use std::sync::Once;
+use std::{thread, time};
 
 use waiter::Waiter;
 
@@ -230,6 +231,8 @@ fn test_server_ops_with_port() {
         floating_ip.description().as_ref().expect("No description"),
         "A floating IP"
     );
+
+    thread::sleep(time::Duration::from_secs(1));
 
     server.refresh().expect("Cannot refresh the server");
 

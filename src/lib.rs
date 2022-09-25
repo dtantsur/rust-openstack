@@ -144,7 +144,9 @@
     unused_results,
     while_true
 )]
+// TODO(dtantsur): revise these
 #![allow(unused_extern_crates)]
+#![allow(unused_macro_rules)]
 #![allow(
     clippy::new_ret_no_self,
     clippy::should_implement_trait,

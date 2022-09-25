@@ -240,11 +240,11 @@ fn test_network_update() {
 
     network.set_admin_state_up(true);
     network.set_name("rust-openstack-integration-new2");
-    network.set_mtu(1450);
+    network.set_mtu(1420);
 
     assert!(network.is_dirty());
     assert!(network.admin_state_up());
-    assert_eq!(network.mtu(), Some(1450));
+    assert_eq!(network.mtu(), Some(1420));
     assert_eq!(
         network.name().as_ref().unwrap(),
         "rust-openstack-integration-new2"
@@ -254,7 +254,7 @@ fn test_network_update() {
 
     assert!(!network.is_dirty());
     assert!(network.admin_state_up());
-    assert_eq!(network.mtu(), Some(1450));
+    assert_eq!(network.mtu(), Some(1420));
     assert_eq!(
         network.name().as_ref().unwrap(),
         "rust-openstack-integration-new2"
@@ -268,7 +268,7 @@ fn test_network_update() {
 
     assert!(!network.is_dirty());
     assert!(network.admin_state_up());
-    assert_eq!(network.mtu(), Some(1450));
+    assert_eq!(network.mtu(), Some(1420));
     assert_eq!(
         network.name().as_ref().unwrap(),
         "rust-openstack-integration-new2"
