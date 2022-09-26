@@ -2,7 +2,7 @@
 
 name = "openstack"
 description = "OpenStack SDK for Rust"
-version = "0.4.0"  # remember to update html_root_url
+version = "0.4.1"  # remember to update html_root_url
 authors = ["Dmitry Tantsur <divius.inside@gmail.com>"]
 homepage = "https://dtantsur.github.io/rust-openstack/openstack/"
 repository = "https://github.com/dtantsur/rust-openstack"
@@ -11,7 +11,8 @@ readme = "README.md"
 license = "Apache-2.0"
 keywords = ["api", "cloud", "openstack"]
 categories = ["api-bindings"]
-edition = "2018"
+edition = "2021"
+rust-version = "1.56"
 
 [features]
 

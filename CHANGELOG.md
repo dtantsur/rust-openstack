@@ -1,5 +1,12 @@
 # Change Log
 
+## 0.4.1  (2022-09-26)
+
+#### Features
+
+*   implement router api (#117) ([87887e6f](https://github.com/dtantsur/rust-openstack/commit/87887e6f26c2c61d245d25e05edc7e97a673841e))
+* **object-storage:**  add hash to objects (#125) ([887895ca](https://github.com/dtantsur/rust-openstack/commit/887895ca770d71632db4f2812c2be45e4aeb4d3d))
+
 ## 0.4.0 (2020-05-23)
 
 #### Breaking Changes

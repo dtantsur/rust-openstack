@@ -1,4 +1,4 @@
-// Copyright 2017 Dmitry Tantsur <divius.inside@gmail.com>
+// Copyright 2017-2022 Dmitry Tantsur <divius.inside@gmail.com>
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -109,11 +109,11 @@
 //!
 //! # Requirements
 //!
-//! This crate requires Rust 2018 edition and rustc version 1.43.0 or newer.
+//! This crate requires Rust 2022 edition and rustc version 1.56.0 or newer.
 
 #![crate_name = "openstack"]
 #![crate_type = "lib"]
-#![doc(html_root_url = "https://docs.rs/openstack/0.4.0")]
+#![doc(html_root_url = "https://docs.rs/openstack/0.4.1")]
 // NOTE: we do not use generic deny(warnings) to avoid breakages with new
 // versions of the compiler. Add more warnings here as you discover them.
 // Taken from https://github.com/rust-unofficial/patterns/
