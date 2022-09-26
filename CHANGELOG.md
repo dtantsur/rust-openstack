@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.4.2  (2022-09-26)
+
+No code changes, updated README and links on crates.io.
+
 ## 0.4.1  (2022-09-26)
 
 #### Features
