@@ -30,8 +30,8 @@ To run all tests including integration ones:
 
     cargo test -- --test-threads=1
 
-The last command is run in the CI on every pull requests - look for comments
-from [theopenlab-ci user](https://github.com/apps/theopenlab-ci).
+The last command is run in the CI on every pull requests - look for output
+of Github actions.
 
 ## Code structure
 

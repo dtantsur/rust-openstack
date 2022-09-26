@@ -1,18 +1,14 @@
 OpenStack SDK for Rust
 ======================
 
-[![Build
-Status](https://travis-ci.org/dtantsur/rust-openstack.svg?branch=master)](https://travis-ci.org/dtantsur/rust-openstack)
+![CI](https://github.com/dtantsur/rust-openstack/workflows/CI/badge.svg)
 [![License](https://img.shields.io/crates/l/openstack.svg)](https://github.com/dtantsur/rust-openstack/blob/master/LICENSE)
 [![Latest
 Version](https://img.shields.io/crates/v/openstack.svg)](https://crates.io/crates/openstack)
+[![Documentation](https://img.shields.io/badge/documentation-latest-blueviolet.svg)](https://docs.rs/openstack)
 
 The goal of this project is to provide a simple API for working with OpenStack
-clouds. It is still work-in-progress, so many bits are not implemented.
-
-Documentation: [master](https://dtantsur.github.io/rust-openstack/openstack/),
-[latest release](https://docs.rs/openstack/),
-[contributing](https://github.com/dtantsur/rust-openstack/blob/master/CONTRIBUTING.md).
+clouds. It is still work-in-progress, some bits are not implemented.
 
 ## Usage
 
