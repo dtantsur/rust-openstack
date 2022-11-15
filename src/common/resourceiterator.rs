@@ -16,13 +16,17 @@
 
 use std::vec;
 
-use fallible_iterator::FallibleIterator;
+use async_stream::try_stream;
+use async_trait::async_trait;
+use futures::pin_mut;
+use futures::stream::{Stream, TryStreamExt};
 
 use super::super::{Error, ErrorKind, Result};
 
 /// A query for resources.
 ///
 /// This is a low-level trait that should not be used directly.
+#[async_trait]
 pub trait ResourceQuery {
     /// Item type.
     type Item;
@@ -31,24 +35,28 @@ pub trait ResourceQuery {
     const DEFAULT_LIMIT: usize;
 
     /// Whether pagination is supported for this query.
-    fn can_paginate(&self) -> Result<bool>;
+    async fn can_paginate(&self) -> Result<bool>;
 
     /// Extract a marker from a resource.
     fn extract_marker(&self, resource: &Self::Item) -> String;
 
     /// Get a chunk of resources.
-    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>>;
+    async fn fetch_chunk(
+        &self,
+        limit: Option<usize>,
+        marker: Option<String>,
+    ) -> Result<Vec<Self::Item>>;
 
     /// Validate the query before the first execution.
     ///
     /// This call may modify internal representation of the query, so changing
     /// the query after calling it may cause undesired side effects.
-    fn validate(&mut self) -> Result<()> {
+    async fn validate(&mut self) -> Result<()> {
         Ok(())
     }
 }
 
-/// Generic implementation of a `FallibleIterator` over resources.
+/// Generic iterator over resources.
 #[derive(Debug, Clone)]
 pub struct ResourceIterator<Q: ResourceQuery> {
     query: Q,
@@ -72,15 +80,22 @@ where
             validated: false,
         }
     }
+}
 
+impl<Q> ResourceIterator<Q>
+where
+    Q: ResourceQuery + Send,
+{
     /// Assert that only one item is left and fetch it.
     ///
     /// Fails with `ResourceNotFound` if no items are left and with
     /// `TooManyItems` if there is more than one item left.
-    pub fn one(mut self) -> Result<Q::Item> {
-        match self.next()? {
+    pub async fn one(self) -> Result<Q::Item> {
+        let stream = self.into_stream();
+        pin_mut!(stream);
+        match stream.try_next().await? {
             Some(result) => {
-                if self.next()?.is_some() {
+                if stream.try_next().await?.is_some() {
                     Err(Error::new(
                         ErrorKind::TooManyItems,
                         "Query returned more than one result",
@@ -95,56 +110,59 @@ where
             )),
         }
     }
-}
 
-impl<Q> FallibleIterator for ResourceIterator<Q>
-where
-    Q: ResourceQuery,
-{
-    type Item = Q::Item;
+    /// Convert this iterator into a proper implementor of the `Stream` trait.
+    ///
+    /// This stream yields `Result<Q::Item>` items and is therefore also an
+    /// implementor of the `TryStream` trait.
+    ///
+    /// Note that no requests are done until you start iterating.
+    pub fn into_stream(mut self) -> impl Stream<Item = Result<Q::Item>> {
+        try_stream! {
+            if !self.validated {
+                self.query.validate().await?;
+                self.validated = true;
+            }
 
-    type Error = Error;
+            if self.can_paginate.is_none() {
+                self.can_paginate = Some(self.query.can_paginate().await?);
+            }
 
-    fn next(&mut self) -> Result<Option<Self::Item>> {
-        if !self.validated {
-            self.query.validate()?;
-            self.validated = true;
+            loop {
+                let maybe_next = self.cache.as_mut().and_then(|cache| cache.next());
+                if let Some(next) = maybe_next {
+                    self.marker = Some(self.query.extract_marker(&next));
+                    yield next;
+                } else if self.cache.is_some() && self.can_paginate == Some(false) {
+                    // We have exhausted the results and pagination is not possible
+                    break;
+                } else {
+                    let (marker, limit) = if self.can_paginate == Some(true) {
+                        // can_paginate=true implies no limit was provided
+                        (self.marker.clone(), Some(Q::DEFAULT_LIMIT))
+                    } else {
+                        (None, None)
+                    };
+
+                    let mut iter = self.query.fetch_chunk(limit, marker).await?.into_iter();
+                    let maybe_next = iter.next();
+                    self.cache = Some(iter);
+                    if let Some(next) = maybe_next {
+                        self.marker = Some(self.query.extract_marker(&next));
+                        yield next;
+                    } else {
+                        break;
+                    }
+                }
+            }
         }
-
-        if self.can_paginate.is_none() {
-            self.can_paginate = Some(self.query.can_paginate()?);
-        }
-
-        let maybe_next = self.cache.as_mut().and_then(|cache| cache.next());
-        Ok(if maybe_next.is_some() {
-            maybe_next
-        } else if self.cache.is_some() && self.can_paginate == Some(false) {
-            // We have exhausted the results and pagination is not possible
-            None
-        } else {
-            let (marker, limit) = if self.can_paginate == Some(true) {
-                // can_paginate=true implies no limit was provided
-                (self.marker.clone(), Some(Q::DEFAULT_LIMIT))
-            } else {
-                (None, None)
-            };
-
-            let mut iter = self.query.fetch_chunk(limit, marker)?.into_iter();
-            let maybe_next = iter.next();
-            self.cache = Some(iter);
-
-            maybe_next
-        }
-        .map(|next| {
-            self.marker = Some(self.query.extract_marker(&next));
-            next
-        }))
     }
 }
 
 #[cfg(test)]
 mod test {
-    use fallible_iterator::FallibleIterator;
+    use async_trait::async_trait;
+    use futures::stream::TryStreamExt;
 
     use super::super::super::Result;
     use super::{ResourceIterator, ResourceQuery};
@@ -155,12 +173,13 @@ mod test {
     #[derive(Debug)]
     struct TestQuery;
 
+    #[async_trait]
     impl ResourceQuery for TestQuery {
         type Item = Test;
 
         const DEFAULT_LIMIT: usize = 2;
 
-        fn can_paginate(&self) -> Result<bool> {
+        async fn can_paginate(&self) -> Result<bool> {
             Ok(true)
         }
 
@@ -168,7 +187,7 @@ mod test {
             resource.0.to_string()
         }
 
-        fn fetch_chunk(
+        async fn fetch_chunk(
             &self,
             limit: Option<usize>,
             marker: Option<String>,
@@ -186,12 +205,13 @@ mod test {
     #[derive(Debug)]
     struct NoPagination;
 
+    #[async_trait]
     impl ResourceQuery for NoPagination {
         type Item = Test;
 
         const DEFAULT_LIMIT: usize = 2;
 
-        fn can_paginate(&self) -> Result<bool> {
+        async fn can_paginate(&self) -> Result<bool> {
             Ok(false)
         }
 
@@ -199,7 +219,7 @@ mod test {
             resource.0.to_string()
         }
 
-        fn fetch_chunk(
+        async fn fetch_chunk(
             &self,
             limit: Option<usize>,
             marker: Option<String>,
@@ -210,20 +230,20 @@ mod test {
         }
     }
 
-    #[test]
-    fn test_resource_iterator() {
+    #[tokio::test]
+    async fn test_resource_iterator() {
         let it: ResourceIterator<TestQuery> = ResourceIterator::new(TestQuery);
         assert_eq!(
-            it.collect::<Vec<Test>>().unwrap(),
+            it.into_stream().try_collect::<Vec<Test>>().await.unwrap(),
             vec![Test(0), Test(1), Test(2), Test(3)]
         );
     }
 
-    #[test]
-    fn test_resource_iterator_no_pagination() {
+    #[tokio::test]
+    async fn test_resource_iterator_no_pagination() {
         let it: ResourceIterator<NoPagination> = ResourceIterator::new(NoPagination);
         assert_eq!(
-            it.collect::<Vec<Test>>().unwrap(),
+            it.into_stream().try_collect::<Vec<Test>>().await.unwrap(),
             vec![Test(0), Test(1), Test(2)]
         );
     }

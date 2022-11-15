@@ -16,7 +16,7 @@
 
 #![allow(missing_docs)]
 
-use osauth::stream::Resource;
+use osauth::stream::PaginatedResource;
 use reqwest::header::{self, HeaderMap, HeaderName};
 use serde::Deserialize;
 
@@ -31,7 +31,7 @@ pub struct Container {
     pub object_count: u64,
 }
 
-impl Resource for Container {
+impl PaginatedResource for Container {
     type Id = String;
     type Root = Vec<Self>;
     fn resource_id(&self) -> Self::Id {
@@ -53,7 +53,7 @@ static CONTENT_LENGTH: HeaderName = header::CONTENT_LENGTH;
 static CONTENT_TYPE: HeaderName = header::CONTENT_TYPE;
 static ETAG: HeaderName = header::ETAG;
 
-impl Resource for Object {
+impl PaginatedResource for Object {
     type Id = String;
     type Root = Vec<Self>;
     fn resource_id(&self) -> Self::Id {

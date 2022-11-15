@@ -16,12 +16,11 @@
 
 use futures::io::AsyncRead;
 use futures::stream::Stream;
-use osauth::request::{self, NO_PATH};
+use osauth::client::NO_PATH;
 use osauth::services::OBJECT_STORAGE;
-use reqwest::{Method, StatusCode};
+use reqwest::Method;
 
 use super::super::session::Session;
-use super::super::sync::{SyncBody, SyncStream, SyncStreamItem};
 use super::super::utils::Query;
 use super::super::Result;
 use super::objects::ObjectHeaders;
@@ -37,14 +36,14 @@ where
 {
     let c_id = container.as_ref();
     debug!("Creating container {}", c_id);
-    let resp = session.put_empty(OBJECT_STORAGE, &[c_id], None).await?;
-    let result = resp.status() == StatusCode::CREATED;
-    if result {
+    let result = session.put(OBJECT_STORAGE, &[c_id]).send().await;
+    if result.is_ok() {
         debug!("Successfully created container {}", c_id);
+        Ok(true)
     } else {
         debug!("Container {} already exists", c_id);
+        Ok(false)
     }
-    Ok(result)
 }
 
 /// Create a new object.
@@ -63,9 +62,7 @@ where
     let c_id = container.as_ref();
     let o_id = object.as_ref();
     debug!("Creating object {} in container {}", o_id, c_id);
-    let mut req = session
-        .request(OBJECT_STORAGE, Method::PUT, &[c_id, o_id], None)
-        .await?;
+    let mut req = session.put(OBJECT_STORAGE, &[c_id, o_id]);
 
     if let Some(delete_after) = headers.delete_after {
         req = req.header("X-Delete-After", delete_after);
@@ -79,9 +76,7 @@ where
         req = req.header(&format!("X-Object-Meta-{}", key), value);
     }
 
-    let _ = session
-        .send_checked(req.body(async_read_to_body(body)))
-        .await?;
+    let _ = req.body(async_read_to_body(body)).send().await?;
     debug!("Successfully created object {} in container {}", o_id, c_id);
     // We need to retrieve the size, issue HEAD.
     get_object(session, c_id, o_id).await
@@ -94,7 +89,7 @@ where
 {
     let c_id = container.as_ref();
     debug!("Deleting container {}", c_id);
-    let _ = session.delete(OBJECT_STORAGE, &[c_id], None).await?;
+    let _ = session.delete(OBJECT_STORAGE, &[c_id]).send().await?;
     debug!("Successfully deleted container {}", c_id);
     Ok(())
 }
@@ -108,7 +103,7 @@ where
     let c_id = container.as_ref();
     let o_id = object.as_ref();
     debug!("Deleting object {} in container {}", o_id, c_id);
-    let _ = session.delete(OBJECT_STORAGE, &[c_id, o_id], None).await?;
+    let _ = session.delete(OBJECT_STORAGE, &[c_id, o_id]).send().await?;
     debug!("Successfully deleted object {} in container {}", o_id, c_id);
     Ok(())
 }
@@ -120,12 +115,10 @@ where
 {
     let c_id = container.as_ref();
     trace!("Requesting container {}", c_id);
-    let resp = request::send_checked(
-        session
-            .request(OBJECT_STORAGE, Method::HEAD, &[c_id], None)
-            .await?,
-    )
-    .await?;
+    let resp = session
+        .request(OBJECT_STORAGE, Method::HEAD, &[c_id])
+        .send()
+        .await?;
     let result = Container::from_headers(c_id, resp.headers())?;
     trace!("Received {:?}", result);
     Ok(result)
@@ -140,12 +133,10 @@ where
     let c_id = container.as_ref();
     let o_id = object.as_ref();
     trace!("Requesting object {} from container {}", o_id, c_id);
-    let resp = request::send_checked(
-        session
-            .request(OBJECT_STORAGE, Method::HEAD, &[c_id, o_id], None)
-            .await?,
-    )
-    .await?;
+    let resp = session
+        .request(OBJECT_STORAGE, Method::HEAD, &[c_id, o_id])
+        .send()
+        .await?;
     let result = Object::from_headers(o_id, resp.headers())?;
     trace!("Received {:?}", result);
     Ok(result)
@@ -164,7 +155,7 @@ where
     let c_id = container.as_ref();
     let o_id = object.as_ref();
     trace!("Downloading object {} from container {}", o_id, c_id);
-    let resp = session.get(OBJECT_STORAGE, &[c_id, o_id], None).await?;
+    let resp = session.get(OBJECT_STORAGE, &[c_id, o_id]).send().await?;
     Ok(body_to_async_read(resp))
 }
 
@@ -177,9 +168,11 @@ pub async fn list_containers(
 ) -> Result<impl Stream<Item = Result<Container>>> {
     query.push_str("format", "json");
     trace!("Listing containers with {:?}", query);
-    session
-        .get_json_query_paginated(OBJECT_STORAGE, NO_PATH, query, None, limit, marker)
-        .await
+    Ok(session
+        .get(OBJECT_STORAGE, NO_PATH)
+        .query(&query)
+        .fetch_paginated(limit, marker)
+        .await)
 }
 
 /// List objects in a given container.
@@ -196,7 +189,9 @@ where
     query.push_str("format", "json");
     let id = container.as_ref();
     trace!("Listing objects in container {} with {:?}", id, query);
-    session
-        .get_json_query_paginated(OBJECT_STORAGE, &[id], query, None, limit, marker)
-        .await
+    Ok(session
+        .get(OBJECT_STORAGE, &[id])
+        .query(&query)
+        .fetch_paginated(limit, marker)
+        .await)
 }

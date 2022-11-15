@@ -20,7 +20,7 @@ use futures::{pin_mut, Stream, TryStreamExt};
 use super::super::common::{ContainerRef, IntoVerified, Refresh};
 use super::super::session::Session;
 use super::super::utils::{try_one, Query};
-use super::super::{Error, ErrorKind, Result};
+use super::super::{ErrorKind, Result};
 use super::objects::{Object, ObjectQuery};
 use super::{api, protocol};
 
@@ -66,7 +66,7 @@ impl Container {
     /// Otherwise deletion will fail if the container is non-empty.
     pub async fn delete(self, delete_objects: bool) -> Result<()> {
         if delete_objects {
-            let mut iter = self.find_objects().into_stream().await?;
+            let iter = self.find_objects().into_stream().await?;
             pin_mut!(iter);
             while let Some(obj) = iter.try_next().await? {
                 obj.delete().await.or_else(|err| {
@@ -153,14 +153,14 @@ impl ContainerQuery {
 
     /// Convert this query into a stream of containers.
     pub async fn into_stream(self) -> Result<impl Stream<Item = Result<Container>>> {
-        debug!(
-            "Fetching containers with {:?}",
-            self.query
-        );
+        debug!("Fetching containers with {:?}", self.query);
         Ok(
             api::list_containers(&self.session, self.query, self.limit, self.marker)
                 .await?
-                .map_ok(|c| Container::new(self.session.clone(), c)),
+                .map_ok({
+                    let session = self.session;
+                    move |c| Container::new(session.clone(), c)
+                }),
         )
     }
 

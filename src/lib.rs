@@ -153,20 +153,10 @@
     clippy::wrong_self_convention
 )]
 
-extern crate chrono;
-extern crate eui48;
-extern crate fallible_iterator;
-extern crate ipnet;
 #[macro_use]
 extern crate log;
-extern crate osauth;
-extern crate reqwest;
-extern crate serde;
-extern crate serde_json;
-extern crate serde_yaml;
-extern crate waiter;
 
-#[allow(unused_macros)]
+#[allow(unused_macros, unused_macro_rules)]
 macro_rules! transparent_property {
     ($(#[$attr:meta])* $name:ident: ref $type:ty) => (
         $(#[$attr])*
@@ -185,7 +175,7 @@ macro_rules! transparent_property {
     );
 }
 
-#[allow(unused_macros)]
+#[allow(unused_macros, unused_macro_rules)]
 macro_rules! query_filter {
     ($(#[$attr:meta])* $func:ident -> $name:ident) => (
         $(#[$attr])*
@@ -232,7 +222,7 @@ macro_rules! query_filter {
     );
 }
 
-#[allow(unused_macros)]
+#[allow(unused_macros, unused_macro_rules)]
 macro_rules! creation_field {
 
     ($(#[$attr:meta])* $set_func:ident, $with_func:ident -> $name:ident) => (
@@ -297,7 +287,7 @@ macro_rules! creation_field {
 
 }
 
-#[allow(unused_macros)]
+#[allow(unused_macros, unused_macro_rules)]
 macro_rules! creation_inner_field {
 
     ($(#[$attr:meta])* $set_func:ident, $with_func:ident -> $name:ident) => (
@@ -428,7 +418,7 @@ macro_rules! creation_inner_vec {
 
 }
 
-#[allow(unused_macros)]
+#[allow(unused_macros, unused_macro_rules)]
 macro_rules! update_field {
 
     ($(#[$attr:meta])* $set_func:ident, $with_func:ident -> $name:ident) => (
@@ -651,10 +641,7 @@ macro_rules! protocol_enum {
 ///
 /// See [osauth documentation](https://docs.rs/osauth/) for details.
 pub mod auth {
-    pub use osauth::identity::{Identity, Password, Scope};
-    #[deprecated(since = "0.4.1", note = "use methods on Session")]
-    #[doc(hidden)]
-    pub use osauth::{from_config, from_env};
+    pub use osauth::identity::{Password, Scope, Token};
     pub use osauth::{AuthType, NoAuth};
 }
 mod cloud;
@@ -672,10 +659,9 @@ pub mod session {
     pub use osauth::services::ServiceType;
     pub use osauth::Session;
 }
-mod sync;
 mod utils;
 
-pub use osauth::identity::IdOrName;
+pub use osauth::common::IdOrName;
 pub use osauth::{EndpointFilters, Error, ErrorKind, InterfaceType, ValidInterfaces};
 
 /// A result of an OpenStack operation.
@@ -683,7 +669,6 @@ pub type Result<T> = ::std::result::Result<T, Error>;
 
 pub use crate::cloud::Cloud;
 pub use crate::common::Refresh;
-pub use crate::sync::Result;
 
 /// Sorting request.
 #[derive(Debug, Clone)]

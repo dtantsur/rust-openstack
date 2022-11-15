@@ -14,9 +14,8 @@
 
 //! Key pair management via Compute API.
 
-use std::rc::Rc;
-
-use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
+use async_trait::async_trait;
+use futures::stream::{Stream, TryStreamExt};
 
 use super::super::common::{IntoVerified, KeyPairRef, Refresh, ResourceIterator, ResourceQuery};
 use super::super::session::Session;
@@ -27,14 +26,14 @@ use super::{api, protocol};
 /// Structure representing a key pair.
 #[derive(Clone, Debug)]
 pub struct KeyPair {
-    session: Rc<Session>,
+    session: Session,
     inner: protocol::KeyPair,
 }
 
 /// A query to server list.
 #[derive(Clone, Debug)]
 pub struct KeyPairQuery {
-    session: Rc<Session>,
+    session: Session,
     query: Query,
     can_paginate: bool,
 }
@@ -42,20 +41,20 @@ pub struct KeyPairQuery {
 /// A request to create a key pair.
 #[derive(Clone, Debug)]
 pub struct NewKeyPair {
-    session: Rc<Session>,
+    session: Session,
     inner: protocol::KeyPairCreate,
 }
 
 impl KeyPair {
     /// Load a KeyPair object.
-    pub(crate) fn new<Id: AsRef<str>>(session: Rc<Session>, id: Id) -> Result<KeyPair> {
-        let inner = api::get_keypair(&session, id)?;
+    pub(crate) async fn new<Id: AsRef<str>>(session: Session, id: Id) -> Result<KeyPair> {
+        let inner = api::get_keypair(&session, id).await?;
         Ok(KeyPair { session, inner })
     }
 
     /// Delete the key pair.
-    pub fn delete(self) -> Result<()> {
-        api::delete_keypair(&self.session, &self.inner.name)
+    pub async fn delete(self) -> Result<()> {
+        api::delete_keypair(&self.session, &self.inner.name).await
     }
 
     transparent_property! {
@@ -74,16 +73,17 @@ impl KeyPair {
     }
 }
 
+#[async_trait]
 impl Refresh for KeyPair {
     /// Refresh the keypair.
-    fn refresh(&mut self) -> Result<()> {
-        self.inner = api::get_keypair(&self.session, &self.inner.name)?;
+    async fn refresh(&mut self) -> Result<()> {
+        self.inner = api::get_keypair(&self.session, &self.inner.name).await?;
         Ok(())
     }
 }
 
 impl KeyPairQuery {
-    pub(crate) fn new(session: Rc<Session>) -> KeyPairQuery {
+    pub(crate) fn new(session: Session) -> KeyPairQuery {
         KeyPairQuery {
             session,
             query: Query::new(),
@@ -109,29 +109,29 @@ impl KeyPairQuery {
         self
     }
 
-    /// Convert this query into an iterator executing the request.
+    /// Convert this query into a stream executing the request.
     ///
-    /// Returns a `FallibleIterator`, which is an iterator with each `next`
+    /// Returns a `TryStream`, which is a stream with each `next`
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_iter(self) -> ResourceIterator<KeyPairQuery> {
+    pub fn into_stream(self) -> impl Stream<Item = Result<<KeyPairQuery as ResourceQuery>::Item>> {
         debug!("Fetching key pairs with {:?}", self.query);
-        ResourceIterator::new(self)
+        ResourceIterator::new(self).into_stream()
     }
 
     /// Execute this request and return all results.
     ///
-    /// A convenience shortcut for `self.into_iter().collect()`.
-    pub fn all(self) -> Result<Vec<KeyPair>> {
-        self.into_iter().collect()
+    /// A convenience shortcut for `self.into_stream().try_collect().await`.
+    pub async fn all(self) -> Result<Vec<KeyPair>> {
+        self.into_stream().try_collect().await
     }
 
     /// Return one and exactly one result.
     ///
     /// Fails with `ResourceNotFound` if the query produces no results and
     /// with `TooManyItems` if the query produces more than one result.
-    pub fn one(mut self) -> Result<KeyPair> {
+    pub async fn one(mut self) -> Result<KeyPair> {
         debug!("Fetching one key pair with {:?}", self.query);
         if self.can_paginate {
             // We need only one result. We fetch maximum two to be able
@@ -139,13 +139,13 @@ impl KeyPairQuery {
             self.query.push("limit", 2);
         }
 
-        self.into_iter().one()
+        ResourceIterator::new(self).one().await
     }
 }
 
 impl NewKeyPair {
     /// Start creating a key pair.
-    pub(crate) fn new(session: Rc<Session>, name: String) -> NewKeyPair {
+    pub(crate) fn new(session: Session, name: String) -> NewKeyPair {
         NewKeyPair {
             session,
             inner: protocol::KeyPairCreate::new(name),
@@ -155,7 +155,7 @@ impl NewKeyPair {
     /// Request creation of a key pair.
     ///
     /// This call fails immediately if no public_key is provided.
-    pub fn create(self) -> Result<KeyPair> {
+    pub async fn create(self) -> Result<KeyPair> {
         if self.inner.public_key.is_none() {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
@@ -163,7 +163,7 @@ impl NewKeyPair {
             ));
         };
 
-        let keypair = api::create_keypair(&self.session, self.inner)?;
+        let keypair = api::create_keypair(&self.session, self.inner).await?;
         Ok(KeyPair {
             session: self.session,
             inner: keypair,
@@ -173,10 +173,10 @@ impl NewKeyPair {
     /// Create a key pair, generating its public key.
     ///
     /// Returns a new key pair and its private key.
-    pub fn generate(mut self) -> Result<(KeyPair, String)> {
+    pub async fn generate(mut self) -> Result<(KeyPair, String)> {
         self.inner.public_key = None;
 
-        let mut keypair = api::create_keypair(&self.session, self.inner)?;
+        let mut keypair = api::create_keypair(&self.session, self.inner).await?;
         if let Some(private_key) = keypair.private_key.take() {
             let result = KeyPair {
                 session: self.session,
@@ -208,14 +208,15 @@ impl NewKeyPair {
     }
 }
 
+#[async_trait]
 impl ResourceQuery for KeyPairQuery {
     type Item = KeyPair;
 
     const DEFAULT_LIMIT: usize = 50;
 
-    fn can_paginate(&self) -> Result<bool> {
+    async fn can_paginate(&self) -> Result<bool> {
         if self.can_paginate {
-            api::supports_keypair_pagination(&self.session)
+            api::supports_keypair_pagination(&self.session).await
         } else {
             Ok(false)
         }
@@ -225,27 +226,20 @@ impl ResourceQuery for KeyPairQuery {
         resource.name().clone()
     }
 
-    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
+    async fn fetch_chunk(
+        &self,
+        limit: Option<usize>,
+        marker: Option<String>,
+    ) -> Result<Vec<Self::Item>> {
         let query = self.query.with_marker_and_limit(limit, marker);
-        Ok(api::list_keypairs(&self.session, &query)?
+        Ok(api::list_keypairs(&self.session, &query)
+            .await?
             .into_iter()
             .map(|item| KeyPair {
                 session: self.session.clone(),
                 inner: item,
             })
             .collect())
-    }
-}
-
-impl IntoFallibleIterator for KeyPairQuery {
-    type Item = KeyPair;
-
-    type Error = Error;
-
-    type IntoFallibleIter = ResourceIterator<KeyPairQuery>;
-
-    fn into_fallible_iter(self) -> Self::IntoFallibleIter {
-        self.into_iter()
     }
 }
 
@@ -256,13 +250,14 @@ impl From<KeyPair> for KeyPairRef {
 }
 
 #[cfg(feature = "compute")]
+#[async_trait]
 impl IntoVerified for KeyPairRef {
     /// Verify this reference and convert to an ID, if possible.
-    fn into_verified(self, session: &Session) -> Result<KeyPairRef> {
+    async fn into_verified(self, session: &Session) -> Result<KeyPairRef> {
         Ok(if self.verified {
             self
         } else {
-            KeyPairRef::new_verified(api::get_keypair(session, &self.value)?.name)
+            KeyPairRef::new_verified(api::get_keypair(session, &self.value).await?.name)
         })
     }
 }

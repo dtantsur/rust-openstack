@@ -17,7 +17,7 @@
 use std::collections::HashMap;
 
 use async_trait::async_trait;
-use chrono::{TimeZone, DateTime};
+use chrono::{DateTime, TimeZone};
 use futures::io::AsyncRead;
 use futures::{Stream, TryStreamExt};
 use osauth::services::OBJECT_STORAGE;
@@ -151,9 +151,10 @@ impl Object {
 
     /// Object url.
     #[inline]
-    pub fn url(&self) -> Result<Url> {
+    pub async fn url(&self) -> Result<Url> {
         self.session
             .get_endpoint(OBJECT_STORAGE, &[self.container_name(), self.name()])
+            .await
     }
 }
 
@@ -197,13 +198,17 @@ impl ObjectQuery {
         );
         Ok(api::list_objects(
             &self.session,
-            self.c_name,
+            self.c_name.clone(),
             self.query,
             self.limit,
             self.marker,
         )
         .await?
-        .map_ok(|obj| Object::new(self.session.clone(), obj, self.c_name.clone())))
+        .map_ok({
+            let session = self.session;
+            let c_name = self.c_name;
+            move |obj| Object::new(session.clone(), obj, c_name.clone())
+        }))
     }
 
     /// Execute this request and return all results.
@@ -256,7 +261,8 @@ impl<R: AsyncRead + Sync + Send + 'static> NewObject<R> {
             self.name,
             self.body,
             self.headers,
-        ).await?;
+        )
+        .await?;
 
         Ok(Object::new(self.session, inner, c_name.into()))
     }

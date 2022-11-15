@@ -17,12 +17,12 @@
 use std::collections::HashSet;
 use std::mem;
 use std::net;
-use std::rc::Rc;
 use std::time::Duration;
 
+use async_trait::async_trait;
 use chrono::{DateTime, FixedOffset};
 use eui48::MacAddress;
-use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
+use futures::stream::{Stream, TryStreamExt};
 
 use super::super::common::{
     DeletionWaiter, IntoVerified, NetworkRef, PortRef, Refresh, ResourceIterator, ResourceQuery,
@@ -30,13 +30,13 @@ use super::super::common::{
 };
 use super::super::session::Session;
 use super::super::utils::Query;
-use super::super::{Error, Result, Sort};
+use super::super::{Result, Sort};
 use super::{api, protocol, Network, Subnet};
 
 /// A query to port list.
 #[derive(Clone, Debug)]
 pub struct PortQuery {
-    session: Rc<Session>,
+    session: Session,
     query: Query,
     can_paginate: bool,
     network: Option<NetworkRef>,
@@ -45,7 +45,7 @@ pub struct PortQuery {
 /// A fixed IP address of a port.
 #[derive(Clone, Debug)]
 pub struct PortIpAddress {
-    session: Rc<Session>,
+    session: Session,
     /// IP address.
     pub ip_address: net::IpAddr,
     /// ID of the subnet the address belongs to.
@@ -55,7 +55,7 @@ pub struct PortIpAddress {
 /// Structure representing a port - a virtual NIC.
 #[derive(Clone, Debug)]
 pub struct Port {
-    session: Rc<Session>,
+    session: Session,
     inner: protocol::Port,
     fixed_ips: Vec<PortIpAddress>,
     dirty: HashSet<&'static str>,
@@ -75,13 +75,13 @@ pub enum PortIpRequest {
 /// A request to create a port
 #[derive(Clone, Debug)]
 pub struct NewPort {
-    session: Rc<Session>,
+    session: Session,
     inner: protocol::Port,
     network: NetworkRef,
     fixed_ips: Vec<PortIpRequest>,
 }
 
-fn convert_fixed_ips(session: &Rc<Session>, inner: &mut protocol::Port) -> Vec<PortIpAddress> {
+fn convert_fixed_ips(session: &Session, inner: &mut protocol::Port) -> Vec<PortIpAddress> {
     let mut fixed_ips = Vec::new();
     mem::swap(&mut inner.fixed_ips, &mut fixed_ips);
     fixed_ips
@@ -96,7 +96,7 @@ fn convert_fixed_ips(session: &Rc<Session>, inner: &mut protocol::Port) -> Vec<P
 
 impl Port {
     /// Load a Port object.
-    pub(crate) fn new(session: Rc<Session>, mut inner: protocol::Port) -> Port {
+    pub(crate) fn new(session: Session, mut inner: protocol::Port) -> Port {
         let fixed_ips = convert_fixed_ips(&session, &mut inner);
         Port {
             session,
@@ -107,8 +107,8 @@ impl Port {
     }
 
     /// Load a Port object.
-    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id) -> Result<Port> {
-        let inner = api::get_port(&session, id)?;
+    pub(crate) async fn load<Id: AsRef<str>>(session: Session, id: Id) -> Result<Port> {
+        let inner = api::get_port(&session, id).await?;
         Ok(Port::new(session, inner))
     }
 
@@ -235,8 +235,8 @@ impl Port {
     }
 
     /// Get network associated with this port.
-    pub fn network(&self) -> Result<Network> {
-        Network::load(self.session.clone(), &self.inner.network_id)
+    pub async fn network(&self) -> Result<Network> {
+        Network::load(self.session.clone(), &self.inner.network_id).await
     }
 
     transparent_property! {
@@ -255,8 +255,8 @@ impl Port {
     }
 
     /// Delete the port.
-    pub fn delete(self) -> Result<DeletionWaiter<Port>> {
-        api::delete_port(&self.session, &self.inner.id)?;
+    pub async fn delete(self) -> Result<DeletionWaiter<Port>> {
+        api::delete_port(&self.session, &self.inner.id).await?;
         Ok(DeletionWaiter::new(
             self,
             Duration::new(60, 0),
@@ -270,7 +270,7 @@ impl Port {
     }
 
     /// Save the changes to the port.
-    pub fn save(&mut self) -> Result<()> {
+    pub async fn save(&mut self) -> Result<()> {
         let mut update = protocol::PortUpdate::default();
         save_fields! {
             self -> update: admin_state_up extra_dhcp_opts mac_address
@@ -279,7 +279,7 @@ impl Port {
             self -> update: description device_id device_owner dns_domain
                 dns_name name
         };
-        let mut inner = api::update_port(&self.session, self.id(), update)?;
+        let mut inner = api::update_port(&self.session, self.id(), update).await?;
         self.fixed_ips = convert_fixed_ips(&self.session, &mut inner);
         self.dirty.clear();
         self.inner = inner;
@@ -287,10 +287,11 @@ impl Port {
     }
 }
 
+#[async_trait]
 impl Refresh for Port {
     /// Refresh the port.
-    fn refresh(&mut self) -> Result<()> {
-        self.inner = api::get_port_by_id(&self.session, &self.inner.id)?;
+    async fn refresh(&mut self) -> Result<()> {
+        self.inner = api::get_port_by_id(&self.session, &self.inner.id).await?;
         self.fixed_ips = convert_fixed_ips(&self.session, &mut self.inner);
         self.dirty.clear();
         Ok(())
@@ -299,13 +300,13 @@ impl Refresh for Port {
 
 impl PortIpAddress {
     /// Get subnet to which this IP address belongs.
-    pub fn subnet(&self) -> Result<Subnet> {
-        Subnet::load(self.session.clone(), self.subnet_id.clone())
+    pub async fn subnet(&self) -> Result<Subnet> {
+        Subnet::load(self.session.clone(), self.subnet_id.clone()).await
     }
 }
 
 impl PortQuery {
-    pub(crate) fn new(session: Rc<Session>) -> PortQuery {
+    pub(crate) fn new(session: Session) -> PortQuery {
         PortQuery {
             session,
             query: Query::new(),
@@ -386,29 +387,29 @@ impl PortQuery {
         set_status, with_status -> status: protocol::NetworkStatus
     }
 
-    /// Convert this query into an iterator executing the request.
+    /// Convert this query into a stream executing the request.
     ///
-    /// Returns a `FallibleIterator`, which is an iterator with each `next`
+    /// Returns a `TryStream`, which is a stream with each `next`
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_iter(self) -> ResourceIterator<PortQuery> {
+    pub fn into_stream(self) -> impl Stream<Item = Result<<PortQuery as ResourceQuery>::Item>> {
         debug!("Fetching ports with {:?}", self.query);
-        ResourceIterator::new(self)
+        ResourceIterator::new(self).into_stream()
     }
 
     /// Execute this request and return all results.
     ///
-    /// A convenience shortcut for `self.into_iter().collect()`.
-    pub fn all(self) -> Result<Vec<Port>> {
-        self.into_iter().collect()
+    /// A convenience shortcut for `self.into_stream().try_collect().await`.
+    pub async fn all(self) -> Result<Vec<Port>> {
+        self.into_stream().try_collect().await
     }
 
     /// Return one and exactly one result.
     ///
     /// Fails with `ResourceNotFound` if the query produces no results and
     /// with `TooManyItems` if the query produces more than one result.
-    pub fn one(mut self) -> Result<Port> {
+    pub async fn one(mut self) -> Result<Port> {
         debug!("Fetching one port with {:?}", self.query);
         if self.can_paginate {
             // We need only one result. We fetch maximum two to be able
@@ -416,16 +417,17 @@ impl PortQuery {
             self.query.push("limit", 2);
         }
 
-        self.into_iter().one()
+        ResourceIterator::new(self).one().await
     }
 }
 
+#[async_trait]
 impl ResourceQuery for PortQuery {
     type Item = Port;
 
     const DEFAULT_LIMIT: usize = 50;
 
-    fn can_paginate(&self) -> Result<bool> {
+    async fn can_paginate(&self) -> Result<bool> {
         Ok(self.can_paginate)
     }
 
@@ -433,17 +435,22 @@ impl ResourceQuery for PortQuery {
         resource.id().clone()
     }
 
-    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
+    async fn fetch_chunk(
+        &self,
+        limit: Option<usize>,
+        marker: Option<String>,
+    ) -> Result<Vec<Self::Item>> {
         let query = self.query.with_marker_and_limit(limit, marker);
-        Ok(api::list_ports(&self.session, &query)?
+        Ok(api::list_ports(&self.session, &query)
+            .await?
             .into_iter()
             .map(|item| Port::new(self.session.clone(), item))
             .collect())
     }
 
-    fn validate(&mut self) -> Result<()> {
+    async fn validate(&mut self) -> Result<()> {
         if let Some(network) = self.network.take() {
-            let verified = network.into_verified(&self.session)?;
+            let verified = network.into_verified(&self.session).await?;
             self.query.push_str("network_id", verified);
         }
         Ok(())
@@ -452,7 +459,7 @@ impl ResourceQuery for PortQuery {
 
 impl NewPort {
     /// Start creating a port.
-    pub(crate) fn new(session: Rc<Session>, network: NetworkRef) -> NewPort {
+    pub(crate) fn new(session: Session, network: NetworkRef) -> NewPort {
         NewPort {
             session,
             inner: protocol::Port {
@@ -483,8 +490,8 @@ impl NewPort {
     }
 
     /// Request creation of the port.
-    pub fn create(mut self) -> Result<Port> {
-        self.inner.network_id = self.network.into_verified(&self.session)?.into();
+    pub async fn create(mut self) -> Result<Port> {
+        self.inner.network_id = self.network.into_verified(&self.session).await?.into();
         for request in self.fixed_ips {
             self.inner.fixed_ips.push(match request {
                 PortIpRequest::IpAddress(ip) => protocol::FixedIp {
@@ -493,16 +500,16 @@ impl NewPort {
                 },
                 PortIpRequest::AnyIpFromSubnet(subnet) => protocol::FixedIp {
                     ip_address: net::IpAddr::V4(net::Ipv4Addr::new(0, 0, 0, 0)),
-                    subnet_id: subnet.into_verified(&self.session)?.into(),
+                    subnet_id: subnet.into_verified(&self.session).await?.into(),
                 },
                 PortIpRequest::IpFromSubnet(ip, subnet) => protocol::FixedIp {
                     ip_address: ip,
-                    subnet_id: subnet.into_verified(&self.session)?.into(),
+                    subnet_id: subnet.into_verified(&self.session).await?.into(),
                 },
             });
         }
 
-        let port = api::create_port(&self.session, self.inner)?;
+        let port = api::create_port(&self.session, self.inner).await?;
         Ok(Port::new(self.session, port))
     }
 
@@ -579,18 +586,6 @@ impl NewPort {
     }
 }
 
-impl IntoFallibleIterator for PortQuery {
-    type Item = Port;
-
-    type Error = Error;
-
-    type IntoFallibleIter = ResourceIterator<PortQuery>;
-
-    fn into_fallible_iter(self) -> Self::IntoFallibleIter {
-        self.into_iter()
-    }
-}
-
 impl From<Port> for PortRef {
     fn from(value: Port) -> PortRef {
         PortRef::new_verified(value.inner.id)
@@ -598,13 +593,14 @@ impl From<Port> for PortRef {
 }
 
 #[cfg(feature = "network")]
+#[async_trait]
 impl IntoVerified for PortRef {
     /// Verify this reference and convert to an ID, if possible.
-    fn into_verified(self, session: &Session) -> Result<PortRef> {
+    async fn into_verified(self, session: &Session) -> Result<PortRef> {
         Ok(if self.verified {
             self
         } else {
-            PortRef::new_verified(api::get_port(session, &self.value)?.id)
+            PortRef::new_verified(api::get_port(session, &self.value).await?.id)
         })
     }
 }

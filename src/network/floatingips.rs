@@ -16,11 +16,11 @@
 
 use std::collections::HashSet;
 use std::net;
-use std::rc::Rc;
 use std::time::Duration;
 
+use async_trait::async_trait;
 use chrono::{DateTime, FixedOffset};
-use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
+use futures::stream::{Stream, TryStreamExt};
 
 use super::super::common::{
     DeletionWaiter, IntoVerified, NetworkRef, PortRef, Refresh, ResourceIterator, ResourceQuery,
@@ -34,7 +34,7 @@ use super::{api, protocol, Network, Port};
 /// Structure representing a single floating IP.
 #[derive(Clone, Debug)]
 pub struct FloatingIp {
-    session: Rc<Session>,
+    session: Session,
     inner: protocol::FloatingIp,
     dirty: HashSet<&'static str>,
 }
@@ -42,7 +42,7 @@ pub struct FloatingIp {
 /// A query to floating IP list.
 #[derive(Clone, Debug)]
 pub struct FloatingIpQuery {
-    session: Rc<Session>,
+    session: Session,
     query: Query,
     can_paginate: bool,
     floating_network: Option<NetworkRef>,
@@ -52,7 +52,7 @@ pub struct FloatingIpQuery {
 /// A request to create a floating IP.
 #[derive(Clone, Debug)]
 pub struct NewFloatingIp {
-    session: Rc<Session>,
+    session: Session,
     inner: protocol::FloatingIp,
     floating_network: NetworkRef,
     port: Option<PortRef>,
@@ -61,7 +61,7 @@ pub struct NewFloatingIp {
 
 impl FloatingIp {
     /// Create a new floating IP object.
-    pub(crate) fn new(session: Rc<Session>, inner: protocol::FloatingIp) -> FloatingIp {
+    pub(crate) fn new(session: Session, inner: protocol::FloatingIp) -> FloatingIp {
         FloatingIp {
             session,
             inner,
@@ -70,8 +70,8 @@ impl FloatingIp {
     }
 
     /// Load a FloatingIp object.
-    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id) -> Result<FloatingIp> {
-        let inner = api::get_floating_ip(&session, id)?;
+    pub(crate) async fn load<Id: AsRef<str>>(session: Session, id: Id) -> Result<FloatingIp> {
+        let inner = api::get_floating_ip(&session, id).await?;
         Ok(FloatingIp::new(session, inner))
     }
 
@@ -121,8 +121,8 @@ impl FloatingIp {
     }
 
     /// Get network this floating IP belongs to.
-    pub fn floating_network(&self) -> Result<Network> {
-        Network::load(self.session.clone(), &self.inner.floating_network_id)
+    pub async fn floating_network(&self) -> Result<Network> {
+        Network::load(self.session.clone(), &self.inner.floating_network_id).await
     }
 
     transparent_property! {
@@ -153,9 +153,9 @@ impl FloatingIp {
     /// Fetch the port this IP is associated with.
     ///
     /// Fails with `ResourceNotFound` if the floating IP is not associated.
-    pub fn port(&self) -> Result<Port> {
+    pub async fn port(&self) -> Result<Port> {
         match self.inner.port_id {
-            Some(ref port_id) => Port::load(self.session.clone(), &port_id),
+            Some(ref port_id) => Port::load(self.session.clone(), &port_id).await,
             None => Err(Error::new(
                 ErrorKind::ResourceNotFound,
                 "Floating IP is not associated",
@@ -181,12 +181,16 @@ impl FloatingIp {
     /// # Warning
     ///
     /// Any changes to `fixed_ip_address` are reset on this call.
-    pub fn associate<P>(&mut self, port: P, fixed_ip_address: Option<net::IpAddr>) -> Result<()>
+    pub async fn associate<P>(
+        &mut self,
+        port: P,
+        fixed_ip_address: Option<net::IpAddr>,
+    ) -> Result<()>
     where
         P: Into<PortRef>,
     {
-        let new_port = port.into().into_verified(&self.session)?.into();
-        self.update_port(new_port, fixed_ip_address)
+        let new_port = port.into().into_verified(&self.session).await?.into();
+        self.update_port(new_port, fixed_ip_address).await
     }
 
     /// Dissociate this floating IP from a port.
@@ -194,13 +198,13 @@ impl FloatingIp {
     /// # Warning
     ///
     /// Any changes to `fixed_ip_address` are reset on this call.
-    pub fn dissociate(&mut self) -> Result<()> {
-        self.update_port(serde_json::Value::Null, None)
+    pub async fn dissociate(&mut self) -> Result<()> {
+        self.update_port(serde_json::Value::Null, None).await
     }
 
     /// Delete the floating IP.
-    pub fn delete(self) -> Result<DeletionWaiter<FloatingIp>> {
-        api::delete_floating_ip(&self.session, &self.inner.id)?;
+    pub async fn delete(self) -> Result<DeletionWaiter<FloatingIp>> {
+        api::delete_floating_ip(&self.session, &self.inner.id).await?;
         Ok(DeletionWaiter::new(
             self,
             Duration::new(60, 0),
@@ -209,17 +213,17 @@ impl FloatingIp {
     }
 
     /// Save the changes to the floating IP.
-    pub fn save(&mut self) -> Result<()> {
+    pub async fn save(&mut self) -> Result<()> {
         let mut update = protocol::FloatingIpUpdate::default();
         save_option_fields! {
             self -> update: description fixed_ip_address
         };
-        self.inner = api::update_floating_ip(&self.session, self.id(), update)?;
+        self.inner = api::update_floating_ip(&self.session, self.id(), update).await?;
         self.dirty.clear();
         Ok(())
     }
 
-    fn update_port(
+    async fn update_port(
         &mut self,
         value: serde_json::Value,
         fixed_ip_address: Option<net::IpAddr>,
@@ -229,7 +233,7 @@ impl FloatingIp {
             fixed_ip_address,
             port_id: Some(value),
         };
-        let mut inner = api::update_floating_ip(&self.session, self.id(), update)?;
+        let mut inner = api::update_floating_ip(&self.session, self.id(), update).await?;
 
         // NOTE(dtantsur): description is independent of port.
         let desc_changed = self.dirty.contains("description");
@@ -244,16 +248,17 @@ impl FloatingIp {
     }
 }
 
+#[async_trait]
 impl Refresh for FloatingIp {
     /// Refresh the floating_ip.
-    fn refresh(&mut self) -> Result<()> {
-        self.inner = api::get_floating_ip(&self.session, &self.inner.id)?;
+    async fn refresh(&mut self) -> Result<()> {
+        self.inner = api::get_floating_ip(&self.session, &self.inner.id).await?;
         Ok(())
     }
 }
 
 impl FloatingIpQuery {
-    pub(crate) fn new(session: Rc<Session>) -> FloatingIpQuery {
+    pub(crate) fn new(session: Session) -> FloatingIpQuery {
         FloatingIpQuery {
             session,
             query: Query::new(),
@@ -350,29 +355,31 @@ impl FloatingIpQuery {
         set_status, with_status -> status: protocol::FloatingIpStatus
     }
 
-    /// Convert this query into an iterator executing the request.
+    /// Convert this query into a stream executing the request.
     ///
-    /// Returns a `FallibleIterator`, which is an iterator with each `next`
+    /// Returns a `TryStream`, which is a stream with each `next`
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_iter(self) -> ResourceIterator<FloatingIpQuery> {
+    pub fn into_stream(
+        self,
+    ) -> impl Stream<Item = Result<<FloatingIpQuery as ResourceQuery>::Item>> {
         debug!("Fetching floating_ips with {:?}", self.query);
-        ResourceIterator::new(self)
+        ResourceIterator::new(self).into_stream()
     }
 
     /// Execute this request and return all results.
     ///
-    /// A convenience shortcut for `self.into_iter().collect()`.
-    pub fn all(self) -> Result<Vec<FloatingIp>> {
-        self.into_iter().collect()
+    /// A convenience shortcut for `self.into_stream().try_collect().await`.
+    pub async fn all(self) -> Result<Vec<FloatingIp>> {
+        self.into_stream().try_collect().await
     }
 
     /// Return one and exactly one result.
     ///
     /// Fails with `ResourceNotFound` if the query produces no results and
     /// with `TooManyItems` if the query produces more than one result.
-    pub fn one(mut self) -> Result<FloatingIp> {
+    pub async fn one(mut self) -> Result<FloatingIp> {
         debug!("Fetching one floating IP with {:?}", self.query);
         if self.can_paginate {
             // We need only one result. We fetch maximum two to be able
@@ -380,16 +387,17 @@ impl FloatingIpQuery {
             self.query.push("limit", 2);
         }
 
-        self.into_iter().one()
+        ResourceIterator::new(self).one().await
     }
 }
 
+#[async_trait]
 impl ResourceQuery for FloatingIpQuery {
     type Item = FloatingIp;
 
     const DEFAULT_LIMIT: usize = 50;
 
-    fn can_paginate(&self) -> Result<bool> {
+    async fn can_paginate(&self) -> Result<bool> {
         Ok(self.can_paginate)
     }
 
@@ -397,21 +405,26 @@ impl ResourceQuery for FloatingIpQuery {
         resource.id().clone()
     }
 
-    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
+    async fn fetch_chunk(
+        &self,
+        limit: Option<usize>,
+        marker: Option<String>,
+    ) -> Result<Vec<Self::Item>> {
         let query = self.query.with_marker_and_limit(limit, marker);
-        Ok(api::list_floating_ips(&self.session, &query)?
+        Ok(api::list_floating_ips(&self.session, &query)
+            .await?
             .into_iter()
             .map(|item| FloatingIp::new(self.session.clone(), item))
             .collect())
     }
 
-    fn validate(&mut self) -> Result<()> {
+    async fn validate(&mut self) -> Result<()> {
         if let Some(floating_network) = self.floating_network.take() {
-            let verified = floating_network.into_verified(&self.session)?;
+            let verified = floating_network.into_verified(&self.session).await?;
             self.query.push_str("floating_network_id", verified);
         }
         if let Some(port) = self.port.take() {
-            let verified = port.into_verified(&self.session)?;
+            let verified = port.into_verified(&self.session).await?;
             self.query.push_str("port_id", verified);
         }
         Ok(())
@@ -420,7 +433,7 @@ impl ResourceQuery for FloatingIpQuery {
 
 impl NewFloatingIp {
     /// Start creating a floating IP.
-    pub(crate) fn new(session: Rc<Session>, floating_network: NetworkRef) -> NewFloatingIp {
+    pub(crate) fn new(session: Session, floating_network: NetworkRef) -> NewFloatingIp {
         NewFloatingIp {
             session,
             inner: protocol::FloatingIp {
@@ -450,16 +463,20 @@ impl NewFloatingIp {
     }
 
     /// Request creation of the port.
-    pub fn create(mut self) -> Result<FloatingIp> {
-        self.inner.floating_network_id = self.floating_network.into_verified(&self.session)?.into();
+    pub async fn create(mut self) -> Result<FloatingIp> {
+        self.inner.floating_network_id = self
+            .floating_network
+            .into_verified(&self.session)
+            .await?
+            .into();
         if let Some(port) = self.port {
-            self.inner.port_id = Some(port.into_verified(&self.session)?.into());
+            self.inner.port_id = Some(port.into_verified(&self.session).await?.into());
         }
         if let Some(subnet) = self.subnet {
-            self.inner.subnet_id = Some(subnet.into_verified(&self.session)?.into());
+            self.inner.subnet_id = Some(subnet.into_verified(&self.session).await?.into());
         }
 
-        let floating_ip = api::create_floating_ip(&self.session, self.inner)?;
+        let floating_ip = api::create_floating_ip(&self.session, self.inner).await?;
         Ok(FloatingIp::new(self.session, floating_ip))
     }
 
@@ -520,17 +537,5 @@ impl NewFloatingIp {
     {
         self.set_subnet(subnet);
         self
-    }
-}
-
-impl IntoFallibleIterator for FloatingIpQuery {
-    type Item = FloatingIp;
-
-    type Error = Error;
-
-    type IntoFallibleIter = ResourceIterator<FloatingIpQuery>;
-
-    fn into_fallible_iter(self) -> Self::IntoFallibleIter {
-        self.into_iter()
     }
 }

@@ -21,6 +21,7 @@ use std::marker::PhantomData;
 use std::net;
 use std::ops::Not;
 
+use async_trait::async_trait;
 use chrono::{DateTime, FixedOffset};
 use eui48::MacAddress;
 use osproto::common::empty_as_default;
@@ -499,10 +500,11 @@ impl ExternalGateway {
     }
 }
 
+#[async_trait]
 impl IntoVerified for ExternalGateway {
-    fn into_verified(self, session: &Session) -> Result<Self> {
+    async fn into_verified(self, session: &Session) -> Result<Self> {
         Ok(ExternalGateway {
-            network_id: self.network_id.into_verified(session)?,
+            network_id: self.network_id.into_verified(session).await?,
             ..self
         })
     }
@@ -593,11 +595,12 @@ impl Default for Router {
     }
 }
 
+#[async_trait]
 impl IntoVerified for Router {
-    fn into_verified(self, session: &Session) -> Result<Self> {
+    async fn into_verified(self, session: &Session) -> Result<Self> {
         Ok(Router {
             external_gateway: match self.external_gateway {
-                Some(gw) => Some(gw.into_verified(session)?),
+                Some(gw) => Some(gw.into_verified(session).await?),
                 None => None,
             },
             ..self

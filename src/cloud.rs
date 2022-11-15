@@ -17,6 +17,7 @@
 #[allow(unused_imports)]
 use std::io;
 
+use futures::io::AsyncRead;
 #[allow(unused_imports)]
 use ipnet;
 
@@ -36,10 +37,9 @@ use super::network::{
     NewRouter, NewSubnet, Port, PortQuery, Router, RouterQuery, Subnet, SubnetQuery,
 };
 #[cfg(feature = "object-storage")]
-use super::object_storage::{Container, ContainerQuery, Object, ObjectQuery};
+use super::object_storage::{Container, ContainerQuery, NewObject, Object, ObjectQuery};
 use super::session::Session;
 use super::{EndpointFilters, InterfaceType, Result};
-use super::Result;
 
 /// OpenStack cloud API.
 ///
@@ -76,10 +76,10 @@ impl Cloud {
     ///
     /// * [from_config](#method.from_config) to create a Cloud from clouds.yaml
     /// * [from_env](#method.from_env) to create a Cloud from environment variables
-    pub fn new<Auth: AuthType + 'static>(auth_type: Auth) -> Cloud {
-        Cloud {
-            session: Session::new(auth_type),
-        }
+    pub async fn new<Auth: AuthType + 'static>(auth_type: Auth) -> Result<Cloud> {
+        Ok(Cloud {
+            session: Session::new(auth_type).await?,
+        })
     }
 
     /// Create a new cloud object from a configuration file
@@ -91,9 +91,9 @@ impl Cloud {
     /// let os = openstack::Cloud::from_config("cloud-1")?;
     /// # Ok(()) }
     /// ```
-    pub fn from_config<S: AsRef<str>>(cloud_name: S) -> Result<Cloud> {
+    pub async fn from_config<S: AsRef<str>>(cloud_name: S) -> Result<Cloud> {
         Ok(Cloud {
-            session: osauth::from_config(cloud_name)?,
+            session: Session::from_config(cloud_name).await?,
         })
     }
 
@@ -106,9 +106,9 @@ impl Cloud {
     /// let os = openstack::Cloud::from_env()?;
     /// # Ok(()) }
     /// ```
-    pub fn from_env() -> Result<Cloud> {
+    pub async fn from_env() -> Result<Cloud> {
         Ok(Cloud {
-            session: osauth::from_env()?,
+            session: Session::from_env().await?,
         })
     }
 
@@ -140,7 +140,7 @@ impl Cloud {
     ///
     /// Removes cached endpoint information and detaches this object from a shared `Session`.
     pub fn endpoint_filters_mut(&mut self) -> &mut EndpointFilters {
-        Rc::make_mut(&mut self.session).endpoint_filters_mut()
+        self.session.endpoint_filters_mut()
     }
 
     /// Convert this cloud into one using the given endpoint interface.
@@ -156,7 +156,7 @@ impl Cloud {
     ///
     /// Removes cached endpoint information and detaches this object from a shared `Session`.
     pub fn with_endpoint_interface(mut self, endpoint_interface: InterfaceType) -> Cloud {
-        Rcself.session.set_endpoint_interface(endpoint_interface);
+        self.session.set_endpoint_interface(endpoint_interface);
         self
     }
 
@@ -178,19 +178,19 @@ impl Cloud {
     ///
     /// If the container already exists, this call returns successfully.
     #[cfg(feature = "object-storage")]
-    pub fn create_container<Id: AsRef<str>>(&self, name: Id) -> Result<Container> {
-        Container::create(self.session.clone(), name)
+    pub async fn create_container<Id: AsRef<str>>(&self, name: Id) -> Result<Container> {
+        Container::create(self.session.clone(), name).await
     }
 
     /// Create a new object.
     #[cfg(feature = "object-storage")]
-    pub fn create_object<C, Id, R>(&self, container: C, name: Id, body: R) -> Result<Object>
+    pub async fn create_object<C, Id, R>(&self, container: C, name: Id, body: R) -> Result<Object>
     where
         C: Into<ContainerRef>,
         Id: AsRef<str>,
-        R: io::Read + Sync + Send + 'static,
+        R: AsyncRead + Send + Sync + 'static,
     {
-        Object::create(self.session.clone(), container, name, body)
+        Object::create(self.session.clone(), container, name, body).await
     }
 
     /// Build a query against container list.
@@ -321,8 +321,8 @@ impl Cloud {
     /// let ctr = os.get_container("www").expect("Unable to get a container");
     /// ```
     #[cfg(feature = "object-storage")]
-    pub fn get_container<Id: AsRef<str>>(&self, name: Id) -> Result<Container> {
-        Container::load(self.session.clone(), name)
+    pub async fn get_container<Id: AsRef<str>>(&self, name: Id) -> Result<Container> {
+        Container::load(self.session.clone(), name).await
     }
 
     /// Get object metadata by its name.
@@ -336,12 +336,12 @@ impl Cloud {
     /// let obj = os.get_object("www", "/foo/bar").expect("Unable to get an object");
     /// ```
     #[cfg(feature = "object-storage")]
-    pub fn get_object<C, Id>(&self, container: C, name: Id) -> Result<Object>
+    pub async fn get_object<C, Id>(&self, container: C, name: Id) -> Result<Object>
     where
         C: Into<ContainerRef>,
         Id: AsRef<str>,
     {
-        Object::load(self.session.clone(), container, name)
+        Object::load(self.session.clone(), container, name).await
     }
 
     /// Find a flavor by its name or ID.
@@ -355,8 +355,8 @@ impl Cloud {
     /// let server = os.get_flavor("m1.medium").expect("Unable to get a flavor");
     /// ```
     #[cfg(feature = "compute")]
-    pub fn get_flavor<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Flavor> {
-        Flavor::load(self.session.clone(), id_or_name)
+    pub async fn get_flavor<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Flavor> {
+        Flavor::load(self.session.clone(), id_or_name).await
     }
 
     /// Find a floating IP by its ID.
@@ -371,8 +371,8 @@ impl Cloud {
     ///     .expect("Unable to get a floating IP");
     /// ```
     #[cfg(feature = "network")]
-    pub fn get_floating_ip<Id: AsRef<str>>(&self, id: Id) -> Result<FloatingIp> {
-        FloatingIp::load(self.session.clone(), id)
+    pub async fn get_floating_ip<Id: AsRef<str>>(&self, id: Id) -> Result<FloatingIp> {
+        FloatingIp::load(self.session.clone(), id).await
     }
 
     /// Find an image by its name or ID.
@@ -386,8 +386,8 @@ impl Cloud {
     /// let server = os.get_image("centos7").expect("Unable to get a image");
     /// ```
     #[cfg(feature = "image")]
-    pub fn get_image<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Image> {
-        Image::new(self.session.clone(), id_or_name)
+    pub async fn get_image<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Image> {
+        Image::new(self.session.clone(), id_or_name).await
     }
 
     /// Find a key pair by its name or ID.
@@ -401,8 +401,8 @@ impl Cloud {
     /// let server = os.get_keypair("default").expect("Unable to get a key pair");
     /// ```
     #[cfg(feature = "compute")]
-    pub fn get_keypair<Id: AsRef<str>>(&self, name: Id) -> Result<KeyPair> {
-        KeyPair::new(self.session.clone(), name)
+    pub async fn get_keypair<Id: AsRef<str>>(&self, name: Id) -> Result<KeyPair> {
+        KeyPair::new(self.session.clone(), name).await
     }
 
     /// Find an network by its name or ID.
@@ -416,8 +416,8 @@ impl Cloud {
     /// let server = os.get_network("centos7").expect("Unable to get a network");
     /// ```
     #[cfg(feature = "network")]
-    pub fn get_network<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Network> {
-        Network::load(self.session.clone(), id_or_name)
+    pub async fn get_network<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Network> {
+        Network::load(self.session.clone(), id_or_name).await
     }
 
     /// Find an port by its name or ID.
@@ -432,8 +432,8 @@ impl Cloud {
     ///     .expect("Unable to get a port");
     /// ```
     #[cfg(feature = "network")]
-    pub fn get_port<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Port> {
-        Port::load(self.session.clone(), id_or_name)
+    pub async fn get_port<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Port> {
+        Port::load(self.session.clone(), id_or_name).await
     }
 
     /// Find a router by its name or ID.
@@ -447,8 +447,8 @@ impl Cloud {
     /// let router = os.get_router("router_name").expect("Unable to get a router");
     /// ```
     #[cfg(feature = "network")]
-    pub fn get_router<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Router> {
-        Router::load(self.session.clone(), id_or_name)
+    pub async fn get_router<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Router> {
+        Router::load(self.session.clone(), id_or_name).await
     }
 
     /// Find a server by its name or ID.
@@ -463,8 +463,8 @@ impl Cloud {
     ///     .expect("Unable to get a server");
     /// ```
     #[cfg(feature = "compute")]
-    pub fn get_server<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Server> {
-        Server::load(self.session.clone(), id_or_name)
+    pub async fn get_server<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Server> {
+        Server::load(self.session.clone(), id_or_name).await
     }
 
     /// Find an subnet by its name or ID.
@@ -479,8 +479,8 @@ impl Cloud {
     ///     .expect("Unable to get a subnet");
     /// ```
     #[cfg(feature = "network")]
-    pub fn get_subnet<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Subnet> {
-        Subnet::load(self.session.clone(), id_or_name)
+    pub async fn get_subnet<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Subnet> {
+        Subnet::load(self.session.clone(), id_or_name).await
     }
 
     /// List all containers.
@@ -498,8 +498,8 @@ impl Cloud {
     /// let server_list = os.list_containers().expect("Unable to fetch containers");
     /// ```
     #[cfg(feature = "object-storage")]
-    pub fn list_containers(&self) -> Result<Vec<Container>> {
-        self.find_containers().all()
+    pub async fn list_containers(&self) -> Result<Vec<Container>> {
+        self.find_containers().all().await
     }
 
     /// List all objects.
@@ -517,11 +517,11 @@ impl Cloud {
     /// let server_list = os.list_objects("www").expect("Unable to fetch objects");
     /// ```
     #[cfg(feature = "object-storage")]
-    pub fn list_objects<C>(&self, container: C) -> Result<Vec<Object>>
+    pub async fn list_objects<C>(&self, container: C) -> Result<Vec<Object>>
     where
         C: Into<ContainerRef>,
     {
-        self.find_objects(container).all()
+        self.find_objects(container).all().await
     }
 
     /// List all flavors.
@@ -539,8 +539,8 @@ impl Cloud {
     /// let server_list = os.list_flavors().expect("Unable to fetch flavors");
     /// ```
     #[cfg(feature = "compute")]
-    pub fn list_flavors(&self) -> Result<Vec<FlavorSummary>> {
-        self.find_flavors().all()
+    pub async fn list_flavors(&self) -> Result<Vec<FlavorSummary>> {
+        self.find_flavors().all().await
     }
 
     /// List all floating IPs
@@ -558,8 +558,8 @@ impl Cloud {
     /// let server_list = os.list_floating_ips().expect("Unable to fetch floating IPs");
     /// ```
     #[cfg(feature = "network")]
-    pub fn list_floating_ips(&self) -> Result<Vec<FloatingIp>> {
-        self.find_floating_ips().all()
+    pub async fn list_floating_ips(&self) -> Result<Vec<FloatingIp>> {
+        self.find_floating_ips().all().await
     }
 
     /// List all images.
@@ -577,8 +577,8 @@ impl Cloud {
     /// let server_list = os.list_images().expect("Unable to fetch images");
     /// ```
     #[cfg(feature = "image")]
-    pub fn list_images(&self) -> Result<Vec<Image>> {
-        self.find_images().all()
+    pub async fn list_images(&self) -> Result<Vec<Image>> {
+        self.find_images().all().await
     }
 
     /// List all key pairs.
@@ -592,8 +592,8 @@ impl Cloud {
     /// let result = os.list_keypairs().expect("Unable to fetch key pairs");
     /// ```
     #[cfg(feature = "compute")]
-    pub fn list_keypairs(&self) -> Result<Vec<KeyPair>> {
-        self.find_keypairs().all()
+    pub async fn list_keypairs(&self) -> Result<Vec<KeyPair>> {
+        self.find_keypairs().all().await
     }
 
     /// List all networks.
@@ -611,8 +611,8 @@ impl Cloud {
     /// let server_list = os.list_networks().expect("Unable to fetch networks");
     /// ```
     #[cfg(feature = "network")]
-    pub fn list_networks(&self) -> Result<Vec<Network>> {
-        self.find_networks().all()
+    pub async fn list_networks(&self) -> Result<Vec<Network>> {
+        self.find_networks().all().await
     }
 
     /// List all ports.
@@ -630,8 +630,8 @@ impl Cloud {
     /// let server_list = os.list_ports().expect("Unable to fetch ports");
     /// ```
     #[cfg(feature = "network")]
-    pub fn list_ports(&self) -> Result<Vec<Port>> {
-        self.find_ports().all()
+    pub async fn list_ports(&self) -> Result<Vec<Port>> {
+        self.find_ports().all().await
     }
 
     /// List all routers.
@@ -649,8 +649,8 @@ impl Cloud {
     /// let router_list = os.list_routers().expect("Unable to fetch routers");
     /// ```
     #[cfg(feature = "network")]
-    pub fn list_routers(&self) -> Result<Vec<Router>> {
-        self.find_routers().all()
+    pub async fn list_routers(&self) -> Result<Vec<Router>> {
+        self.find_routers().all().await
     }
 
     /// List all servers.
@@ -668,8 +668,8 @@ impl Cloud {
     /// let server_list = os.list_servers().expect("Unable to fetch servers");
     /// ```
     #[cfg(feature = "compute")]
-    pub fn list_servers(&self) -> Result<Vec<ServerSummary>> {
-        self.find_servers().all()
+    pub async fn list_servers(&self) -> Result<Vec<ServerSummary>> {
+        self.find_servers().all().await
     }
 
     /// List all subnets.
@@ -687,8 +687,8 @@ impl Cloud {
     /// let server_list = os.list_subnets().expect("Unable to fetch subnets");
     /// ```
     #[cfg(feature = "network")]
-    pub fn list_subnets(&self) -> Result<Vec<Subnet>> {
-        self.find_subnets().all()
+    pub async fn list_subnets(&self) -> Result<Vec<Subnet>> {
+        self.find_subnets().all().await
     }
 
     /// Prepare a new object for creation.
@@ -696,11 +696,11 @@ impl Cloud {
     /// This call returns a `NewObject` object, which is a builder
     /// to create object in object storage.
     #[cfg(feature = "object-storage")]
-    pub fn new_object<C, O, B>(&self, container: C, object: O, body: B) -> NewObject<B>
+    pub async fn new_object<C, O, B>(&self, container: C, object: O, body: B) -> NewObject<B>
     where
         C: Into<ContainerRef>,
         O: Into<String>,
-        B: io::Read + Sync + Send + 'static,
+        B: AsyncRead + Sync + Send + 'static,
     {
         NewObject::new(self.session.clone(), container.into(), object.into(), body)
     }
