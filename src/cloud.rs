@@ -696,7 +696,7 @@ impl Cloud {
     /// This call returns a `NewObject` object, which is a builder
     /// to create object in object storage.
     #[cfg(feature = "object-storage")]
-    pub async fn new_object<C, O, B>(&self, container: C, object: O, body: B) -> NewObject<B>
+    pub fn new_object<C, O, B>(&self, container: C, object: O, body: B) -> NewObject<B>
     where
         C: Into<ContainerRef>,
         O: Into<String>,

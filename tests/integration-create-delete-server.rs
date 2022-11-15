@@ -12,15 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-extern crate env_logger;
-extern crate openstack;
-extern crate waiter;
-
 use std::env;
-use std::fs::File;
-use std::io::Read;
 use std::sync::Once;
 use std::{thread, time};
+
+use tokio::fs::File;
+use tokio::io::AsyncReadExt;
 
 use waiter::Waiter;
 
@@ -28,12 +25,13 @@ use openstack::Refresh;
 
 static INIT: Once = Once::new();
 
-fn set_up() -> openstack::Cloud {
+async fn set_up() -> openstack::Cloud {
     INIT.call_once(|| {
         env_logger::init();
     });
 
     openstack::Cloud::from_env()
+        .await
         .expect("Failed to create an identity provider from the environment")
 }
 
@@ -48,11 +46,13 @@ fn validate_port(port: &openstack::network::Port, server: &openstack::compute::S
     assert!(port.fixed_ips().len() > 0);
 }
 
-fn power_on_off_server(server: &mut openstack::compute::Server) {
+async fn power_on_off_server(server: &mut openstack::compute::Server) {
     server
         .stop()
+        .await
         .expect("Failed to request power off")
         .wait()
+        .await
         .expect("Failed to power off");
     assert_eq!(
         server.power_state(),
@@ -61,8 +61,10 @@ fn power_on_off_server(server: &mut openstack::compute::Server) {
 
     server
         .start()
+        .await
         .expect("Failed to request power on")
         .wait()
+        .await
         .expect("Failed to power on");
     assert_eq!(
         server.power_state(),
@@ -70,7 +72,7 @@ fn power_on_off_server(server: &mut openstack::compute::Server) {
     );
 }
 
-fn validate_server(os: &openstack::Cloud, server: &mut openstack::compute::Server) {
+async fn validate_server(os: &openstack::Cloud, server: &mut openstack::compute::Server) {
     assert_eq!(server.name(), "rust-openstack-integration");
     assert_eq!(server.status(), openstack::compute::ServerStatus::Active);
     assert_eq!(
@@ -82,17 +84,18 @@ fn validate_server(os: &openstack::Cloud, server: &mut openstack::compute::Serve
         Some(&"a3f955c049f7416faa7".to_string())
     );
 
-    power_on_off_server(server);
+    power_on_off_server(server).await;
 
     let port = os
         .find_ports()
         .with_device_id(server.id().clone())
         .with_admin_state_up(true)
         .one()
+        .await
         .expect("Cannot find the port attached to the server");
     validate_port(&port, &server);
 
-    let image = server.image().expect("Cannot fetch Server image");
+    let image = server.image().await.expect("Cannot fetch Server image");
     assert_eq!(image.id(), server.image_id().unwrap());
 
     let flavor = server.flavor();
@@ -101,9 +104,9 @@ fn validate_server(os: &openstack::Cloud, server: &mut openstack::compute::Serve
     assert!(flavor.root_size > 0);
 }
 
-#[test]
-fn test_basic_server_ops() {
-    let os = set_up();
+#[tokio::test]
+async fn test_basic_server_ops() {
+    let os = set_up().await;
     let image_id = env::var("RUST_OPENSTACK_IMAGE").expect("Missing RUST_OPENSTACK_IMAGE");
     let flavor_id = env::var("RUST_OPENSTACK_FLAVOR").expect("Missing RUST_OPENSTACK_FLAVOR");
     let network_id = env::var("RUST_OPENSTACK_NETWORK").expect("Missing RUST_OPENSTACK_NETWORK");
@@ -114,6 +117,7 @@ fn test_basic_server_ops() {
         .new_keypair("rust-openstack-integration")
         .with_key_type(openstack::compute::KeyPairType::SSH)
         .generate()
+        .await
         .expect("Cannot create a key pair");
     assert!(!private_key.is_empty());
 
@@ -124,17 +128,20 @@ fn test_basic_server_ops() {
         .with_keypair(keypair)
         .with_metadata("meta", "a3f955c049f7416faa7")
         .create()
+        .await
         .expect("Failed to request server creation")
         .wait()
+        .await
         .expect("Server was not created");
 
-    validate_server(&os, &mut server);
+    validate_server(&os, &mut server).await;
 
     let ports = os
         .find_ports()
         .with_network(network_id)
         .with_status(openstack::network::NetworkStatus::Active)
         .all()
+        .await
         .expect("Cannot find active ports for network");
     assert!(ports.len() > 0);
 
@@ -142,38 +149,47 @@ fn test_basic_server_ops() {
         .find_ports()
         .with_device_id(server.id().clone())
         .one()
+        .await
         .expect("Cannot find the port attached to the server");
 
     let mut floating_ip = os
         .new_floating_ip(floating_network_id)
         .create()
+        .await
         .expect("Cannot create a floating IP");
 
     floating_ip
         .associate(server_port, None)
+        .await
         .expect("Cannot associate floating IP");
 
     floating_ip
         .delete()
+        .await
         .expect("Failed to request floating IP deletion")
         .wait()
+        .await
         .expect("Failed to delete floating IP");
 
     server
         .delete()
+        .await
         .expect("Failed to request deletion")
         .wait()
+        .await
         .expect("Failed to delete server");
 
     os.get_keypair("rust-openstack-integration")
+        .await
         .expect("Cannot get key pair")
         .delete()
+        .await
         .expect("Cannot delete key pair");
 }
 
-#[test]
-fn test_server_ops_with_port() {
-    let os = set_up();
+#[tokio::test]
+async fn test_server_ops_with_port() {
+    let os = set_up().await;
     let image_id = env::var("RUST_OPENSTACK_IMAGE").expect("Missing RUST_OPENSTACK_IMAGE");
     let flavor_id = env::var("RUST_OPENSTACK_FLAVOR").expect("Missing RUST_OPENSTACK_FLAVOR");
     let network_id = env::var("RUST_OPENSTACK_NETWORK").expect("Missing RUST_OPENSTACK_NETWORK");
@@ -181,8 +197,10 @@ fn test_server_ops_with_port() {
         env::var("RUST_OPENSTACK_KEYPAIR").expect("Missing RUST_OPENSTACK_KEYPAIR");
     let mut keypair_pkey = String::new();
     let _ = File::open(keypair_file_name)
+        .await
         .expect("Cannot open RUST_OPENSTACK_KEYPAIR")
         .read_to_string(&mut keypair_pkey)
+        .await
         .expect("Cannot read RUST_OPENSTACK_KEYPAIR");
     let floating_network_id = env::var("RUST_OPENSTACK_FLOATING_NETWORK")
         .expect("Missing RUST_OPENSTACK_FLOATING_NETWORK");
@@ -191,12 +209,14 @@ fn test_server_ops_with_port() {
         .new_keypair("rust-openstack-integration")
         .with_public_key(keypair_pkey)
         .create()
+        .await
         .expect("Cannot create a key pair");
 
     let mut port = os
         .new_port(network_id)
         .with_name("rust-openstack-integration")
         .create()
+        .await
         .expect("Cannot create a port");
     assert_eq!(port.name().as_ref().unwrap(), "rust-openstack-integration");
 
@@ -207,72 +227,84 @@ fn test_server_ops_with_port() {
         .with_keypair(keypair)
         .with_metadata("meta", "a3f955c049f7416faa7")
         .create()
+        .await
         .expect("Failed to request server creation")
         .wait()
+        .await
         .expect("Server was not created");
 
-    validate_server(&os, &mut server);
+    validate_server(&os, &mut server).await;
 
-    port.refresh().expect("Cannot refresh the port");
+    port.refresh().await.expect("Cannot refresh the port");
     validate_port(&port, &server);
 
-    let network = port.network().expect("Could not find port's network");
+    let network = port.network().await.expect("Could not find port's network");
     assert_eq!(network.id(), port.network_id());
 
     let mut floating_ip = os
         .new_floating_ip(floating_network_id)
         .with_port(port.clone())
         .create()
+        .await
         .expect("Cannot create a floating IP");
 
     floating_ip.set_description("A floating IP");
-    floating_ip.save().expect("Cannot save floating IP");
+    floating_ip.save().await.expect("Cannot save floating IP");
     assert_eq!(
         floating_ip.description().as_ref().expect("No description"),
         "A floating IP"
     );
 
-    thread::sleep(time::Duration::from_secs(1));
+    tokio::time::sleep(time::Duration::from_secs(1)).await;
 
-    server.refresh().expect("Cannot refresh the server");
+    server.refresh().await.expect("Cannot refresh the server");
 
     let server_ip = server.floating_ip().expect("No floating IP");
     assert_eq!(server_ip, floating_ip.floating_ip_address());
 
     floating_ip
         .dissociate()
+        .await
         .expect("Cannot dissociate a floating IP");
 
     floating_ip
         .delete()
+        .await
         .expect("Failed to request floating IP deletion")
         .wait()
+        .await
         .expect("Failed to delete floating IP");
 
     server
         .delete()
+        .await
         .expect("Failed to request deletion")
         .wait()
+        .await
         .expect("Failed to delete server");
 
     os.get_keypair("rust-openstack-integration")
+        .await
         .expect("Cannot get key pair")
         .delete()
+        .await
         .expect("Cannot delete key pair");
 
-    port.refresh().expect("Cannot refresh the port");
+    port.refresh().await.expect("Cannot refresh the port");
     assert!(port.device_id().is_none());
     assert!(!port.attached_to_server());
 
     port.delete()
+        .await
         .expect("Failed to request deletion")
         .wait()
+        .await
         .expect("Failed to delete port");
 }
 
-#[test]
-fn test_server_boot_from_new_volume() {
-    let os = set_up();
+#[tokio::test]
+async fn test_server_boot_from_new_volume() {
+    let os = set_up().await;
     let image_id = env::var("RUST_OPENSTACK_IMAGE").expect("Missing RUST_OPENSTACK_IMAGE");
     let flavor_id = env::var("RUST_OPENSTACK_FLAVOR").expect("Missing RUST_OPENSTACK_FLAVOR");
     let network_id = env::var("RUST_OPENSTACK_NETWORK").expect("Missing RUST_OPENSTACK_NETWORK");
@@ -282,6 +314,7 @@ fn test_server_boot_from_new_volume() {
         .new_keypair(keypair_name)
         .with_key_type(openstack::compute::KeyPairType::SSH)
         .generate()
+        .await
         .expect("Cannot create a key pair");
     assert!(!private_key.is_empty());
 
@@ -293,8 +326,10 @@ fn test_server_boot_from_new_volume() {
         .with_keypair(keypair)
         .with_metadata("meta", "a3f955c049f7416faa7")
         .create()
+        .await
         .expect("Failed to request server creation")
         .wait()
+        .await
         .expect("Server was not created");
 
     assert_eq!(server.status(), openstack::compute::ServerStatus::Active);
@@ -304,16 +339,20 @@ fn test_server_boot_from_new_volume() {
     );
     assert!(server.image_id().is_none());
 
-    power_on_off_server(&mut server);
+    power_on_off_server(&mut server).await;
 
     server
         .delete()
+        .await
         .expect("Failed to request deletion")
         .wait()
+        .await
         .expect("Failed to delete server");
 
     os.get_keypair(keypair_name)
+        .await
         .expect("Cannot get key pair")
         .delete()
+        .await
         .expect("Cannot delete key pair");
 }
