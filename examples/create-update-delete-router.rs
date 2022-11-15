@@ -12,19 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-extern crate env_logger;
-extern crate openstack;
-extern crate waiter;
-
 use std::env;
 
 use openstack::Refresh;
 
 #[cfg(feature = "network")]
-fn main() {
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
     env_logger::init();
 
     let os = openstack::Cloud::from_env()
+        .await
         .expect("Failed to create an identity provider from the environment");
 
     let name = env::args().nth(1).expect("Provide a router name");
@@ -33,11 +31,18 @@ fn main() {
         .new_router()
         .with_name(name)
         .create()
+        .await
         .expect("Cannot create a router");
 
     router.set_description("Updated description.");
-    router.save().expect("Failed to update router description.");
-    router.refresh().expect("Failed to refresh router object.");
+    router
+        .save()
+        .await
+        .expect("Failed to update router description.");
+    router
+        .refresh()
+        .await
+        .expect("Failed to refresh router object.");
 
     println!(
         "ID = {}, Name = {}, Status = {:?}, Description = {}",
@@ -47,7 +52,7 @@ fn main() {
         router.description().as_ref().unwrap()
     );
 
-    router.delete().expect("Failed to delete router.");
+    router.delete().await.expect("Failed to delete router.");
 }
 
 #[cfg(not(feature = "network"))]

@@ -12,17 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-extern crate env_logger;
-extern crate openstack;
-extern crate waiter;
-
 use std::env;
 
 #[cfg(feature = "network")]
-fn main() {
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
     env_logger::init();
 
     let os = openstack::Cloud::from_env()
+        .await
         .expect("Failed to create an identity provider from the environment");
 
     let name = env::args().nth(1).expect("Provide a router name");
@@ -37,6 +35,7 @@ fn main() {
         .with_name(name)
         .with_external_gateway(external_gateway)
         .create()
+        .await
         .expect("Cannot create a router");
 
     println!(
@@ -49,9 +48,10 @@ fn main() {
 
     let _ = router
         .external_network()
+        .await
         .expect("Cannot load external network");
 
-    let _ = router.delete();
+    let _ = router.delete().await;
 }
 
 #[cfg(not(feature = "network"))]
