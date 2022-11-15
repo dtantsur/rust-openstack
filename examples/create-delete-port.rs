@@ -12,15 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-extern crate env_logger;
-extern crate openstack;
-extern crate waiter;
-
 use std::env;
 use waiter::Waiter;
 
 #[cfg(feature = "network")]
-fn display_port(port: &openstack::network::Port) {
+async fn display_port(port: &openstack::network::Port) {
     println!(
         "ID = {}, Name = {:?}, MAC = {}, UP = {}, Status = {}",
         port.id(),
@@ -35,18 +31,20 @@ fn display_port(port: &openstack::network::Port) {
         port.attached_to_server()
     );
     for ip in port.fixed_ips() {
-        let subnet = ip.subnet().expect("Cannot fetch subnet");
+        let subnet = ip.subnet().await.expect("Cannot fetch subnet");
         println!("* IP = {}, Subnet = {}", ip.ip_address, subnet.cidr());
     }
-    let net = port.network().expect("Cannot fetch network");
+    let net = port.network().await.expect("Cannot fetch network");
     println!("* Network: ID = {}, Name = {:?}", net.id(), net.name());
 }
 
 #[cfg(feature = "network")]
-fn main() {
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
     env_logger::init();
 
     let os = openstack::Cloud::from_env()
+        .await
         .expect("Failed to create an identity provider from the environment");
 
     let network = env::args().nth(1).expect("Provide a network");
@@ -59,20 +57,25 @@ fn main() {
             subnet.into(),
         ))
         .create()
+        .await
         .expect("Cannot create a port");
 
-    display_port(&port);
+    display_port(&port).await;
 
-    os.get_port("example-port").expect("Cannot find the port");
+    os.get_port("example-port")
+        .await
+        .expect("Cannot find the port");
 
     println!("Updating the port");
     port.set_name("example-new-name");
-    port.save().expect("Cannot update port");
-    display_port(&port);
+    port.save().await.expect("Cannot update port");
+    display_port(&port).await;
 
     port.delete()
+        .await
         .expect("Cannot request port deletion")
         .wait()
+        .await
         .expect("Port was not deleted");
 }
 

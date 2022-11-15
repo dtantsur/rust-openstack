@@ -12,14 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-extern crate env_logger;
-extern crate fallible_iterator;
-extern crate openstack;
-
-use fallible_iterator::FallibleIterator;
+use futures::stream::{StreamExt, TryStreamExt};
 
 #[cfg(feature = "network")]
-fn display_floating_ip(floating_ip: &openstack::network::FloatingIp) {
+async fn display_floating_ip(floating_ip: &openstack::network::FloatingIp) {
     println!(
         "ID = {}, IP = {}, Fixed IP = {:?}, Status = {}",
         floating_ip.id(),
@@ -32,35 +28,39 @@ fn display_floating_ip(floating_ip: &openstack::network::FloatingIp) {
         floating_ip.floating_network_id(),
         floating_ip
             .floating_network()
+            .await
             .expect("Cannot fetch floating network")
             .name()
     );
     if floating_ip.is_associated() {
         println!(
             "* Port = {}",
-            floating_ip.port().expect("Cannot fetch port").id()
+            floating_ip.port().await.expect("Cannot fetch port").id()
         );
     }
 }
 
 #[cfg(feature = "network")]
-fn main() {
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
     env_logger::init();
 
     let os = openstack::Cloud::from_env()
+        .await
         .expect("Failed to create an identity provider from the environment");
     let sorting = openstack::network::FloatingIpSortKey::Status;
 
     let floating_ips: Vec<_> = os
         .find_floating_ips()
         .sort_by(openstack::Sort::Asc(sorting))
-        .into_iter()
+        .into_stream()
         .take(10)
-        .collect()
+        .try_collect()
+        .await
         .expect("Cannot list floating IPs");
     println!("First 10 floating IPs:");
     for p in &floating_ips {
-        display_floating_ip(p)
+        display_floating_ip(p).await;
     }
 
     let att_floating_ips: Vec<_> = os
@@ -70,10 +70,11 @@ fn main() {
         ))
         .with_status(openstack::network::FloatingIpStatus::Active)
         .all()
+        .await
         .expect("Cannot list attached floating_ips");
     println!("Only active floating IPs:");
     for p in &att_floating_ips {
-        display_floating_ip(p)
+        display_floating_ip(p).await;
     }
 }
 

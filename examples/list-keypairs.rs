@@ -12,18 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-extern crate env_logger;
-extern crate openstack;
-
 #[cfg(feature = "compute")]
-fn main() {
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
     env_logger::init();
 
     let os = openstack::Cloud::from_env()
+        .await
         .expect("Failed to create an identity provider from the environment");
 
     let keypairs: Vec<openstack::compute::KeyPair> =
-        os.list_keypairs().expect("Cannot list key pairs");
+        os.list_keypairs().await.expect("Cannot list key pairs");
     println!("Key pairs:");
     for keypair in &keypairs {
         println!(
