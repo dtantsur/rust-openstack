@@ -13,9 +13,11 @@
 // limitations under the License.
 
 use std::env;
+use std::future;
 use std::net;
 use std::sync::Once;
 
+use futures::TryStreamExt;
 use waiter::Waiter;
 
 use openstack::Refresh;
@@ -389,12 +391,21 @@ async fn test_floating_ip_create_delete() {
         .floating_network()
         .await
         .expect("Cannot find floating network");
-    let floating_ip_found = os
-        .find_floating_ips()
-        .with_floating_network(net.name().clone().expect("Floating network has no name"))
-        .into_stream()
-        .find(|ip| Ok(ip.id() == floating_ip.id()))
-        .expect("Floating IP was not found");
+    let floating_ip_found = {
+        let stream = os
+            .find_floating_ips()
+            .with_floating_network(net.name().clone().expect("Floating network has no name"))
+            .into_stream();
+
+        futures::pin_mut!(stream);
+
+        stream
+            .try_filter(|ip| future::ready(ip.id() == floating_ip.id()))
+            .try_next()
+            .await
+    }
+    .expect("Failed to list floating IPs")
+    .expect("Floating IP was not found");
     assert_eq!(floating_ip_found.id(), floating_ip.id());
 
     floating_ip

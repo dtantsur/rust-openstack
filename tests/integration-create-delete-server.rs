@@ -14,7 +14,7 @@
 
 use std::env;
 use std::sync::Once;
-use std::{thread, time};
+use std::time;
 
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;

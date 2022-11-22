@@ -79,6 +79,6 @@ async fn test_list_subnets() {
 
 #[tokio::test]
 async fn test_list_routers() {
-    let os = set_up();
+    let os = set_up().await;
     let _ = os.list_routers().await.expect("Cannot list routers");
 }

@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::future;
 use std::sync::Once;
 use std::thread;
 use std::time::Duration;
 
 use futures::io::Cursor;
-use futures::{AsyncReadExt, StreamExt, TryStreamExt};
+use futures::{AsyncReadExt, TryStreamExt};
 use openstack::Refresh;
 
 use md5::{Digest, Md5};
@@ -61,13 +62,22 @@ async fn test_container_create() {
     assert_eq!(ctr2.bytes(), 0);
     assert_eq!(ctr2.object_count(), 0);
 
-    let found = os
-        .find_containers()
-        .into_stream()
-        .await
-        .expect("Cannot list containers")
-        .find(|ctr| Ok(ctr.name() == name))
-        .expect("Cannot find the container in listing");
+    let found = {
+        let stream = os
+            .find_containers()
+            .into_stream()
+            .await
+            .expect("Cannot list containers");
+
+        futures::pin_mut!(stream);
+
+        stream
+            .try_filter(|ctr| future::ready(ctr.name() == name))
+            .try_next()
+            .await
+    }
+    .expect("Failed to list containers")
+    .expect("Cannot find the container in listing");
     assert_eq!(found.name(), name);
 
     let found = os
@@ -91,13 +101,21 @@ async fn test_container_create() {
 
     ctr.delete(false).await.expect("Failed to delete container");
 
-    let (found, _) = os
-        .find_containers()
-        .into_stream()
-        .await
-        .expect("Cannot list containers")
-        .find(|ctr| ctr.name() == name)
-        .await;
+    let found = {
+        let stream = os
+            .find_containers()
+            .into_stream()
+            .await
+            .expect("Cannot list containers");
+
+        futures::pin_mut!(stream);
+
+        stream
+            .try_filter(|ctr| future::ready(ctr.name() == name))
+            .try_next()
+            .await
+    }
+    .expect("Failed to list containers");
 
     assert!(found.is_none());
 }
@@ -141,25 +159,44 @@ async fn test_object_create() {
         assert_eq!(res, vec![1, 2, 3, 4, 5]);
     }
 
-    let found = ctr
-        .find_objects()
-        .into_stream()
-        .await
-        .expect("Failed to find objects")
-        .find(|obj| Ok(obj.name() == "test1"))
-        .expect("Object was not found");
+    let found = {
+        let stream = ctr
+            .find_objects()
+            .into_stream()
+            .await
+            .expect("Failed to find objects");
+
+        futures::pin_mut!(stream);
+
+        stream
+            .try_filter(|obj| future::ready(obj.name() == "test1"))
+            .try_next()
+            .await
+    }
+    .expect("Failed to list objects")
+    .expect("Object was not found");
     assert_eq!(found.name(), obj.name());
 
     obj.refresh().await.expect("Failed to refresh object");
 
     obj.delete().await.expect("Failed to delete the object");
 
-    let found = ctr
-        .find_objects()
-        .into_stream()
-        .await
-        .expect("Failed to find objects")
-        .find(|obj| Ok(obj.name() == "test1"));
+    let found = {
+        let stream = ctr
+            .find_objects()
+            .into_stream()
+            .await
+            .expect("Failed to find objects");
+
+        futures::pin_mut!(stream);
+
+        stream
+            .try_filter(|obj| future::ready(obj.name() == "test1"))
+            .try_next()
+            .await
+    }
+    .expect("Failed to list objects");
+
     assert!(found.is_none());
 
     ctr.delete(false)
@@ -231,11 +268,21 @@ async fn test_container_purge() {
         .await
         .expect("Failed to delete the container");
 
-    let found = os
-        .find_containers()
-        .into_stream()
-        .await
-        .expect("Cannot list containers")
-        .find(|ctr| Ok(ctr.name() == name));
+    let found = {
+        let stream = os
+            .find_containers()
+            .into_stream()
+            .await
+            .expect("Cannot list containers");
+
+        futures::pin_mut!(stream);
+
+        stream
+            .try_filter(|ctr| future::ready(ctr.name() == name))
+            .try_next()
+            .await
+    }
+    .expect("Failed to list containers");
+
     assert!(found.is_none());
 }
