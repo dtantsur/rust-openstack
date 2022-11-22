@@ -323,9 +323,9 @@ impl RouterQuery {
         self
     }
 
-    /// Convert this query into an iterator executing the request.
+    /// Convert this query into an stream executing the request.
     ///
-    /// Returns a `FallibleIterator`, which is an iterator with each `next`
+    /// Returns a `TryStream`, which is a stream with each `next`
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.

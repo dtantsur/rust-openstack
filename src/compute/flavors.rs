@@ -255,7 +255,7 @@ impl ResourceQuery for FlavorQuery {
 impl DetailedFlavorQuery {
     /// Convert this query into a stream executing the request.
     ///
-    /// This iterator yields full `Flavor` objects.
+    /// This stream yields full `Flavor` objects.
     ///
     /// Returns a `TryStream`, which is a stream with each `next`
     /// call returning a `Result`.

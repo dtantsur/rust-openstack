@@ -58,7 +58,7 @@ impl Cloud {
     /// # Example
     ///
     /// ```rust,no_run
-    /// fn cloud() -> openstack::Result<openstack::Cloud> {
+    /// async fn cloud() -> openstack::Result<openstack::Cloud> {
     ///     let scope = openstack::auth::Scope::Project {
     ///         project: openstack::IdOrName::from_name("project1"),
     ///         domain: Some(openstack::IdOrName::from_name("Default")),
@@ -68,7 +68,7 @@ impl Cloud {
     ///             "user1", "pa$$word", "Default")
     ///         .expect("Invalid authentication URL")
     ///         .with_scope(scope);
-    ///     Ok(openstack::Cloud::new(auth))
+    ///     openstack::Cloud::new(auth).await
     /// }
     /// ```
     ///
@@ -87,8 +87,8 @@ impl Cloud {
     /// # Example
     ///
     /// ```rust,no_run
-    /// # fn cloud_from_config() -> openstack::Result<()> {
-    /// let os = openstack::Cloud::from_config("cloud-1")?;
+    /// # async fn cloud_from_config() -> openstack::Result<()> {
+    /// let os = openstack::Cloud::from_config("cloud-1").await?;
     /// # Ok(()) }
     /// ```
     pub async fn from_config<S: AsRef<str>>(cloud_name: S) -> Result<Cloud> {
@@ -102,8 +102,8 @@ impl Cloud {
     /// # Example
     ///
     /// ```rust,no_run
-    /// # fn cloud_from_env() -> openstack::Result<()> {
-    /// let os = openstack::Cloud::from_env()?;
+    /// # async fn cloud_from_env() -> openstack::Result<()> {
+    /// let os = openstack::Cloud::from_env().await?;
     /// # Ok(()) }
     /// ```
     pub async fn from_env() -> Result<Cloud> {
@@ -123,8 +123,8 @@ impl Cloud {
     /// # Example
     ///
     /// ```rust,no_run
-    /// fn cloud_from_env() -> openstack::Result<openstack::Cloud> {
-    ///     let mut cloud = openstack::Cloud::from_env()?;
+    /// async fn cloud_from_env() -> openstack::Result<openstack::Cloud> {
+    ///     let mut cloud = openstack::Cloud::from_env().await?;
     ///     {
     ///         let mut filters = cloud.endpoint_filters_mut();
     ///         filters.set_region("internal-1");
@@ -148,8 +148,8 @@ impl Cloud {
     /// # Example
     ///
     /// ```rust,no_run
-    /// fn cloud_from_env() -> openstack::Result<openstack::Cloud> {
-    ///     openstack::Cloud::from_env()
+    /// async fn cloud_from_env() -> openstack::Result<openstack::Cloud> {
+    ///     openstack::Cloud::from_env().await
     ///         .map(|os| os.with_endpoint_interface(openstack::InterfaceType::Internal))
     /// }
     /// ```
@@ -290,11 +290,11 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
+    /// let os = openstack::Cloud::from_env().await.expect("Unable to authenticate");
     /// let sorting = openstack::compute::ServerSortKey::AccessIpv4;
     /// let server_list = os.find_servers()
     ///     .sort_by(openstack::Sort::Asc(sorting)).with_limit(5)
-    ///     .all().expect("Unable to fetch servers");
+    ///     .all().await.expect("Unable to fetch servers");
     /// ```
     #[cfg(feature = "compute")]
     pub fn find_servers(&self) -> ServerQuery {
@@ -317,8 +317,8 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
-    /// let ctr = os.get_container("www").expect("Unable to get a container");
+    /// let os = openstack::Cloud::from_env().await.expect("Unable to authenticate");
+    /// let ctr = os.get_container("www").await.expect("Unable to get a container");
     /// ```
     #[cfg(feature = "object-storage")]
     pub async fn get_container<Id: AsRef<str>>(&self, name: Id) -> Result<Container> {
@@ -332,8 +332,8 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
-    /// let obj = os.get_object("www", "/foo/bar").expect("Unable to get an object");
+    /// let os = openstack::Cloud::from_env().await.expect("Unable to authenticate");
+    /// let obj = os.get_object("www", "/foo/bar").await.expect("Unable to get an object");
     /// ```
     #[cfg(feature = "object-storage")]
     pub async fn get_object<C, Id>(&self, container: C, name: Id) -> Result<Object>
@@ -351,8 +351,8 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
-    /// let server = os.get_flavor("m1.medium").expect("Unable to get a flavor");
+    /// let os = openstack::Cloud::from_env().await.expect("Unable to authenticate");
+    /// let server = os.get_flavor("m1.medium").await.expect("Unable to get a flavor");
     /// ```
     #[cfg(feature = "compute")]
     pub async fn get_flavor<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Flavor> {
@@ -366,8 +366,9 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
+    /// let os = openstack::Cloud::from_env().await.expect("Unable to authenticate");
     /// let server = os.get_floating_ip("031e08c7-2ca7-4c0b-9923-030c8d946ba4")
+    ///     .await
     ///     .expect("Unable to get a floating IP");
     /// ```
     #[cfg(feature = "network")]
@@ -382,8 +383,8 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
-    /// let server = os.get_image("centos7").expect("Unable to get a image");
+    /// let os = openstack::Cloud::from_env().await.expect("Unable to authenticate");
+    /// let server = os.get_image("centos7").await.expect("Unable to get a image");
     /// ```
     #[cfg(feature = "image")]
     pub async fn get_image<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Image> {
@@ -397,8 +398,8 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
-    /// let server = os.get_keypair("default").expect("Unable to get a key pair");
+    /// let os = openstack::Cloud::from_env().await.expect("Unable to authenticate");
+    /// let server = os.get_keypair("default").await.expect("Unable to get a key pair");
     /// ```
     #[cfg(feature = "compute")]
     pub async fn get_keypair<Id: AsRef<str>>(&self, name: Id) -> Result<KeyPair> {
@@ -412,8 +413,8 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
-    /// let server = os.get_network("centos7").expect("Unable to get a network");
+    /// let os = openstack::Cloud::from_env().await.expect("Unable to authenticate");
+    /// let server = os.get_network("centos7").await.expect("Unable to get a network");
     /// ```
     #[cfg(feature = "network")]
     pub async fn get_network<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Network> {
@@ -427,8 +428,9 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
+    /// let os = openstack::Cloud::from_env().await.expect("Unable to authenticate");
     /// let server = os.get_port("4d9c1710-fa02-49f9-8218-291024ef4140")
+    ///     .await
     ///     .expect("Unable to get a port");
     /// ```
     #[cfg(feature = "network")]
@@ -443,8 +445,8 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
-    /// let router = os.get_router("router_name").expect("Unable to get a router");
+    /// let os = openstack::Cloud::from_env().await.expect("Unable to authenticate");
+    /// let router = os.get_router("router_name").await.expect("Unable to get a router");
     /// ```
     #[cfg(feature = "network")]
     pub async fn get_router<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Router> {
@@ -458,8 +460,9 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
+    /// let os = openstack::Cloud::from_env().await.expect("Unable to authenticate");
     /// let server = os.get_server("8a1c355b-2e1e-440a-8aa8-f272df72bc32")
+    ///     .await
     ///     .expect("Unable to get a server");
     /// ```
     #[cfg(feature = "compute")]
@@ -474,8 +477,9 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
+    /// let os = openstack::Cloud::from_env().await.expect("Unable to authenticate");
     /// let server = os.get_subnet("private-subnet")
+    ///     .await
     ///     .expect("Unable to get a subnet");
     /// ```
     #[cfg(feature = "network")]
@@ -494,8 +498,8 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
-    /// let server_list = os.list_containers().expect("Unable to fetch containers");
+    /// let os = openstack::Cloud::from_env().await.expect("Unable to authenticate");
+    /// let server_list = os.list_containers().await.expect("Unable to fetch containers");
     /// ```
     #[cfg(feature = "object-storage")]
     pub async fn list_containers(&self) -> Result<Vec<Container>> {
@@ -513,8 +517,8 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
-    /// let server_list = os.list_objects("www").expect("Unable to fetch objects");
+    /// let os = openstack::Cloud::from_env().await.expect("Unable to authenticate");
+    /// let server_list = os.list_objects("www").await.expect("Unable to fetch objects");
     /// ```
     #[cfg(feature = "object-storage")]
     pub async fn list_objects<C>(&self, container: C) -> Result<Vec<Object>>
@@ -535,8 +539,8 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
-    /// let server_list = os.list_flavors().expect("Unable to fetch flavors");
+    /// let os = openstack::Cloud::from_env().await.expect("Unable to authenticate");
+    /// let server_list = os.list_flavors().await.expect("Unable to fetch flavors");
     /// ```
     #[cfg(feature = "compute")]
     pub async fn list_flavors(&self) -> Result<Vec<FlavorSummary>> {
@@ -554,8 +558,8 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
-    /// let server_list = os.list_floating_ips().expect("Unable to fetch floating IPs");
+    /// let os = openstack::Cloud::from_env().await.expect("Unable to authenticate");
+    /// let server_list = os.list_floating_ips().await.expect("Unable to fetch floating IPs");
     /// ```
     #[cfg(feature = "network")]
     pub async fn list_floating_ips(&self) -> Result<Vec<FloatingIp>> {
@@ -573,8 +577,8 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
-    /// let server_list = os.list_images().expect("Unable to fetch images");
+    /// let os = openstack::Cloud::from_env().await.expect("Unable to authenticate");
+    /// let server_list = os.list_images().await.expect("Unable to fetch images");
     /// ```
     #[cfg(feature = "image")]
     pub async fn list_images(&self) -> Result<Vec<Image>> {
@@ -588,8 +592,8 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
-    /// let result = os.list_keypairs().expect("Unable to fetch key pairs");
+    /// let os = openstack::Cloud::from_env().await.expect("Unable to authenticate");
+    /// let result = os.list_keypairs().await.expect("Unable to fetch key pairs");
     /// ```
     #[cfg(feature = "compute")]
     pub async fn list_keypairs(&self) -> Result<Vec<KeyPair>> {
@@ -607,8 +611,8 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
-    /// let server_list = os.list_networks().expect("Unable to fetch networks");
+    /// let os = openstack::Cloud::from_env().await.expect("Unable to authenticate");
+    /// let server_list = os.list_networks().await.expect("Unable to fetch networks");
     /// ```
     #[cfg(feature = "network")]
     pub async fn list_networks(&self) -> Result<Vec<Network>> {
@@ -626,8 +630,8 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
-    /// let server_list = os.list_ports().expect("Unable to fetch ports");
+    /// let os = openstack::Cloud::from_env().await.expect("Unable to authenticate");
+    /// let server_list = os.list_ports().await.expect("Unable to fetch ports");
     /// ```
     #[cfg(feature = "network")]
     pub async fn list_ports(&self) -> Result<Vec<Port>> {
@@ -645,8 +649,8 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
-    /// let router_list = os.list_routers().expect("Unable to fetch routers");
+    /// let os = openstack::Cloud::from_env().await.expect("Unable to authenticate");
+    /// let router_list = os.list_routers().await.expect("Unable to fetch routers");
     /// ```
     #[cfg(feature = "network")]
     pub async fn list_routers(&self) -> Result<Vec<Router>> {
@@ -664,8 +668,8 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
-    /// let server_list = os.list_servers().expect("Unable to fetch servers");
+    /// let os = openstack::Cloud::from_env().await.expect("Unable to authenticate");
+    /// let server_list = os.list_servers().await.expect("Unable to fetch servers");
     /// ```
     #[cfg(feature = "compute")]
     pub async fn list_servers(&self) -> Result<Vec<ServerSummary>> {
@@ -683,8 +687,8 @@ impl Cloud {
     /// ```rust,no_run
     /// use openstack;
     ///
-    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
-    /// let server_list = os.list_subnets().expect("Unable to fetch subnets");
+    /// let os = openstack::Cloud::from_env().await.expect("Unable to authenticate");
+    /// let server_list = os.list_subnets().await.expect("Unable to fetch subnets");
     /// ```
     #[cfg(feature = "network")]
     pub async fn list_subnets(&self) -> Result<Vec<Subnet>> {
@@ -784,12 +788,12 @@ impl Cloud {
     /// extern crate openstack;
     /// use std::net;
     ///
-    /// let os = openstack::Cloud::from_env().expect("Unable to authenticate");
+    /// let os = openstack::Cloud::from_env().await.expect("Unable to authenticate");
     /// let cidr = ipnet::Ipv4Net::new(net::Ipv4Addr::new(192, 168, 1, 0), 24)
     ///     .unwrap().into();
     /// let new_subnet = os.new_subnet("private-net", cidr)
     ///     .with_name("private-subnet")
-    ///     .create().expect("Unable to create subnet");
+    ///     .create().await.expect("Unable to create subnet");
     /// ```
     #[cfg(feature = "network")]
     pub fn new_subnet<N>(&self, network: N, cidr: ipnet::IpNet) -> NewSubnet

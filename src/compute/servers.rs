@@ -499,9 +499,9 @@ impl ServerQuery {
         DetailedServerQuery { inner: self }
     }
 
-    /// Convert this query into an iterator executing the request.
+    /// Convert this query into a stream executing the request.
     ///
-    /// This iterator yields only `ServerSummary` objects, containing
+    /// This stream yields only `ServerSummary` objects, containing
     /// IDs and names. Use `into_iter_detailed` for full `Server` objects.
     ///
     /// Returns a `TryStream`, which is a stream with each `next`
