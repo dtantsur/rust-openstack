@@ -16,12 +16,13 @@ rust-version = "1.56"
 
 [features]
 
-default = ["compute", "image", "network", "native-tls", "object-storage"]
+default = ["compute", "image", "network", "native-tls", "object-storage", "orchestration"]
 compute = []
 image = []
 network = []
 native-tls = ["reqwest/default-tls", "osauth/native-tls"]
 object-storage = []
+orchestration = []
 rustls = ["reqwest/rustls-tls", "osauth/rustls"]
 
 [dependencies]

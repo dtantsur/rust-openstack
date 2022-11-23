@@ -29,6 +29,8 @@ use super::compute::{
     Flavor, FlavorQuery, FlavorSummary, KeyPair, KeyPairQuery, NewKeyPair, NewServer, Server,
     ServerQuery, ServerSummary,
 };
+#[cfg(feature = "orchestration")]
+use super::orchestration::NewStack;
 #[cfg(feature = "image")]
 use super::image::{Image, ImageQuery};
 #[cfg(feature = "network")]
@@ -770,6 +772,20 @@ impl Cloud {
     {
         NewServer::new(self.session.clone(), name.into(), flavor.into())
     }
+
+    /// Prepare a new stack for creation.
+    ///
+    /// This call returns a `NewStack` object, which is a builder to populate
+    /// stack fields.
+    #[cfg(feature = "orchestration")]
+    pub fn new_stack<S1, S2>(&self, stackf: S1, envf: S2) -> NewStack
+    where
+        S1: Into<String>,
+        S1: Into<String>,
+    {
+        NewStack::new(self.session.clone(), stackf.into(), envf.into())
+    }
+
 
     /// Prepare a new subnet for creation.
     ///
