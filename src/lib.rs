@@ -40,6 +40,7 @@
 //!         .collect();
 //!     Ok(server_names)
 //! }
+//! # #[tokio::main(flavor = "current_thread")]
 //! # async fn main() { get_server_uuids().await.unwrap(); }
 //! ```
 //!
@@ -70,11 +71,12 @@
 //!         .with_visibility(openstack::image::ImageVisibility::Public)
 //!         .into_stream()
 //!         // This `map_ok` comes from `futures::TryStreamExt`, thus the closure returns a `Future`.
-//!         .map_ok(|image| std::future::ready(image.name().clone()))
+//!         .map_ok(|image| image.name().clone())
 //!         .try_collect()
 //!         .await?;
 //!     Ok(image_names)
 //! }
+//! # #[tokio::main(flavor = "current_thread")]
 //! # async fn main() { get_public_image_names().await.unwrap(); }
 //! ```
 //!
@@ -101,6 +103,7 @@
 //!         .wait()
 //!         .await
 //! }
+//! # #[tokio::main(flavor = "current_thread")]
 //! # async fn main() { create_server().await.unwrap(); }
 //! ```
 //!
