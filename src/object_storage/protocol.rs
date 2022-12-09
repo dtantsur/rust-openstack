@@ -16,7 +16,7 @@
 
 #![allow(missing_docs)]
 
-use osauth::stream::PaginatedResource;
+use osauth::PaginatedResource;
 use reqwest::header::{self, HeaderMap, HeaderName};
 use serde::Deserialize;
 
