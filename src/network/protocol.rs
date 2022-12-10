@@ -24,7 +24,7 @@ use std::ops::Not;
 use async_trait::async_trait;
 use chrono::{DateTime, FixedOffset};
 use eui48::MacAddress;
-use osproto::common::empty_as_default;
+use osauth::common::empty_as_default;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 

@@ -21,7 +21,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use chrono::{DateTime, FixedOffset};
 use futures::stream::{Stream, TryStreamExt};
-use osproto::common::IdAndName;
+use osauth::common::IdAndName;
 use waiter::{Waiter, WaiterCurrentState};
 
 use super::super::common::{

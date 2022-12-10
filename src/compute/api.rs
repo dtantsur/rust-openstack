@@ -19,7 +19,7 @@ use std::fmt::Debug;
 
 use osauth::services::COMPUTE;
 use osauth::ErrorKind;
-use osproto::common::{IdAndName, Ref};
+use osauth::common::{IdAndName, Ref};
 use serde::Serialize;
 
 use super::super::common::ApiVersion;

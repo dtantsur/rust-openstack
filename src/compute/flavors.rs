@@ -18,7 +18,7 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 use futures::stream::{Stream, TryStreamExt};
-use osproto::common::IdAndName;
+use osauth::common::IdAndName;
 
 use super::super::common::{FlavorRef, IntoVerified, Refresh, ResourceIterator, ResourceQuery};
 use super::super::session::Session;
