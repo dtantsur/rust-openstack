@@ -12,7 +12,7 @@ license = "Apache-2.0"
 keywords = ["api", "cloud", "openstack"]
 categories = ["api-bindings"]
 edition = "2021"
-rust-version = "1.56"
+rust-version = "1.58"
 
 [features]
 
