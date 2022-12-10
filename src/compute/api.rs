@@ -85,7 +85,7 @@ pub async fn delete_keypair<S: AsRef<str>>(session: &Session, name: S) -> Result
     debug!("Deleting key pair {}", name.as_ref());
     let _ = session
         .delete(COMPUTE, &["os-keypairs", name.as_ref()])
-        .fetch()
+        .send()
         .await?;
     debug!("Key pair {} was deleted", name.as_ref());
     Ok(())
@@ -96,7 +96,7 @@ pub async fn delete_server<S: AsRef<str>>(session: &Session, id: S) -> Result<()
     trace!("Deleting server {}", id.as_ref());
     let _ = session
         .delete(COMPUTE, &["servers", id.as_ref()])
-        .fetch()
+        .send()
         .await?;
     debug!("Successfully requested deletion of server {}", id.as_ref());
     Ok(())
