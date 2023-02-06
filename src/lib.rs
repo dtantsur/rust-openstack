@@ -156,7 +156,7 @@
 #[macro_use]
 extern crate log;
 
-#[allow(unused_macros, unused_macro_rules)]
+#[allow(unused_macros)]
 macro_rules! transparent_property {
     ($(#[$attr:meta])* $name:ident: ref $type:ty) => (
         $(#[$attr])*
@@ -175,7 +175,7 @@ macro_rules! transparent_property {
     );
 }
 
-#[allow(unused_macros, unused_macro_rules)]
+#[allow(unused_macros)]
 macro_rules! query_filter {
     ($(#[$attr:meta])* $func:ident -> $name:ident) => (
         $(#[$attr])*
@@ -222,7 +222,7 @@ macro_rules! query_filter {
     );
 }
 
-#[allow(unused_macros, unused_macro_rules)]
+#[allow(unused_macros)]
 macro_rules! creation_field {
 
     ($(#[$attr:meta])* $set_func:ident, $with_func:ident -> $name:ident) => (
@@ -287,7 +287,7 @@ macro_rules! creation_field {
 
 }
 
-#[allow(unused_macros, unused_macro_rules)]
+#[allow(unused_macros)]
 macro_rules! creation_inner_field {
 
     ($(#[$attr:meta])* $set_func:ident, $with_func:ident -> $name:ident) => (
@@ -418,7 +418,7 @@ macro_rules! creation_inner_vec {
 
 }
 
-#[allow(unused_macros, unused_macro_rules)]
+#[allow(unused_macros)]
 macro_rules! update_field {
 
     ($(#[$attr:meta])* $set_func:ident, $with_func:ident -> $name:ident) => (
