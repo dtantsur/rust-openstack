@@ -17,9 +17,9 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
 
+use osauth::common::{IdAndName, Ref};
 use osauth::services::COMPUTE;
 use osauth::ErrorKind;
-use osauth::common::{IdAndName, Ref};
 use serde::Serialize;
 
 use super::super::common::ApiVersion;
