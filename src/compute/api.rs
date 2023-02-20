@@ -25,7 +25,7 @@ use serde::Serialize;
 use super::super::common::ApiVersion;
 use super::super::session::Session;
 use super::super::utils;
-use super::super::{Error, Result};
+use super::super::Result;
 use super::protocol::*;
 
 const API_VERSION_KEYPAIR_TYPE: ApiVersion = ApiVersion(2, 2);
@@ -130,17 +130,12 @@ pub async fn get_flavor<S: AsRef<str>>(session: &Session, id_or_name: S) -> Resu
 /// Get a flavor by its ID.
 pub async fn get_flavor_by_id<S: AsRef<str>>(session: &Session, id: S) -> Result<Flavor> {
     trace!("Get compute flavor by ID {}", id.as_ref());
-    let version = flavor_api_version(session).await?.ok_or_else(|| {
-        Error::new(
-            ErrorKind::IncompatibleApiVersion,
-            "could not find suitable API version",
-        )
-    })?;
-    let root: FlavorRoot = session
-        .get(COMPUTE, &["flavors", id.as_ref()])
-        .api_version(version)
-        .fetch()
-        .await?;
+    let maybe_version = flavor_api_version(session).await?;
+    let mut builder = session.get(COMPUTE, &["flavors", id.as_ref()]);
+    if let Some(version) = maybe_version {
+        builder.set_api_version(version);
+    }
+    let root: FlavorRoot = builder.fetch().await?;
     trace!("Received {:?}", root.flavor);
     Ok(root.flavor)
 }
@@ -166,20 +161,14 @@ pub async fn get_flavor_by_name<S: AsRef<str>>(session: &Session, name: S) -> Re
 /// Get a key pair by its name.
 pub async fn get_keypair<S: AsRef<str>>(session: &Session, name: S) -> Result<KeyPair> {
     trace!("Get compute key pair by name {}", name.as_ref());
-    let version = session
+    let maybe_version = session
         .pick_api_version(COMPUTE, Some(API_VERSION_KEYPAIR_TYPE))
-        .await?
-        .ok_or_else(|| {
-            Error::new(
-                ErrorKind::IncompatibleApiVersion,
-                "could not find suitable API version",
-            )
-        })?;
-    let root: KeyPairRoot = session
-        .get(COMPUTE, &["os-keypairs", name.as_ref()])
-        .api_version(version)
-        .fetch()
         .await?;
+    let mut builder = session.get(COMPUTE, &["os-keypairs", name.as_ref()]);
+    if let Some(version) = maybe_version {
+        builder.set_api_version(version);
+    }
+    let root: KeyPairRoot = builder.fetch().await?;
     trace!("Received {:?}", root.keypair);
     Ok(root.keypair)
 }
@@ -199,20 +188,14 @@ pub async fn get_server<S: AsRef<str>>(session: &Session, id_or_name: S) -> Resu
 /// Get a server by its ID.
 pub async fn get_server_by_id<S: AsRef<str>>(session: &Session, id: S) -> Result<Server> {
     trace!("Get compute server with ID {}", id.as_ref());
-    let version = session
+    let maybe_version = session
         .pick_api_version(COMPUTE, Some(API_VERSION_SERVER_DESCRIPTION))
-        .await?
-        .ok_or_else(|| {
-            Error::new(
-                ErrorKind::IncompatibleApiVersion,
-                "could not find suitable API version",
-            )
-        })?;
-    let root: ServerRoot = session
-        .get(COMPUTE, &["servers", id.as_ref()])
-        .api_version(version)
-        .fetch()
         .await?;
+    let mut builder = session.get(COMPUTE, &["servers", id.as_ref()]);
+    if let Some(version) = maybe_version {
+        builder.set_api_version(version);
+    }
+    let root: ServerRoot = builder.fetch().await?;
     trace!("Received {:?}", root.server);
     Ok(root.server)
 }
@@ -260,21 +243,14 @@ pub async fn list_flavors_detail<Q: Serialize + Sync + Debug>(
     query: &Q,
 ) -> Result<Vec<Flavor>> {
     trace!("Listing compute flavors with {:?}", query);
-    let version = session
+    let maybe_version = session
         .pick_api_version(COMPUTE, Some(API_VERSION_FLAVOR_EXTRA_SPECS))
-        .await?
-        .ok_or_else(|| {
-            Error::new(
-                ErrorKind::IncompatibleApiVersion,
-                "could not find suitable API version",
-            )
-        })?;
-    let root: FlavorsDetailRoot = session
-        .get(COMPUTE, &["flavors", "detail"])
-        .query(query)
-        .api_version(version)
-        .fetch()
         .await?;
+    let mut builder = session.get(COMPUTE, &["flavors", "detail"]).query(query);
+    if let Some(version) = maybe_version {
+        builder.set_api_version(version);
+    }
+    let root: FlavorsDetailRoot = builder.fetch().await?;
     trace!("Received flavors: {:?}", root.flavors);
     Ok(root.flavors)
 }
@@ -285,24 +261,17 @@ pub async fn list_keypairs<Q: Serialize + Sync + Debug>(
     query: &Q,
 ) -> Result<Vec<KeyPair>> {
     trace!("Listing compute key pairs with {:?}", query);
-    let version = session
+    let maybe_version = session
         .pick_api_version(
             COMPUTE,
             vec![API_VERSION_KEYPAIR_TYPE, API_VERSION_KEYPAIR_PAGINATION],
         )
-        .await?
-        .ok_or_else(|| {
-            Error::new(
-                ErrorKind::IncompatibleApiVersion,
-                "could not find suitable API version",
-            )
-        })?;
-    let root: KeyPairsRoot = session
-        .get(COMPUTE, &["os-keypairs"])
-        .query(query)
-        .api_version(version)
-        .fetch()
         .await?;
+    let mut builder = session.get(COMPUTE, &["os-keypairs"]).query(query);
+    if let Some(version) = maybe_version {
+        builder.set_api_version(version);
+    }
+    let root: KeyPairsRoot = builder.fetch().await?;
     let result = root
         .keypairs
         .into_iter()
@@ -333,21 +302,14 @@ pub async fn list_servers_detail<Q: Serialize + Sync + Debug>(
     query: &Q,
 ) -> Result<Vec<Server>> {
     trace!("Listing compute servers with {:?}", query);
-    let version = session
+    let maybe_version = session
         .pick_api_version(COMPUTE, Some(API_VERSION_SERVER_DESCRIPTION))
-        .await?
-        .ok_or_else(|| {
-            Error::new(
-                ErrorKind::IncompatibleApiVersion,
-                "could not find suitable API version",
-            )
-        })?;
-    let root: ServersDetailRoot = session
-        .get(COMPUTE, &["servers", "detail"])
-        .query(query)
-        .api_version(version)
-        .fetch()
         .await?;
+    let mut builder = session.get(COMPUTE, &["servers", "detail"]).query(query);
+    if let Some(version) = maybe_version {
+        builder.set_api_version(version);
+    }
+    let root: ServersDetailRoot = builder.fetch().await?;
     trace!("Received servers: {:?}", root.servers);
     Ok(root.servers)
 }
