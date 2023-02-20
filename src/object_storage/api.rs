@@ -18,7 +18,7 @@ use futures::io::AsyncRead;
 use futures::stream::Stream;
 use osauth::client::NO_PATH;
 use osauth::services::OBJECT_STORAGE;
-use reqwest::Method;
+use reqwest::{Method, StatusCode};
 
 use super::super::session::Session;
 use super::super::utils::Query;
@@ -36,8 +36,8 @@ where
 {
     let c_id = container.as_ref();
     debug!("Creating container {}", c_id);
-    let result = session.put(OBJECT_STORAGE, &[c_id]).send().await;
-    if result.is_ok() {
+    let result = session.put(OBJECT_STORAGE, &[c_id]).send().await?;
+    if result.status() == StatusCode::CREATED {
         debug!("Successfully created container {}", c_id);
         Ok(true)
     } else {
