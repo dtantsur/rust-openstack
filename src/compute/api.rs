@@ -144,18 +144,14 @@ pub async fn get_flavor_by_id<S: AsRef<str>>(session: &Session, id: S) -> Result
 pub async fn get_flavor_by_name<S: AsRef<str>>(session: &Session, name: S) -> Result<Flavor> {
     trace!("Get compute flavor by name {}", name.as_ref());
     let root: FlavorsRoot = session.get_json(COMPUTE, &["flavors"]).await?;
-    let maybe_item = utils::one(
+    let item = utils::one(
         root.flavors
             .into_iter()
             .filter(|item| item.name == name.as_ref()),
         "Flavor with given name or ID not found",
         "Too many flavors found with given name",
-    );
-
-    match maybe_item {
-        Ok(item) => get_flavor_by_id(session, item.id).await,
-        Err(err) => Err(err),
-    }
+    )?;
+    get_flavor_by_id(session, item.id).await
 }
 
 /// Get a key pair by its name.
@@ -208,18 +204,14 @@ pub async fn get_server_by_name<S: AsRef<str>>(session: &Session, name: S) -> Re
         .query(&[("name", name.as_ref())])
         .fetch()
         .await?;
-    let maybe_item = utils::one(
+    let item = utils::one(
         root.servers
             .into_iter()
             .filter(|item| item.name == name.as_ref()),
         "Server with given name or ID not found",
         "Too many servers found with given name",
-    );
-
-    match maybe_item {
-        Ok(item) => get_server_by_id(session, item.id).await,
-        Err(err) => Err(err),
-    }
+    )?;
+    get_server_by_id(session, item.id).await
 }
 
 /// List flavors.
