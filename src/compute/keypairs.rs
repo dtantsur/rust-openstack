@@ -17,7 +17,7 @@
 use async_trait::async_trait;
 use futures::stream::{Stream, TryStreamExt};
 
-use super::super::common::{IntoVerified, KeyPairRef, Refresh, ResourceIterator, ResourceQuery};
+use super::super::common::{KeyPairRef, Refresh, ResourceIterator, ResourceQuery};
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::super::{Error, ErrorKind, Result};
@@ -250,10 +250,9 @@ impl From<KeyPair> for KeyPairRef {
 }
 
 #[cfg(feature = "compute")]
-#[async_trait]
-impl IntoVerified for KeyPairRef {
+impl KeyPairRef {
     /// Verify this reference and convert to an ID, if possible.
-    async fn into_verified(self, session: &Session) -> Result<KeyPairRef> {
+    pub(crate) async fn into_verified(self, session: &Session) -> Result<KeyPairRef> {
         Ok(if self.verified {
             self
         } else {

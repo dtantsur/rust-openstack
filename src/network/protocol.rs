@@ -21,14 +21,13 @@ use std::marker::PhantomData;
 use std::net;
 use std::ops::Not;
 
-use async_trait::async_trait;
 use chrono::{DateTime, FixedOffset};
 use eui48::MacAddress;
 use osauth::common::empty_as_default;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::super::common::{IntoVerified, NetworkRef, SecurityGroupRef};
+use super::super::common::{NetworkRef, SecurityGroupRef};
 use super::super::Result;
 use crate::session::Session;
 
@@ -498,11 +497,8 @@ impl ExternalGateway {
             external_fixed_ips: Vec::new(),
         }
     }
-}
 
-#[async_trait]
-impl IntoVerified for ExternalGateway {
-    async fn into_verified(self, session: &Session) -> Result<Self> {
+    pub(crate) async fn into_verified(self, session: &Session) -> Result<Self> {
         Ok(ExternalGateway {
             network_id: self.network_id.into_verified(session).await?,
             ..self
@@ -595,9 +591,8 @@ impl Default for Router {
     }
 }
 
-#[async_trait]
-impl IntoVerified for Router {
-    async fn into_verified(self, session: &Session) -> Result<Self> {
+impl Router {
+    pub(crate) async fn into_verified(self, session: &Session) -> Result<Self> {
         Ok(Router {
             external_gateway: match self.external_gateway {
                 Some(gw) => Some(gw.into_verified(session).await?),

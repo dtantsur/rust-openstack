@@ -20,7 +20,7 @@ use async_trait::async_trait;
 use futures::stream::{Stream, TryStreamExt};
 use osauth::common::IdAndName;
 
-use super::super::common::{FlavorRef, IntoVerified, Refresh, ResourceIterator, ResourceQuery};
+use super::super::common::{FlavorRef, Refresh, ResourceIterator, ResourceQuery};
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::super::Result;
@@ -309,10 +309,9 @@ impl From<FlavorSummary> for FlavorRef {
 }
 
 #[cfg(feature = "compute")]
-#[async_trait]
-impl IntoVerified for FlavorRef {
+impl FlavorRef {
     /// Verify this reference and convert to an ID, if possible.
-    async fn into_verified(self, session: &Session) -> Result<FlavorRef> {
+    pub(crate) async fn into_verified(self, session: &Session) -> Result<FlavorRef> {
         Ok(if self.verified {
             self
         } else {

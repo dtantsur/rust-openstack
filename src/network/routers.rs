@@ -19,9 +19,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, FixedOffset};
 use futures::stream::{Stream, TryStreamExt};
 
-use super::super::common::{
-    DeletionWaiter, IntoVerified, Refresh, ResourceIterator, ResourceQuery, RouterRef,
-};
+use super::super::common::{DeletionWaiter, Refresh, ResourceIterator, ResourceQuery, RouterRef};
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::super::{Error, ErrorKind, Result, Sort};
@@ -462,10 +460,10 @@ impl From<Router> for RouterRef {
 }
 
 #[cfg(feature = "network")]
-#[async_trait]
-impl IntoVerified for RouterRef {
+impl RouterRef {
     /// Verify this reference and convert to an ID, if possible.
-    async fn into_verified(self, session: &Session) -> Result<RouterRef> {
+    #[allow(unused)]
+    pub(crate) async fn into_verified(self, session: &Session) -> Result<RouterRef> {
         Ok(if self.verified {
             self
         } else {

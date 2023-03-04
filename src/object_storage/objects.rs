@@ -23,7 +23,7 @@ use futures::{Stream, TryStreamExt};
 use osauth::services::OBJECT_STORAGE;
 use reqwest::Url;
 
-use super::super::common::{ContainerRef, IntoVerified, ObjectRef, Refresh};
+use super::super::common::{ContainerRef, ObjectRef, Refresh};
 use super::super::session::Session;
 use super::super::utils::{try_one, Query};
 use super::super::Result;
@@ -306,4 +306,9 @@ impl From<Object> for ObjectRef {
 }
 
 #[cfg(feature = "object-storage")]
-impl IntoVerified for ObjectRef {}
+impl ObjectRef {
+    #[allow(unused)]
+    pub(crate) async fn into_verified(self, _session: &Session) -> Result<Self> {
+        Ok(self)
+    }
+}
