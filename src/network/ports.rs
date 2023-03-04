@@ -25,7 +25,7 @@ use eui48::MacAddress;
 use futures::stream::{Stream, TryStreamExt};
 
 use super::super::common::{
-    DeletionWaiter, IntoVerified, NetworkRef, PortRef, Refresh, ResourceIterator, ResourceQuery,
+    DeletionWaiter, NetworkRef, PortRef, Refresh, ResourceIterator, ResourceQuery,
     SecurityGroupRef, SubnetRef,
 };
 use super::super::session::Session;
@@ -593,10 +593,9 @@ impl From<Port> for PortRef {
 }
 
 #[cfg(feature = "network")]
-#[async_trait]
-impl IntoVerified for PortRef {
+impl PortRef {
     /// Verify this reference and convert to an ID, if possible.
-    async fn into_verified(self, session: &Session) -> Result<PortRef> {
+    pub(crate) async fn into_verified(self, session: &Session) -> Result<PortRef> {
         Ok(if self.verified {
             self
         } else {

@@ -17,7 +17,7 @@
 use async_trait::async_trait;
 use futures::{pin_mut, Stream, TryStreamExt};
 
-use super::super::common::{ContainerRef, IntoVerified, Refresh};
+use super::super::common::{ContainerRef, Refresh};
 use super::super::session::Session;
 use super::super::utils::{try_one, Query};
 use super::super::{ErrorKind, Result};
@@ -189,4 +189,9 @@ impl From<Container> for ContainerRef {
 }
 
 #[cfg(feature = "object-storage")]
-impl IntoVerified for ContainerRef {}
+impl ContainerRef {
+    #[allow(unused)]
+    pub(crate) async fn into_verified(self, _session: &Session) -> Result<Self> {
+        Ok(self)
+    }
+}

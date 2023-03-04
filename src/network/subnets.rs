@@ -23,7 +23,7 @@ use chrono::{DateTime, FixedOffset};
 use futures::stream::{Stream, TryStreamExt};
 
 use super::super::common::{
-    DeletionWaiter, IntoVerified, NetworkRef, Refresh, ResourceIterator, ResourceQuery, SubnetRef,
+    DeletionWaiter, NetworkRef, Refresh, ResourceIterator, ResourceQuery, SubnetRef,
 };
 use super::super::session::Session;
 use super::super::utils::Query;
@@ -479,10 +479,9 @@ impl From<Subnet> for SubnetRef {
 }
 
 #[cfg(feature = "network")]
-#[async_trait]
-impl IntoVerified for SubnetRef {
+impl SubnetRef {
     /// Verify this reference and convert to an ID, if possible.
-    async fn into_verified(self, session: &Session) -> Result<SubnetRef> {
+    pub(crate) async fn into_verified(self, session: &Session) -> Result<SubnetRef> {
         Ok(if self.verified {
             self
         } else {

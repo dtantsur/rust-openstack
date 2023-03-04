@@ -23,8 +23,8 @@ use chrono::{DateTime, FixedOffset};
 use futures::stream::{Stream, TryStreamExt};
 
 use super::super::common::{
-    DeletionWaiter, IntoVerified, NetworkRef, PortRef, Refresh, ResourceIterator, ResourceQuery,
-    RouterRef, SubnetRef,
+    DeletionWaiter, NetworkRef, PortRef, Refresh, ResourceIterator, ResourceQuery, RouterRef,
+    SubnetRef,
 };
 use super::super::session::Session;
 use super::super::utils::Query;

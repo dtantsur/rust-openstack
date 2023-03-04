@@ -22,7 +22,6 @@ mod waiter;
 pub use osauth::ApiVersion;
 
 pub use self::resourceiterator::{ResourceIterator, ResourceQuery};
-pub(crate) use self::types::IntoVerified;
 pub use self::types::{
     ContainerRef, FlavorRef, ImageRef, KeyPairRef, NetworkRef, ObjectRef, PortRef, ProjectRef,
     Refresh, RouterRef, SecurityGroupRef, SnapshotRef, SubnetRef, UserRef, VolumeRef,

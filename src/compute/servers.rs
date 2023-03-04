@@ -25,8 +25,8 @@ use osauth::common::IdAndName;
 use waiter::{Waiter, WaiterCurrentState};
 
 use super::super::common::{
-    DeletionWaiter, FlavorRef, ImageRef, IntoVerified, KeyPairRef, NetworkRef, PortRef, ProjectRef,
-    Refresh, ResourceIterator, ResourceQuery, UserRef, VolumeRef,
+    DeletionWaiter, FlavorRef, ImageRef, KeyPairRef, NetworkRef, PortRef, ProjectRef, Refresh,
+    ResourceIterator, ResourceQuery, UserRef, VolumeRef,
 };
 #[cfg(feature = "image")]
 use super::super::image::Image;
@@ -666,8 +666,13 @@ impl NewServer {
 
     /// Request creation of the server.
     pub async fn create(self) -> Result<ServerCreationWaiter> {
+        let mut block_devices = Vec::with_capacity(self.block_devices.len());
+        for bd in self.block_devices {
+            block_devices.push(bd.into_verified(&self.session).await?);
+        }
+
         let request = protocol::ServerCreate {
-            block_devices: self.block_devices.into_verified(&self.session).await?,
+            block_devices,
             flavorRef: self.flavor.into_verified(&self.session).await?.into(),
             imageRef: match self.image {
                 Some(img) => Some(img.into_verified(&self.session).await?.into()),

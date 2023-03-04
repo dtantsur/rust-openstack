@@ -18,7 +18,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, FixedOffset};
 use futures::stream::{Stream, TryStreamExt};
 
-use super::super::common::{ImageRef, IntoVerified, Refresh, ResourceIterator, ResourceQuery};
+use super::super::common::{ImageRef, Refresh, ResourceIterator, ResourceQuery};
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::super::{Result, Sort};
@@ -258,10 +258,9 @@ impl From<Image> for ImageRef {
 }
 
 #[cfg(feature = "image")]
-#[async_trait]
-impl IntoVerified for ImageRef {
+impl ImageRef {
     /// Verify this reference and convert to an ID, if possible.
-    async fn into_verified(self, session: &Session) -> Result<ImageRef> {
+    pub(crate) async fn into_verified(self, session: &Session) -> Result<ImageRef> {
         Ok(if self.verified {
             self
         } else {

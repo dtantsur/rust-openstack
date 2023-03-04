@@ -16,7 +16,6 @@
 
 use async_trait::async_trait;
 
-use super::super::session::Session;
 use super::super::Result;
 
 /// Trait representing something that can be refreshed.
@@ -24,18 +23,6 @@ use super::super::Result;
 pub trait Refresh {
     /// Refresh the resource representation.
     async fn refresh(&mut self) -> Result<()>;
-}
-
-/// A type that can be converted into a verified representation.
-#[async_trait]
-pub trait IntoVerified {
-    /// Convert this object into the same object with verification.
-    async fn into_verified(self, _session: &Session) -> Result<Self>
-    where
-        Self: Sized,
-    {
-        Ok(self)
-    }
 }
 
 macro_rules! opaque_resource_type {
@@ -121,7 +108,11 @@ macro_rules! opaque_resource_type {
 
         #[cfg(not(feature = $service))]
         #[allow(dead_code)]
-        impl $crate::common::IntoVerified for $name {}
+        impl $name {
+            pub(crate) async fn into_verified(self, _session: &$crate::session::Session) -> $crate::Result<Self> {
+                Ok(self)
+            }
+        }
     )
 }
 

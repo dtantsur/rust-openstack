@@ -14,8 +14,6 @@
 
 //! Block device mapping for the Compute API.
 
-use async_trait::async_trait;
-
 use super::super::common;
 use super::super::session::Session;
 use super::super::Result;
@@ -64,10 +62,7 @@ impl BlockDeviceSource {
             BlockDeviceSource::Snapshot(snapshot) => snapshot.as_ref(),
         }
     }
-}
 
-#[async_trait]
-impl common::IntoVerified for BlockDeviceSource {
     async fn into_verified(self, session: &Session) -> Result<Self> {
         Ok(match self {
             BlockDeviceSource::Image(inner) => {
@@ -222,11 +217,8 @@ impl BlockDevice {
         }
         count
     }
-}
 
-#[async_trait]
-impl common::IntoVerified for BlockDevice {
-    async fn into_verified(self, session: &Session) -> Result<Self> {
+    pub(crate) async fn into_verified(self, session: &Session) -> Result<Self> {
         Ok(if let Some(source) = self.source {
             BlockDevice {
                 source: Some(source.into_verified(session).await?),
@@ -236,17 +228,6 @@ impl common::IntoVerified for BlockDevice {
             // No source - nothing to verify.
             self
         })
-    }
-}
-
-#[async_trait]
-impl common::IntoVerified for Vec<BlockDevice> {
-    async fn into_verified(self, session: &Session) -> Result<Self> {
-        let mut result = Vec::with_capacity(self.len());
-        for item in self {
-            result.push(item.into_verified(session).await?);
-        }
-        Ok(result)
     }
 }
 
