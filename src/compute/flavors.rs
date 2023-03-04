@@ -187,13 +187,13 @@ impl FlavorQuery {
     /// Convert this query into an stream executing the request.
     ///
     /// This stream yields only `FlavorSummary` objects, containing
-    /// IDs and names. Use `into_stream_detailed` for full `Flavor` objects.
+    /// IDs and names. Use `detailed().into_stream()` for full `Flavor` objects.
     ///
     /// Returns a `TryStream`, which is a stream with each `next`
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_stream(self) -> impl Stream<Item = Result<<FlavorQuery as ResourceQuery>::Item>> {
+    pub fn into_stream(self) -> impl Stream<Item = Result<FlavorSummary>> {
         debug!("Fetching flavors with {:?}", self.query);
         ResourceIterator::new(self).into_stream()
     }
@@ -261,9 +261,7 @@ impl DetailedFlavorQuery {
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_stream(
-        self,
-    ) -> impl Stream<Item = Result<<DetailedFlavorQuery as ResourceQuery>::Item>> {
+    pub fn into_stream(self) -> impl Stream<Item = Result<Flavor>> {
         debug!("Fetching detailed flavors with {:?}", self.inner.query);
         ResourceIterator::new(self).into_stream()
     }

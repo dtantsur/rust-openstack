@@ -95,11 +95,8 @@ patterns:
     - `one` returns one and exactly one object matching the query, failing if
       the query yield nothing or more than one results.
 
-    - `into_iter` consumes the query object, returning a
-      [ResourceIterator](https://docs.rs/openstack/latest/openstack/common/struct.ResourceIterator.html).
-
-    - It should also implement `IntoFallibleIterator` from the
-      [fallible-iterator crate](https://crates.io/crates/fallible-iterator).
+    - `into_stream` consumes the query object, returning a
+      [Stream](https://docs.rs/futures/latest/futures/stream/trait.Stream.html).
 
 * The `new` methods start creating a new resource. Similar to `find` methods,
   they don't do anything immediately, but rather return a builder object that

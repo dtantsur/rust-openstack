@@ -115,7 +115,7 @@ impl KeyPairQuery {
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_stream(self) -> impl Stream<Item = Result<<KeyPairQuery as ResourceQuery>::Item>> {
+    pub fn into_stream(self) -> impl Stream<Item = Result<KeyPair>> {
         debug!("Fetching key pairs with {:?}", self.query);
         ResourceIterator::new(self).into_stream()
     }

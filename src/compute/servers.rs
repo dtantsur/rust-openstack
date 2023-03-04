@@ -494,6 +494,8 @@ impl ServerQuery {
     }
 
     /// Convert this query into a detailed query.
+    ///
+    /// Detailed queries return full `Server` objects instead of just `ServerSummary`.
     #[inline]
     pub fn detailed(self) -> DetailedServerQuery {
         DetailedServerQuery { inner: self }
@@ -502,14 +504,14 @@ impl ServerQuery {
     /// Convert this query into a stream executing the request.
     ///
     /// This stream yields only `ServerSummary` objects, containing
-    /// IDs and names. Use `into_iter_detailed` for full `Server` objects.
+    /// IDs and names. Use `detailed().into_stream()` for full `Server` objects.
     ///
     /// Returns a `TryStream`, which is a stream with each `next`
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
     #[inline]
-    pub fn into_stream(self) -> impl Stream<Item = Result<<ServerQuery as ResourceQuery>::Item>> {
+    pub fn into_stream(self) -> impl Stream<Item = Result<ServerSummary>> {
         debug!("Fetching servers with {:?}", self.query);
         ResourceIterator::new(self).into_stream()
     }
@@ -578,9 +580,7 @@ impl DetailedServerQuery {
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_stream(
-        self,
-    ) -> impl Stream<Item = Result<<DetailedServerQuery as ResourceQuery>::Item>> {
+    pub fn into_stream(self) -> impl Stream<Item = Result<Server>> {
         debug!("Fetching server details with {:?}", self.inner.query);
         ResourceIterator::new(self).into_stream()
     }
