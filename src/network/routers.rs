@@ -13,11 +13,11 @@
 // limitations under the License.
 
 use std::collections::HashSet;
-use std::rc::Rc;
 use std::time::Duration;
 
+use async_trait::async_trait;
 use chrono::{DateTime, FixedOffset};
-use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
+use futures::stream::{Stream, TryStreamExt};
 
 use super::super::common::{
     DeletionWaiter, IntoVerified, Refresh, ResourceIterator, ResourceQuery, RouterRef,
@@ -30,7 +30,7 @@ use super::{api, protocol, Network};
 /// A query to router list.
 #[derive(Clone, Debug)]
 pub struct RouterQuery {
-    session: Rc<Session>,
+    session: Session,
     query: Query,
     can_paginate: bool,
 }
@@ -38,7 +38,7 @@ pub struct RouterQuery {
 /// Structure representing a single router.
 #[derive(Clone, Debug)]
 pub struct Router {
-    session: Rc<Session>,
+    session: Session,
     inner: protocol::Router,
     dirty: HashSet<&'static str>,
 }
@@ -46,13 +46,13 @@ pub struct Router {
 /// A request to create a router
 #[derive(Clone, Debug)]
 pub struct NewRouter {
-    session: Rc<Session>,
+    session: Session,
     inner: protocol::Router,
 }
 
 impl Router {
     /// Create a router object.
-    fn new(session: Rc<Session>, inner: protocol::Router) -> Router {
+    fn new(session: Session, inner: protocol::Router) -> Router {
         Router {
             session,
             inner,
@@ -61,8 +61,8 @@ impl Router {
     }
 
     /// Load a Router object.
-    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id) -> Result<Router> {
-        let inner = api::get_router(&session, id)?;
+    pub(crate) async fn load<Id: AsRef<str>>(session: Session, id: Id) -> Result<Router> {
+        let inner = api::get_router(&session, id).await?;
         Ok(Router::new(session, inner))
     }
 
@@ -124,9 +124,9 @@ impl Router {
     /// Get external network associated with this router.
     ///
     /// Fails if external gateway information is not provided.
-    pub fn external_network(&self) -> Result<Network> {
+    pub async fn external_network(&self) -> Result<Network> {
         if let Some(ref gw) = self.inner.external_gateway {
-            Network::load(self.session.clone(), &gw.network_id)
+            Network::load(self.session.clone(), &gw.network_id).await
         } else {
             Err(Error::new(
                 ErrorKind::ResourceNotFound,
@@ -211,8 +211,8 @@ impl Router {
     }
 
     /// Delete the router.
-    pub fn delete(self) -> Result<DeletionWaiter<Router>> {
-        api::delete_router(&self.session, &self.inner.id)?;
+    pub async fn delete(self) -> Result<DeletionWaiter<Router>> {
+        api::delete_router(&self.session, &self.inner.id).await?;
         Ok(DeletionWaiter::new(
             self,
             Duration::new(60, 0),
@@ -226,10 +226,10 @@ impl Router {
     }
 
     /// Save the changes to the router.
-    pub fn save(&mut self) -> Result<()> {
+    pub async fn save(&mut self) -> Result<()> {
         let mut update = protocol::RouterUpdate::default();
         if let Some(ref gw) = self.inner.external_gateway {
-            update.external_gateway = Some(gw.clone().into_verified(&self.session)?);
+            update.external_gateway = Some(gw.clone().into_verified(&self.session).await?);
         }
         save_fields! {
             self -> update: admin_state_up
@@ -237,52 +237,53 @@ impl Router {
         save_option_fields! {
             self -> update: description distributed ha name routes
         };
-        let inner = api::update_router(&self.session, self.id(), update)?;
+        let inner = api::update_router(&self.session, self.id(), update).await?;
         self.dirty.clear();
         self.inner = inner;
         Ok(())
     }
 
     /// Add an interface to the router.
-    pub fn add_router_interface(
+    pub async fn add_router_interface(
         &mut self,
         subnet_id: Option<&String>,
         port_id: Option<&String>,
     ) -> Result<()> {
-        api::add_router_interface(&self.session, self.id(), subnet_id, port_id)
+        api::add_router_interface(&self.session, self.id(), subnet_id, port_id).await
     }
 
     /// Remove an interface from the router.
-    pub fn remove_router_interface(
+    pub async fn remove_router_interface(
         &mut self,
         subnet_id: Option<&String>,
         port_id: Option<&String>,
     ) -> Result<()> {
-        api::remove_router_interface(&self.session, self.id(), subnet_id, port_id)
+        api::remove_router_interface(&self.session, self.id(), subnet_id, port_id).await
     }
 
     /// Add route to router.
-    pub fn add_extra_routes(&mut self, routes: Vec<protocol::HostRoute>) -> Result<()> {
-        api::add_extra_routes(&self.session, self.id(), routes)
+    pub async fn add_extra_routes(&mut self, routes: Vec<protocol::HostRoute>) -> Result<()> {
+        api::add_extra_routes(&self.session, self.id(), routes).await
     }
 
     /// Remove route from router.
-    pub fn remove_extra_routes(&mut self, routes: Vec<protocol::HostRoute>) -> Result<()> {
-        api::remove_extra_routes(&self.session, self.id(), routes)
+    pub async fn remove_extra_routes(&mut self, routes: Vec<protocol::HostRoute>) -> Result<()> {
+        api::remove_extra_routes(&self.session, self.id(), routes).await
     }
 }
 
+#[async_trait]
 impl Refresh for Router {
     /// Refresh the router.
-    fn refresh(&mut self) -> Result<()> {
-        self.inner = api::get_router_by_id(&self.session, &self.inner.id)?;
+    async fn refresh(&mut self) -> Result<()> {
+        self.inner = api::get_router_by_id(&self.session, &self.inner.id).await?;
         self.dirty.clear();
         Ok(())
     }
 }
 
 impl RouterQuery {
-    pub(crate) fn new(session: Rc<Session>) -> RouterQuery {
+    pub(crate) fn new(session: Session) -> RouterQuery {
         RouterQuery {
             session,
             query: Query::new(),
@@ -322,29 +323,29 @@ impl RouterQuery {
         self
     }
 
-    /// Convert this query into an iterator executing the request.
+    /// Convert this query into an stream executing the request.
     ///
-    /// Returns a `FallibleIterator`, which is an iterator with each `next`
+    /// Returns a `TryStream`, which is a stream with each `next`
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_iter(self) -> ResourceIterator<RouterQuery> {
+    pub fn into_stream(self) -> impl Stream<Item = Result<<RouterQuery as ResourceQuery>::Item>> {
         debug!("Fetching routers with {:?}", self.query);
-        ResourceIterator::new(self)
+        ResourceIterator::new(self).into_stream()
     }
 
     /// Execute this request and return all results.
     ///
     /// A convenience shortcut for `self.into_iter().collect()`.
-    pub fn all(self) -> Result<Vec<Router>> {
-        self.into_iter().collect()
+    pub async fn all(self) -> Result<Vec<Router>> {
+        self.into_stream().try_collect().await
     }
 
     /// Return one and exactly one result.
     ///
     /// Fails with `ResourceNotFound` if the query produces no results and
     /// with `TooManyItems` if the query produces more than one result.
-    pub fn one(mut self) -> Result<Router> {
+    pub async fn one(mut self) -> Result<Router> {
         debug!("Fetching one router with {:?}", self.query);
         if self.can_paginate {
             // We need only one result. We fetch maximum two to be able
@@ -352,16 +353,17 @@ impl RouterQuery {
             self.query.push("limit", 2);
         }
 
-        self.into_iter().one()
+        ResourceIterator::new(self).one().await
     }
 }
 
+#[async_trait]
 impl ResourceQuery for RouterQuery {
     type Item = Router;
 
     const DEFAULT_LIMIT: usize = 50;
 
-    fn can_paginate(&self) -> Result<bool> {
+    async fn can_paginate(&self) -> Result<bool> {
         Ok(self.can_paginate)
     }
 
@@ -369,9 +371,14 @@ impl ResourceQuery for RouterQuery {
         resource.id().clone()
     }
 
-    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
+    async fn fetch_chunk(
+        &self,
+        limit: Option<usize>,
+        marker: Option<String>,
+    ) -> Result<Vec<Self::Item>> {
         let query = self.query.with_marker_and_limit(limit, marker);
-        Ok(api::list_routers(&self.session, &query)?
+        Ok(api::list_routers(&self.session, &query)
+            .await?
             .into_iter()
             .map(|item| Router::new(self.session.clone(), item))
             .collect())
@@ -380,7 +387,7 @@ impl ResourceQuery for RouterQuery {
 
 impl NewRouter {
     /// Start creating a router.
-    pub(crate) fn new(session: Rc<Session>) -> NewRouter {
+    pub(crate) fn new(session: Session) -> NewRouter {
         NewRouter {
             session,
             inner: protocol::Router::default(),
@@ -388,8 +395,12 @@ impl NewRouter {
     }
 
     /// Request creation of a router.
-    pub fn create(self) -> Result<Router> {
-        let inner = api::create_router(&self.session, self.inner.into_verified(&self.session)?)?;
+    pub async fn create(self) -> Result<Router> {
+        let inner = api::create_router(
+            &self.session,
+            self.inner.into_verified(&self.session).await?,
+        )
+        .await?;
         Ok(Router::new(self.session, inner))
     }
 
@@ -444,18 +455,6 @@ impl NewRouter {
     }
 }
 
-impl IntoFallibleIterator for RouterQuery {
-    type Item = Router;
-
-    type Error = Error;
-
-    type IntoFallibleIter = ResourceIterator<RouterQuery>;
-
-    fn into_fallible_iter(self) -> Self::IntoFallibleIter {
-        self.into_iter()
-    }
-}
-
 impl From<Router> for RouterRef {
     fn from(value: Router) -> RouterRef {
         RouterRef::new_verified(value.inner.id)
@@ -463,13 +462,14 @@ impl From<Router> for RouterRef {
 }
 
 #[cfg(feature = "network")]
+#[async_trait]
 impl IntoVerified for RouterRef {
     /// Verify this reference and convert to an ID, if possible.
-    fn into_verified(self, session: &Session) -> Result<RouterRef> {
+    async fn into_verified(self, session: &Session) -> Result<RouterRef> {
         Ok(if self.verified {
             self
         } else {
-            RouterRef::new_verified(api::get_router(session, &self.value)?.id)
+            RouterRef::new_verified(api::get_router(session, &self.value).await?.id)
         })
     }
 }

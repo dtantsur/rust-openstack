@@ -12,20 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-extern crate env_logger;
-extern crate openstack;
-
 use std::env;
 
 #[cfg(feature = "compute")]
-fn main() {
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
     env_logger::init();
 
     let os = openstack::Cloud::from_env()
+        .await
         .expect("Failed to create an identity provider from the environment");
 
     let id = env::args().nth(1).expect("Provide a server ID");
-    let server = os.get_server(id).expect("Cannot get a server");
+    let server = os.get_server(id).await.expect("Cannot get a server");
 
     println!(
         "ID = {}, Name = {}, Status = {:?}, Power = {:?}",

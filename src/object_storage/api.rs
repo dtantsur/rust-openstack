@@ -14,41 +14,40 @@
 
 //! Foundation bits exposing the object storage API.
 
-use std::io;
-
+use futures::io::AsyncRead;
 use futures::stream::Stream;
-use osauth::request::NO_PATH;
+use osauth::client::NO_PATH;
 use osauth::services::OBJECT_STORAGE;
 use reqwest::{Method, StatusCode};
 
 use super::super::session::Session;
-use super::super::sync::{SyncBody, SyncStream, SyncStreamItem};
 use super::super::utils::Query;
 use super::super::Result;
 use super::objects::ObjectHeaders;
 use super::protocol::*;
+use super::utils::{async_read_to_body, body_to_async_read};
 
 /// Create a new container.
 ///
 /// Returns `true` if the container was created, `false` if it existed.
-pub fn create_container<C>(session: &Session, container: C) -> Result<bool>
+pub async fn create_container<C>(session: &Session, container: C) -> Result<bool>
 where
     C: AsRef<str>,
 {
     let c_id = container.as_ref();
     debug!("Creating container {}", c_id);
-    let resp = session.put_empty(OBJECT_STORAGE, &[c_id], None)?;
-    let result = resp.status() == StatusCode::CREATED;
-    if result {
+    let result = session.put(OBJECT_STORAGE, &[c_id]).send().await?;
+    if result.status() == StatusCode::CREATED {
         debug!("Successfully created container {}", c_id);
+        Ok(true)
     } else {
         debug!("Container {} already exists", c_id);
+        Ok(false)
     }
-    Ok(result)
 }
 
 /// Create a new object.
-pub fn create_object<C, O, R>(
+pub async fn create_object<C, O, R>(
     session: &Session,
     container: C,
     object: O,
@@ -58,12 +57,12 @@ pub fn create_object<C, O, R>(
 where
     C: AsRef<str>,
     O: AsRef<str>,
-    R: io::Read + Sync + Send + 'static,
+    R: AsyncRead + Send + Sync + 'static,
 {
     let c_id = container.as_ref();
     let o_id = object.as_ref();
     debug!("Creating object {} in container {}", o_id, c_id);
-    let mut req = session.request(OBJECT_STORAGE, Method::PUT, &[&c_id, &o_id], None)?;
+    let mut req = session.put(OBJECT_STORAGE, &[c_id, o_id]);
 
     if let Some(delete_after) = headers.delete_after {
         req = req.header("X-Delete-After", delete_after);
@@ -77,26 +76,26 @@ where
         req = req.header(&format!("X-Object-Meta-{}", key), value);
     }
 
-    let _ = session.send_checked(req.body(SyncBody::new(body)))?;
+    let _ = req.body(async_read_to_body(body)).send().await?;
     debug!("Successfully created object {} in container {}", o_id, c_id);
     // We need to retrieve the size, issue HEAD.
-    get_object(session, c_id, o_id)
+    get_object(session, c_id, o_id).await
 }
 
 /// Delete an empty container.
-pub fn delete_container<C>(session: &Session, container: C) -> Result<()>
+pub async fn delete_container<C>(session: &Session, container: C) -> Result<()>
 where
     C: AsRef<str>,
 {
     let c_id = container.as_ref();
     debug!("Deleting container {}", c_id);
-    let _ = session.delete(OBJECT_STORAGE, &[c_id], None)?;
+    let _ = session.delete(OBJECT_STORAGE, &[c_id]).send().await?;
     debug!("Successfully deleted container {}", c_id);
     Ok(())
 }
 
 /// Delete an object.
-pub fn delete_object<C, O>(session: &Session, container: C, object: O) -> Result<()>
+pub async fn delete_object<C, O>(session: &Session, container: C, object: O) -> Result<()>
 where
     C: AsRef<str>,
     O: AsRef<str>,
@@ -104,27 +103,29 @@ where
     let c_id = container.as_ref();
     let o_id = object.as_ref();
     debug!("Deleting object {} in container {}", o_id, c_id);
-    let _ = session.delete(OBJECT_STORAGE, &[c_id, o_id], None)?;
+    let _ = session.delete(OBJECT_STORAGE, &[c_id, o_id]).send().await?;
     debug!("Successfully deleted object {} in container {}", o_id, c_id);
     Ok(())
 }
 
 /// Get container metadata.
-pub fn get_container<C>(session: &Session, container: C) -> Result<Container>
+pub async fn get_container<C>(session: &Session, container: C) -> Result<Container>
 where
     C: AsRef<str>,
 {
     let c_id = container.as_ref();
     trace!("Requesting container {}", c_id);
-    let resp =
-        session.send_checked(session.request(OBJECT_STORAGE, Method::HEAD, &[c_id], None)?)?;
+    let resp = session
+        .request(OBJECT_STORAGE, Method::HEAD, &[c_id])
+        .send()
+        .await?;
     let result = Container::from_headers(c_id, resp.headers())?;
     trace!("Received {:?}", result);
     Ok(result)
 }
 
 /// Get object metadata.
-pub fn get_object<C, O>(session: &Session, container: C, object: O) -> Result<Object>
+pub async fn get_object<C, O>(session: &Session, container: C, object: O) -> Result<Object>
 where
     C: AsRef<str>,
     O: AsRef<str>,
@@ -132,23 +133,21 @@ where
     let c_id = container.as_ref();
     let o_id = object.as_ref();
     trace!("Requesting object {} from container {}", o_id, c_id);
-    let resp = session.send_checked(session.request(
-        OBJECT_STORAGE,
-        Method::HEAD,
-        &[c_id, o_id],
-        None,
-    )?)?;
+    let resp = session
+        .request(OBJECT_STORAGE, Method::HEAD, &[c_id, o_id])
+        .send()
+        .await?;
     let result = Object::from_headers(o_id, resp.headers())?;
     trace!("Received {:?}", result);
     Ok(result)
 }
 
 /// Download the requested object.
-pub fn download_object<C, O>(
+pub async fn download_object<C, O>(
     session: &Session,
     container: C,
     object: O,
-) -> Result<SyncStream<impl Stream<Item = SyncStreamItem>>>
+) -> Result<impl AsyncRead + Send + 'static>
 where
     C: AsRef<str>,
     O: AsRef<str>,
@@ -156,27 +155,43 @@ where
     let c_id = container.as_ref();
     let o_id = object.as_ref();
     trace!("Downloading object {} from container {}", o_id, c_id);
-    Ok(session.download(session.get(OBJECT_STORAGE, &[c_id, o_id], None)?))
+    let resp = session.get(OBJECT_STORAGE, &[c_id, o_id]).send().await?;
+    Ok(body_to_async_read(resp))
 }
 
 /// List containers for the current account.
-pub fn list_containers(session: &Session, mut query: Query) -> Result<Vec<Container>> {
+pub async fn list_containers(
+    session: &Session,
+    mut query: Query,
+    limit: Option<usize>,
+    marker: Option<String>,
+) -> Result<impl Stream<Item = Result<Container>>> {
     query.push_str("format", "json");
     trace!("Listing containers with {:?}", query);
-    let root: Vec<Container> = session.get_json_query(OBJECT_STORAGE, NO_PATH, query, None)?;
-    trace!("Received containers: {:?}", root);
-    Ok(root)
+    Ok(session
+        .get(OBJECT_STORAGE, NO_PATH)
+        .query(&query)
+        .fetch_paginated(limit, marker)
+        .await)
 }
 
 /// List objects in a given container.
-pub fn list_objects<C>(session: &Session, container: C, mut query: Query) -> Result<Vec<Object>>
+pub async fn list_objects<C>(
+    session: &Session,
+    container: C,
+    mut query: Query,
+    limit: Option<usize>,
+    marker: Option<String>,
+) -> Result<impl Stream<Item = Result<Object>>>
 where
-    C: AsRef<str>,
+    C: AsRef<str> + 'static,
 {
     query.push_str("format", "json");
     let id = container.as_ref();
     trace!("Listing objects in container {} with {:?}", id, query);
-    let root: Vec<Object> = session.get_json_query(OBJECT_STORAGE, &[id], query, None)?;
-    trace!("Received objects: {:?}", root);
-    Ok(root)
+    Ok(session
+        .get(OBJECT_STORAGE, &[id])
+        .query(&query)
+        .fetch_paginated(limit, marker)
+        .await)
 }

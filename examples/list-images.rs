@@ -12,25 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-extern crate env_logger;
-extern crate fallible_iterator;
-extern crate openstack;
-
-use fallible_iterator::FallibleIterator;
+use futures::pin_mut;
+use futures::stream::{StreamExt, TryStreamExt};
 
 #[cfg(feature = "image")]
-fn main() {
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
     env_logger::init();
 
     let os = openstack::Cloud::from_env()
+        .await
         .expect("Failed to create an identity provider from the environment");
 
     let images: Vec<openstack::image::Image> = os
         .find_images()
         .sort_by(openstack::Sort::Asc(openstack::image::ImageSortKey::Id))
-        .into_iter()
+        .into_stream()
         .take(10)
-        .collect()
+        .try_collect()
+        .await
         .expect("Cannot list images");
     println!("First 10 images:");
     for img in &images {
@@ -43,13 +43,14 @@ fn main() {
         );
     }
 
-    let mut public = os
+    let public = os
         .find_images()
         .sort_by(openstack::Sort::Asc(openstack::image::ImageSortKey::Name))
         .with_visibility(openstack::image::ImageVisibility::Public)
-        .into_iter();
+        .into_stream();
     println!("All public images:");
-    while let Some(img) = public.next().unwrap() {
+    pin_mut!(public);
+    while let Some(img) = public.next().await.transpose().unwrap() {
         println!(
             "ID = {}, Name = {}, Status = {}, Visibility = {}",
             img.id(),

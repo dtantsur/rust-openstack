@@ -14,6 +14,8 @@
 
 //! Block device mapping for the Compute API.
 
+use async_trait::async_trait;
+
 use super::super::common;
 use super::super::session::Session;
 use super::super::Result;
@@ -64,17 +66,18 @@ impl BlockDeviceSource {
     }
 }
 
+#[async_trait]
 impl common::IntoVerified for BlockDeviceSource {
-    fn into_verified(self, session: &Session) -> Result<Self> {
+    async fn into_verified(self, session: &Session) -> Result<Self> {
         Ok(match self {
             BlockDeviceSource::Image(inner) => {
-                BlockDeviceSource::Image(inner.into_verified(session)?)
+                BlockDeviceSource::Image(inner.into_verified(session).await?)
             }
             BlockDeviceSource::Volume(inner) => {
-                BlockDeviceSource::Volume(inner.into_verified(session)?)
+                BlockDeviceSource::Volume(inner.into_verified(session).await?)
             }
             BlockDeviceSource::Snapshot(inner) => {
-                BlockDeviceSource::Snapshot(inner.into_verified(session)?)
+                BlockDeviceSource::Snapshot(inner.into_verified(session).await?)
             }
         })
     }
@@ -221,11 +224,12 @@ impl BlockDevice {
     }
 }
 
+#[async_trait]
 impl common::IntoVerified for BlockDevice {
-    fn into_verified(self, session: &Session) -> Result<Self> {
+    async fn into_verified(self, session: &Session) -> Result<Self> {
         Ok(if let Some(source) = self.source {
             BlockDevice {
-                source: Some(source.into_verified(session)?),
+                source: Some(source.into_verified(session).await?),
                 ..self
             }
         } else {
@@ -235,11 +239,12 @@ impl common::IntoVerified for BlockDevice {
     }
 }
 
+#[async_trait]
 impl common::IntoVerified for Vec<BlockDevice> {
-    fn into_verified(self, session: &Session) -> Result<Self> {
+    async fn into_verified(self, session: &Session) -> Result<Self> {
         let mut result = Vec::with_capacity(self.len());
         for item in self {
-            result.push(item.into_verified(session)?);
+            result.push(item.into_verified(session).await?);
         }
         Ok(result)
     }

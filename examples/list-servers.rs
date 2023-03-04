@@ -12,17 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-extern crate env_logger;
-extern crate fallible_iterator;
-extern crate openstack;
-
-use fallible_iterator::FallibleIterator;
+use futures::stream::{StreamExt, TryStreamExt};
 
 #[cfg(feature = "compute")]
-fn main() {
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
     env_logger::init();
 
     let os = openstack::Cloud::from_env()
+        .await
         .expect("Failed to create an identity provider from the environment");
     let sorting = openstack::compute::ServerSortKey::AccessIpv4;
 
@@ -30,9 +28,10 @@ fn main() {
         .find_servers()
         .sort_by(openstack::Sort::Asc(sorting))
         .detailed()
-        .into_iter()
+        .into_stream()
         .take(10)
-        .collect()
+        .try_collect()
+        .await
         .expect("Cannot list servers");
     println!("First 10 servers:");
     for s in &servers {
@@ -44,6 +43,7 @@ fn main() {
         .sort_by(openstack::Sort::Asc(sorting))
         .with_status(openstack::compute::ServerStatus::Active)
         .all()
+        .await
         .expect("Cannot list servers");
     println!("All active servers:");
     for s in &active {

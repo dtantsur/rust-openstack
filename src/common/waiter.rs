@@ -17,6 +17,7 @@
 use std::fmt::Debug;
 use std::time::Duration;
 
+use async_trait::async_trait;
 use waiter::{Waiter, WaiterCurrentState};
 
 use super::super::{Error, ErrorKind, Result};
@@ -47,7 +48,8 @@ impl<T> WaiterCurrentState<T> for DeletionWaiter<T> {
     }
 }
 
-impl<T: Refresh + Debug> Waiter<(), Error> for DeletionWaiter<T> {
+#[async_trait]
+impl<T: Refresh + Debug + Send> Waiter<(), Error> for DeletionWaiter<T> {
     fn default_wait_timeout(&self) -> Option<Duration> {
         Some(self.wait_timeout)
     }
@@ -66,8 +68,9 @@ impl<T: Refresh + Debug> Waiter<(), Error> for DeletionWaiter<T> {
         )
     }
 
-    fn poll(&mut self) -> Result<Option<()>> {
-        match self.inner.refresh() {
+    async fn poll(&mut self) -> Result<Option<()>> {
+        let result = self.inner.refresh().await;
+        match result {
             Ok(..) => {
                 trace!("Still waiting for resource {:?} to be deleted", self.inner);
                 Ok(None)

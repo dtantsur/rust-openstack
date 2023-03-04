@@ -21,6 +21,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::hash::Hash;
 
+use futures::{pin_mut, Stream, TryStreamExt};
 use serde::{Serialize, Serializer};
 
 use super::{Error, ErrorKind, Result};
@@ -184,29 +185,6 @@ impl<K: Hash + Eq, V: Clone> MapCache<K, V> {
     }
 }
 
-/// Extensions for Result type.
-pub trait ResultExt<T> {
-    /// Process result if the error was ResourceNotFound.
-    fn if_not_found_then<F>(self, f: F) -> Result<T>
-    where
-        F: FnOnce() -> Result<T>;
-}
-
-impl<T> ResultExt<T> for Result<T> {
-    fn if_not_found_then<F>(self, f: F) -> Result<T>
-    where
-        F: FnOnce() -> Result<T>,
-    {
-        self.or_else(|err| {
-            if err.kind() == ErrorKind::ResourceNotFound {
-                f()
-            } else {
-                Err(err)
-            }
-        })
-    }
-}
-
 /// Get one and only one item from an iterator.
 pub fn one<T, I, S>(collection: I, not_found_msg: S, too_many_msg: S) -> Result<T>
 where
@@ -230,6 +208,29 @@ pub fn endpoint_not_found<D: fmt::Display>(service_type: D) -> Error {
         ErrorKind::EndpointNotFound,
         format!("Endpoint for service {} was not found", service_type),
     )
+}
+
+pub async fn try_one<T, S>(stream: S) -> Result<T>
+where
+    S: Stream<Item = Result<T>>,
+{
+    pin_mut!(stream);
+    match stream.try_next().await? {
+        Some(result) => {
+            if stream.try_next().await?.is_some() {
+                Err(Error::new(
+                    ErrorKind::TooManyItems,
+                    "Query returned more than one result",
+                ))
+            } else {
+                Ok(result)
+            }
+        }
+        None => Err(Error::new(
+            ErrorKind::ResourceNotFound,
+            "Query returned no results",
+        )),
+    }
 }
 
 pub mod url {

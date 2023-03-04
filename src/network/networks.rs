@@ -15,24 +15,24 @@
 //! Network management via Network API.
 
 use std::collections::HashSet;
-use std::rc::Rc;
 use std::time::Duration;
 
+use async_trait::async_trait;
 use chrono::{DateTime, FixedOffset};
-use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
+use futures::stream::{Stream, TryStreamExt};
 
 use super::super::common::{
     DeletionWaiter, IntoVerified, NetworkRef, Refresh, ResourceIterator, ResourceQuery,
 };
 use super::super::session::Session;
 use super::super::utils::Query;
-use super::super::{Error, Result, Sort};
+use super::super::{Result, Sort};
 use super::{api, protocol};
 
 /// A query to network list.
 #[derive(Clone, Debug)]
 pub struct NetworkQuery {
-    session: Rc<Session>,
+    session: Session,
     query: Query,
     can_paginate: bool,
 }
@@ -40,7 +40,7 @@ pub struct NetworkQuery {
 /// Structure representing a single network.
 #[derive(Clone, Debug)]
 pub struct Network {
-    session: Rc<Session>,
+    session: Session,
     inner: protocol::Network,
     dirty: HashSet<&'static str>,
 }
@@ -48,13 +48,13 @@ pub struct Network {
 /// A request to create a network
 #[derive(Clone, Debug)]
 pub struct NewNetwork {
-    session: Rc<Session>,
+    session: Session,
     inner: protocol::Network,
 }
 
 impl Network {
     /// Create a network object.
-    fn new(session: Rc<Session>, inner: protocol::Network) -> Network {
+    fn new(session: Session, inner: protocol::Network) -> Network {
         Network {
             session,
             inner,
@@ -63,8 +63,8 @@ impl Network {
     }
 
     /// Load a Network object.
-    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id) -> Result<Network> {
-        let inner = api::get_network(&session, id)?;
+    pub(crate) async fn load<Id: AsRef<str>>(session: Session, id: Id) -> Result<Network> {
+        let inner = api::get_network(&session, id).await?;
         Ok(Network::new(session, inner))
     }
 
@@ -195,8 +195,8 @@ impl Network {
     }
 
     /// Delete the network.
-    pub fn delete(self) -> Result<DeletionWaiter<Network>> {
-        api::delete_network(&self.session, &self.inner.id)?;
+    pub async fn delete(self) -> Result<DeletionWaiter<Network>> {
+        api::delete_network(&self.session, &self.inner.id).await?;
         Ok(DeletionWaiter::new(
             self,
             Duration::new(60, 0),
@@ -210,7 +210,7 @@ impl Network {
     }
 
     /// Save the changes to the network.
-    pub fn save(&mut self) -> Result<()> {
+    pub async fn save(&mut self) -> Result<()> {
         let mut update = protocol::NetworkUpdate::default();
         save_fields! {
             self -> update: admin_state_up shared
@@ -219,24 +219,25 @@ impl Network {
             self -> update: description external dns_domain is_default mtu name
                 port_security_enabled
         };
-        let inner = api::update_network(&self.session, self.id(), update)?;
+        let inner = api::update_network(&self.session, self.id(), update).await?;
         self.dirty.clear();
         self.inner = inner;
         Ok(())
     }
 }
 
+#[async_trait]
 impl Refresh for Network {
     /// Refresh the network.
-    fn refresh(&mut self) -> Result<()> {
-        self.inner = api::get_network_by_id(&self.session, &self.inner.id)?;
+    async fn refresh(&mut self) -> Result<()> {
+        self.inner = api::get_network_by_id(&self.session, &self.inner.id).await?;
         self.dirty.clear();
         Ok(())
     }
 }
 
 impl NetworkQuery {
-    pub(crate) fn new(session: Rc<Session>) -> NetworkQuery {
+    pub(crate) fn new(session: Session) -> NetworkQuery {
         NetworkQuery {
             session,
             query: Query::new(),
@@ -276,29 +277,29 @@ impl NetworkQuery {
         self
     }
 
-    /// Convert this query into an iterator executing the request.
+    /// Convert this query into a stream executing the request.
     ///
-    /// Returns a `FallibleIterator`, which is an iterator with each `next`
+    /// Returns a `TryStream`, which is a stream with each `next`
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_iter(self) -> ResourceIterator<NetworkQuery> {
+    pub fn into_stream(self) -> impl Stream<Item = Result<<NetworkQuery as ResourceQuery>::Item>> {
         debug!("Fetching networks with {:?}", self.query);
-        ResourceIterator::new(self)
+        ResourceIterator::new(self).into_stream()
     }
 
     /// Execute this request and return all results.
     ///
-    /// A convenience shortcut for `self.into_iter().collect()`.
-    pub fn all(self) -> Result<Vec<Network>> {
-        self.into_iter().collect()
+    /// A convenience shortcut for `self.into_stream().try_collect().await`.
+    pub async fn all(self) -> Result<Vec<Network>> {
+        self.into_stream().try_collect().await
     }
 
     /// Return one and exactly one result.
     ///
     /// Fails with `ResourceNotFound` if the query produces no results and
     /// with `TooManyItems` if the query produces more than one result.
-    pub fn one(mut self) -> Result<Network> {
+    pub async fn one(mut self) -> Result<Network> {
         debug!("Fetching one network with {:?}", self.query);
         if self.can_paginate {
             // We need only one result. We fetch maximum two to be able
@@ -306,16 +307,17 @@ impl NetworkQuery {
             self.query.push("limit", 2);
         }
 
-        self.into_iter().one()
+        ResourceIterator::new(self).one().await
     }
 }
 
+#[async_trait]
 impl ResourceQuery for NetworkQuery {
     type Item = Network;
 
     const DEFAULT_LIMIT: usize = 50;
 
-    fn can_paginate(&self) -> Result<bool> {
+    async fn can_paginate(&self) -> Result<bool> {
         Ok(self.can_paginate)
     }
 
@@ -323,9 +325,14 @@ impl ResourceQuery for NetworkQuery {
         resource.id().clone()
     }
 
-    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
+    async fn fetch_chunk(
+        &self,
+        limit: Option<usize>,
+        marker: Option<String>,
+    ) -> Result<Vec<Self::Item>> {
         let query = self.query.with_marker_and_limit(limit, marker);
-        Ok(api::list_networks(&self.session, &query)?
+        Ok(api::list_networks(&self.session, &query)
+            .await?
             .into_iter()
             .map(|item| Network::new(self.session.clone(), item))
             .collect())
@@ -334,7 +341,7 @@ impl ResourceQuery for NetworkQuery {
 
 impl NewNetwork {
     /// Start creating a network.
-    pub(crate) fn new(session: Rc<Session>) -> NewNetwork {
+    pub(crate) fn new(session: Session) -> NewNetwork {
         NewNetwork {
             session,
             inner: protocol::Network::default(),
@@ -342,8 +349,8 @@ impl NewNetwork {
     }
 
     /// Request creation of a network.
-    pub fn create(self) -> Result<Network> {
-        let inner = api::create_network(&self.session, self.inner)?;
+    pub async fn create(self) -> Result<Network> {
+        let inner = api::create_network(&self.session, self.inner).await?;
         Ok(Network::new(self.session, inner))
     }
 
@@ -401,18 +408,6 @@ impl NewNetwork {
     }
 }
 
-impl IntoFallibleIterator for NetworkQuery {
-    type Item = Network;
-
-    type Error = Error;
-
-    type IntoFallibleIter = ResourceIterator<NetworkQuery>;
-
-    fn into_fallible_iter(self) -> Self::IntoFallibleIter {
-        self.into_iter()
-    }
-}
-
 impl From<Network> for NetworkRef {
     fn from(value: Network) -> NetworkRef {
         NetworkRef::new_verified(value.inner.id)
@@ -420,13 +415,14 @@ impl From<Network> for NetworkRef {
 }
 
 #[cfg(feature = "network")]
+#[async_trait]
 impl IntoVerified for NetworkRef {
     /// Verify this reference and convert to an ID, if possible.
-    fn into_verified(self, session: &Session) -> Result<NetworkRef> {
+    async fn into_verified(self, session: &Session) -> Result<NetworkRef> {
         Ok(if self.verified {
             self
         } else {
-            NetworkRef::new_verified(api::get_network(session, &self.value)?.id)
+            NetworkRef::new_verified(api::get_network(session, &self.value).await?.id)
         })
     }
 }

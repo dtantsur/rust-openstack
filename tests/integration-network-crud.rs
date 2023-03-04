@@ -12,41 +12,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-extern crate env_logger;
-extern crate fallible_iterator;
-extern crate ipnet;
-extern crate openstack;
-extern crate waiter;
-
 use std::env;
+use std::future;
 use std::net;
 use std::sync::Once;
 
-use fallible_iterator::FallibleIterator;
+use futures::TryStreamExt;
 use waiter::Waiter;
 
 use openstack::Refresh;
 
 static INIT: Once = Once::new();
 
-fn set_up() -> openstack::Cloud {
+async fn set_up() -> openstack::Cloud {
     INIT.call_once(|| {
         env_logger::init();
     });
 
     openstack::Cloud::from_env()
+        .await
         .expect("Failed to create an identity provider from the environment")
 }
 
-#[test]
-fn test_port_create_update_delete() {
-    let os = set_up();
+#[tokio::test]
+async fn test_port_create_update_delete() {
+    let os = set_up().await;
     let network_id = env::var("RUST_OPENSTACK_NETWORK").expect("Missing RUST_OPENSTACK_NETWORK");
 
     let mut port = os
         .new_port(network_id.clone())
         .with_name("rust-openstack-integration")
         .create()
+        .await
         .expect("Could not create port");
     assert_eq!(port.name().as_ref().unwrap(), "rust-openstack-integration");
     assert!(port.device_id().is_none());
@@ -65,7 +62,7 @@ fn test_port_create_update_delete() {
         ));
     assert!(port.is_dirty());
 
-    port.save().expect("Cannot update port");
+    port.save().await.expect("Cannot update port");
     assert_eq!(
         port.name().as_ref().unwrap(),
         "rust-openstack-integration-2"
@@ -73,7 +70,7 @@ fn test_port_create_update_delete() {
     assert_eq!(1, port.extra_dhcp_opts().len());
     assert!(!port.is_dirty());
 
-    port.refresh().expect("Cannot refresh port");
+    port.refresh().await.expect("Cannot refresh port");
     assert_eq!(
         port.name().as_ref().unwrap(),
         "rust-openstack-integration-2"
@@ -81,7 +78,7 @@ fn test_port_create_update_delete() {
     assert!(!port.is_dirty());
 
     port.set_name("rust-openstack-integration-3");
-    port.refresh().expect("Cannot refresh port");
+    port.refresh().await.expect("Cannot refresh port");
     assert_eq!(
         port.name().as_ref().unwrap(),
         "rust-openstack-integration-2"
@@ -93,6 +90,7 @@ fn test_port_create_update_delete() {
         .with_network(network_id)
         .with_name("rust-openstack-integration-2")
         .one()
+        .await
         .expect("Cannot find port by network");
     assert_eq!(
         port_found.name().as_ref().unwrap(),
@@ -101,25 +99,33 @@ fn test_port_create_update_delete() {
     assert!(!port_found.is_dirty());
 
     port.delete()
+        .await
         .expect("Cannot request port deletion")
         .wait()
+        .await
         .expect("Port was not deleted");
 
     os.get_port("rust-openstack-integration-2")
+        .await
         .err()
         .expect("Port is still present");
 
     port_found
         .refresh()
+        .await
         .err()
         .expect("Refresh succeeds on deleted port");
 }
 
-#[test]
-fn test_network_create_delete_simple() {
-    let os = set_up();
+#[tokio::test]
+async fn test_network_create_delete_simple() {
+    let os = set_up().await;
 
-    let network = os.new_network().create().expect("Could not create network");
+    let network = os
+        .new_network()
+        .create()
+        .await
+        .expect("Could not create network");
     assert!(network.admin_state_up());
     assert!(network.dns_domain().is_none());
     assert_eq!(network.external(), Some(false));
@@ -133,6 +139,7 @@ fn test_network_create_delete_simple() {
     let mut subnet = os
         .new_subnet(network.clone(), cidr)
         .create()
+        .await
         .expect("Could not create subnet");
     assert_eq!(subnet.cidr(), cidr);
     assert!(subnet.dhcp_enabled());
@@ -140,32 +147,41 @@ fn test_network_create_delete_simple() {
     assert_eq!(subnet.ip_version(), openstack::network::IpVersion::V4);
     assert!(subnet.name().is_none());
 
-    subnet.refresh().expect("Cannot refresh subnet");
+    subnet.refresh().await.expect("Cannot refresh subnet");
 
     subnet
         .delete()
+        .await
         .expect("Cannot request subnet deletion")
         .wait()
+        .await
         .expect("Subnet was not deleted");
 
     network
         .delete()
+        .await
         .expect("Cannot request network deletion")
         .wait()
+        .await
         .expect("Network was not deleted");
 }
 
-#[test]
-fn test_subnet_update() {
-    let os = set_up();
+#[tokio::test]
+async fn test_subnet_update() {
+    let os = set_up().await;
 
-    let network = os.new_network().create().expect("Could not create network");
+    let network = os
+        .new_network()
+        .create()
+        .await
+        .expect("Could not create network");
     let cidr = ipnet::Ipv4Net::new(net::Ipv4Addr::new(192, 168, 1, 0), 24)
         .unwrap()
         .into();
     let mut subnet = os
         .new_subnet(network.clone(), cidr)
         .create()
+        .await
         .expect("Could not create subnet");
     assert!(!subnet.is_dirty());
 
@@ -174,7 +190,7 @@ fn test_subnet_update() {
     subnet.set_name("unused name");
     subnet.set_description("unused description");
 
-    subnet.refresh().expect("Cannot refresh subnet");
+    subnet.refresh().await.expect("Cannot refresh subnet");
 
     assert!(!subnet.is_dirty());
     assert!(subnet.dns_nameservers().is_empty());
@@ -192,7 +208,7 @@ fn test_subnet_update() {
         "rust-openstack-integration-new"
     );
 
-    subnet.save().expect("Could not save subnet");
+    subnet.save().await.expect("Could not save subnet");
 
     assert!(!subnet.is_dirty());
     assert_eq!("8.8.8.8", subnet.dns_nameservers()[0]);
@@ -202,7 +218,7 @@ fn test_subnet_update() {
         "rust-openstack-integration-new"
     );
 
-    subnet.refresh().expect("Cannot refresh subnet");
+    subnet.refresh().await.expect("Cannot refresh subnet");
 
     assert_eq!("8.8.8.8", subnet.dns_nameservers()[0]);
     assert!(!subnet.dhcp_enabled());
@@ -213,20 +229,24 @@ fn test_subnet_update() {
 
     subnet
         .delete()
+        .await
         .expect("Cannot request subnet deletion")
         .wait()
+        .await
         .expect("Subnet was not deleted");
 
     network
         .delete()
+        .await
         .expect("Cannot request network deletion")
         .wait()
+        .await
         .expect("Network was not deleted");
 }
 
-#[test]
-fn test_network_update() {
-    let os = set_up();
+#[tokio::test]
+async fn test_network_update() {
+    let os = set_up().await;
 
     let mut network = os
         .new_network()
@@ -235,6 +255,7 @@ fn test_network_update() {
         .with_mtu(1400)
         .with_description("New network for testing")
         .create()
+        .await
         .expect("Could not create network");
     assert!(!network.is_dirty());
 
@@ -250,7 +271,7 @@ fn test_network_update() {
         "rust-openstack-integration-new2"
     );
 
-    network.save().expect("Could not save network");
+    network.save().await.expect("Could not save network");
 
     assert!(!network.is_dirty());
     assert!(network.admin_state_up());
@@ -264,7 +285,7 @@ fn test_network_update() {
     network.set_mtu(42);
     assert!(network.is_dirty());
 
-    network.refresh().expect("Could not refresh network");
+    network.refresh().await.expect("Could not refresh network");
 
     assert!(!network.is_dirty());
     assert!(network.admin_state_up());
@@ -276,14 +297,16 @@ fn test_network_update() {
 
     network
         .delete()
+        .await
         .expect("Cannot request network deletion")
         .wait()
+        .await
         .expect("Network was not deleted");
 }
 
-#[test]
-fn test_network_create_delete_with_fields() {
-    let os = set_up();
+#[tokio::test]
+async fn test_network_create_delete_with_fields() {
+    let os = set_up().await;
 
     let network = os
         .new_network()
@@ -292,6 +315,7 @@ fn test_network_create_delete_with_fields() {
         .with_mtu(1400)
         .with_description("New network for testing")
         .create()
+        .await
         .expect("Could not create network");
     assert!(!network.admin_state_up());
     assert!(network.dns_domain().is_none());
@@ -311,6 +335,7 @@ fn test_network_create_delete_with_fields() {
         .with_dhcp_enabled(false)
         .with_dns_nameserver("8.8.8.8")
         .create()
+        .await
         .expect("Could not create subnet");
     assert_eq!(subnet.cidr(), cidr);
     assert!(!subnet.dhcp_enabled());
@@ -325,6 +350,7 @@ fn test_network_create_delete_with_fields() {
         .find_subnets()
         .with_network("rust-openstack-integration-new")
         .all()
+        .await
         .expect("Cannot find subnets by network name");
     assert_eq!(subnets.len(), 1);
     assert_eq!(subnets[0].id(), subnet.id());
@@ -332,55 +358,79 @@ fn test_network_create_delete_with_fields() {
 
     subnet
         .delete()
+        .await
         .expect("Cannot request subnet deletion")
         .wait()
+        .await
         .expect("Subnet was not deleted");
 
     network
         .delete()
+        .await
         .expect("Cannot request network deletion")
         .wait()
+        .await
         .expect("Network was not deleted");
 }
 
-#[test]
-fn test_floating_ip_create_delete() {
-    let os = set_up();
+#[tokio::test]
+async fn test_floating_ip_create_delete() {
+    let os = set_up().await;
     let floating_network_id = env::var("RUST_OPENSTACK_FLOATING_NETWORK")
         .expect("Missing RUST_OPENSTACK_FLOATING_NETWORK");
 
     let mut floating_ip = os
         .new_floating_ip(floating_network_id)
         .create()
+        .await
         .expect("Cannot create a floating IP");
     assert!(!floating_ip.is_associated());
-    floating_ip.port().err().unwrap();
+    floating_ip.port().await.err().unwrap();
 
     let net = floating_ip
         .floating_network()
+        .await
         .expect("Cannot find floating network");
-    let floating_ip_found = os
-        .find_floating_ips()
-        .with_floating_network(net.name().clone().expect("Floating network has no name"))
-        .into_iter()
-        .find(|ip| Ok(ip.id() == floating_ip.id()))
-        .expect("Cannot list floating IPs")
-        .expect("Floating IP was not found");
+    let floating_ip_found = {
+        let stream = os
+            .find_floating_ips()
+            .with_floating_network(net.name().clone().expect("Floating network has no name"))
+            .into_stream();
+
+        futures::pin_mut!(stream);
+
+        stream
+            .try_filter(|ip| future::ready(ip.id() == floating_ip.id()))
+            .try_next()
+            .await
+    }
+    .expect("Failed to list floating IPs")
+    .expect("Floating IP was not found");
     assert_eq!(floating_ip_found.id(), floating_ip.id());
 
-    floating_ip.refresh().expect("Cannot refresh a floating IP");
+    floating_ip
+        .refresh()
+        .await
+        .expect("Cannot refresh a floating IP");
 
     floating_ip
         .delete()
+        .await
         .expect("Cannot request floating IP deletion")
         .wait()
+        .await
         .expect("Floating IP was not deleted");
 }
-#[test]
-fn test_router_create_delete_simple() {
-    let os = set_up();
 
-    let router = os.new_router().create().expect("Could not create router.");
+#[tokio::test]
+async fn test_router_create_delete_simple() {
+    let os = set_up().await;
+
+    let router = os
+        .new_router()
+        .create()
+        .await
+        .expect("Could not create router.");
     assert!(router.admin_state_up());
     assert!(router.availability_zone_hints().is_empty());
     assert!(router.availability_zones().is_empty());
@@ -397,35 +447,44 @@ fn test_router_create_delete_simple() {
     assert!(router.service_type_id().is_none());
     assert_eq!(router.status(), openstack::network::RouterStatus::Active);
 
-    let network = os.new_network().create().expect("Could not create network");
+    let network = os
+        .new_network()
+        .create()
+        .await
+        .expect("Could not create network");
     let cidr = ipnet::Ipv4Net::new(net::Ipv4Addr::new(192, 168, 1, 0), 24)
         .unwrap()
         .into();
     let mut subnet = os
         .new_subnet(network.clone(), cidr)
         .create()
+        .await
         .expect("Could not create subnet");
 
-    subnet.refresh().expect("Cannot refresh subnet");
+    subnet.refresh().await.expect("Cannot refresh subnet");
 
     let _ = router.delete();
 
     subnet
         .delete()
+        .await
         .expect("Cannot request subnet deletion")
         .wait()
+        .await
         .expect("Subnet was not deleted");
 
     network
         .delete()
+        .await
         .expect("Cannot request network deletion")
         .wait()
+        .await
         .expect("Network was not deleted");
 }
 
-#[test]
-fn test_router_create_update_delete_with_fields() {
-    let os = set_up();
+#[tokio::test]
+async fn test_router_create_update_delete_with_fields() {
+    let os = set_up().await;
 
     let mut router = os
         .new_router()
@@ -434,6 +493,7 @@ fn test_router_create_update_delete_with_fields() {
         .with_description("rust openstack integration")
         .with_name("rust-openstack-integration")
         .create()
+        .await
         .expect("Could not create router.");
 
     assert!(!router.admin_state_up());
@@ -465,6 +525,7 @@ fn test_router_create_update_delete_with_fields() {
         .with_name("rust-openstack-integration-new")
         .with_description("New network for testing")
         .create()
+        .await
         .expect("Could not create network");
 
     let cidr = ipnet::Ipv4Net::new(net::Ipv4Addr::new(192, 168, 1, 0), 24)
@@ -476,29 +537,33 @@ fn test_router_create_update_delete_with_fields() {
         .with_dhcp_enabled(false)
         .with_dns_nameserver("8.8.8.8")
         .create()
+        .await
         .expect("Could not create subnet");
 
-    let ports = os.find_ports().with_device_id(router.id()).all();
+    let ports = os.find_ports().with_device_id(router.id()).all().await;
     assert_eq!(ports.unwrap().len(), 0);
-    let _ = router.add_router_interface(Some(subnet.id()), None);
-    let ports = os.find_ports().with_device_id(router.id()).all();
+    let _ = router.add_router_interface(Some(subnet.id()), None).await;
+    let ports = os.find_ports().with_device_id(router.id()).all().await;
     assert_eq!(ports.unwrap().len(), 1);
-    let _ = router.remove_router_interface(Some(subnet.id()), None);
-    let ports = os.find_ports().with_device_id(router.id()).all();
+    let _ = router
+        .remove_router_interface(Some(subnet.id()), None)
+        .await;
+    let ports = os.find_ports().with_device_id(router.id()).all().await;
     assert_eq!(ports.unwrap().len(), 0);
 
-    let port = os.new_port(network.id().as_ref()).create().unwrap();
-    let _ = router.add_router_interface(None, Some(port.id()));
-    let ports = os.find_ports().with_device_id(router.id()).all();
+    let port = os.new_port(network.id().as_ref()).create().await.unwrap();
+    let _ = router.add_router_interface(None, Some(port.id())).await;
+    let ports = os.find_ports().with_device_id(router.id()).all().await;
     assert_eq!(ports.unwrap().len(), 1);
-    let _ = router.remove_router_interface(None, Some(port.id()));
-    let ports = os.find_ports().with_device_id(router.id()).all();
+    let _ = router.remove_router_interface(None, Some(port.id())).await;
+    let ports = os.find_ports().with_device_id(router.id()).all().await;
     assert_eq!(ports.unwrap().len(), 0);
 
     let routers = os
         .find_routers()
         .with_name("rust-openstack-integration")
         .all()
+        .await
         .expect("Cannot find routers by router name.");
     assert_eq!(routers.len(), 1);
     assert_eq!(routers[0].id(), router.id());
@@ -506,26 +571,32 @@ fn test_router_create_update_delete_with_fields() {
 
     subnet
         .delete()
+        .await
         .expect("Cannot request subnet deletion")
         .wait()
+        .await
         .expect("Subnet was not deleted");
 
     network
         .delete()
+        .await
         .expect("Cannot request network deletion")
         .wait()
+        .await
         .expect("Network was not deleted");
 
     router
         .delete()
+        .await
         .expect("Cannot request router deletetion.")
         .wait()
+        .await
         .expect("Router was not deleted.");
 }
 
-#[test]
-fn test_router_update() {
-    let os = set_up();
+#[tokio::test]
+async fn test_router_update() {
+    let os = set_up().await;
 
     let mut router = os
         .new_router()
@@ -533,6 +604,7 @@ fn test_router_update() {
         .with_name("rust-openstack-integration-new")
         .with_description("New router for testing")
         .create()
+        .await
         .expect("Could not create router");
     assert!(!router.is_dirty());
 
@@ -551,7 +623,7 @@ fn test_router_update() {
         "Updated router for testing."
     );
 
-    router.save().expect("Could not save router");
+    router.save().await.expect("Could not save router");
 
     assert!(!router.is_dirty());
     assert!(router.admin_state_up());
@@ -568,7 +640,7 @@ fn test_router_update() {
     router.set_description("This will be reverted by a refresh.");
     assert!(router.is_dirty());
 
-    router.refresh().expect("Could not refresh router.");
+    router.refresh().await.expect("Could not refresh router.");
 
     assert!(!router.is_dirty());
     assert!(router.admin_state_up());
@@ -583,7 +655,9 @@ fn test_router_update() {
 
     router
         .delete()
+        .await
         .expect("Cannot request router deletion.")
         .wait()
+        .await
         .expect("Router was not deleted.");
 }

@@ -12,17 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-extern crate env_logger;
-extern crate fallible_iterator;
-extern crate openstack;
-
-use fallible_iterator::FallibleIterator;
+use futures::stream::{StreamExt, TryStreamExt};
 
 #[cfg(feature = "network")]
-fn main() {
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
     env_logger::init();
 
     let os = openstack::Cloud::from_env()
+        .await
         .expect("Failed to create an identity provider from the environment");
     let sorting = openstack::network::RouterSortKey::Name;
 
@@ -30,9 +28,10 @@ fn main() {
         .find_routers()
         .sort_by(openstack::Sort::Asc(sorting))
         .with_limit(0)
-        .into_iter()
+        .into_stream()
         .take(10)
-        .collect()
+        .try_collect()
+        .await
         .expect("Cannot list routers");
     println!("First 10 routers:");
     for s in &routers {

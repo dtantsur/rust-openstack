@@ -15,21 +15,21 @@
 //! Flavor management via Compute API.
 
 use std::collections::HashMap;
-use std::rc::Rc;
 
-use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
-use osproto::common::IdAndName;
+use async_trait::async_trait;
+use futures::stream::{Stream, TryStreamExt};
+use osauth::common::IdAndName;
 
 use super::super::common::{FlavorRef, IntoVerified, Refresh, ResourceIterator, ResourceQuery};
 use super::super::session::Session;
 use super::super::utils::Query;
-use super::super::{Error, Result};
+use super::super::Result;
 use super::{api, protocol};
 
 /// Structure representing a flavor.
 #[derive(Clone, Debug)]
 pub struct Flavor {
-    session: Rc<Session>,
+    session: Session,
     inner: protocol::Flavor,
     extra_specs: HashMap<String, String>,
 }
@@ -37,14 +37,14 @@ pub struct Flavor {
 /// Structure representing a summary of a flavor.
 #[derive(Clone, Debug)]
 pub struct FlavorSummary {
-    session: Rc<Session>,
+    session: Session,
     inner: IdAndName,
 }
 
 /// A query to flavor list.
 #[derive(Clone, Debug)]
 pub struct FlavorQuery {
-    session: Rc<Session>,
+    session: Session,
     query: Query,
     can_paginate: bool,
 }
@@ -57,10 +57,10 @@ pub struct DetailedFlavorQuery {
 
 impl Flavor {
     /// Create a flavor object.
-    pub(crate) fn new(session: Rc<Session>, mut inner: protocol::Flavor) -> Result<Flavor> {
+    pub(crate) async fn new(session: Session, mut inner: protocol::Flavor) -> Result<Flavor> {
         let extra_specs = match inner.extra_specs.take() {
             Some(es) => es,
-            None => api::get_extra_specs_by_flavor_id(&session, &inner.id)?,
+            None => api::get_extra_specs_by_flavor_id(&session, &inner.id).await?,
         };
 
         Ok(Flavor {
@@ -71,9 +71,9 @@ impl Flavor {
     }
 
     /// Load a Flavor object.
-    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id) -> Result<Flavor> {
-        let inner = api::get_flavor(&session, id)?;
-        Flavor::new(session, inner)
+    pub(crate) async fn load<Id: AsRef<str>>(session: Session, id: Id) -> Result<Flavor> {
+        let inner = api::get_flavor(&session, id).await?;
+        Flavor::new(session, inner).await
     }
 
     /// Get ephemeral disk size in GiB.
@@ -126,10 +126,11 @@ impl Flavor {
     }
 }
 
+#[async_trait]
 impl Refresh for Flavor {
     /// Refresh the flavor.
-    fn refresh(&mut self) -> Result<()> {
-        self.inner = api::get_flavor_by_id(&self.session, &self.inner.id)?;
+    async fn refresh(&mut self) -> Result<()> {
+        self.inner = api::get_flavor_by_id(&self.session, &self.inner.id).await?;
         Ok(())
     }
 }
@@ -146,13 +147,13 @@ impl FlavorSummary {
     }
 
     /// Get details.
-    pub fn details(&self) -> Result<Flavor> {
-        Flavor::load(self.session.clone(), &self.inner.id)
+    pub async fn details(&self) -> Result<Flavor> {
+        Flavor::load(self.session.clone(), &self.inner.id).await
     }
 }
 
 impl FlavorQuery {
-    pub(crate) fn new(session: Rc<Session>) -> FlavorQuery {
+    pub(crate) fn new(session: Session) -> FlavorQuery {
         FlavorQuery {
             session,
             query: Query::new(),
@@ -183,32 +184,32 @@ impl FlavorQuery {
         DetailedFlavorQuery { inner: self }
     }
 
-    /// Convert this query into an iterator executing the request.
+    /// Convert this query into an stream executing the request.
     ///
-    /// This iterator yields only `FlavorSummary` objects, containing
-    /// IDs and names. Use `into_iter_detailed` for full `Flavor` objects.
+    /// This stream yields only `FlavorSummary` objects, containing
+    /// IDs and names. Use `into_stream_detailed` for full `Flavor` objects.
     ///
-    /// Returns a `FallibleIterator`, which is an iterator with each `next`
+    /// Returns a `TryStream`, which is a stream with each `next`
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_iter(self) -> ResourceIterator<FlavorQuery> {
+    pub fn into_stream(self) -> impl Stream<Item = Result<<FlavorQuery as ResourceQuery>::Item>> {
         debug!("Fetching flavors with {:?}", self.query);
-        ResourceIterator::new(self)
+        ResourceIterator::new(self).into_stream()
     }
 
     /// Execute this request and return all results.
     ///
-    /// A convenience shortcut for `self.into_iter().collect()`.
-    pub fn all(self) -> Result<Vec<FlavorSummary>> {
-        self.into_iter().collect()
+    /// A convenience shortcut for `self.into_stream().try_collect().await`.
+    pub async fn all(self) -> Result<Vec<FlavorSummary>> {
+        self.into_stream().try_collect().await
     }
 
     /// Return one and exactly one result.
     ///
     /// Fails with `ResourceNotFound` if the query produces no results and
     /// with `TooManyItems` if the query produces more than one result.
-    pub fn one(mut self) -> Result<FlavorSummary> {
+    pub async fn one(mut self) -> Result<FlavorSummary> {
         debug!("Fetching one flavor with {:?}", self.query);
         if self.can_paginate {
             // We need only one result. We fetch maximum two to be able
@@ -216,16 +217,17 @@ impl FlavorQuery {
             self.query.push("limit", 2);
         }
 
-        self.into_iter().one()
+        ResourceIterator::new(self).one().await
     }
 }
 
+#[async_trait]
 impl ResourceQuery for FlavorQuery {
     type Item = FlavorSummary;
 
     const DEFAULT_LIMIT: usize = 100;
 
-    fn can_paginate(&self) -> Result<bool> {
+    async fn can_paginate(&self) -> Result<bool> {
         Ok(self.can_paginate)
     }
 
@@ -233,9 +235,14 @@ impl ResourceQuery for FlavorQuery {
         resource.id().clone()
     }
 
-    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
+    async fn fetch_chunk(
+        &self,
+        limit: Option<usize>,
+        marker: Option<String>,
+    ) -> Result<Vec<Self::Item>> {
         let query = self.query.with_marker_and_limit(limit, marker);
-        Ok(api::list_flavors(&self.session, &query)?
+        Ok(api::list_flavors(&self.session, &query)
+            .await?
             .into_iter()
             .map(|item| FlavorSummary {
                 session: self.session.clone(),
@@ -246,26 +253,29 @@ impl ResourceQuery for FlavorQuery {
 }
 
 impl DetailedFlavorQuery {
-    /// Convert this query into an iterator executing the request.
+    /// Convert this query into a stream executing the request.
     ///
-    /// This iterator yields full `Flavor` objects.
+    /// This stream yields full `Flavor` objects.
     ///
-    /// Returns a `FallibleIterator`, which is an iterator with each `next`
+    /// Returns a `TryStream`, which is a stream with each `next`
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_iter(self) -> ResourceIterator<DetailedFlavorQuery> {
+    pub fn into_stream(
+        self,
+    ) -> impl Stream<Item = Result<<DetailedFlavorQuery as ResourceQuery>::Item>> {
         debug!("Fetching detailed flavors with {:?}", self.inner.query);
-        ResourceIterator::new(self)
+        ResourceIterator::new(self).into_stream()
     }
 }
 
+#[async_trait]
 impl ResourceQuery for DetailedFlavorQuery {
     type Item = Flavor;
 
     const DEFAULT_LIMIT: usize = 50;
 
-    fn can_paginate(&self) -> Result<bool> {
+    async fn can_paginate(&self) -> Result<bool> {
         Ok(self.inner.can_paginate)
     }
 
@@ -273,38 +283,18 @@ impl ResourceQuery for DetailedFlavorQuery {
         resource.id().clone()
     }
 
-    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
+    async fn fetch_chunk(
+        &self,
+        limit: Option<usize>,
+        marker: Option<String>,
+    ) -> Result<Vec<Self::Item>> {
         let query = self.inner.query.with_marker_and_limit(limit, marker);
-        let flavors = api::list_flavors_detail(&self.inner.session, &query)?;
+        let flavors = api::list_flavors_detail(&self.inner.session, &query).await?;
         let mut result = Vec::with_capacity(flavors.len());
         for item in flavors {
-            result.push(Flavor::new(self.inner.session.clone(), item)?);
+            result.push(Flavor::new(self.inner.session.clone(), item).await?);
         }
         Ok(result)
-    }
-}
-
-impl IntoFallibleIterator for FlavorQuery {
-    type Item = FlavorSummary;
-
-    type Error = Error;
-
-    type IntoFallibleIter = ResourceIterator<FlavorQuery>;
-
-    fn into_fallible_iter(self) -> Self::IntoFallibleIter {
-        self.into_iter()
-    }
-}
-
-impl IntoFallibleIterator for DetailedFlavorQuery {
-    type Item = Flavor;
-
-    type Error = Error;
-
-    type IntoFallibleIter = ResourceIterator<DetailedFlavorQuery>;
-
-    fn into_fallible_iter(self) -> Self::IntoFallibleIter {
-        self.into_iter()
     }
 }
 
@@ -321,13 +311,14 @@ impl From<FlavorSummary> for FlavorRef {
 }
 
 #[cfg(feature = "compute")]
+#[async_trait]
 impl IntoVerified for FlavorRef {
     /// Verify this reference and convert to an ID, if possible.
-    fn into_verified(self, session: &Session) -> Result<FlavorRef> {
+    async fn into_verified(self, session: &Session) -> Result<FlavorRef> {
         Ok(if self.verified {
             self
         } else {
-            FlavorRef::new_verified(api::get_flavor(session, &self.value)?.id)
+            FlavorRef::new_verified(api::get_flavor(session, &self.value).await?.id)
         })
     }
 }

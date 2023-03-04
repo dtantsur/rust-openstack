@@ -21,7 +21,7 @@ use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 use chrono::{DateTime, FixedOffset};
-use osproto::common::{empty_as_default, IdAndName, Ref};
+use osauth::common::{empty_as_default, IdAndName, Ref};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 use super::BlockDevice;

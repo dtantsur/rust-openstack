@@ -30,18 +30,18 @@
 //! servers.
 //!
 //! ```rust,no_run
-//! extern crate openstack;
-//!
-//! fn get_server_uuids() -> openstack::Result<Vec<String>> {
-//!     let os = openstack::Cloud::from_env()?;
+//! async fn get_server_uuids() -> openstack::Result<Vec<String>> {
+//!     let os = openstack::Cloud::from_env().await?;
 //!     let server_names = os
-//!         .list_servers()?
+//!         .list_servers()
+//!         .await?
 //!         .into_iter()
 //!         .map(|server| server.id().clone())
 //!         .collect();
 //!     Ok(server_names)
 //! }
-//! # fn main() { get_server_uuids().unwrap(); }
+//! # #[tokio::main(flavor = "current_thread")]
+//! # async fn main() { get_server_uuids().await.unwrap(); }
 //! ```
 //!
 //! ## Find images
@@ -49,12 +49,9 @@
 //! Find public images using Identity password authentication with the default region:
 //!
 //! ```rust,no_run
-//! extern crate fallible_iterator;
-//! extern crate openstack;
+//! use futures::TryStreamExt;
 //!
-//! use fallible_iterator::FallibleIterator;
-//!
-//! fn get_public_image_names() -> openstack::Result<Vec<String>> {
+//! async fn get_public_image_names() -> openstack::Result<Vec<String>> {
 //!     let scope = openstack::auth::Scope::Project {
 //!         project: openstack::IdOrName::from_name("project1"),
 //!         domain: Some(openstack::IdOrName::from_id("default")),
@@ -68,43 +65,46 @@
 //!     .expect("Invalid auth_url")
 //!     .with_scope(scope);
 //!
-//!     let os = openstack::Cloud::new(auth);
+//!     let os = openstack::Cloud::new(auth).await?;
 //!     let image_names = os
 //!         .find_images()
 //!         .with_visibility(openstack::image::ImageVisibility::Public)
-//!         .into_iter()
-//!         // This `map` comes from fallible-iterator, thus the closure returns a `Result`.
-//!         .map(|image| Ok(image.name().clone()))
-//!         .collect()?;
+//!         .into_stream()
+//!         // This `map_ok` comes from `futures::TryStreamExt`, thus the closure returns a `Future`.
+//!         .map_ok(|image| image.name().clone())
+//!         .try_collect()
+//!         .await?;
 //!     Ok(image_names)
 //! }
-//! # fn main() { get_public_image_names().unwrap(); }
+//! # #[tokio::main(flavor = "current_thread")]
+//! # async fn main() { get_public_image_names().await.unwrap(); }
 //! ```
 //!
 //! Notice the difference between `list_*` methods (return a result with a vector) and `find_*`
-//! methods (return a query builder that can be used to create a fallible iterator).
+//! methods (return a query builder that can be used to create a stream).
 //!
 //! ## Create server
 //!
 //! Create a server with authentication from a `clouds.yaml` file:
 //!
 //! ```rust,no_run
-//! extern crate openstack;
-//! extern crate waiter;
-//!
 //! // Required for the `wait` call.
 //! use waiter::Waiter;
 //!
-//! fn create_server() -> openstack::Result<openstack::compute::Server> {
-//!     openstack::Cloud::from_config("my-cloud-1")?
+//! async fn create_server() -> openstack::Result<openstack::compute::Server> {
+//!     openstack::Cloud::from_config("my-cloud-1")
+//!         .await?
 //!         .new_server("test-server-1", "x-large")
 //!         .with_image("centos-7")
 //!         .with_network("private")
 //!         .with_keypair("default")
-//!         .create()?
+//!         .create()
+//!         .await?
 //!         .wait()
+//!         .await
 //! }
-//! # fn main() { create_server().unwrap(); }
+//! # #[tokio::main(flavor = "current_thread")]
+//! # async fn main() { create_server().await.unwrap(); }
 //! ```
 //!
 //! # Requirements
@@ -113,7 +113,7 @@
 
 #![crate_name = "openstack"]
 #![crate_type = "lib"]
-#![doc(html_root_url = "https://docs.rs/openstack/0.4.2")]
+#![doc(html_root_url = "https://docs.rs/openstack/0.5.0")]
 // NOTE: we do not use generic deny(warnings) to avoid breakages with new
 // versions of the compiler. Add more warnings here as you discover them.
 // Taken from https://github.com/rust-unofficial/patterns/
@@ -153,18 +153,8 @@
     clippy::wrong_self_convention
 )]
 
-extern crate chrono;
-extern crate eui48;
-extern crate fallible_iterator;
-extern crate ipnet;
 #[macro_use]
 extern crate log;
-extern crate osauth;
-extern crate reqwest;
-extern crate serde;
-extern crate serde_json;
-extern crate serde_yaml;
-extern crate waiter;
 
 #[allow(unused_macros)]
 macro_rules! transparent_property {
@@ -651,10 +641,7 @@ macro_rules! protocol_enum {
 ///
 /// See [osauth documentation](https://docs.rs/osauth/) for details.
 pub mod auth {
-    pub use osauth::identity::{Identity, Password, Scope};
-    #[deprecated(since = "0.4.1", note = "use methods on Session")]
-    #[doc(hidden)]
-    pub use osauth::{from_config, from_env};
+    pub use osauth::identity::{Password, Scope, Token};
     pub use osauth::{AuthType, NoAuth};
 }
 mod cloud;
@@ -669,18 +656,19 @@ pub mod network;
 pub mod object_storage;
 /// Synchronous sessions based on one from [osauth](https://docs.rs/osauth/).
 pub mod session {
-    pub use crate::sync::SyncSession as Session;
     pub use osauth::services::ServiceType;
+    pub use osauth::Session;
 }
-mod sync;
 mod utils;
 
-pub use osauth::identity::IdOrName;
+pub use osauth::common::IdOrName;
 pub use osauth::{EndpointFilters, Error, ErrorKind, InterfaceType, ValidInterfaces};
+
+/// A result of an OpenStack operation.
+pub type Result<T> = ::std::result::Result<T, Error>;
 
 pub use crate::cloud::Cloud;
 pub use crate::common::Refresh;
-pub use crate::sync::Result;
 
 /// Sorting request.
 #[derive(Debug, Clone)]

@@ -14,21 +14,20 @@
 
 //! Image management via Image API.
 
-use std::rc::Rc;
-
+use async_trait::async_trait;
 use chrono::{DateTime, FixedOffset};
-use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
+use futures::stream::{Stream, TryStreamExt};
 
 use super::super::common::{ImageRef, IntoVerified, Refresh, ResourceIterator, ResourceQuery};
 use super::super::session::Session;
 use super::super::utils::Query;
-use super::super::{Error, Result, Sort};
+use super::super::{Result, Sort};
 use super::{api, protocol};
 
 /// A query to image list.
 #[derive(Clone, Debug)]
 pub struct ImageQuery {
-    session: Rc<Session>,
+    session: Session,
     query: Query,
     can_paginate: bool,
     sort: Vec<String>,
@@ -37,14 +36,14 @@ pub struct ImageQuery {
 /// Structure representing a single image.
 #[derive(Clone, Debug)]
 pub struct Image {
-    session: Rc<Session>,
+    session: Session,
     inner: protocol::Image,
 }
 
 impl Image {
     /// Create an Image object.
-    pub(crate) fn new<Id: AsRef<str>>(session: Rc<Session>, id: Id) -> Result<Image> {
-        let inner = api::get_image(&session, id)?;
+    pub(crate) async fn new<Id: AsRef<str>>(session: Session, id: Id) -> Result<Image> {
+        let inner = api::get_image(&session, id).await?;
         Ok(Image { session, inner })
     }
 
@@ -123,16 +122,17 @@ impl Image {
     }
 }
 
+#[async_trait]
 impl Refresh for Image {
     /// Refresh the image.
-    fn refresh(&mut self) -> Result<()> {
-        self.inner = api::get_image_by_id(&self.session, &self.inner.id)?;
+    async fn refresh(&mut self) -> Result<()> {
+        self.inner = api::get_image_by_id(&self.session, &self.inner.id).await?;
         Ok(())
     }
 }
 
 impl ImageQuery {
-    pub(crate) fn new(session: Rc<Session>) -> ImageQuery {
+    pub(crate) fn new(session: Session) -> ImageQuery {
         ImageQuery {
             session,
             query: Query::new(),
@@ -181,32 +181,34 @@ impl ImageQuery {
         with_visibility -> visibility: protocol::ImageVisibility
     }
 
-    /// Convert this query into an iterator executing the request.
+    /// Convert this query into a stream executing the request.
     ///
-    /// Returns a `FallibleIterator`, which is an iterator with each `next`
+    /// Returns a `TryStream`, which is a stream with each `next`
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_iter(mut self) -> ResourceIterator<ImageQuery> {
+    pub fn into_stream(
+        mut self,
+    ) -> impl Stream<Item = Result<<ImageQuery as ResourceQuery>::Item>> {
         if !self.sort.is_empty() {
             self.query.push_str("sort", self.sort.join(","));
         }
         debug!("Fetching images with {:?}", self.query);
-        ResourceIterator::new(self)
+        ResourceIterator::new(self).into_stream()
     }
 
     /// Execute this request and return all results.
     ///
-    /// A convenience shortcut for `self.into_iter().collect()`.
-    pub fn all(self) -> Result<Vec<Image>> {
-        self.into_iter().collect()
+    /// A convenience shortcut for `self.into_stream().try_collect().await`.
+    pub async fn all(self) -> Result<Vec<Image>> {
+        self.into_stream().try_collect().await
     }
 
     /// Return one and exactly one result.
     ///
     /// Fails with `ResourceNotFound` if the query produces no results and
     /// with `TooManyItems` if the query produces more than one result.
-    pub fn one(mut self) -> Result<Image> {
+    pub async fn one(mut self) -> Result<Image> {
         debug!("Fetching one image with {:?}", self.query);
         if self.can_paginate {
             // We need only one result. We fetch maximum two to be able
@@ -214,16 +216,17 @@ impl ImageQuery {
             self.query.push("limit", 2);
         }
 
-        self.into_iter().one()
+        ResourceIterator::new(self).one().await
     }
 }
 
+#[async_trait]
 impl ResourceQuery for ImageQuery {
     type Item = Image;
 
     const DEFAULT_LIMIT: usize = 50;
 
-    fn can_paginate(&self) -> Result<bool> {
+    async fn can_paginate(&self) -> Result<bool> {
         Ok(self.can_paginate)
     }
 
@@ -231,27 +234,20 @@ impl ResourceQuery for ImageQuery {
         resource.id().clone()
     }
 
-    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
+    async fn fetch_chunk(
+        &self,
+        limit: Option<usize>,
+        marker: Option<String>,
+    ) -> Result<Vec<Self::Item>> {
         let query = self.query.with_marker_and_limit(limit, marker);
-        Ok(api::list_images(&self.session, &query)?
+        Ok(api::list_images(&self.session, &query)
+            .await?
             .into_iter()
             .map(|item| Image {
                 session: self.session.clone(),
                 inner: item,
             })
             .collect())
-    }
-}
-
-impl IntoFallibleIterator for ImageQuery {
-    type Item = Image;
-
-    type Error = Error;
-
-    type IntoFallibleIter = ResourceIterator<ImageQuery>;
-
-    fn into_fallible_iter(self) -> Self::IntoFallibleIter {
-        self.into_iter()
     }
 }
 
@@ -262,13 +258,14 @@ impl From<Image> for ImageRef {
 }
 
 #[cfg(feature = "image")]
+#[async_trait]
 impl IntoVerified for ImageRef {
     /// Verify this reference and convert to an ID, if possible.
-    fn into_verified(self, session: &Session) -> Result<ImageRef> {
+    async fn into_verified(self, session: &Session) -> Result<ImageRef> {
         Ok(if self.verified {
             self
         } else {
-            ImageRef::new_verified(api::get_image(session, &self.value)?.id)
+            ImageRef::new_verified(api::get_image(session, &self.value).await?.id)
         })
     }
 }

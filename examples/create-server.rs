@@ -12,18 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-extern crate env_logger;
-extern crate openstack;
-extern crate waiter;
-
 use std::env;
 use waiter::{Waiter, WaiterCurrentState};
 
 #[cfg(feature = "compute")]
-fn main() {
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
     env_logger::init();
 
     let os = openstack::Cloud::from_env()
+        .await
         .expect("Failed to create an identity provider from the environment");
 
     let name = env::args().nth(1).expect("Provide a server name");
@@ -39,6 +37,7 @@ fn main() {
         .with_keypair(keypair)
         .with_metadata("key", "value")
         .create()
+        .await
         .expect("Cannot create a server");
     {
         let current = waiter.waiter_current_state();
@@ -51,7 +50,7 @@ fn main() {
         );
     }
 
-    let server = waiter.wait().expect("Server did not reach ACTIVE");
+    let server = waiter.wait().await.expect("Server did not reach ACTIVE");
     println!(
         "ID = {}, Name = {}, Status = {:?}, Power = {:?}",
         server.id(),

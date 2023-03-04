@@ -16,12 +16,12 @@
 
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-use std::rc::Rc;
 use std::time::Duration;
 
+use async_trait::async_trait;
 use chrono::{DateTime, FixedOffset};
-use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
-use osproto::common::IdAndName;
+use futures::stream::{Stream, TryStreamExt};
+use osauth::common::IdAndName;
 use waiter::{Waiter, WaiterCurrentState};
 
 use super::super::common::{
@@ -38,7 +38,7 @@ use super::{api, protocol, BlockDevice, KeyPair};
 /// A query to server list.
 #[derive(Clone, Debug)]
 pub struct ServerQuery {
-    session: Rc<Session>,
+    session: Session,
     query: Query,
     can_paginate: bool,
 }
@@ -54,7 +54,7 @@ pub struct DetailedServerQuery {
 /// Structure representing a single server.
 #[derive(Clone, Debug)]
 pub struct Server {
-    session: Rc<Session>,
+    session: Session,
     inner: protocol::Server,
     flavor: protocol::ServerFlavor,
 }
@@ -62,7 +62,7 @@ pub struct Server {
 /// Structure representing a summary of a single server.
 #[derive(Clone, Debug)]
 pub struct ServerSummary {
-    session: Rc<Session>,
+    session: Session,
     inner: IdAndName,
 }
 
@@ -87,7 +87,7 @@ pub enum ServerNIC {
 /// A request to create a server.
 #[derive(Debug)]
 pub struct NewServer {
-    session: Rc<Session>,
+    session: Session,
     flavor: FlavorRef,
     image: Option<ImageRef>,
     keypair: Option<KeyPairRef>,
@@ -106,18 +106,19 @@ pub struct ServerCreationWaiter {
     server: Server,
 }
 
+#[async_trait]
 impl Refresh for Server {
     /// Refresh the server.
-    fn refresh(&mut self) -> Result<()> {
-        self.inner = api::get_server_by_id(&self.session, &self.inner.id)?;
+    async fn refresh(&mut self) -> Result<()> {
+        self.inner = api::get_server_by_id(&self.session, &self.inner.id).await?;
         Ok(())
     }
 }
 
 impl Server {
     /// Create a new Server object.
-    pub(crate) fn new(session: Rc<Session>, inner: protocol::Server) -> Result<Server> {
-        let flavor = api::get_flavor(&session, &inner.flavor.id)?;
+    pub(crate) async fn new(session: Session, inner: protocol::Server) -> Result<Server> {
+        let flavor = api::get_flavor(&session, &inner.flavor.id).await?;
         Ok(Server {
             session,
             inner,
@@ -134,9 +135,9 @@ impl Server {
     }
 
     /// Load a Server object.
-    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id) -> Result<Server> {
-        let inner = api::get_server(&session, id)?;
-        Server::new(session, inner)
+    pub(crate) async fn load<Id: AsRef<str>>(session: Session, id: Id) -> Result<Server> {
+        let inner = api::get_server(&session, id).await?;
+        Server::new(session, inner).await
     }
 
     transparent_property! {
@@ -210,9 +211,9 @@ impl Server {
     ///
     /// Fails with `ResourceNotFound` if the server does not have an image.
     #[cfg(feature = "image")]
-    pub fn image(&self) -> Result<Image> {
+    pub async fn image(&self) -> Result<Image> {
         match self.inner.image {
-            Some(ref image) => Image::new(self.session.clone(), &image.id),
+            Some(ref image) => Image::new(self.session.clone(), &image.id).await,
             None => Err(Error::new(
                 ErrorKind::ResourceNotFound,
                 "No image associated with server",
@@ -236,9 +237,9 @@ impl Server {
     }
 
     /// Fetch the key pair used for the server.
-    pub fn key_pair(&self) -> Result<KeyPair> {
+    pub async fn key_pair(&self) -> Result<KeyPair> {
         match self.inner.key_pair_name {
-            Some(ref key_pair) => KeyPair::new(self.session.clone(), key_pair),
+            Some(ref key_pair) => KeyPair::new(self.session.clone(), key_pair).await,
             None => Err(Error::new(
                 ErrorKind::ResourceNotFound,
                 "No key pair associated with server",
@@ -277,8 +278,8 @@ impl Server {
     }
 
     /// Delete the server.
-    pub fn delete(self) -> Result<DeletionWaiter<Server>> {
-        api::delete_server(&self.session, &self.inner.id)?;
+    pub async fn delete(self) -> Result<DeletionWaiter<Server>> {
+        api::delete_server(&self.session, &self.inner.id).await?;
         Ok(DeletionWaiter::new(
             self,
             Duration::new(120, 0),
@@ -287,13 +288,13 @@ impl Server {
     }
 
     /// Reboot the server.
-    pub fn reboot<'server>(
+    pub async fn reboot<'server>(
         &'server mut self,
         reboot_type: protocol::RebootType,
     ) -> Result<ServerStatusWaiter<'server>> {
         let mut args = HashMap::new();
         let _ = args.insert("type", reboot_type);
-        api::server_action_with_args(&self.session, &self.inner.id, "reboot", args)?;
+        api::server_action_with_args(&self.session, &self.inner.id, "reboot", args).await?;
         Ok(ServerStatusWaiter {
             server: self,
             target: protocol::ServerStatus::Active,
@@ -301,8 +302,8 @@ impl Server {
     }
 
     /// Start the server, optionally wait for it to be active.
-    pub fn start<'server>(&'server mut self) -> Result<ServerStatusWaiter<'server>> {
-        api::server_simple_action(&self.session, &self.inner.id, "os-start")?;
+    pub async fn start<'server>(&'server mut self) -> Result<ServerStatusWaiter<'server>> {
+        api::server_simple_action(&self.session, &self.inner.id, "os-start").await?;
         Ok(ServerStatusWaiter {
             server: self,
             target: protocol::ServerStatus::Active,
@@ -310,8 +311,8 @@ impl Server {
     }
 
     /// Stop the server, optionally wait for it to be powered off.
-    pub fn stop<'server>(&'server mut self) -> Result<ServerStatusWaiter<'server>> {
-        api::server_simple_action(&self.session, &self.inner.id, "os-stop")?;
+    pub async fn stop<'server>(&'server mut self) -> Result<ServerStatusWaiter<'server>> {
+        api::server_simple_action(&self.session, &self.inner.id, "os-stop").await?;
         Ok(ServerStatusWaiter {
             server: self,
             target: protocol::ServerStatus::ShutOff,
@@ -319,6 +320,7 @@ impl Server {
     }
 }
 
+#[async_trait]
 impl<'server> Waiter<(), Error> for ServerStatusWaiter<'server> {
     fn default_wait_timeout(&self) -> Option<Duration> {
         // TODO(dtantsur): vary depending on target?
@@ -340,8 +342,8 @@ impl<'server> Waiter<(), Error> for ServerStatusWaiter<'server> {
         )
     }
 
-    fn poll(&mut self) -> Result<Option<()>> {
-        self.server.refresh()?;
+    async fn poll(&mut self) -> Result<Option<()>> {
+        self.server.refresh().await?;
         if self.server.status() == self.target {
             debug!("Server {} reached state {}", self.server.id(), self.target);
             Ok(Some(()))
@@ -385,19 +387,19 @@ impl ServerSummary {
     }
 
     /// Get details.
-    pub fn details(&self) -> Result<Server> {
-        Server::load(self.session.clone(), &self.inner.id)
+    pub async fn details(&self) -> Result<Server> {
+        Server::load(self.session.clone(), &self.inner.id).await
     }
 
     /// Delete the server.
-    pub fn delete(self) -> Result<()> {
+    pub async fn delete(self) -> Result<()> {
         // TODO(dtantsur): implement wait
-        api::delete_server(&self.session, &self.inner.id)
+        api::delete_server(&self.session, &self.inner.id).await
     }
 }
 
 impl ServerQuery {
-    pub(crate) fn new(session: Rc<Session>) -> ServerQuery {
+    pub(crate) fn new(session: Session) -> ServerQuery {
         ServerQuery {
             session,
             query: Query::new(),
@@ -497,34 +499,34 @@ impl ServerQuery {
         DetailedServerQuery { inner: self }
     }
 
-    /// Convert this query into an iterator executing the request.
+    /// Convert this query into a stream executing the request.
     ///
-    /// This iterator yields only `ServerSummary` objects, containing
+    /// This stream yields only `ServerSummary` objects, containing
     /// IDs and names. Use `into_iter_detailed` for full `Server` objects.
     ///
-    /// Returns a `FallibleIterator`, which is an iterator with each `next`
+    /// Returns a `TryStream`, which is a stream with each `next`
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
     #[inline]
-    pub fn into_iter(self) -> ResourceIterator<ServerQuery> {
+    pub fn into_stream(self) -> impl Stream<Item = Result<<ServerQuery as ResourceQuery>::Item>> {
         debug!("Fetching servers with {:?}", self.query);
-        ResourceIterator::new(self)
+        ResourceIterator::new(self).into_stream()
     }
 
     /// Execute this request and return all results.
     ///
-    /// A convenience shortcut for `self.into_iter().collect()`.
+    /// A convenience shortcut for `self.into_stream().try_collect().await`.
     #[inline]
-    pub fn all(self) -> Result<Vec<ServerSummary>> {
-        self.into_iter().collect()
+    pub async fn all(self) -> Result<Vec<ServerSummary>> {
+        self.into_stream().try_collect().await
     }
 
     /// Return one and exactly one result.
     ///
     /// Fails with `ResourceNotFound` if the query produces no results and
     /// with `TooManyItems` if the query produces more than one result.
-    pub fn one(mut self) -> Result<ServerSummary> {
+    pub async fn one(mut self) -> Result<ServerSummary> {
         debug!("Fetching one server with {:?}", self.query);
         if self.can_paginate {
             // We need only one result. We fetch maximum two to be able
@@ -532,16 +534,17 @@ impl ServerQuery {
             self.query.push("limit", 2);
         }
 
-        self.into_iter().one()
+        ResourceIterator::new(self).one().await
     }
 }
 
+#[async_trait]
 impl ResourceQuery for ServerQuery {
     type Item = ServerSummary;
 
     const DEFAULT_LIMIT: usize = 100;
 
-    fn can_paginate(&self) -> Result<bool> {
+    async fn can_paginate(&self) -> Result<bool> {
         Ok(self.can_paginate)
     }
 
@@ -549,9 +552,14 @@ impl ResourceQuery for ServerQuery {
         resource.id().clone()
     }
 
-    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
+    async fn fetch_chunk(
+        &self,
+        limit: Option<usize>,
+        marker: Option<String>,
+    ) -> Result<Vec<Self::Item>> {
         let query = self.query.with_marker_and_limit(limit, marker);
-        Ok(api::list_servers(&self.session, &query)?
+        Ok(api::list_servers(&self.session, &query)
+            .await?
             .into_iter()
             .map(|srv| ServerSummary {
                 session: self.session.clone(),
@@ -562,26 +570,29 @@ impl ResourceQuery for ServerQuery {
 }
 
 impl DetailedServerQuery {
-    /// Convert this query into an iterator executing the request.
+    /// Convert this query into a stream executing the request.
     ///
-    /// This iterator yields full `Server` objects.
+    /// This stream yields full `Server` objects.
     ///
-    /// Returns a `FallibleIterator`, which is an iterator with each `next`
+    /// Returns a `TryStream`, which is a stream with each `next`
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_iter(self) -> ResourceIterator<DetailedServerQuery> {
+    pub fn into_stream(
+        self,
+    ) -> impl Stream<Item = Result<<DetailedServerQuery as ResourceQuery>::Item>> {
         debug!("Fetching server details with {:?}", self.inner.query);
-        ResourceIterator::new(self)
+        ResourceIterator::new(self).into_stream()
     }
 }
 
+#[async_trait]
 impl ResourceQuery for DetailedServerQuery {
     type Item = Server;
 
     const DEFAULT_LIMIT: usize = 50;
 
-    fn can_paginate(&self) -> Result<bool> {
+    async fn can_paginate(&self) -> Result<bool> {
         Ok(self.inner.can_paginate)
     }
 
@@ -589,12 +600,16 @@ impl ResourceQuery for DetailedServerQuery {
         resource.id().clone()
     }
 
-    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
+    async fn fetch_chunk(
+        &self,
+        limit: Option<usize>,
+        marker: Option<String>,
+    ) -> Result<Vec<Self::Item>> {
         let query = self.inner.query.with_marker_and_limit(limit, marker);
-        let servers = api::list_servers_detail(&self.inner.session, &query)?;
+        let servers = api::list_servers_detail(&self.inner.session, &query).await?;
         let mut result = Vec::with_capacity(servers.len());
         for srv in servers {
-            result.push(Server::new(self.inner.session.clone(), srv)?);
+            result.push(Server::new(self.inner.session.clone(), srv).await?);
         }
         Ok(result)
     }
@@ -612,7 +627,7 @@ impl From<ServerQuery> for DetailedServerQuery {
     }
 }
 
-fn convert_networks(
+async fn convert_networks(
     session: &Session,
     networks: Vec<ServerNIC>,
 ) -> Result<Vec<protocol::ServerNetwork>> {
@@ -620,10 +635,10 @@ fn convert_networks(
     for item in networks {
         result.push(match item {
             ServerNIC::FromNetwork(n) => protocol::ServerNetwork::Network {
-                uuid: n.into_verified(session)?.into(),
+                uuid: n.into_verified(session).await?.into(),
             },
             ServerNIC::WithPort(p) => protocol::ServerNetwork::Port {
-                port: p.into_verified(session)?.into(),
+                port: p.into_verified(session).await?.into(),
             },
             ServerNIC::WithFixedIp(ip) => protocol::ServerNetwork::FixedIp { fixed_ip: ip },
         });
@@ -633,7 +648,7 @@ fn convert_networks(
 
 impl NewServer {
     /// Start creating a server.
-    pub(crate) fn new(session: Rc<Session>, name: String, flavor: FlavorRef) -> NewServer {
+    pub(crate) fn new(session: Session, name: String, flavor: FlavorRef) -> NewServer {
         NewServer {
             session,
             flavor,
@@ -650,29 +665,29 @@ impl NewServer {
     }
 
     /// Request creation of the server.
-    pub fn create(self) -> Result<ServerCreationWaiter> {
+    pub async fn create(self) -> Result<ServerCreationWaiter> {
         let request = protocol::ServerCreate {
-            block_devices: self.block_devices.into_verified(&self.session)?,
-            flavorRef: self.flavor.into_verified(&self.session)?.into(),
+            block_devices: self.block_devices.into_verified(&self.session).await?,
+            flavorRef: self.flavor.into_verified(&self.session).await?.into(),
             imageRef: match self.image {
-                Some(img) => Some(img.into_verified(&self.session)?.into()),
+                Some(img) => Some(img.into_verified(&self.session).await?.into()),
                 None => None,
             },
             key_name: match self.keypair {
-                Some(item) => Some(item.into_verified(&self.session)?.into()),
+                Some(item) => Some(item.into_verified(&self.session).await?.into()),
                 None => None,
             },
             metadata: self.metadata,
             name: self.name,
-            networks: convert_networks(&self.session, self.nics)?,
+            networks: convert_networks(&self.session, self.nics).await?,
             user_data: self.user_data,
             config_drive: self.config_drive,
             availability_zone: self.availability_zone,
         };
 
-        let server_ref = api::create_server(&self.session, request)?;
+        let server_ref = api::create_server(&self.session, request).await?;
         Ok(ServerCreationWaiter {
-            server: Server::load(self.session, server_ref.id)?,
+            server: Server::load(self.session, server_ref.id).await?,
         })
     }
 
@@ -845,6 +860,7 @@ impl NewServer {
     }
 }
 
+#[async_trait]
 impl Waiter<Server, Error> for ServerCreationWaiter {
     fn default_wait_timeout(&self) -> Option<Duration> {
         Some(Duration::new(1800, 0))
@@ -864,8 +880,8 @@ impl Waiter<Server, Error> for ServerCreationWaiter {
         )
     }
 
-    fn poll(&mut self) -> Result<Option<Server>> {
-        self.server.refresh()?;
+    async fn poll(&mut self) -> Result<Option<Server>> {
+        self.server.refresh().await?;
         if self.server.status() == protocol::ServerStatus::Active {
             debug!("Server {} successfully created", self.server.id());
             // TODO(dtantsur): get rid of clone?
@@ -893,29 +909,5 @@ impl Waiter<Server, Error> for ServerCreationWaiter {
 impl WaiterCurrentState<Server> for ServerCreationWaiter {
     fn waiter_current_state(&self) -> &Server {
         &self.server
-    }
-}
-
-impl IntoFallibleIterator for ServerQuery {
-    type Item = ServerSummary;
-
-    type Error = Error;
-
-    type IntoFallibleIter = ResourceIterator<ServerQuery>;
-
-    fn into_fallible_iter(self) -> Self::IntoFallibleIter {
-        self.into_iter()
-    }
-}
-
-impl IntoFallibleIterator for DetailedServerQuery {
-    type Item = Server;
-
-    type Error = Error;
-
-    type IntoFallibleIter = ResourceIterator<DetailedServerQuery>;
-
-    fn into_fallible_iter(self) -> Self::IntoFallibleIter {
-        self.into_iter()
     }
 }

@@ -16,24 +16,24 @@
 
 use std::collections::HashSet;
 use std::net;
-use std::rc::Rc;
 use std::time::Duration;
 
+use async_trait::async_trait;
 use chrono::{DateTime, FixedOffset};
-use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
+use futures::stream::{Stream, TryStreamExt};
 
 use super::super::common::{
     DeletionWaiter, IntoVerified, NetworkRef, Refresh, ResourceIterator, ResourceQuery, SubnetRef,
 };
 use super::super::session::Session;
 use super::super::utils::Query;
-use super::super::{Error, Result, Sort};
+use super::super::{Result, Sort};
 use super::{api, protocol, Network};
 
 /// A query to subnet list.
 #[derive(Clone, Debug)]
 pub struct SubnetQuery {
-    session: Rc<Session>,
+    session: Session,
     query: Query,
     can_paginate: bool,
     network: Option<NetworkRef>,
@@ -42,7 +42,7 @@ pub struct SubnetQuery {
 /// Structure representing a subnet - a virtual NIC.
 #[derive(Clone, Debug)]
 pub struct Subnet {
-    session: Rc<Session>,
+    session: Session,
     inner: protocol::Subnet,
     dirty: HashSet<&'static str>,
 }
@@ -50,14 +50,14 @@ pub struct Subnet {
 /// A request to create a subnet.
 #[derive(Clone, Debug)]
 pub struct NewSubnet {
-    session: Rc<Session>,
+    session: Session,
     inner: protocol::Subnet,
     network: NetworkRef,
 }
 
 impl Subnet {
     /// Create a subnet object.
-    pub(crate) fn new(session: Rc<Session>, inner: protocol::Subnet) -> Subnet {
+    pub(crate) fn new(session: Session, inner: protocol::Subnet) -> Subnet {
         Subnet {
             session,
             inner,
@@ -66,8 +66,8 @@ impl Subnet {
     }
 
     /// Load a Subnet object.
-    pub(crate) fn load<Id: AsRef<str>>(session: Rc<Session>, id: Id) -> Result<Subnet> {
-        let inner = api::get_subnet(&session, id)?;
+    pub(crate) async fn load<Id: AsRef<str>>(session: Session, id: Id) -> Result<Subnet> {
+        let inner = api::get_subnet(&session, id).await?;
         Ok(Subnet::new(session, inner))
     }
 
@@ -175,8 +175,8 @@ impl Subnet {
     }
 
     /// Get network associated with this subnet.
-    pub fn network(&self) -> Result<Network> {
-        Network::load(self.session.clone(), &self.inner.network_id)
+    pub async fn network(&self) -> Result<Network> {
+        Network::load(self.session.clone(), &self.inner.network_id).await
     }
 
     transparent_property! {
@@ -190,8 +190,8 @@ impl Subnet {
     }
 
     /// Delete the subnet.
-    pub fn delete(self) -> Result<DeletionWaiter<Subnet>> {
-        api::delete_subnet(&self.session, &self.inner.id)?;
+    pub async fn delete(self) -> Result<DeletionWaiter<Subnet>> {
+        api::delete_subnet(&self.session, &self.inner.id).await?;
         Ok(DeletionWaiter::new(
             self,
             Duration::new(60, 0),
@@ -205,7 +205,7 @@ impl Subnet {
     }
 
     /// Save the changes to the subnet.
-    pub fn save(&mut self) -> Result<()> {
+    pub async fn save(&mut self) -> Result<()> {
         let mut update = protocol::SubnetUpdate::default();
         save_fields! {
             self -> update: allocation_pools dhcp_enabled dns_nameservers
@@ -214,24 +214,25 @@ impl Subnet {
         save_option_fields! {
             self -> update: description gateway_ip name
         };
-        let inner = api::update_subnet(&self.session, self.id(), update)?;
+        let inner = api::update_subnet(&self.session, self.id(), update).await?;
         self.dirty.clear();
         self.inner = inner;
         Ok(())
     }
 }
 
+#[async_trait]
 impl Refresh for Subnet {
     /// Refresh the subnet.
-    fn refresh(&mut self) -> Result<()> {
-        self.inner = api::get_subnet_by_id(&self.session, &self.inner.id)?;
+    async fn refresh(&mut self) -> Result<()> {
+        self.inner = api::get_subnet_by_id(&self.session, &self.inner.id).await?;
         self.dirty.clear();
         Ok(())
     }
 }
 
 impl SubnetQuery {
-    pub(crate) fn new(session: Rc<Session>) -> SubnetQuery {
+    pub(crate) fn new(session: Session) -> SubnetQuery {
         SubnetQuery {
             session,
             query: Query::new(),
@@ -314,29 +315,29 @@ impl SubnetQuery {
         self
     }
 
-    /// Convert this query into an iterator executing the request.
+    /// Convert this query into an stream executing the request.
     ///
-    /// Returns a `FallibleIterator`, which is an iterator with each `next`
+    /// Returns a `TryStream`, which is a stream with each `next`
     /// call returning a `Result`.
     ///
     /// Note that no requests are done until you start iterating.
-    pub fn into_iter(self) -> ResourceIterator<SubnetQuery> {
+    pub fn into_stream(self) -> impl Stream<Item = Result<<SubnetQuery as ResourceQuery>::Item>> {
         debug!("Fetching subnets with {:?}", self.query);
-        ResourceIterator::new(self)
+        ResourceIterator::new(self).into_stream()
     }
 
     /// Execute this request and return all results.
     ///
     /// A convenience shortcut for `self.into_iter().collect()`.
-    pub fn all(self) -> Result<Vec<Subnet>> {
-        self.into_iter().collect()
+    pub async fn all(self) -> Result<Vec<Subnet>> {
+        self.into_stream().try_collect().await
     }
 
     /// Return one and exactly one result.
     ///
     /// Fails with `ResourceNotFound` if the query produces no results and
     /// with `TooManyItems` if the query produces more than one result.
-    pub fn one(mut self) -> Result<Subnet> {
+    pub async fn one(mut self) -> Result<Subnet> {
         debug!("Fetching one subnet with {:?}", self.query);
         if self.can_paginate {
             // We need only one result. We fetch maximum two to be able
@@ -344,16 +345,17 @@ impl SubnetQuery {
             self.query.push("limit", 2);
         }
 
-        self.into_iter().one()
+        ResourceIterator::new(self).one().await
     }
 }
 
+#[async_trait]
 impl ResourceQuery for SubnetQuery {
     type Item = Subnet;
 
     const DEFAULT_LIMIT: usize = 50;
 
-    fn can_paginate(&self) -> Result<bool> {
+    async fn can_paginate(&self) -> Result<bool> {
         Ok(self.can_paginate)
     }
 
@@ -361,17 +363,22 @@ impl ResourceQuery for SubnetQuery {
         resource.id().clone()
     }
 
-    fn fetch_chunk(&self, limit: Option<usize>, marker: Option<String>) -> Result<Vec<Self::Item>> {
+    async fn fetch_chunk(
+        &self,
+        limit: Option<usize>,
+        marker: Option<String>,
+    ) -> Result<Vec<Self::Item>> {
         let query = self.query.with_marker_and_limit(limit, marker);
-        Ok(api::list_subnets(&self.session, &query)?
+        Ok(api::list_subnets(&self.session, &query)
+            .await?
             .into_iter()
             .map(|item| Subnet::new(self.session.clone(), item))
             .collect())
     }
 
-    fn validate(&mut self) -> Result<()> {
+    async fn validate(&mut self) -> Result<()> {
         if let Some(network) = self.network.take() {
-            let verified = network.into_verified(&self.session)?;
+            let verified = network.into_verified(&self.session).await?;
             self.query.push_str("network_id", verified);
         }
         Ok(())
@@ -380,7 +387,7 @@ impl ResourceQuery for SubnetQuery {
 
 impl NewSubnet {
     /// Start creating a subnet.
-    pub(crate) fn new(session: Rc<Session>, network: NetworkRef, cidr: ipnet::IpNet) -> NewSubnet {
+    pub(crate) fn new(session: Session, network: NetworkRef, cidr: ipnet::IpNet) -> NewSubnet {
         NewSubnet {
             session,
             inner: protocol::Subnet::empty(cidr),
@@ -389,14 +396,14 @@ impl NewSubnet {
     }
 
     /// Request creation of the subnet.
-    pub fn create(mut self) -> Result<Subnet> {
-        self.inner.network_id = self.network.into_verified(&self.session)?.into();
+    pub async fn create(mut self) -> Result<Subnet> {
+        self.inner.network_id = self.network.into_verified(&self.session).await?.into();
         self.inner.ip_version = match self.inner.cidr {
             ipnet::IpNet::V4(..) => protocol::IpVersion::V4,
             ipnet::IpNet::V6(..) => protocol::IpVersion::V6,
         };
 
-        let subnet = api::create_subnet(&self.session, self.inner)?;
+        let subnet = api::create_subnet(&self.session, self.inner).await?;
         Ok(Subnet::new(self.session, subnet))
     }
 
@@ -465,18 +472,6 @@ impl NewSubnet {
     }
 }
 
-impl IntoFallibleIterator for SubnetQuery {
-    type Item = Subnet;
-
-    type Error = Error;
-
-    type IntoFallibleIter = ResourceIterator<SubnetQuery>;
-
-    fn into_fallible_iter(self) -> Self::IntoFallibleIter {
-        self.into_iter()
-    }
-}
-
 impl From<Subnet> for SubnetRef {
     fn from(value: Subnet) -> SubnetRef {
         SubnetRef::new_verified(value.inner.id)
@@ -484,13 +479,14 @@ impl From<Subnet> for SubnetRef {
 }
 
 #[cfg(feature = "network")]
+#[async_trait]
 impl IntoVerified for SubnetRef {
     /// Verify this reference and convert to an ID, if possible.
-    fn into_verified(self, session: &Session) -> Result<SubnetRef> {
+    async fn into_verified(self, session: &Session) -> Result<SubnetRef> {
         Ok(if self.verified {
             self
         } else {
-            SubnetRef::new_verified(api::get_subnet(session, &self.value)?.id)
+            SubnetRef::new_verified(api::get_subnet(session, &self.value).await?.id)
         })
     }
 }

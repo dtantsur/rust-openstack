@@ -12,21 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-extern crate env_logger;
-extern crate openstack;
-
 use std::env;
 
 #[cfg(feature = "object-storage")]
-fn main() {
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
     env_logger::init();
 
     let os = openstack::Cloud::from_env()
+        .await
         .expect("Failed to create an identity provider from the environment");
 
     let container_name = env::args().nth(1).expect("Provide a container name");
     let container = os
         .get_container(&container_name)
+        .await
         .expect("Cannot get a container");
 
     println!(
@@ -39,6 +39,7 @@ fn main() {
         .find_objects()
         .with_limit(10)
         .all()
+        .await
         .expect("cannot list objects");
 
     println!("first 10 objects");
