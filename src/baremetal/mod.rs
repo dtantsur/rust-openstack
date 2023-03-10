@@ -1,4 +1,4 @@
-// Copyright 2018 Dmitry Tantsur <divius.inside@gmail.com>
+// Copyright 2023 Dmitry Tantsur <dtantsur@protonmail.com>
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,17 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Types and traits shared by all API parts.
+//! Bare Metal API implementation bits.
+//!
+//! # Limitations
+//!
+//! This module requires Bare Metal API version 1.46 (Rocky) or newer.
 
-pub(crate) mod protocol;
-mod resourceiterator;
+mod api;
+mod constants;
+mod infos;
+mod nodes;
+mod protocol;
 mod types;
 
-pub use osauth::ApiVersion;
-
-pub use self::protocol::CommaSeparated;
-pub use self::resourceiterator::{ResourceIterator, ResourceQuery};
-pub use self::types::{
-    ContainerRef, FlavorRef, ImageRef, KeyPairRef, NetworkRef, ObjectRef, PortRef, ProjectRef,
-    Refresh, RouterRef, SecurityGroupRef, SnapshotRef, SubnetRef, UserRef, VolumeRef,
+pub use infos::{DriverInfo, ImageChecksum, InstanceInfo, Properties};
+pub use nodes::{Node, NodeQuery, NodeSummary};
+pub use types::{
+    CleanStep, DeployStep, Fault, NodeFilter, NodeSortKey, PowerState, ProvisionState,
+    TargetPowerState, TargetProvisionState,
 };
