@@ -22,7 +22,9 @@ use std::fmt;
 use std::hash::Hash;
 
 use futures::{pin_mut, Stream, TryStreamExt};
-use serde::{Serialize, Serializer};
+use serde::de::{DeserializeOwned, Error as DeserError};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde_json::Value;
 
 use super::{Error, ErrorKind, Result};
 
@@ -233,6 +235,15 @@ where
     }
 }
 
+protocol_enum! {
+    /// Sort key for listing nodes.
+    #[allow(missing_docs)]
+    enum SortDir {
+        Asc = "asc",
+        Desc = "desc"
+    }
+}
+
 /// Serialize an enum unit variant into a None
 /// This is used to turn [ServerAction::Start] into
 /// `"os-start": null` instead of just `"os-start"`
@@ -280,5 +291,66 @@ pub mod url {
             url.path_segments_mut().unwrap().pop_if_empty().push("");
         }
         url
+    }
+}
+
+// Helpers for serde attributes.
+
+#[inline]
+pub fn some_truth() -> bool {
+    true
+}
+
+#[inline]
+pub fn is_default<T: Default + PartialEq>(value: &T) -> bool {
+    *value != T::default()
+}
+
+pub fn empty_map_as_default<'de, D, T>(des: D) -> std::result::Result<T, D::Error>
+where
+    D: Deserializer<'de>,
+    T: DeserializeOwned + Default,
+{
+    let value = Value::deserialize(des)?;
+    match value {
+        Value::Object(ref s) if s.is_empty() => Ok(T::default()),
+        _ => serde_json::from_value(value).map_err(D::Error::custom),
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use serde::Deserialize;
+    use std::collections::HashMap;
+
+    use super::*;
+
+    #[derive(Debug, Deserialize)]
+    struct TestDeserialize {
+        #[serde(default = "some_truth")]
+        default_to_true: bool,
+        #[serde(default = "some_truth")]
+        actually_false: bool,
+        #[serde(deserialize_with = "empty_map_as_default")]
+        non_empty_map: Option<HashMap<String, String>>,
+        #[serde(deserialize_with = "empty_map_as_default")]
+        empty_map_as_none: Option<HashMap<String, String>>,
+        #[serde(default, deserialize_with = "empty_map_as_default")]
+        empty_map_as_none_with_default: Option<HashMap<String, String>>,
+    }
+
+    #[test]
+    fn test_deserialize() {
+        let json = r#"{
+            "actually_false": false,
+            "empty_map_as_none": {},
+            "non_empty_map": {"a": "b"}
+        }"#;
+        let result: TestDeserialize = serde_json::from_str(json).unwrap();
+        assert!(result.default_to_true);
+        assert!(!result.actually_false);
+        assert_eq!(result.non_empty_map.unwrap().len(), 1);
+        assert!(result.empty_map_as_none.is_none());
+        assert!(result.empty_map_as_none_with_default.is_none());
     }
 }
