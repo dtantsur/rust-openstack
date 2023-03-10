@@ -25,11 +25,11 @@ use eui48::MacAddress;
 use futures::stream::{Stream, TryStreamExt};
 
 use super::super::common::{
-    DeletionWaiter, NetworkRef, PortRef, Refresh, ResourceIterator, ResourceQuery,
-    SecurityGroupRef, SubnetRef,
+    NetworkRef, PortRef, Refresh, ResourceIterator, ResourceQuery, SecurityGroupRef, SubnetRef,
 };
 use super::super::session::Session;
 use super::super::utils::Query;
+use super::super::waiter::DeletionWaiter;
 use super::super::{Result, Sort};
 use super::{api, protocol, Network, Subnet};
 

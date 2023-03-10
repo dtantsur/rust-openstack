@@ -17,7 +17,6 @@
 pub(crate) mod protocol;
 mod resourceiterator;
 mod types;
-mod waiter;
 
 pub use osauth::ApiVersion;
 
@@ -26,4 +25,3 @@ pub use self::types::{
     ContainerRef, FlavorRef, ImageRef, KeyPairRef, NetworkRef, ObjectRef, PortRef, ProjectRef,
     Refresh, RouterRef, SecurityGroupRef, SnapshotRef, SubnetRef, UserRef, VolumeRef,
 };
-pub use self::waiter::DeletionWaiter;

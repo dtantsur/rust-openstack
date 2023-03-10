@@ -12,16 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Waiters.
+//! Framework for waiting for asynchronous events.
 
 use std::fmt::Debug;
 use std::time::Duration;
 
 use async_trait::async_trait;
-use waiter::{Waiter, WaiterCurrentState};
+pub use waiter::Waiter;
 
-use super::super::{Error, ErrorKind, Result};
-use super::Refresh;
+use crate::{Error, ErrorKind, Refresh, Result};
 
 /// Wait for resource deletion.
 #[derive(Debug)]
@@ -40,10 +39,9 @@ impl<T> DeletionWaiter<T> {
             delay,
         }
     }
-}
 
-impl<T> WaiterCurrentState<T> for DeletionWaiter<T> {
-    fn waiter_current_state(&self) -> &T {
+    /// Current state of the resource inside the waiter.
+    pub fn current_state(&self) -> &T {
         &self.inner
     }
 }

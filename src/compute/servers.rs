@@ -22,16 +22,16 @@ use async_trait::async_trait;
 use chrono::{DateTime, FixedOffset};
 use futures::stream::{Stream, TryStreamExt};
 use osauth::common::IdAndName;
-use waiter::{Waiter, WaiterCurrentState};
 
 use super::super::common::{
-    DeletionWaiter, FlavorRef, ImageRef, KeyPairRef, NetworkRef, PortRef, ProjectRef, Refresh,
-    ResourceIterator, ResourceQuery, UserRef, VolumeRef,
+    FlavorRef, ImageRef, KeyPairRef, NetworkRef, PortRef, ProjectRef, Refresh, ResourceIterator,
+    ResourceQuery, UserRef, VolumeRef,
 };
 #[cfg(feature = "image")]
 use super::super::image::Image;
 use super::super::session::Session;
 use super::super::utils::Query;
+use super::super::waiter::{DeletionWaiter, Waiter};
 use super::super::{Error, ErrorKind, Result, Sort};
 use super::{api, protocol, BlockDevice, KeyPair};
 
@@ -369,8 +369,9 @@ impl<'server> Waiter<(), Error> for ServerStatusWaiter<'server> {
     }
 }
 
-impl<'server> WaiterCurrentState<Server> for ServerStatusWaiter<'server> {
-    fn waiter_current_state(&self) -> &Server {
+impl<'server> ServerStatusWaiter<'server> {
+    /// Current state of the server.
+    pub fn current_state(&self) -> &Server {
         self.server
     }
 }
@@ -911,8 +912,9 @@ impl Waiter<Server, Error> for ServerCreationWaiter {
     }
 }
 
-impl WaiterCurrentState<Server> for ServerCreationWaiter {
-    fn waiter_current_state(&self) -> &Server {
+impl ServerCreationWaiter {
+    /// Current state of the waiter.
+    pub fn current_state(&self) -> &Server {
         &self.server
     }
 }

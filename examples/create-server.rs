@@ -13,7 +13,8 @@
 // limitations under the License.
 
 use std::env;
-use waiter::{Waiter, WaiterCurrentState};
+
+use openstack::waiter::Waiter;
 
 #[cfg(feature = "compute")]
 #[tokio::main(flavor = "current_thread")]
@@ -40,7 +41,7 @@ async fn main() {
         .await
         .expect("Cannot create a server");
     {
-        let current = waiter.waiter_current_state();
+        let current = waiter.current_state();
         println!(
             "ID = {}, Name = {}, Status = {:?}, Power = {:?}",
             current.id(),

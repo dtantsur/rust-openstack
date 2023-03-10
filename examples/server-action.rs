@@ -13,7 +13,8 @@
 // limitations under the License.
 
 use std::env;
-use waiter::Waiter;
+
+use openstack::waiter::Waiter;
 
 #[cfg(feature = "compute")]
 #[tokio::main(flavor = "current_thread")]

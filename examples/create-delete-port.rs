@@ -13,7 +13,8 @@
 // limitations under the License.
 
 use std::env;
-use waiter::Waiter;
+
+use openstack::waiter::Waiter;
 
 #[cfg(feature = "network")]
 async fn display_port(port: &openstack::network::Port) {

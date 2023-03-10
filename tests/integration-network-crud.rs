@@ -18,7 +18,7 @@ use std::net;
 use std::sync::Once;
 
 use futures::TryStreamExt;
-use waiter::Waiter;
+use openstack::waiter::Waiter;
 
 use openstack::Refresh;
 

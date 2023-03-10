@@ -19,9 +19,10 @@ use async_trait::async_trait;
 use chrono::{DateTime, FixedOffset};
 use futures::stream::{Stream, TryStreamExt};
 
-use super::super::common::{DeletionWaiter, Refresh, ResourceIterator, ResourceQuery, RouterRef};
+use super::super::common::{Refresh, ResourceIterator, ResourceQuery, RouterRef};
 use super::super::session::Session;
 use super::super::utils::Query;
+use super::super::waiter::DeletionWaiter;
 use super::super::{Error, ErrorKind, Result, Sort};
 use super::{api, protocol, Network};
 

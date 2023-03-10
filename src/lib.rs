@@ -88,8 +88,7 @@
 //! Create a server with authentication from a `clouds.yaml` file:
 //!
 //! ```rust,no_run
-//! // Required for the `wait` call.
-//! use waiter::Waiter;
+//! use openstack::waiter::Waiter;
 //!
 //! async fn create_server() -> openstack::Result<openstack::compute::Server> {
 //!     openstack::Cloud::from_config("my-cloud-1")
@@ -659,6 +658,7 @@ pub mod session {
     pub use osauth::Session;
 }
 mod utils;
+pub mod waiter;
 
 pub use osauth::common::IdOrName;
 pub use osauth::{EndpointFilters, Error, ErrorKind, InterfaceType, ValidInterfaces};

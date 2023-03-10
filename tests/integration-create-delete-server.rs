@@ -19,7 +19,7 @@ use std::time;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 
-use waiter::Waiter;
+use openstack::waiter::Waiter;
 
 use openstack::Refresh;
 
