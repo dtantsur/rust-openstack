@@ -1,5 +1,16 @@
 # Change Log
 
+## 0.5.0 (2023-03-10)
+
+This is a very significant release that has breaking changes everywhere in
+the public API because of the switch to async/await.
+
+#### Features
+
+*   reimport Waiter and drop WaiterCurrentState ([1ba18d91](https://github.com/dtantsur/rust-openstack/commit/1ba18d91e95d6db057b60106d747acbaecafa370))
+*   move to `async/.await` (#131) ([88a964dc](https://github.com/dtantsur/rust-openstack/commit/88a964dc9a9a219114598e9054dc6e76e9e30705))
+*   bump MSRV to 1.58 (because of dependencies) ([19e0b7e8](https://github.com/dtantsur/rust-openstack/commit/19e0b7e8eb262d76b44c96022f27237258e2777a))
+
 ## 0.4.2  (2022-09-26)
 
 No code changes, updated README and links on crates.io.
