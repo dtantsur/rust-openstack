@@ -70,7 +70,7 @@ impl Container {
             .map_err(|e| {
                 Error::new(
                     ErrorKind::InvalidResponse,
-                    format!("Container-Object-Count is not an integer: {}", e),
+                    format!("Container-Object-Count is not an integer: {e}"),
                 )
             })?;
         let count: u64 = protocol::get_required_header(value, &count_header)?
@@ -78,7 +78,7 @@ impl Container {
             .map_err(|e| {
                 Error::new(
                     ErrorKind::InvalidResponse,
-                    format!("Container-Object-Count is not an integer: {}", e),
+                    format!("Container-Object-Count is not an integer: {e}"),
                 )
             })?;
         Ok(Container {
@@ -96,7 +96,7 @@ impl Object {
             .map_err(|e| {
                 Error::new(
                     ErrorKind::InvalidResponse,
-                    format!("ContentLength is not an integer: {}", e),
+                    format!("ContentLength is not an integer: {e}"),
                 )
             })?;
         let ct = protocol::get_header(value, &CONTENT_TYPE)?.map(From::from);
@@ -105,7 +105,7 @@ impl Object {
             bytes: size,
             content_type: ct,
             name: name.into(),
-            hash: hash,
+            hash,
         })
     }
 }

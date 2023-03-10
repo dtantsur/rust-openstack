@@ -213,6 +213,7 @@ impl FloatingIp {
     }
 
     /// Save the changes to the floating IP.
+    #[allow(clippy::field_reassign_with_default)]
     pub async fn save(&mut self) -> Result<()> {
         let mut update = protocol::FloatingIpUpdate::default();
         save_option_fields! {

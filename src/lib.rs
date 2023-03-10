@@ -678,9 +678,9 @@ pub enum Sort<T: Into<String>> {
     Desc(T),
 }
 
-impl<T: Into<String>> Into<(String, String)> for Sort<T> {
-    fn into(self) -> (String, String) {
-        match self {
+impl<T: Into<String>> From<Sort<T>> for (String, String) {
+    fn from(other: Sort<T>) -> (String, String) {
+        match other {
             Sort::Asc(val) => (val.into(), String::from("asc")),
             Sort::Desc(val) => (val.into(), String::from("desc")),
         }

@@ -73,7 +73,7 @@ where
     }
 
     for (key, value) in headers.metadata {
-        req = req.header(&format!("X-Object-Meta-{}", key), value);
+        req = req.header(&format!("X-Object-Meta-{key}"), value);
     }
 
     let _ = req.body(async_read_to_body(body)).send().await?;

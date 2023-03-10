@@ -17,8 +17,6 @@
 #[allow(unused_imports)]
 use futures::io::AsyncRead;
 #[allow(unused_imports)]
-use ipnet;
-#[allow(unused_imports)]
 use std::io;
 
 use super::auth::AuthType;

@@ -288,10 +288,10 @@ impl Server {
     }
 
     /// Reboot the server.
-    pub async fn reboot<'server>(
-        &'server mut self,
+    pub async fn reboot(
+        &mut self,
         reboot_type: protocol::RebootType,
-    ) -> Result<ServerStatusWaiter<'server>> {
+    ) -> Result<ServerStatusWaiter<'_>> {
         let mut args = HashMap::new();
         let _ = args.insert("type", reboot_type);
         api::server_action_with_args(&self.session, &self.inner.id, "reboot", args).await?;
@@ -302,7 +302,7 @@ impl Server {
     }
 
     /// Start the server, optionally wait for it to be active.
-    pub async fn start<'server>(&'server mut self) -> Result<ServerStatusWaiter<'server>> {
+    pub async fn start(&mut self) -> Result<ServerStatusWaiter<'_>> {
         api::server_simple_action(&self.session, &self.inner.id, "os-start").await?;
         Ok(ServerStatusWaiter {
             server: self,
@@ -311,7 +311,7 @@ impl Server {
     }
 
     /// Stop the server, optionally wait for it to be powered off.
-    pub async fn stop<'server>(&'server mut self) -> Result<ServerStatusWaiter<'server>> {
+    pub async fn stop(&mut self) -> Result<ServerStatusWaiter<'_>> {
         api::server_simple_action(&self.session, &self.inner.id, "os-stop").await?;
         Ok(ServerStatusWaiter {
             server: self,
@@ -371,7 +371,7 @@ impl<'server> Waiter<(), Error> for ServerStatusWaiter<'server> {
 
 impl<'server> WaiterCurrentState<Server> for ServerStatusWaiter<'server> {
     fn waiter_current_state(&self) -> &Server {
-        &self.server
+        self.server
     }
 }
 

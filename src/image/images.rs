@@ -144,7 +144,7 @@ impl ImageQuery {
     /// Add sorting to the request.
     pub fn sort_by(mut self, sort: Sort<protocol::ImageSortKey>) -> Self {
         let (field, direction) = sort.into();
-        self.sort.push(format!("{}:{}", field, direction));
+        self.sort.push(format!("{field}:{direction}"));
         self
     }
 

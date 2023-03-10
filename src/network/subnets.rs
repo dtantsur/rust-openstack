@@ -205,6 +205,7 @@ impl Subnet {
     }
 
     /// Save the changes to the subnet.
+    #[allow(clippy::field_reassign_with_default)]
     pub async fn save(&mut self) -> Result<()> {
         let mut update = protocol::SubnetUpdate::default();
         save_fields! {

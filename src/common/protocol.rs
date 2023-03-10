@@ -56,7 +56,7 @@ where
 /// Get a header as a string.
 #[inline]
 pub fn get_header<'m>(headers: &'m HeaderMap, key: &HeaderName) -> Result<Option<&'m str>, Error> {
-    Ok(if let Some(ref hdr) = headers.get(key) {
+    Ok(if let Some(hdr) = headers.get(key) {
         Some(hdr.to_str().map_err(|e| {
             Error::new(
                 ErrorKind::InvalidResponse,
@@ -71,11 +71,10 @@ pub fn get_header<'m>(headers: &'m HeaderMap, key: &HeaderName) -> Result<Option
 /// Get a header as a string, failing if it's not present.
 #[inline]
 pub fn get_required_header<'m>(headers: &'m HeaderMap, key: &HeaderName) -> Result<&'m str, Error> {
-    match get_header(headers, key)? {
-        Some(ref hdr) => Ok(hdr),
-        None => Err(Error::new(
+    get_header(headers, key)?.ok_or_else(|| {
+        Error::new(
             ErrorKind::InvalidResponse,
             format!("Missing {} header", key.as_str()),
-        )),
-    }
+        )
+    })
 }

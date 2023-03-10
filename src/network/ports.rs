@@ -270,6 +270,7 @@ impl Port {
     }
 
     /// Save the changes to the port.
+    #[allow(clippy::field_reassign_with_default)]
     pub async fn save(&mut self) -> Result<()> {
         let mut update = protocol::PortUpdate::default();
         save_fields! {

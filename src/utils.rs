@@ -178,7 +178,7 @@ impl<K: Hash + Eq, V: Clone> MapCache<K, V> {
     pub fn get_ref(&self, key: &K) -> Option<Ref<V>> {
         let map = self.0.borrow();
         if map.contains_key(key) {
-            Some(Ref::map(map, |m| m.get(&key).unwrap()))
+            Some(Ref::map(map, |m| m.get(key).unwrap()))
         } else {
             None
         }
@@ -206,7 +206,7 @@ where
 pub fn endpoint_not_found<D: fmt::Display>(service_type: D) -> Error {
     Error::new(
         ErrorKind::EndpointNotFound,
-        format!("Endpoint for service {} was not found", service_type),
+        format!("Endpoint for service {service_type} was not found"),
     )
 }
 
