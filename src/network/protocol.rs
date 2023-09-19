@@ -22,7 +22,7 @@ use std::net;
 use std::ops::Not;
 
 use chrono::{DateTime, FixedOffset};
-use eui48::MacAddress;
+use macaddr::MacAddr6;
 use osauth::common::empty_as_default;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -335,7 +335,7 @@ pub struct FixedIp {
 pub struct AllowedAddressPair {
     pub ip_address: net::IpAddr,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub mac_address: Option<MacAddress>,
+    pub mac_address: Option<MacAddr6>,
 }
 
 /// A port.
@@ -382,8 +382,8 @@ pub struct Port {
     pub fixed_ips: Vec<FixedIp>,
     #[serde(skip_serializing)]
     pub id: String,
-    #[serde(skip_serializing_if = "MacAddress::is_nil")]
-    pub mac_address: MacAddress,
+    #[serde(skip_serializing_if = "MacAddr6::is_nil")]
+    pub mac_address: MacAddr6,
     #[serde(
         deserialize_with = "empty_as_default",
         skip_serializing_if = "Option::is_none"
@@ -420,7 +420,7 @@ pub struct PortUpdate {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fixed_ips: Option<Vec<FixedIp>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub mac_address: Option<MacAddress>,
+    pub mac_address: Option<MacAddr6>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

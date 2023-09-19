@@ -21,8 +21,8 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use chrono::{DateTime, FixedOffset};
-use eui48::MacAddress;
 use futures::stream::{Stream, TryStreamExt};
+use macaddr::MacAddr6;
 
 use super::super::common::{
     NetworkRef, PortRef, Refresh, ResourceIterator, ResourceQuery, SecurityGroupRef, SubnetRef,
@@ -211,12 +211,12 @@ impl Port {
 
     transparent_property! {
         #[doc = "MAC address of the port."]
-        mac_address: MacAddress
+        mac_address: MacAddr6
     }
 
     update_field! {
         #[doc = "Update the MAC address (admin-only)."]
-        set_mac_address, with_mac_address -> mac_address: MacAddress
+        set_mac_address, with_mac_address -> mac_address: MacAddr6
     }
 
     transparent_property! {
@@ -573,7 +573,7 @@ impl NewPort {
 
     creation_inner_field! {
         #[doc = "Set MAC address for the port (generated otherwise)."]
-        set_mac_address, with_mac_address -> mac_address: MacAddress
+        set_mac_address, with_mac_address -> mac_address: MacAddr6
     }
 
     creation_inner_field! {
