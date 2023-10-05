@@ -29,6 +29,6 @@ pub use self::protocol::{
     ServerSortKey, ServerStatus,
 };
 pub use self::servers::{
-    DetailedServerQuery, NewServer, Server, ServerCreationWaiter, ServerNIC, ServerQuery,
-    ServerStatusWaiter, ServerSummary,
+    DetailedServerQuery, NewServer, Server, ServerAction, ServerCreationWaiter, ServerNIC,
+    ServerQuery, ServerStatusWaiter, ServerSummary,
 };

@@ -314,46 +314,20 @@ pub async fn list_servers_detail<Q: Serialize + Sync + Debug>(
     Ok(root.servers)
 }
 
-/// Run an action while providing some arguments.
-pub async fn server_action_with_args<S1, S2, Q>(
-    session: &Session,
-    id: S1,
-    action: S2,
-    args: Q,
-) -> Result<()>
+/// Run an action on a server.
+pub async fn server_action_with_args<S1, Q>(session: &Session, id: S1, action: Q) -> Result<()>
 where
     S1: AsRef<str>,
-    S2: AsRef<str>,
     Q: Serialize + Send + Debug,
 {
-    trace!(
-        "Running {} on server {} with args {:?}",
-        action.as_ref(),
-        id.as_ref(),
-        args
-    );
-    let mut body = HashMap::new();
-    let _ = body.insert(action.as_ref(), args);
+    trace!("Running {:?} on server {}", action, id.as_ref(),);
     let _ = session
         .post(COMPUTE, &["servers", id.as_ref(), "action"])
-        .json(&body)
+        .json(&action)
         .send()
         .await?;
-    debug!(
-        "Successfully ran {} on server {}",
-        action.as_ref(),
-        id.as_ref()
-    );
+    debug!("Successfully ran {:?} on server {}", action, id.as_ref());
     Ok(())
-}
-
-/// Run an action on the server.
-pub async fn server_simple_action<S1, S2>(session: &Session, id: S1, action: S2) -> Result<()>
-where
-    S1: AsRef<str>,
-    S2: AsRef<str>,
-{
-    server_action_with_args(session, id, action, serde_json::Value::Null).await
 }
 
 /// Whether key pair pagination is supported.

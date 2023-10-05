@@ -22,6 +22,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, FixedOffset};
 use futures::stream::{Stream, TryStreamExt};
 use osauth::common::IdAndName;
+use serde::Serialize;
 
 use super::super::common::{
     FlavorRef, ImageRef, KeyPairRef, NetworkRef, PortRef, ProjectRef, Refresh, ResourceIterator,
@@ -306,9 +307,7 @@ impl Server {
         &mut self,
         reboot_type: protocol::RebootType,
     ) -> Result<ServerStatusWaiter<'_>> {
-        let mut args = HashMap::new();
-        let _ = args.insert("type", reboot_type);
-        api::server_action_with_args(&self.session, &self.inner.id, "reboot", args).await?;
+        self.action(ServerAction::Reboot { reboot_type }).await?;
         Ok(ServerStatusWaiter {
             server: self,
             target: protocol::ServerStatus::Active,
@@ -317,7 +316,7 @@ impl Server {
 
     /// Start the server, optionally wait for it to be active.
     pub async fn start(&mut self) -> Result<ServerStatusWaiter<'_>> {
-        api::server_simple_action(&self.session, &self.inner.id, "os-start").await?;
+        self.action(ServerAction::Start).await?;
         Ok(ServerStatusWaiter {
             server: self,
             target: protocol::ServerStatus::Active,
@@ -326,12 +325,42 @@ impl Server {
 
     /// Stop the server, optionally wait for it to be powered off.
     pub async fn stop(&mut self) -> Result<ServerStatusWaiter<'_>> {
-        api::server_simple_action(&self.session, &self.inner.id, "os-stop").await?;
+        self.action(ServerAction::Stop).await?;
         Ok(ServerStatusWaiter {
             server: self,
             target: protocol::ServerStatus::ShutOff,
         })
     }
+
+    /// Run an action on the server.
+    pub async fn action(&mut self, action: ServerAction) -> Result<()> {
+        api::server_action_with_args(&self.session, &self.inner.id, action).await
+    }
+}
+
+/// Serialize an enum unit variant into a None
+/// This is used to turn [ServerAction::Start] into
+/// `"os-start": null` instead of just `"os-start"`
+fn unit_to_null<S: serde::Serializer>(s: S) -> std::result::Result<S::Ok, S::Error> {
+    s.serialize_none()
+}
+
+/// An action to perform on a server.
+#[derive(Clone, Copy, Debug, Serialize)]
+pub enum ServerAction {
+    /// Reboots a server.
+    #[serde(rename = "reboot")]
+    Reboot {
+        /// The type of the reboot action.
+        #[serde(rename = "type")]
+        reboot_type: protocol::RebootType,
+    },
+    /// Starts a stopped server.
+    #[serde(rename = "os-start", serialize_with = "unit_to_null")]
+    Start,
+    /// Stops a running server.
+    #[serde(rename = "os-stop", serialize_with = "unit_to_null")]
+    Stop,
 }
 
 #[async_trait]
@@ -930,5 +959,29 @@ impl ServerCreationWaiter {
     /// Current state of the waiter.
     pub fn current_state(&self) -> &Server {
         &self.server
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_action_json() {
+        assert_eq!(
+            serde_json::to_string(&ServerAction::Start).unwrap(),
+            "{\"os-start\":null}"
+        );
+        assert_eq!(
+            serde_json::to_string(&ServerAction::Stop).unwrap(),
+            "{\"os-stop\":null}"
+        );
+        assert_eq!(
+            serde_json::to_string(&ServerAction::Reboot {
+                reboot_type: protocol::RebootType::Hard
+            })
+            .unwrap(),
+            "{\"reboot\":{\"type\":\"HARD\"}}"
+        );
     }
 }
