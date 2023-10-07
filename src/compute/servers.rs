@@ -339,7 +339,8 @@ impl Server {
 }
 
 /// An action to perform on a server.
-#[derive(Clone, Copy, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
+#[non_exhaustive]
 pub enum ServerAction {
     /// Reboots a server.
     #[serde(rename = "reboot")]
