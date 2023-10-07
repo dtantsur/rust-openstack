@@ -31,7 +31,7 @@ use super::super::common::{
 #[cfg(feature = "image")]
 use super::super::image::Image;
 use super::super::session::Session;
-use super::super::utils::Query;
+use super::super::utils::{unit_to_null, Query};
 use super::super::waiter::{DeletionWaiter, Waiter};
 use super::super::{Error, ErrorKind, Result, Sort};
 use super::{api, protocol, BlockDevice, KeyPair};
@@ -336,13 +336,6 @@ impl Server {
     pub async fn action(&mut self, action: ServerAction) -> Result<()> {
         api::server_action_with_args(&self.session, &self.inner.id, action).await
     }
-}
-
-/// Serialize an enum unit variant into a None
-/// This is used to turn [ServerAction::Start] into
-/// `"os-start": null` instead of just `"os-start"`
-fn unit_to_null<S: serde::Serializer>(s: S) -> std::result::Result<S::Ok, S::Error> {
-    s.serialize_none()
 }
 
 /// An action to perform on a server.
