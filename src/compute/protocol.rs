@@ -72,6 +72,7 @@ protocol_enum! {
         Migrating = "MIGRATING",
         Paused = "PAUSED",
         Rebooting = "REBOOT",
+        Rebuild = "REBUILD",
         Resizing = "RESIZE",
         RevertingResize = "REVERT_RESIZE",
         ShutOff = "SHUTOFF",
