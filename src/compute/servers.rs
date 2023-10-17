@@ -343,6 +343,24 @@ impl Server {
 #[non_exhaustive]
 #[allow(missing_copy_implementations)]
 pub enum ServerAction {
+    /// Adds a security group to a server.
+    #[serde(rename = "addSecurityGroup")]
+    AddSecurityGroup {
+        /// The security group name.
+        name: String,
+    },
+    /// Changes the administrative password for a server.
+    #[serde(rename = "changePassword")]
+    ChangePassword {
+        /// The administrative password for the server.
+        admin_pass: String,
+    },
+    /// Confirms a pending resize action for a server.
+    #[serde(rename = "confirmResize", serialize_with = "unit_to_null")]
+    ConfirmResize,
+    /// Pauses a server. Changes its status to PAUSED.
+    #[serde(rename = "pause", serialize_with = "unit_to_null")]
+    Pause,
     /// Reboots a server.
     #[serde(rename = "reboot")]
     Reboot {
@@ -350,12 +368,51 @@ pub enum ServerAction {
         #[serde(rename = "type")]
         reboot_type: protocol::RebootType,
     },
+    /// Removes a security group from a server.
+    #[serde(rename = "removeSecurityGroup")]
+    RemoveSecurityGroup {
+        /// The security group name.
+        name: String,
+    },
+    /// Resumes a suspended server and changes its status to ACTIVE.
+    #[serde(rename = "resume", serialize_with = "unit_to_null")]
+    Resume,
+    /// Cancels and reverts a pending resize action for a server.
+    #[serde(rename = "revertResize", serialize_with = "unit_to_null")]
+    RevertResize,
     /// Starts a stopped server.
     #[serde(rename = "os-start", serialize_with = "unit_to_null")]
     Start,
     /// Stops a running server.
     #[serde(rename = "os-stop", serialize_with = "unit_to_null")]
     Stop,
+    /// Suspends a server and changes its status to SUSPENDED.
+    #[serde(rename = "suspend", serialize_with = "unit_to_null")]
+    Suspend,
+    /// Unlocks a locked server.
+    #[serde(rename = "unlock", serialize_with = "unit_to_null")]
+    Unlock,
+    /// Unpauses a paused server and changes its status to ACTIVE.
+    #[serde(rename = "unpause", serialize_with = "unit_to_null")]
+    Unpause,
+    /// Unrescues a server. Changes status to ACTIVE.
+    #[serde(rename = "unrescue", serialize_with = "unit_to_null")]
+    Unrescue,
+    /// Force-deletes a server before deferred cleanup.
+    #[serde(rename = "forceDelete", serialize_with = "unit_to_null")]
+    ForceDelete,
+    /// Restores a previously soft-deleted server instance.
+    #[serde(rename = "restore", serialize_with = "unit_to_null")]
+    Restore,
+    /// Shelves a server.
+    #[serde(rename = "shelve", serialize_with = "unit_to_null")]
+    Shelve,
+    /// Shelf-offloads, or removes, a shelved server.
+    #[serde(rename = "shelveOffload", serialize_with = "unit_to_null")]
+    ShelveOffload,
+    /// Trigger a crash dump in a server.
+    #[serde(rename = "trigger_crash_dump", serialize_with = "unit_to_null")]
+    TriggerCrashDump,
 }
 
 #[async_trait]
