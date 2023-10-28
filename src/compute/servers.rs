@@ -358,6 +358,28 @@ pub enum ServerAction {
     /// Confirms a pending resize action for a server.
     #[serde(rename = "confirmResize", serialize_with = "unit_to_null")]
     ConfirmResize,
+    /// Creates a back up of a server.
+    #[serde(rename = "createBackup")]
+    CreateBackup {
+        /// The name of the image to be backed up.
+        name: String,
+        /// The type of the backup, for example, daily.
+        backup_type: String,
+        /// The rotation of the back up image, the oldest image will be removed when image count exceed the rotation count.
+        rotation: u16,
+        /// Metadata key and value pairs for the image.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        metadata: Option<HashMap<String, String>>,
+    },
+    /// Creates an image from a server.
+    #[serde(rename = "createImage")]
+    CreateImage {
+        /// The display name of an Image.
+        name: String,
+        /// Metadata key and value pairs for the image.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        metadata: Option<HashMap<String, String>>,
+    },
     /// Pauses a server. Changes its status to PAUSED.
     #[serde(rename = "pause", serialize_with = "unit_to_null")]
     Pause,
@@ -373,6 +395,26 @@ pub enum ServerAction {
     RemoveSecurityGroup {
         /// The security group name.
         name: String,
+    },
+    /// Puts a server in rescue mode and changes its status to RESCUE.
+    #[serde(rename = "rescue")]
+    Rescue {
+        /// The password for the rescued instance.
+        #[serde(rename = "adminPass", skip_serializing_if = "Option::is_none")]
+        admin_pass: Option<String>,
+        /// The image reference to use to rescue your server instance.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        rescue_image_ref: Option<String>,
+    },
+    /// Resizes a server.
+    #[serde(rename = "resize")]
+    Resize {
+        /// The flavor ID for resizing the server.
+        #[serde(rename = "flavorRef")]
+        flavor_ref: String,
+        /// Controls how the API partitions the disk when you create, rebuild, or resize servers.
+        #[serde(rename = "OS-DCF:diskConfig")]
+        disk_config: String,
     },
     /// Resumes a suspended server and changes its status to ACTIVE.
     #[serde(rename = "resume", serialize_with = "unit_to_null")]
@@ -404,6 +446,13 @@ pub enum ServerAction {
     /// Restores a previously soft-deleted server instance.
     #[serde(rename = "restore", serialize_with = "unit_to_null")]
     Restore,
+    /// Shows console output for a server.
+    #[serde(rename = "os-getConsoleOutput")]
+    OsGetConsoleOutput {
+        /// The number of lines to fetch from the end of console log. All lines will be returned if this is not specified.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        length: Option<u64>,
+    },
     /// Shelves a server.
     #[serde(rename = "shelve", serialize_with = "unit_to_null")]
     Shelve,
@@ -1048,6 +1097,22 @@ mod test {
             })
             .unwrap(),
             "{\"reboot\":{\"type\":\"HARD\"}}"
+        );
+        assert_eq!(
+            serde_json::to_string(&ServerAction::CreateImage {
+                name: "new-image".to_string(),
+                metadata: None,
+            })
+            .unwrap(),
+            r#"{"createImage":{"name":"new-image"}}"#
+        );
+        assert_eq!(
+            serde_json::to_string(&ServerAction::CreateImage {
+                name: "new-image".to_string(),
+                metadata: Some(HashMap::from([("tag".into(), "foo".into())])),
+            })
+            .unwrap(),
+            r#"{"createImage":{"name":"new-image","metadata":{"tag":"foo"}}}"#
         );
     }
 }
