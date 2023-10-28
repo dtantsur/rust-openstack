@@ -31,8 +31,18 @@ use super::protocol::*;
 const API_VERSION_KEYPAIR_TYPE: ApiVersion = ApiVersion(2, 2);
 const API_VERSION_SERVER_DESCRIPTION: ApiVersion = ApiVersion(2, 19);
 const API_VERSION_KEYPAIR_PAGINATION: ApiVersion = ApiVersion(2, 35);
+const API_VERSION_SERVER_FLAVOR: ApiVersion = ApiVersion(2, 47);
 const API_VERSION_FLAVOR_DESCRIPTION: ApiVersion = ApiVersion(2, 55);
 const API_VERSION_FLAVOR_EXTRA_SPECS: ApiVersion = ApiVersion(2, 61);
+
+async fn server_api_version(session: &Session) -> Result<Option<ApiVersion>> {
+    session
+        .pick_api_version(
+            COMPUTE,
+            vec![API_VERSION_SERVER_DESCRIPTION, API_VERSION_SERVER_FLAVOR],
+        )
+        .await
+}
 
 async fn flavor_api_version(session: &Session) -> Result<Option<ApiVersion>> {
     session
@@ -184,9 +194,7 @@ pub async fn get_server<S: AsRef<str>>(session: &Session, id_or_name: S) -> Resu
 /// Get a server by its ID.
 pub async fn get_server_by_id<S: AsRef<str>>(session: &Session, id: S) -> Result<Server> {
     trace!("Get compute server with ID {}", id.as_ref());
-    let maybe_version = session
-        .pick_api_version(COMPUTE, Some(API_VERSION_SERVER_DESCRIPTION))
-        .await?;
+    let maybe_version = server_api_version(session).await?;
     let mut builder = session.get(COMPUTE, &["servers", id.as_ref()]);
     if let Some(version) = maybe_version {
         builder.set_api_version(version);

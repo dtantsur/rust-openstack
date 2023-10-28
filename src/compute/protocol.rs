@@ -141,22 +141,35 @@ pub struct ExtraSpecsRoot {
 }
 
 /// A summary information of a flavor used for a server.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct ServerFlavor {
     /// Ephemeral disk size in GiB.
+    #[serde(rename = "ephemeral")]
     pub ephemeral_size: u64,
     /// Extra specs (if present).
+    #[serde(default)]
     pub extra_specs: Option<HashMap<String, String>>,
     /// Name of the original flavor.
     pub original_name: String,
     /// RAM size in MiB.
+    #[serde(rename = "ram")]
     pub ram_size: u64,
     /// Root disk size in GiB.
+    #[serde(rename = "disk")]
     pub root_size: u64,
     /// Swap disk size in MiB.
+    #[serde(rename = "swap")]
     pub swap_size: u64,
     /// VCPU count.
+    #[serde(rename = "vcpus")]
     pub vcpu_count: u32,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(untagged)]
+pub enum AnyFlavor {
+    New(ServerFlavor),
+    Old(Ref),
 }
 
 fn bool_from_config_drive_string<'de, D>(deserializer: D) -> Result<bool, D::Error>
@@ -197,8 +210,7 @@ pub struct Server {
     pub created_at: DateTime<FixedOffset>,
     #[serde(deserialize_with = "empty_as_default", default)]
     pub description: Option<String>,
-    // TODO(dtantsur): flavor in newer versions
-    pub flavor: Ref,
+    pub flavor: AnyFlavor,
     #[serde(
         deserialize_with = "bool_from_config_drive_string",
         rename = "config_drive"

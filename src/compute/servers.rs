@@ -56,7 +56,6 @@ pub struct DetailedServerQuery {
 pub struct Server {
     session: Session,
     inner: protocol::Server,
-    flavor: protocol::ServerFlavor,
 }
 
 /// Structure representing a summary of a single server.
@@ -117,27 +116,14 @@ impl Refresh for Server {
 
 impl Server {
     /// Create a new Server object.
-    pub(crate) async fn new(session: Session, inner: protocol::Server) -> Result<Server> {
-        let flavor = api::get_flavor(&session, &inner.flavor.id).await?;
-        Ok(Server {
-            session,
-            inner,
-            flavor: protocol::ServerFlavor {
-                ephemeral_size: flavor.ephemeral,
-                extra_specs: flavor.extra_specs,
-                original_name: flavor.name,
-                ram_size: flavor.ram,
-                root_size: flavor.disk,
-                swap_size: flavor.swap,
-                vcpu_count: flavor.vcpus,
-            },
-        })
+    pub(crate) fn new(session: Session, inner: protocol::Server) -> Result<Server> {
+        Ok(Server { session, inner })
     }
 
     /// Load a Server object.
     pub(crate) async fn load<Id: AsRef<str>>(session: Session, id: Id) -> Result<Server> {
         let inner = api::get_server(&session, id).await?;
-        Server::new(session, inner).await
+        Server::new(session, inner)
     }
 
     transparent_property! {
@@ -170,10 +156,38 @@ impl Server {
         description: ref Option<String>
     }
 
-    /// Flavor information used to create this server.
+    /// Identifier of the flavor used to create this server.
+    ///
+    /// This is only known in old API versions, and the flavor is not guaranteed to exist any more.
     #[inline]
-    pub fn flavor(&self) -> &protocol::ServerFlavor {
-        &self.flavor
+    pub fn flavor_id(&self) -> Option<&String> {
+        match self.inner.flavor {
+            protocol::AnyFlavor::Old(ref flavor) => Some(&flavor.id),
+            _ => None,
+        }
+    }
+
+    /// Flavor used to create this server.
+    ///
+    /// It may not possible to reconstruct a real Flavor object out of a Server, so this call
+    /// returns the corresponding information instead.
+    #[inline]
+    pub async fn flavor(&self) -> Result<protocol::ServerFlavor> {
+        match self.inner.flavor {
+            protocol::AnyFlavor::Old(ref flavor) => {
+                let flavor = api::get_flavor(&self.session, &flavor.id).await?;
+                Ok(protocol::ServerFlavor {
+                    ephemeral_size: flavor.ephemeral,
+                    extra_specs: flavor.extra_specs,
+                    original_name: flavor.name,
+                    ram_size: flavor.ram,
+                    root_size: flavor.disk,
+                    swap_size: flavor.swap,
+                    vcpu_count: flavor.vcpus,
+                })
+            }
+            protocol::AnyFlavor::New(ref flavor) => Ok(flavor.clone()),
+        }
     }
 
     /// Find a floating IP, if it exists.
@@ -610,7 +624,7 @@ impl ResourceQuery for DetailedServerQuery {
         let servers = api::list_servers_detail(&self.inner.session, &query).await?;
         let mut result = Vec::with_capacity(servers.len());
         for srv in servers {
-            result.push(Server::new(self.inner.session.clone(), srv).await?);
+            result.push(Server::new(self.inner.session.clone(), srv)?);
         }
         Ok(result)
     }

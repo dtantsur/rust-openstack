@@ -34,11 +34,10 @@ async fn main() {
         server.power_state()
     );
     println!("Links: image = {:?}", server.image_id());
+    let flavor = server.flavor().await.expect("Cannot get the flavor");
     println!(
         "Flavor: {} CPU, disk {}G, memory {}M",
-        server.flavor().vcpu_count,
-        server.flavor().root_size,
-        server.flavor().ram_size
+        flavor.vcpu_count, flavor.root_size, flavor.ram_size
     );
     println!("Floating IP: {:?}", server.floating_ip());
 

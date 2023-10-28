@@ -98,7 +98,7 @@ async fn validate_server(os: &openstack::Cloud, server: &mut openstack::compute:
     let image = server.image().await.expect("Cannot fetch Server image");
     assert_eq!(image.id(), server.image_id().unwrap());
 
-    let flavor = server.flavor();
+    let flavor = server.flavor().await.expect("Cannot fetch Server flavor");
     assert!(flavor.vcpu_count > 0);
     assert!(flavor.ram_size > 0);
     assert!(flavor.root_size > 0);
