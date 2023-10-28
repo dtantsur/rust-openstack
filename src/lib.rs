@@ -108,7 +108,7 @@
 //!
 //! # Requirements
 //!
-//! This crate requires Rust 2022 edition and rustc version 1.64.0 or newer.
+//! This crate requires Rust 2022 edition and rustc version 1.65.0 or newer.
 
 #![crate_name = "openstack"]
 #![crate_type = "lib"]
