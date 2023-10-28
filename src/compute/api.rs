@@ -19,7 +19,7 @@ use std::fmt::Debug;
 
 use osauth::common::{IdAndName, Ref};
 use osauth::services::COMPUTE;
-use osauth::ErrorKind;
+use osauth::{Error, ErrorKind};
 use serde::Serialize;
 
 use super::super::common::ApiVersion;
@@ -315,19 +315,26 @@ pub async fn list_servers_detail<Q: Serialize + Sync + Debug>(
 }
 
 /// Run an action on a server.
-pub async fn server_action_with_args<S1, Q>(session: &Session, id: S1, action: Q) -> Result<()>
+pub async fn server_action_with_args<S1, Q>(
+    session: &Session,
+    id: S1,
+    action: Q,
+) -> Result<serde_json::Value>
 where
     S1: AsRef<str>,
     Q: Serialize + Send + Debug,
 {
     trace!("Running {:?} on server {}", action, id.as_ref(),);
-    let _ = session
+    let response = session
         .post(COMPUTE, &["servers", id.as_ref(), "action"])
         .json(&action)
         .send()
         .await?;
     debug!("Successfully ran {:?} on server {}", action, id.as_ref());
-    Ok(())
+    response
+        .json::<serde_json::Value>()
+        .await
+        .map_err(|e| Error::new(ErrorKind::InvalidResponse, e.to_string()))
 }
 
 /// Whether key pair pagination is supported.

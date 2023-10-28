@@ -307,7 +307,7 @@ impl Server {
         &mut self,
         reboot_type: protocol::RebootType,
     ) -> Result<ServerStatusWaiter<'_>> {
-        self.action(ServerAction::Reboot { reboot_type }).await?;
+        let _ = self.action(ServerAction::Reboot { reboot_type }).await?;
         Ok(ServerStatusWaiter {
             server: self,
             target: protocol::ServerStatus::Active,
@@ -316,7 +316,7 @@ impl Server {
 
     /// Start the server, optionally wait for it to be active.
     pub async fn start(&mut self) -> Result<ServerStatusWaiter<'_>> {
-        self.action(ServerAction::Start).await?;
+        let _ = self.action(ServerAction::Start).await?;
         Ok(ServerStatusWaiter {
             server: self,
             target: protocol::ServerStatus::Active,
@@ -325,7 +325,7 @@ impl Server {
 
     /// Stop the server, optionally wait for it to be powered off.
     pub async fn stop(&mut self) -> Result<ServerStatusWaiter<'_>> {
-        self.action(ServerAction::Stop).await?;
+        let _ = self.action(ServerAction::Stop).await?;
         Ok(ServerStatusWaiter {
             server: self,
             target: protocol::ServerStatus::ShutOff,
@@ -333,7 +333,7 @@ impl Server {
     }
 
     /// Run an action on the server.
-    pub async fn action(&mut self, action: ServerAction) -> Result<()> {
+    pub async fn action(&mut self, action: ServerAction) -> Result<serde_json::Value> {
         api::server_action_with_args(&self.session, &self.inner.id, action).await
     }
 }
