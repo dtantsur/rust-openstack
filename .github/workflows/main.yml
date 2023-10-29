@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: [stable, nightly, 1.64.0]
+        rust: [stable, nightly, 1.65.0]
         flags:
           - ""
           - "--no-default-features"
