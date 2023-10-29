@@ -22,9 +22,8 @@ use std::net;
 use std::ops::Not;
 
 use chrono::{DateTime, FixedOffset};
-use macaddr::MacAddr6;
 use osauth::common::empty_as_default;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 
 use super::super::common::{NetworkRef, SecurityGroupRef};
@@ -330,12 +329,62 @@ pub struct FixedIp {
     pub subnet_id: String,
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Default, Ord, PartialOrd, Hash)]
+pub struct MacAddress(macaddr::MacAddr6);
+
+impl MacAddress {
+    pub fn is_nil(&self) -> bool {
+        self.0.is_nil()
+    }
+}
+
+impl std::fmt::Display for MacAddress {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl std::ops::Deref for MacAddress {
+    type Target = macaddr::MacAddr6;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl std::str::FromStr for MacAddress {
+    type Err = macaddr::ParseError;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        Ok(Self(s.parse::<macaddr::MacAddr6>()?))
+    }
+}
+
+impl Serialize for MacAddress {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for MacAddress {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s: String = Deserialize::deserialize(deserializer)?;
+        s.parse().map_err(serde::de::Error::custom)
+    }
+}
+
 /// A port's IP address.
 #[derive(Debug, Clone, Deserialize, Serialize, Copy)]
 pub struct AllowedAddressPair {
     pub ip_address: net::IpAddr,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub mac_address: Option<MacAddr6>,
+    pub mac_address: Option<MacAddress>,
 }
 
 /// A port.
@@ -382,8 +431,8 @@ pub struct Port {
     pub fixed_ips: Vec<FixedIp>,
     #[serde(skip_serializing)]
     pub id: String,
-    #[serde(skip_serializing_if = "MacAddr6::is_nil")]
-    pub mac_address: MacAddr6,
+    #[serde(skip_serializing_if = "MacAddress::is_nil")]
+    pub mac_address: MacAddress,
     #[serde(
         deserialize_with = "empty_as_default",
         skip_serializing_if = "Option::is_none"
@@ -420,7 +469,7 @@ pub struct PortUpdate {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fixed_ips: Option<Vec<FixedIp>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub mac_address: Option<MacAddr6>,
+    pub mac_address: Option<MacAddress>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -854,4 +903,39 @@ pub struct FloatingIpUpdateRoot {
 #[derive(Debug, Clone, Deserialize)]
 pub struct FloatingIpsRoot {
     pub floatingips: Vec<FloatingIp>,
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_parse_macaddr() {
+        // Test that a JSON deserialisation of MAC addresses work
+        let a: AllowedAddressPair = serde_json::from_value(
+            serde_json::json!({"ip_address":"0.0.0.0", "mac_address":"ab:aa:aa:aa:aa:aa"}),
+        )
+        .expect("Could not parse this JSON");
+        assert_eq!(
+            a.mac_address.expect("MAC address is missing").to_string(),
+            "AB:AA:AA:AA:AA:AA"
+        );
+
+        // Test that a JSON serialisation of MAC addresses work
+        assert_eq!(
+            serde_json::to_value(&a)
+                .expect("Could not serialize")
+                .get("mac_address")
+                .expect("No mac_address")
+                .as_str()
+                .expect("No string found"),
+            "AB:AA:AA:AA:AA:AA"
+        );
+
+        // Test that missing MAC addresses are parsed as None
+        let a: AllowedAddressPair =
+            serde_json::from_value(serde_json::json!({"ip_address":"0.0.0.0"}))
+                .expect("Cannot parse this JSON");
+        assert_eq!(a.mac_address, None);
+    }
 }

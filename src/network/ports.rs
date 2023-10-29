@@ -22,7 +22,6 @@ use std::time::Duration;
 use async_trait::async_trait;
 use chrono::{DateTime, FixedOffset};
 use futures::stream::{Stream, TryStreamExt};
-use macaddr::MacAddr6;
 
 use super::super::common::{
     NetworkRef, PortRef, Refresh, ResourceIterator, ResourceQuery, SecurityGroupRef, SubnetRef,
@@ -31,7 +30,7 @@ use super::super::session::Session;
 use super::super::utils::Query;
 use super::super::waiter::DeletionWaiter;
 use super::super::{Result, Sort};
-use super::{api, protocol, Network, Subnet};
+use super::{api, protocol, MacAddress, Network, Subnet};
 
 /// A query to port list.
 #[derive(Clone, Debug)]
@@ -211,12 +210,12 @@ impl Port {
 
     transparent_property! {
         #[doc = "MAC address of the port."]
-        mac_address: MacAddr6
+        mac_address: MacAddress
     }
 
     update_field! {
         #[doc = "Update the MAC address (admin-only)."]
-        set_mac_address, with_mac_address -> mac_address: MacAddr6
+        set_mac_address, with_mac_address -> mac_address: MacAddress
     }
 
     transparent_property! {
@@ -573,7 +572,7 @@ impl NewPort {
 
     creation_inner_field! {
         #[doc = "Set MAC address for the port (generated otherwise)."]
-        set_mac_address, with_mac_address -> mac_address: MacAddr6
+        set_mac_address, with_mac_address -> mac_address: MacAddress
     }
 
     creation_inner_field! {
