@@ -333,7 +333,7 @@ impl Server {
     }
 
     /// Run an action on the server.
-    pub async fn action(&mut self, action: ServerAction) -> Result<serde_json::Value> {
+    pub async fn action(&mut self, action: ServerAction) -> Result<Option<serde_json::Value>> {
         api::server_action_with_args(&self.session, &self.inner.id, action).await
     }
 }
