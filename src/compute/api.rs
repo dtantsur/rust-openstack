@@ -319,7 +319,7 @@ pub async fn server_action_with_args<S1, Q>(
     session: &Session,
     id: S1,
     action: Q,
-) -> Result<serde_json::Value>
+) -> Result<Option<serde_json::Value>>
 where
     S1: AsRef<str>,
     Q: Serialize + Send + Debug,
@@ -331,10 +331,15 @@ where
         .send()
         .await?;
     debug!("Successfully ran {:?} on server {}", action, id.as_ref());
-    response
-        .json::<serde_json::Value>()
-        .await
-        .map_err(|e| Error::new(ErrorKind::InvalidResponse, e.to_string()))
+    Ok(match response.content_length() {
+        Some(0) => None,
+        _ => Some(
+            response
+                .json::<serde_json::Value>()
+                .await
+                .map_err(|e| Error::new(ErrorKind::InvalidResponse, e.to_string()))?,
+        ),
+    })
 }
 
 /// Whether key pair pagination is supported.
