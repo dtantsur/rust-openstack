@@ -233,6 +233,13 @@ where
     }
 }
 
+/// Serialize an enum unit variant into a None
+/// This is used to turn [ServerAction::Start] into
+/// `"os-start": null` instead of just `"os-start"`
+pub fn unit_to_null<S: Serializer>(s: S) -> std::result::Result<S::Ok, S::Error> {
+    s.serialize_none()
+}
+
 pub mod url {
     //! Handy primitives for working with URLs.
 
