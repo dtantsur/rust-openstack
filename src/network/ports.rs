@@ -21,7 +21,6 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use chrono::{DateTime, FixedOffset};
-use eui48::MacAddress;
 use futures::stream::{Stream, TryStreamExt};
 
 use super::super::common::{
@@ -31,7 +30,7 @@ use super::super::session::Session;
 use super::super::utils::Query;
 use super::super::waiter::DeletionWaiter;
 use super::super::{Result, Sort};
-use super::{api, protocol, Network, Subnet};
+use super::{api, protocol, MacAddress, Network, Subnet};
 
 /// A query to port list.
 #[derive(Clone, Debug)]
