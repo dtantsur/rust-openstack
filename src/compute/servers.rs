@@ -629,6 +629,14 @@ impl DetailedServerQuery {
         debug!("Fetching server details with {:?}", self.inner.query);
         ResourceIterator::new(self).into_stream()
     }
+
+    /// Execute this request and return all results.
+    ///
+    /// A convenience shortcut for `self.into_stream().try_collect().await`.
+    #[inline]
+    pub async fn all(self) -> Result<Vec<Server>> {
+        self.into_stream().try_collect().await
+    }
 }
 
 #[async_trait]
