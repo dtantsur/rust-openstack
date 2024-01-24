@@ -472,6 +472,12 @@ impl ServerQuery {
         self
     }
 
+    /// Add all tenants to the request.
+    pub fn all_tenants(mut self) -> Self {
+        self.query.push("all_tenants", true);
+        self
+    }
+
     query_filter! {
         #[doc = "Filter by IPv4 address that should be used to access the server."]
         set_access_ip_v4, with_access_ip_v4 -> access_ip_v4: Ipv4Addr
