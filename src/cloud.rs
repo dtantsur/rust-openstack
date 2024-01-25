@@ -22,6 +22,8 @@ use std::io;
 use super::auth::AuthType;
 #[allow(unused_imports)]
 use super::common::{ContainerRef, FlavorRef, NetworkRef};
+#[cfg(feature = "block-storage")]
+use super::block_storage::{Volume, VolumeQuery};
 #[cfg(feature = "compute")]
 use super::compute::{
     Flavor, FlavorQuery, FlavorSummary, KeyPair, KeyPairQuery, NewKeyPair, NewServer, Server,
@@ -308,6 +310,15 @@ impl Cloud {
     #[cfg(feature = "network")]
     pub fn find_subnets(&self) -> SubnetQuery {
         SubnetQuery::new(self.session.clone())
+    }
+
+    /// Build a query against volume list.
+    ///
+    /// The returned object is a builder that should be used to construct
+    /// the query.
+    #[cfg(feature = "block-storage")]
+    pub fn find_volumes(&self) -> VolumeQuery {
+        VolumeQuery::new(self.session.clone())
     }
 
     /// Get object container metadata by its name.
