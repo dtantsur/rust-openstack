@@ -13,3 +13,51 @@
 // limitations under the License.
 
 //! Foundation bits exposing the Block Storage API.
+
+use std::fmt::Debug;
+
+use osauth::services::BLOCK_STORAGE;
+use osauth::ErrorKind;
+use serde::Serialize;
+
+use super::super::session::Session;
+use super::super::utils;
+use super::protocol::*;
+use super::super::Result;
+
+/// Get an volume.
+pub async fn get_volume<S: AsRef<str>>(session: &Session, id_or_name: S) -> Result<Volume> {
+    let s = id_or_name.as_ref();
+    match get_volume_by_id(session, s).await {
+        Ok(value) => Ok(value),
+        Err(err) if err.kind() == ErrorKind::ResourceNotFound => {
+            get_volume_by_name(session, s).await
+        }
+        Err(err) => Err(err),
+    }
+}
+
+/// Get an volume by its ID.
+pub async fn get_volume_by_id<S: AsRef<str>>(session: &Session, id: S) -> Result<Volume> {
+    trace!("Fetching volume {}", id.as_ref());
+    let root: VolumeRoot = session.get(BLOCK_STORAGE, &["volumes", id.as_ref()]).fetch().await?;
+    trace!("Received {:?}", root.volume);
+    Ok(root.volume)
+}
+
+/// Get an volume by its name.
+pub async fn get_volume_by_name<S: AsRef<str>>(session: &Session, name: S) -> Result<Volume> {
+    trace!("Get volume by name {}", name.as_ref());
+    let root: VolumesRoot = session
+        .get(BLOCK_STORAGE, &["volumes"])
+        .query(&[("name", name.as_ref())])
+        .fetch()
+        .await?;
+    let result = utils::one(
+        root.volumes,
+        "Volume with given name or ID not found",
+        "Too many volumes found with given name",
+    )?;
+    trace!("Received {:?}", result);
+    Ok(result)
+}
