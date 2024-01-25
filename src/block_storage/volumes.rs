@@ -47,3 +47,12 @@ impl Volume {
         name: ref String
     }
 }
+
+#[async_trait]
+impl Refresh for Volume {
+    /// Refresh the volume.
+    async fn refresh(&mut self) -> Result<()> {
+        self.inner = api::get_volume_by_id(&self.session, &self.inner.id).await?;
+        Ok(())
+    }
+}
