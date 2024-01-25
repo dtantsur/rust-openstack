@@ -652,6 +652,8 @@ pub mod image;
 pub mod network;
 #[cfg(feature = "object-storage")]
 pub mod object_storage;
+#[cfg(feature = "block-storage")]
+pub mod block_storage;
 /// Synchronous sessions based on one from [osauth](https://docs.rs/osauth/).
 pub mod session {
     pub use osauth::services::ServiceType;
