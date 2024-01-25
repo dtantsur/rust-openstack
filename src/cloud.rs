@@ -520,6 +520,23 @@ impl Cloud {
         Subnet::load(self.session.clone(), id_or_name).await
     }
 
+    /// Find an volume by its name or ID.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// # async fn async_wrapper() {
+    /// let os = openstack::Cloud::from_env().await.expect("Unable to authenticate");
+    /// let volume = os.get_volume("my-first-volume").await.expect("Unable to get a volume");
+    /// # }
+    /// ```
+    #[cfg(feature = "block-storage")]
+    pub async fn get_volume<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Volume> {
+        Volume::new(self.session.clone(), id_or_name).await
+    }
+
     /// List all containers.
     ///
     /// This call can yield a lot of results, use the
