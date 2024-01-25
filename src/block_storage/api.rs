@@ -61,3 +61,14 @@ pub async fn get_volume_by_name<S: AsRef<str>>(session: &Session, name: S) -> Re
     trace!("Received {:?}", result);
     Ok(result)
 }
+
+/// List volumes.
+pub async fn list_volumes<Q: Serialize + Sync + Debug>(
+    session: &Session,
+    query: &Q,
+) -> Result<Vec<Volume>> {
+    trace!("Listing volumes with {:?}", query);
+    let root: VolumesRoot = session.get(BLOCK_STORAGE, &["volumes", "detail"]).query(query).fetch().await?;
+    trace!("Received volumes: {:?}", root.volumes);
+    Ok(root.volumes)
+}
