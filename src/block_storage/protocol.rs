@@ -62,3 +62,23 @@ impl Default for VolumeSortKey {
         VolumeSortKey::CreatedAt
     }
 }
+
+/// A volume.
+#[derive(Debug, Clone, Deserialize)]
+pub struct Volume {
+    pub id: String,
+    pub name: String,
+    pub status: VolumeStatus,
+}
+
+/// A volume root.
+#[derive(Clone, Debug, Deserialize)]
+pub struct VolumeRoot {
+    pub volume: Volume,
+}
+
+/// A list of volumes.
+#[derive(Debug, Clone, Deserialize)]
+pub struct VolumesRoot {
+    pub volumes: Vec<Volume>,
+}
