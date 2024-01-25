@@ -149,3 +149,34 @@ impl VolumeQuery {
         ResourceIterator::new(self).one().await
     }
 }
+
+#[async_trait]
+impl ResourceQuery for VolumeQuery {
+    type Item = Volume;
+
+    const DEFAULT_LIMIT: usize = 50;
+
+    async fn can_paginate(&self) -> Result<bool> {
+        Ok(self.can_paginate)
+    }
+
+    fn extract_marker(&self, resource: &Self::Item) -> String {
+        resource.id().clone()
+    }
+
+    async fn fetch_chunk(
+        &self,
+        limit: Option<usize>,
+        marker: Option<String>,
+    ) -> Result<Vec<Self::Item>> {
+        let query = self.query.with_marker_and_limit(limit, marker);
+        Ok(api::list_volumes(&self.session, &query)
+            .await?
+            .into_iter()
+            .map(|item| Volume {
+                session: self.session.clone(),
+                inner: item,
+            })
+            .collect())
+    }
+}
