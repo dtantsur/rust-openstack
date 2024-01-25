@@ -13,3 +13,52 @@
 // limitations under the License.
 
 //! JSON structures and protocol bits for the Block Storage API.
+
+#![allow(non_snake_case)]
+#![allow(missing_docs)]
+
+use serde::Deserialize;
+
+// use super::super::common;
+
+protocol_enum! {
+    #[doc = "Possible volume statuses."]
+    enum VolumeStatus {
+        Creating = "creating",
+        Available = "available",
+        Reserved = "reserved",
+        Attaching = "attaching",
+        Detaching = "detaching",
+        InUse = "in-use",
+        Maintenance = "maintenance",
+        Deleting = "deleting",
+        AwaitingTransfer = "awaiting-transfer",
+        Error = "error",
+        ErrorDeleting = "error_deleting",
+        BackingUp = "backing-up",
+        RestoringBackup = "restoring-backup",
+        ErrorBackingUp = "error_backing-up",
+        ErrorRestoring = "error_restoring",
+        ErrorExtending = "error_extending",
+        Downloading = "downloading",
+        Uploading = "uploading",
+        Retyping = "retyping",
+        Extending = "extending"
+    }
+}
+
+protocol_enum! {
+    #[doc = "Available sort keys."]
+    enum VolumeSortKey {
+        CreatedAt = "created_at",
+        Id = "id",
+        Name = "name",
+        UpdatedAt = "updated_at"
+    }
+}
+
+impl Default for VolumeSortKey {
+    fn default() -> VolumeSortKey {
+        VolumeSortKey::CreatedAt
+    }
+}
