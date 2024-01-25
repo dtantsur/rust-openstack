@@ -14,7 +14,8 @@ edition = "2021"
 rust-version = "1.65"
 
 [features]
-default = ["compute", "image", "network", "native-tls", "object-storage"]
+default = ["block-storage", "compute", "image", "network", "native-tls", "object-storage"]
+block-storage = []
 compute = []
 image = []
 network = []
