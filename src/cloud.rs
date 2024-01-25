@@ -750,6 +750,11 @@ impl Cloud {
         self.find_subnets().all().await
     }
 
+    /// List all volumes.
+    pub async fn list_volumes(&self) -> Result<Vec<Volume>> {
+        self.find_volumes().all().await
+    }
+
     /// Prepare a new object for creation.
     ///
     /// This call returns a `NewObject` object, which is a builder
