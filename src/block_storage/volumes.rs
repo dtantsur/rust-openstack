@@ -16,6 +16,7 @@
 
 use async_trait::async_trait;
 use futures::stream::{Stream, TryStreamExt};
+use std::fmt::{self, Display, Formatter};
 
 use super::super::common::{Refresh, ResourceIterator, ResourceQuery};
 use super::super::session::Session;
@@ -37,6 +38,12 @@ pub struct VolumeQuery {
 pub struct Volume {
     session: Session,
     inner: protocol::Volume,
+}
+
+impl Display for Volume {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{:#?}", self.inner)
+    }
 }
 
 impl Volume {
