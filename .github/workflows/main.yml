@@ -6,6 +6,7 @@ jobs:
     name: Unit tests on ${{ matrix.rust }} ${{ matrix.flags}}
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         rust: [stable, nightly, 1.65.0]
         flags:
