@@ -146,8 +146,6 @@ opaque_resource_type!(#[doc = "An ID of a `Volume`"] VolumeRef ? "volume");
 
 #[cfg(test)]
 mod test {
-    use serde_json;
-
     opaque_resource_type!(TestId ? "test");
 
     #[test]
