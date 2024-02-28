@@ -472,6 +472,12 @@ impl ServerQuery {
         self
     }
 
+    /// Add all tenants to the request.
+    pub fn all_tenants(mut self) -> Self {
+        self.query.push("all_tenants", true);
+        self
+    }
+
     query_filter! {
         #[doc = "Filter by IPv4 address that should be used to access the server."]
         set_access_ip_v4, with_access_ip_v4 -> access_ip_v4: Ipv4Addr
@@ -622,6 +628,14 @@ impl DetailedServerQuery {
     pub fn into_stream(self) -> impl Stream<Item = Result<Server>> {
         debug!("Fetching server details with {:?}", self.inner.query);
         ResourceIterator::new(self).into_stream()
+    }
+
+    /// Execute this request and return all results.
+    ///
+    /// A convenience shortcut for `self.into_stream().try_collect().await`.
+    #[inline]
+    pub async fn all(self) -> Result<Vec<Server>> {
+        self.into_stream().try_collect().await
     }
 }
 
