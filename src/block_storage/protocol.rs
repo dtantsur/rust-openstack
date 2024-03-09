@@ -19,8 +19,6 @@
 
 use serde::Deserialize;
 
-// use super::super::common;
-
 protocol_enum! {
     #[doc = "Possible volume statuses."]
     enum VolumeStatus {
