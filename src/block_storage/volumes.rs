@@ -17,8 +17,10 @@
 use async_trait::async_trait;
 use futures::stream::{Stream, TryStreamExt};
 use std::fmt::{self, Display, Formatter};
+use std::time::Duration;
 
 use super::super::common::{Refresh, ResourceIterator, ResourceQuery};
+use super::super::waiter::DeletionWaiter;
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::super::{Result, Sort};
@@ -61,6 +63,16 @@ impl Volume {
     transparent_property! {
         #[doc = "Volume name."]
         name: ref String
+    }
+
+    /// Delete the volume.
+    pub async fn delete(self) -> Result<DeletionWaiter<Volume>> {
+        api::delete_volume(&self.session, &self.inner.id).await?;
+        Ok(DeletionWaiter::new(
+            self,
+            Duration::new(120, 0),
+            Duration::new(1, 0),
+        ))
     }
 }
 
