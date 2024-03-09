@@ -25,6 +25,17 @@ use super::super::utils;
 use super::protocol::*;
 use super::super::Result;
 
+/// Delete a volume.
+pub async fn delete_volume<S: AsRef<str>>(session: &Session, id: S) -> Result<()> {
+    trace!("Deleting volume {}", id.as_ref());
+    let _ = session
+        .delete(BLOCK_STORAGE, &["volumes", id.as_ref()])
+        .send()
+        .await?;
+    debug!("Successfully requested deletion of volume {}", id.as_ref());
+    Ok(())
+}
+
 /// Get an volume.
 pub async fn get_volume<S: AsRef<str>>(session: &Session, id_or_name: S) -> Result<Volume> {
     let s = id_or_name.as_ref();
