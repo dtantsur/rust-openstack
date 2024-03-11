@@ -61,6 +61,26 @@ impl Default for VolumeSortKey {
     }
 }
 
+/// A volume attachment.
+#[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
+pub struct VolumeAttachment {
+    pub server_id: String, // this should be a reference to a server
+    pub attachment_id: String,
+    pub attached_at: String,
+    pub host_name: String,
+    pub volume_id: String, // this should be a reference to a volume
+    pub device: String,
+    pub id: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
+pub struct Link {
+    pub rel: String,
+    pub href: String,
+}
+
 /// A volume.
 #[derive(Debug, Clone, Deserialize)]
 pub struct Volume {
