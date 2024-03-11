@@ -17,6 +17,7 @@
 #![allow(non_snake_case)]
 #![allow(missing_docs)]
 
+use std::collections::HashMap;
 use serde::Deserialize;
 
 protocol_enum! {
@@ -83,10 +84,55 @@ pub struct Link {
 
 /// A volume.
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 pub struct Volume {
+    // TODO: not all fields fully match the API spec:
+    // https://docs.openstack.org/api-ref/block-storage/v3/#list-accessible-volumes-with-details
+    // Some fields are not actually optional, but don't work without Option<>.
+    // Others should maybe be enums, but the possible values are not documented.
+    // There are comments for these cases.
+    pub migration_status: Option<String>, // consider enum
+    pub attachments: Vec<VolumeAttachment>,
+    pub links: Vec<Link>,
+    pub availability_zone: Option<String>,
+    #[serde(rename = "os-vol-host-attr:host")]
+    pub host: Option<String>,
+    pub encrypted: bool,
+    pub encryption_key_id: Option<String>,
+    pub updated_at: String,
+    pub replication_status: Option<String>, // not optional in spec, also consider enum
+    pub snapshot_id: Option<String>,
     pub id: String,
-    pub name: String,
+    pub size: u64,
+    pub user_id: String,
+    #[serde(rename = "os-vol-tenant-attr:tenant_id")]
+    pub tenant_id: String,
+    #[serde(rename = "os-vol-mig-status-attr:migstat")]
+    pub migstat: Option<String>, // consider enum
+    pub metadata: HashMap<String, String>,
     pub status: VolumeStatus,
+    #[serde(rename = "volume_image_metadata")]
+    pub image_metadata: Option<HashMap<String, String>>,
+    pub description: String,
+    pub multiattach: bool,
+    pub source_volid: Option<String>,
+    pub consistencygroup_id: Option<String>, // not optional in spec
+    #[serde(rename = "os-vol-mig-status-attr:name_id")]
+    pub name_id: Option<String>,
+    pub name: String,
+    pub bootable: String,
+    pub created_at: String,
+    pub volumes: Option<Vec<Volume>>, // not optional in spec
+    pub volume_type: String, // consider enum
+    pub volume_type_id: Option<HashMap<String, String>>, // not optional in spec
+    pub group_id: Option<String>,
+    pub volumes_links: Option<Vec<String>>,
+    pub provider_id: Option<String>,
+    pub service_uuid: Option<String>, // not optional in spec
+    pub shared_targets: Option<bool>, // not optional in spec
+    pub cluster_name: Option<String>,
+    pub consumes_quota: Option<bool>,
+    pub count: Option<u64>,
 }
 
 /// A volume root.
