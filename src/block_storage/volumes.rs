@@ -20,9 +20,9 @@ use std::fmt::{self, Display, Formatter};
 use std::time::Duration;
 
 use super::super::common::{Refresh, ResourceIterator, ResourceQuery};
-use super::super::waiter::DeletionWaiter;
 use super::super::session::Session;
 use super::super::utils::Query;
+use super::super::waiter::DeletionWaiter;
 use super::super::{Result, Sort};
 use super::{api, protocol};
 

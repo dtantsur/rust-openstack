@@ -15,10 +15,8 @@
 //! Block Storage API implementation bits.
 
 mod api;
-mod volumes;
 mod protocol;
+mod volumes;
 
+pub use self::protocol::{VolumeSortKey, VolumeStatus};
 pub use self::volumes::{Volume, VolumeQuery};
-pub use self::protocol::{
-    VolumeSortKey, VolumeStatus,
-};

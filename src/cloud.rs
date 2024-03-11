@@ -20,10 +20,10 @@ use futures::io::AsyncRead;
 use std::io;
 
 use super::auth::AuthType;
-#[allow(unused_imports)]
-use super::common::{ContainerRef, FlavorRef, NetworkRef};
 #[cfg(feature = "block-storage")]
 use super::block_storage::{Volume, VolumeQuery};
+#[allow(unused_imports)]
+use super::common::{ContainerRef, FlavorRef, NetworkRef};
 #[cfg(feature = "compute")]
 use super::compute::{
     Flavor, FlavorQuery, FlavorSummary, KeyPair, KeyPairQuery, NewKeyPair, NewServer, Server,

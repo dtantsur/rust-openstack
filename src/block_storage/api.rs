@@ -22,8 +22,8 @@ use serde::Serialize;
 
 use super::super::session::Session;
 use super::super::utils;
-use super::protocol::*;
 use super::super::Result;
+use super::protocol::*;
 
 /// Delete a volume.
 pub async fn delete_volume<S: AsRef<str>>(session: &Session, id: S) -> Result<()> {
@@ -51,7 +51,10 @@ pub async fn get_volume<S: AsRef<str>>(session: &Session, id_or_name: S) -> Resu
 /// Get an volume by its ID.
 pub async fn get_volume_by_id<S: AsRef<str>>(session: &Session, id: S) -> Result<Volume> {
     trace!("Fetching volume {}", id.as_ref());
-    let root: VolumeRoot = session.get(BLOCK_STORAGE, &["volumes", id.as_ref()]).fetch().await?;
+    let root: VolumeRoot = session
+        .get(BLOCK_STORAGE, &["volumes", id.as_ref()])
+        .fetch()
+        .await?;
     trace!("Received {:?}", root.volume);
     Ok(root.volume)
 }
@@ -79,7 +82,11 @@ pub async fn list_volumes<Q: Serialize + Sync + Debug>(
     query: &Q,
 ) -> Result<Vec<Volume>> {
     trace!("Listing volumes with {:?}", query);
-    let root: VolumesRoot = session.get(BLOCK_STORAGE, &["volumes", "detail"]).query(query).fetch().await?;
+    let root: VolumesRoot = session
+        .get(BLOCK_STORAGE, &["volumes", "detail"])
+        .query(query)
+        .fetch()
+        .await?;
     trace!("Received volumes: {:?}", root.volumes);
     Ok(root.volumes)
 }

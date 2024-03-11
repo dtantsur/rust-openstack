@@ -17,8 +17,8 @@
 #![allow(non_snake_case)]
 #![allow(missing_docs)]
 
-use std::collections::HashMap;
 use serde::Deserialize;
+use std::collections::HashMap;
 
 protocol_enum! {
     #[doc = "Possible volume statuses."]
@@ -123,7 +123,7 @@ pub struct Volume {
     pub bootable: String,
     pub created_at: String,
     pub volumes: Option<Vec<Volume>>, // not optional in spec
-    pub volume_type: String, // consider enum
+    pub volume_type: String,          // consider enum
     pub volume_type_id: Option<HashMap<String, String>>, // not optional in spec
     pub group_id: Option<String>,
     pub volumes_links: Option<Vec<String>>,

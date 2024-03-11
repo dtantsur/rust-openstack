@@ -642,10 +642,10 @@ pub mod auth {
     pub use osauth::identity::{Password, Scope, Token};
     pub use osauth::{AuthType, NoAuth};
 }
-mod cloud;
-pub mod common;
 #[cfg(feature = "block-storage")]
 pub mod block_storage;
+mod cloud;
+pub mod common;
 #[cfg(feature = "compute")]
 pub mod compute;
 #[cfg(feature = "image")]
