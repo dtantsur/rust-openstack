@@ -768,6 +768,7 @@ impl Cloud {
     }
 
     /// List all volumes.
+    #[cfg(feature = "block-storage")]
     pub async fn list_volumes(&self) -> Result<Vec<Volume>> {
         self.find_volumes().all().await
     }
