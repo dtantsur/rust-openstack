@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::sync::Once;
 use openstack::block_storage::VolumeStatus;
+use std::sync::Once;
 
 static INIT: Once = Once::new();
 
@@ -49,4 +49,23 @@ async fn test_volume_create_get_delete_simple() {
 
     let volume3 = os.get_volume(id).await;
     assert!(volume3.is_err());
+}
+
+#[tokio::test]
+async fn test_volume_create_with_fields() {
+    let os = set_up().await;
+
+    let volume = os
+        .new_volume(1 as u64)
+        .with_name("test_volume")
+        .with_description("test_description")
+        .create()
+        .await
+        .expect("Could not create volume");
+    assert_eq!(volume.name(), "test_volume");
+    assert_eq!(*volume.description(), Some("test_description".to_string()));
+    assert_eq!(*volume.size(), 1 as u64);
+    assert_eq!(*volume.status(), VolumeStatus::Available);
+
+    volume.delete().await.expect("Could not delete volume");
 }
