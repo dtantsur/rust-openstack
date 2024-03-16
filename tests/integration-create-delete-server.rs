@@ -255,12 +255,23 @@ async fn test_server_ops_with_port() {
         "A floating IP"
     );
 
-    tokio::time::sleep(time::Duration::from_secs(1)).await;
+    for attempt in 0..10 {
+        tokio::time::sleep(time::Duration::from_secs(1)).await;
 
-    server.refresh().await.expect("Cannot refresh the server");
+        server.refresh().await.expect("Cannot refresh the server");
 
-    let server_ip = server.floating_ip().expect("No floating IP");
-    assert_eq!(server_ip, floating_ip.floating_ip_address());
+        match server.floating_ip() {
+            Some(server_ip) => {
+                assert_eq!(server_ip, floating_ip.floating_ip_address());
+                break;
+            }
+            None => {
+                if attempt == 9 {
+                    panic!("Still no floating IP after 10 seconds");
+                }
+            }
+        }
+    }
 
     floating_ip
         .dissociate()
