@@ -111,7 +111,8 @@ pub struct Volume {
     #[serde(rename = "volume_image_metadata")]
     pub image_metadata: Option<HashMap<String, String>>,
     pub description: Option<String>,
-    pub multiattach: bool,
+    #[serde(rename = "multiattach")]
+    pub multi_attachable: bool,
     #[serde(rename = "source_volid")]
     pub source_volume_id: Option<String>,
     #[serde(rename = "consistencygroup_id")]
