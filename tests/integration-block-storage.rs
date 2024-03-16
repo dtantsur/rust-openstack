@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use std::sync::Once;
+use openstack::block_storage::VolumeStatus;
 
 static INIT: Once = Once::new();
 
@@ -36,8 +37,10 @@ async fn test_volume_create_get_delete_simple() {
         .await
         .expect("Could not create volume");
     let id = volume.id().clone();
-    assert_eq!(volume.name(), "");
+    assert!(volume.name().is_empty());
+    assert!(volume.description().is_none());
     assert_eq!(*volume.size(), 1 as u64);
+    assert_eq!(*volume.status(), VolumeStatus::Available);
 
     let volume2 = os.get_volume(&id).await.expect("Could not get volume");
     assert_eq!(volume2.id(), volume.id());
