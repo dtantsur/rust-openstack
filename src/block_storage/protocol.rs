@@ -17,7 +17,7 @@
 #![allow(non_snake_case)]
 #![allow(missing_docs)]
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 protocol_enum! {
@@ -144,4 +144,55 @@ pub struct VolumeRoot {
 #[derive(Debug, Clone, Deserialize)]
 pub struct VolumesRoot {
     pub volumes: Vec<Volume>,
+}
+
+/// Volume arguments for a create request.
+#[derive(Debug, Clone, Serialize)]
+pub struct VolumeCreate {
+    pub size: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub availability_zone: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "source_volid")]
+    pub source_volume_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub snapshot_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub backup_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "imageRef")]
+    pub image_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub volume_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<HashMap<String, String>>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "consistency_group_id")]
+    pub consistency_group_id: Option<String>,
+}
+
+/// A volume create request.
+#[derive(Clone, Debug, Serialize)]
+pub struct VolumeCreateRoot {
+    pub volume: VolumeCreate,
+    // NOTE: this can also contain a scheduler_hints field
+}
+
+impl VolumeCreate {
+    pub fn new(size: u64) -> VolumeCreate {
+        VolumeCreate {
+            size,
+            availability_zone: None,
+            source_volume_id: None,
+            description: None,
+            snapshot_id: None,
+            backup_id: None,
+            name: None,
+            image_id: None,
+            volume_type: None,
+            metadata: None,
+            consistency_group_id: None,
+        }
+    }
 }
