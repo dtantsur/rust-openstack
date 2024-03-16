@@ -18,6 +18,7 @@ use async_trait::async_trait;
 use futures::stream::{Stream, TryStreamExt};
 use std::fmt::{self, Display, Formatter};
 use std::time::Duration;
+use std::collections::HashMap;
 
 use super::super::common::{Refresh, ResourceIterator, ResourceQuery};
 use super::super::session::Session;
@@ -40,6 +41,13 @@ pub struct VolumeQuery {
 pub struct Volume {
     session: Session,
     inner: protocol::Volume,
+}
+
+/// A request to create a volume.
+#[derive(Clone, Debug)]
+pub struct NewVolume {
+    session: Session,
+    inner: protocol::VolumeCreate,
 }
 
 impl Display for Volume {
@@ -197,5 +205,74 @@ impl ResourceQuery for VolumeQuery {
                 inner: item,
             })
             .collect())
+    }
+}
+
+impl NewVolume {
+    /// Start creating a volume.
+    pub(crate) fn new(session: Session, size: u64) -> NewVolume {
+        NewVolume {
+            session,
+            inner: protocol::VolumeCreate::new(size),
+        }
+    }
+
+    /// Request creation of the volume.
+    pub async fn create(self) -> Result<Volume> {
+        let inner = api::create_volume(&self.session, self.inner).await?;
+        Ok(Volume {
+            session: self.session,
+            inner,
+        })
+    }
+
+    creation_inner_field! {
+        #[doc = "Set the availability zone."]
+        set_availability_zone, with_availability_zone -> availability_zone: optional String
+    }
+
+    creation_inner_field! {
+        #[doc = "Set the source volume ID."]
+        set_source_volume_id, with_source_volume_id -> source_volume_id: optional String
+    }
+
+    creation_inner_field! {
+        #[doc = "Set the description."]
+        set_description, with_description -> description: optional String
+    }
+
+    creation_inner_field! {
+        #[doc = "Set the snapshot ID."]
+        set_snapshot_id, with_snapshot_id -> snapshot_id: optional String
+    }
+
+    creation_inner_field! {
+        #[doc = "Set the backup ID."]
+        set_backup_id, with_backup_id -> backup_id: optional String
+    }
+
+    creation_inner_field! {
+        #[doc = "Set the name."]
+        set_name, with_name -> name: optional String
+    }
+
+    creation_inner_field! {
+        #[doc = "Set the image ID."]
+        set_image_id, with_image_id -> image_id: optional String
+    }
+
+    creation_inner_field! {
+        #[doc = "Set the volume type."]
+        set_volume_type, with_volume_type -> volume_type: optional String
+    }
+
+    creation_inner_field! {
+        #[doc = "Set the metadata."]
+        set_metadata, with_metadata -> metadata: optional HashMap<String, String>
+    }
+
+    creation_inner_field! {
+        #[doc = "Set the consistency group ID."]
+        set_consistency_group_id, with_consistency_group_id -> consistency_group_id: optional String
     }
 }
