@@ -21,7 +21,7 @@ use std::io;
 
 use super::auth::AuthType;
 #[cfg(feature = "block-storage")]
-use super::block_storage::{Volume, VolumeQuery};
+use super::block_storage::{Volume, VolumeQuery, NewVolume};
 #[allow(unused_imports)]
 use super::common::{ContainerRef, FlavorRef, NetworkRef};
 #[cfg(feature = "compute")]
@@ -852,6 +852,18 @@ impl Cloud {
         F: Into<FlavorRef>,
     {
         NewServer::new(self.session.clone(), name.into(), flavor.into())
+    }
+
+    /// Prepare a new volume for creation.
+    ///
+    /// This call returns a `NewVolume` object, which is a builder to populate
+    /// volume fields.
+    #[cfg(feature = "block-storage")]
+    pub fn new_volume<U>(&self, size: U) -> NewVolume
+    where
+        U: Into<u64>,
+    {
+        NewVolume::new(self.session.clone(), size.into())
     }
 
     /// Prepare a new subnet for creation.
