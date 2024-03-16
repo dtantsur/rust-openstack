@@ -96,24 +96,26 @@ pub struct Volume {
     pub host: Option<String>,
     pub encrypted: bool,
     pub encryption_key_id: Option<String>,
-    pub updated_at: String,
+    pub updated_at: Option<String>,
     pub replication_status: Option<String>, // not optional in spec, also consider enum
     pub snapshot_id: Option<String>,
     pub id: String,
     pub size: u64,
     pub user_id: String,
     #[serde(rename = "os-vol-tenant-attr:tenant_id")]
-    pub tenant_id: String,
+    pub tenant_id: Option<String>,
     #[serde(rename = "os-vol-mig-status-attr:migstat")]
     pub migstat: Option<String>, // consider enum
     pub metadata: HashMap<String, String>,
     pub status: VolumeStatus,
     #[serde(rename = "volume_image_metadata")]
     pub image_metadata: Option<HashMap<String, String>>,
-    pub description: String,
+    pub description: Option<String>,
     pub multiattach: bool,
-    pub source_volid: Option<String>,
-    pub consistencygroup_id: Option<String>, // not optional in spec
+    #[serde(rename = "source_volid")]
+    pub source_volume_id: Option<String>,
+    #[serde(rename = "consistencygroup_id")]
+    pub consistency_group_id: Option<String>, // not optional in spec
     #[serde(rename = "os-vol-mig-status-attr:name_id")]
     pub name_id: Option<String>,
     pub name: String,
