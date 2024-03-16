@@ -19,4 +19,4 @@ mod protocol;
 mod volumes;
 
 pub use self::protocol::{VolumeSortKey, VolumeStatus};
-pub use self::volumes::{Volume, VolumeQuery};
+pub use self::volumes::{Volume, VolumeQuery, NewVolume};
