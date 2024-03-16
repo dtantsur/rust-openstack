@@ -168,7 +168,10 @@ pub struct VolumeCreate {
     pub volume_type: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metadata: Option<HashMap<String, String>>,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "consistency_group_id")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        rename = "consistency_group_id"
+    )]
     pub consistency_group_id: Option<String>,
 }
 

@@ -21,7 +21,7 @@ use std::io;
 
 use super::auth::AuthType;
 #[cfg(feature = "block-storage")]
-use super::block_storage::{Volume, VolumeQuery, NewVolume};
+use super::block_storage::{NewVolume, Volume, VolumeQuery};
 #[allow(unused_imports)]
 use super::common::{ContainerRef, FlavorRef, NetworkRef};
 #[cfg(feature = "compute")]

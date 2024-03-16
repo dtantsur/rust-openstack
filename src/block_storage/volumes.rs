@@ -16,9 +16,9 @@
 
 use async_trait::async_trait;
 use futures::stream::{Stream, TryStreamExt};
+use std::collections::HashMap;
 use std::fmt::{self, Display, Formatter};
 use std::time::Duration;
-use std::collections::HashMap;
 
 use super::super::common::{Refresh, ResourceIterator, ResourceQuery};
 use super::super::session::Session;
