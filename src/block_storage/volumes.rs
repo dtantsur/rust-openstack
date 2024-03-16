@@ -64,13 +64,188 @@ impl Volume {
     }
 
     transparent_property! {
-        #[doc = "Unique ID."]
+        #[doc = "Migration status."]
+        migration_status: ref Option<String>
+    }
+
+    transparent_property! {
+        #[doc = "Volume attachments."]
+        attachments: ref Vec<protocol::VolumeAttachment>
+    }
+
+    transparent_property! {
+        #[doc = "Volume links."]
+        links: ref Vec<protocol::Link>
+    }
+
+    transparent_property! {
+        #[doc = "Name of the availability zone."]
+        availability_zone: ref Option<String>
+    }
+
+    transparent_property! {
+        #[doc = "Current backend of the volume."]
+        host: ref Option<String>
+    }
+
+    transparent_property! {
+        #[doc = "Whether the volume is encrypted."]
+        encrypted: ref bool
+    }
+
+    transparent_property! {
+        #[doc = "UUID of the encryption key."]
+        encryption_key_id: ref Option<String>
+    }
+
+    transparent_property! {
+        #[doc = "When the volume was last updated."]
+        updated_at: ref Option<String>
+    }
+
+    transparent_property! {
+        #[doc = "Volume replication status."]
+        replication_status: ref Option<String>
+    }
+
+    transparent_property! {
+        #[doc = "UUID of the snapshot the volume originated from."]
+        snapshot_id: ref Option<String>
+    }
+
+    transparent_property! {
+        #[doc = "UUID of the volume."]
         id: ref String
     }
 
     transparent_property! {
-        #[doc = "Volume name."]
+        #[doc = "Size of the volume in GiB."]
+        size: ref u64
+    }
+
+    transparent_property! {
+        #[doc = "UUID of the user."]
+        user_id: ref String
+    }
+
+    transparent_property! {
+        #[doc = "UUID of the project."]
+        tenant_id: ref Option<String>
+    }
+
+    transparent_property! {
+        #[doc = "Migration status."]
+        migstat: ref Option<String>
+    }
+
+    transparent_property! {
+        #[doc = "Metadata of the volume."]
+        metadata: ref HashMap<String, String>
+    }
+
+    transparent_property! {
+        #[doc = "Status of the volume."]
+        status: ref protocol::VolumeStatus
+    }
+
+    transparent_property! {
+        #[doc = "Metadata of the image used to create the volume."]
+        image_metadata: ref Option<HashMap<String, String>>
+    }
+
+    transparent_property! {
+        #[doc = "Description of the volume."]
+        description: ref Option<String>
+    }
+
+    transparent_property! {
+        #[doc = "Whether the volume is multi-attachable."]
+        multi_attachable: ref bool
+    }
+
+    transparent_property! {
+        #[doc = "UUID of the volume this one originated from."]
+        source_volume_id: ref Option<String>
+    }
+
+    transparent_property! {
+        #[doc = "UUID of the consistency group."]
+        consistency_group_id: ref Option<String>
+    }
+
+    transparent_property! {
+        #[doc = "UUID of the volume that this volume name on the backend is based on."]
+        name_id: ref Option<String>
+    }
+
+    transparent_property! {
+        #[doc = "Name of the volume."]
         name: ref String
+    }
+
+    transparent_property! {
+        #[doc = "Whether the volume is bootable."]
+        bootable: ref String
+    }
+
+    transparent_property! {
+        #[doc = "When the volume was created."]
+        created_at: ref String
+    }
+
+    transparent_property! {
+        #[doc = "A list of volume objects."]
+        volumes: ref Option<Vec<protocol::Volume>>
+    }
+
+    transparent_property! {
+        #[doc = "Name of the volume type."]
+        volume_type: ref String
+    }
+
+    transparent_property! {
+        #[doc = "UUID of the volume type."]
+        volume_type_id: ref Option<HashMap<String, String>>
+    }
+
+    transparent_property! {
+        #[doc = "UUID of the group."]
+        group_id: ref Option<String>
+    }
+
+    transparent_property! {
+        #[doc = "A list of volume links."]
+        volumes_links: ref Option<Vec<String>>
+    }
+
+    transparent_property! {
+        #[doc = "UUID of the provider for the volume."]
+        provider_id: ref Option<String>
+    }
+
+    transparent_property! {
+        #[doc = "UUID of the service the volume is served on."]
+        service_uuid: ref Option<String>
+    }
+
+    transparent_property! {
+        #[doc = "Whether the volume has shared targets."]
+        shared_targets: ref Option<bool>
+    }
+
+    transparent_property! {
+        #[doc = "Cluster name of the volume backend."]
+        cluster_name: ref Option<String>
+    }
+
+    transparent_property! {
+        #[doc = "Whether the volume consumes quota."]
+        consumes_quota: ref Option<bool>
+    }
+
+    transparent_property! {
+        #[doc = "Total count of volumes requested before pagination."]
+        count: ref Option<u64>
     }
 
     /// Delete the volume.
