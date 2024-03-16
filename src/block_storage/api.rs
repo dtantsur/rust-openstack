@@ -90,3 +90,16 @@ pub async fn list_volumes<Q: Serialize + Sync + Debug>(
     trace!("Received volumes: {:?}", root.volumes);
     Ok(root.volumes)
 }
+
+/// Create a volume.
+pub async fn create_volume(session: &Session, request: VolumeCreate) -> Result<Volume> {
+    debug!("Creating a volume with {:?}", request);
+    let body = VolumeCreateRoot { volume: request };
+    let root: VolumeRoot = session
+        .post(BLOCK_STORAGE, &["volumes"])
+        .json(&body)
+        .fetch()
+        .await?;
+    trace!("Requested creation of volume {:?}", root.volume);
+    Ok(root.volume)
+}
