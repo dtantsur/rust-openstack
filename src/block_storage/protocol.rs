@@ -64,7 +64,6 @@ impl Default for VolumeSortKey {
 
 /// A volume attachment.
 #[derive(Debug, Clone, Deserialize)]
-#[allow(dead_code)]
 pub struct VolumeAttachment {
     pub server_id: String, // this should be a reference to a server
     pub attachment_id: String,
@@ -76,7 +75,6 @@ pub struct VolumeAttachment {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-#[allow(dead_code)]
 pub struct Link {
     pub rel: String,
     pub href: String,
@@ -84,7 +82,6 @@ pub struct Link {
 
 /// A volume.
 #[derive(Debug, Clone, Deserialize)]
-#[allow(dead_code)]
 pub struct Volume {
     // TODO: not all fields fully match the API spec:
     // https://docs.openstack.org/api-ref/block-storage/v3/#list-accessible-volumes-with-details
