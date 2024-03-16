@@ -127,7 +127,6 @@
     overflowing_literals,
     path_statements,
     patterns_in_fns_without_body,
-    private_in_public,
     trivial_casts,
     trivial_numeric_casts,
     unconditional_recursion,
@@ -138,7 +137,8 @@
     unused_doc_comments,
     unused_import_braces,
     unused_parens,
-    unused_qualifications,
+    // FIXME(dtantsur): https://github.com/rust-lang/rust/issues/122533
+    // unused_qualifications,
     unused_results,
     while_true
 )]
@@ -664,7 +664,7 @@ pub use osauth::common::IdOrName;
 pub use osauth::{EndpointFilters, Error, ErrorKind, InterfaceType, ValidInterfaces};
 
 /// A result of an OpenStack operation.
-pub type Result<T> = ::std::result::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, Error>;
 
 pub use crate::cloud::Cloud;
 pub use crate::common::Refresh;

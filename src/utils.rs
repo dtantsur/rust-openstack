@@ -39,7 +39,7 @@ pub struct ValueCache<T: Clone>(RefCell<Option<T>>);
 pub struct MapCache<K: Hash + Eq, V: Clone>(RefCell<HashMap<K, V>>);
 
 impl fmt::Debug for Query {
-    fn fmt(&self, f: &mut fmt::Formatter) -> ::std::result::Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> std::result::Result<(), fmt::Error> {
         write!(f, "{:?}", self.0)
     }
 }
@@ -83,7 +83,7 @@ impl Query {
 }
 
 impl Serialize for Query {
-    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
         S: Serializer,
     {

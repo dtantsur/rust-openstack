@@ -33,7 +33,7 @@ pub struct KeyValue {
 }
 
 /// Deserialize a URL.
-pub fn deser_optional_url<'de, D>(des: D) -> ::std::result::Result<Option<Url>, D::Error>
+pub fn deser_optional_url<'de, D>(des: D) -> std::result::Result<Option<Url>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -45,7 +45,7 @@ where
 }
 
 /// Deserialize a key-value mapping.
-pub fn deser_key_value<'de, D>(des: D) -> ::std::result::Result<HashMap<String, String>, D::Error>
+pub fn deser_key_value<'de, D>(des: D) -> std::result::Result<HashMap<String, String>, D::Error>
 where
     D: Deserializer<'de>,
 {
