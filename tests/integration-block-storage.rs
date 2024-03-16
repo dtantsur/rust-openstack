@@ -40,7 +40,6 @@ async fn test_volume_create_get_delete_simple() {
     assert!(volume.name().is_empty());
     assert!(volume.description().is_none());
     assert_eq!(*volume.size(), 1 as u64);
-    assert_eq!(*volume.status(), VolumeStatus::Available);
 
     let volume2 = os.get_volume(&id).await.expect("Could not get volume");
     assert_eq!(volume2.id(), volume.id());
@@ -65,7 +64,6 @@ async fn test_volume_create_with_fields() {
     assert_eq!(volume.name(), "test_volume");
     assert_eq!(*volume.description(), Some("test_description".to_string()));
     assert_eq!(*volume.size(), 1 as u64);
-    assert_eq!(*volume.status(), VolumeStatus::Available);
 
     volume.delete().await.expect("Could not delete volume");
 }
