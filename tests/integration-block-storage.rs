@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use openstack::block_storage::VolumeStatus;
 use std::sync::Once;
 
 static INIT: Once = Once::new();
