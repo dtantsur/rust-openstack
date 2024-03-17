@@ -56,7 +56,7 @@ async fn test_volume_create_with_fields() {
 
     let volume = os
         .new_volume(1 as u64)
-        .with_name("test_volume")
+        .with_name("test_volume".to_string())
         .with_description("test_description")
         .create()
         .await
