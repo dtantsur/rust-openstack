@@ -40,11 +40,13 @@ async fn test_volume_create_get_delete_simple() {
     assert!(volume.description().is_none());
     assert_eq!(*volume.size(), 1 as u64);
 
+    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
     let volume2 = os.get_volume(&id).await.expect("Could not get volume");
     assert_eq!(volume2.id(), volume.id());
 
     volume.delete().await.expect("Could not delete volume");
 
+    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
     let volume3 = os.get_volume(id).await;
     assert!(volume3.is_err());
 }
