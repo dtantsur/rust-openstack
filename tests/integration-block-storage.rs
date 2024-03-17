@@ -36,7 +36,7 @@ async fn test_volume_create_get_delete_simple() {
         .await
         .expect("Could not create volume");
     let id = volume.id().clone();
-    assert_eq!(*volume.name(), id);
+    assert!(volume.name().is_empty());
     assert!(volume.description().is_none());
     assert_eq!(*volume.size(), 1 as u64);
 
