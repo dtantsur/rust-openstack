@@ -428,7 +428,7 @@ impl NewVolume {
 
     creation_inner_field! {
         #[doc = "Set the name."]
-        set_name, with_name -> name: optional String
+        set_name, with_name -> name: String
     }
 
     creation_inner_field! {

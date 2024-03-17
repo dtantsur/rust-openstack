@@ -161,8 +161,7 @@ pub struct VolumeCreate {
     pub snapshot_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub backup_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
+    pub name: String, // not optional in spec, but doesn't work with None/null, only with ""
     #[serde(skip_serializing_if = "Option::is_none", rename = "imageRef")]
     pub image_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -192,7 +191,7 @@ impl VolumeCreate {
             description: None,
             snapshot_id: None,
             backup_id: None,
-            name: None,
+            name: "".to_string(),
             image_id: None,
             volume_type: None,
             metadata: None,
