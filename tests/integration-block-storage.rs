@@ -38,7 +38,7 @@ async fn test_volume_create_get_delete_simple() {
     let id = volume.id().clone();
     assert!(volume.name().is_empty());
     assert!(volume.description().is_none());
-    assert_eq!(*volume.size(), 1 as u64);
+    assert_eq!(volume.size(), 1 as u64);
 
     tokio::time::sleep(std::time::Duration::from_secs(3)).await;
     let volume2 = os.get_volume(&id).await.expect("Could not get volume");
@@ -64,7 +64,7 @@ async fn test_volume_create_with_fields() {
         .expect("Could not create volume");
     assert_eq!(volume.name(), "test_volume");
     assert_eq!(*volume.description(), Some("test_description".to_string()));
-    assert_eq!(*volume.size(), 1 as u64);
+    assert_eq!(volume.size(), 1 as u64);
 
     volume.delete().await.expect("Could not delete volume");
 }
