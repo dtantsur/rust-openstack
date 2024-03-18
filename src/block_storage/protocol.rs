@@ -128,7 +128,8 @@ pub struct Volume {
     pub group_id: Option<String>,
     pub volumes_links: Option<Vec<String>>,
     pub provider_id: Option<String>,
-    pub service_uuid: Option<String>, // not optional in spec
+    #[serde(rename = "service_uuid")]
+    pub service_id: Option<String>, // not optional in spec
     pub shared_targets: Option<bool>, // not optional in spec
     pub cluster_name: Option<String>,
     pub consumes_quota: Option<bool>,

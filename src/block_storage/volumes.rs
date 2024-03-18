@@ -225,7 +225,7 @@ impl Volume {
 
     transparent_property! {
         #[doc = "UUID of the service the volume is served on."]
-        service_uuid: ref Option<String>
+        service_id: ref Option<String>
     }
 
     transparent_property! {
