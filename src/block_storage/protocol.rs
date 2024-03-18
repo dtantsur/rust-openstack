@@ -67,7 +67,7 @@ pub struct VolumeAttachment {
     pub server_id: String, // this should be a reference to a server
     pub attachment_id: String,
     pub attached_at: String,
-    pub host_name: String,
+    pub host_name: Option<String>,
     pub volume_id: String, // this should be a reference to a volume
     pub device: String,
     pub id: String,
