@@ -90,7 +90,7 @@ impl Volume {
 
     transparent_property! {
         #[doc = "Whether the volume is encrypted."]
-        encrypted: ref bool
+        encrypted: bool
     }
 
     transparent_property! {
@@ -120,7 +120,7 @@ impl Volume {
 
     transparent_property! {
         #[doc = "Size of the volume in GiB."]
-        size: ref u64
+        size: u64
     }
 
     transparent_property! {
@@ -145,7 +145,7 @@ impl Volume {
 
     transparent_property! {
         #[doc = "Status of the volume."]
-        status: ref protocol::VolumeStatus
+        status: protocol::VolumeStatus
     }
 
     transparent_property! {
@@ -160,7 +160,7 @@ impl Volume {
 
     transparent_property! {
         #[doc = "Whether the volume is multi-attachable."]
-        multi_attachable: ref bool
+        multi_attachable: bool
     }
 
     transparent_property! {
@@ -230,7 +230,7 @@ impl Volume {
 
     transparent_property! {
         #[doc = "Whether the volume has shared targets."]
-        shared_targets: ref Option<bool>
+        shared_targets: Option<bool>
     }
 
     transparent_property! {
@@ -240,12 +240,12 @@ impl Volume {
 
     transparent_property! {
         #[doc = "Whether the volume consumes quota."]
-        consumes_quota: ref Option<bool>
+        consumes_quota: Option<bool>
     }
 
     transparent_property! {
         #[doc = "Total count of volumes requested before pagination."]
-        count: ref Option<u64>
+        count: Option<u64>
     }
 
     /// Delete the volume.
