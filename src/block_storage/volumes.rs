@@ -74,11 +74,6 @@ impl Volume {
     }
 
     transparent_property! {
-        #[doc = "Volume links."]
-        links: ref Vec<protocol::Link>
-    }
-
-    transparent_property! {
         #[doc = "Name of the availability zone."]
         availability_zone: ref Option<String>
     }
@@ -211,11 +206,6 @@ impl Volume {
     transparent_property! {
         #[doc = "UUID of the group."]
         group_id: ref Option<String>
-    }
-
-    transparent_property! {
-        #[doc = "A list of volume links."]
-        volumes_links: ref Option<Vec<String>>
     }
 
     transparent_property! {
