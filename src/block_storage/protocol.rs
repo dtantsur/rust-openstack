@@ -14,7 +14,6 @@
 
 //! JSON structures and protocol bits for the Block Storage API.
 
-#![allow(non_snake_case)]
 #![allow(missing_docs)]
 
 use serde::{Deserialize, Serialize};
