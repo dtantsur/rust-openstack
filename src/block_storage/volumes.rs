@@ -129,11 +129,6 @@ impl Volume {
     }
 
     transparent_property! {
-        #[doc = "Migration status."]
-        migstat: ref Option<String>
-    }
-
-    transparent_property! {
         #[doc = "Metadata of the volume."]
         metadata: ref HashMap<String, String>
     }

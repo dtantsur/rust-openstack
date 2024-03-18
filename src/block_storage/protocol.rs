@@ -103,8 +103,11 @@ pub struct Volume {
     pub user_id: String,
     #[serde(rename = "os-vol-tenant-attr:tenant_id")]
     pub tenant_id: Option<String>,
-    #[serde(rename = "os-vol-mig-status-attr:migstat")]
-    pub migstat: Option<String>, // consider enum
+    // The naming of this field is a little unintuitive and we are not actually
+    // sure what it does or how it is different from the migration_status field.
+    // So we skip it.
+    // #[serde(rename = "os-vol-mig-status-attr:migstat")]
+    // pub migstat: Option<String>, // consider enum
     pub metadata: HashMap<String, String>,
     pub status: VolumeStatus,
     #[serde(rename = "volume_image_metadata")]
