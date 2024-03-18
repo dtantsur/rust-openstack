@@ -18,5 +18,5 @@ mod api;
 mod protocol;
 mod volumes;
 
-pub use self::protocol::{VolumeSortKey, VolumeStatus};
+pub use self::protocol::{VolumeAttachment, VolumeSortKey, VolumeStatus};
 pub use self::volumes::{NewVolume, Volume, VolumeQuery};
