@@ -16,7 +16,7 @@
 
 #![allow(missing_docs)]
 
-use serde::{Deserialize, Serialize};
+use serde::{de, Deserializer, Deserialize, Serialize};
 use std::collections::HashMap;
 
 protocol_enum! {
@@ -77,6 +77,20 @@ pub struct VolumeAttachment {
 pub struct Link {
     pub rel: String,
     pub href: String,
+}
+
+fn bool_from_bootable_string<'de, D>(deserializer: D) -> Result<bool, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    match String::deserialize(deserializer)?.as_ref() {
+        "true" => Ok(true),
+        "false" => Ok(false),
+        other => Err(de::Error::invalid_value(
+            de::Unexpected::Str(other),
+            &"true or false",
+        )),
+    }
 }
 
 /// A volume.
