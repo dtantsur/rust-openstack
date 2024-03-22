@@ -175,7 +175,7 @@ impl Volume {
 
     transparent_property! {
         #[doc = "Whether the volume is bootable."]
-        bootable: ref String
+        bootable: bool
     }
 
     transparent_property! {

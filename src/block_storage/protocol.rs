@@ -16,7 +16,7 @@
 
 #![allow(missing_docs)]
 
-use serde::{de, Deserializer, Deserialize, Serialize};
+use serde::{de, Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 
 protocol_enum! {
@@ -136,7 +136,8 @@ pub struct Volume {
     #[serde(rename = "os-vol-mig-status-attr:name_id")]
     pub name_id: Option<String>,
     pub name: String,
-    pub bootable: String,
+    #[serde(deserialize_with = "bool_from_bootable_string")]
+    pub bootable: bool,
     pub created_at: String,
     pub volumes: Option<Vec<Volume>>, // not optional in spec
     pub volume_type: String,          // consider enum
