@@ -63,6 +63,7 @@ impl Default for VolumeSortKey {
 
 /// A volume attachment.
 #[derive(Debug, Clone, Deserialize)]
+#[non_exhaustive]
 pub struct VolumeAttachment {
     pub server_id: String, // this should be a reference to a server
     pub attachment_id: String,
