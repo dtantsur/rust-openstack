@@ -95,7 +95,7 @@ impl Volume {
 
     transparent_property! {
         #[doc = "When the volume was last updated."]
-        updated_at: ref Option<String>
+        updated_at: Option<protocol::DateTime>
     }
 
     transparent_property! {
@@ -180,7 +180,7 @@ impl Volume {
 
     transparent_property! {
         #[doc = "When the volume was created."]
-        created_at: ref String
+        created_at: protocol::DateTime
     }
 
     transparent_property! {

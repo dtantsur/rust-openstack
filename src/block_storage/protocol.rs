@@ -177,7 +177,7 @@ pub struct Volume {
     pub host: Option<String>,
     pub encrypted: bool,
     pub encryption_key_id: Option<String>,
-    pub updated_at: Option<String>,
+    pub updated_at: Option<DateTime>,
     pub replication_status: Option<String>, // not optional in spec, also consider enum
     pub snapshot_id: Option<String>,
     pub id: String,
@@ -206,7 +206,7 @@ pub struct Volume {
     pub name: String,
     #[serde(deserialize_with = "bool_from_bootable_string")]
     pub bootable: bool,
-    pub created_at: String,
+    pub created_at: DateTime,
     pub volumes: Option<Vec<Volume>>, // not optional in spec
     pub volume_type: String,          // consider enum
     pub volume_type_id: Option<HashMap<String, String>>, // not optional in spec
