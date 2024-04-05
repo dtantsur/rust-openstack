@@ -82,3 +82,9 @@ async fn test_list_routers() {
     let os = set_up().await;
     let _ = os.list_routers().await.expect("Cannot list routers");
 }
+
+#[tokio::test]
+async fn test_list_volumes() {
+    let os = set_up().await;
+    let _ = os.list_volumes().await.expect("Cannot list volumes");
+}

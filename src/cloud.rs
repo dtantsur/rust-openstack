@@ -20,6 +20,8 @@ use futures::io::AsyncRead;
 use std::io;
 
 use super::auth::AuthType;
+#[cfg(feature = "block-storage")]
+use super::block_storage::{NewVolume, Volume, VolumeQuery};
 #[allow(unused_imports)]
 use super::common::{ContainerRef, FlavorRef, NetworkRef};
 #[cfg(feature = "compute")]
@@ -310,6 +312,15 @@ impl Cloud {
         SubnetQuery::new(self.session.clone())
     }
 
+    /// Build a query against volume list.
+    ///
+    /// The returned object is a builder that should be used to construct
+    /// the query.
+    #[cfg(feature = "block-storage")]
+    pub fn find_volumes(&self) -> VolumeQuery {
+        VolumeQuery::new(self.session.clone())
+    }
+
     /// Get object container metadata by its name.
     ///
     /// # Example
@@ -507,6 +518,23 @@ impl Cloud {
     #[cfg(feature = "network")]
     pub async fn get_subnet<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Subnet> {
         Subnet::load(self.session.clone(), id_or_name).await
+    }
+
+    /// Find an volume by its name or ID.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// # async fn async_wrapper() {
+    /// let os = openstack::Cloud::from_env().await.expect("Unable to authenticate");
+    /// let volume = os.get_volume("my-first-volume").await.expect("Unable to get a volume");
+    /// # }
+    /// ```
+    #[cfg(feature = "block-storage")]
+    pub async fn get_volume<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Volume> {
+        Volume::new(self.session.clone(), id_or_name).await
     }
 
     /// List all containers.
@@ -739,6 +767,12 @@ impl Cloud {
         self.find_subnets().all().await
     }
 
+    /// List all volumes.
+    #[cfg(feature = "block-storage")]
+    pub async fn list_volumes(&self) -> Result<Vec<Volume>> {
+        self.find_volumes().all().await
+    }
+
     /// Prepare a new object for creation.
     ///
     /// This call returns a `NewObject` object, which is a builder
@@ -818,6 +852,18 @@ impl Cloud {
         F: Into<FlavorRef>,
     {
         NewServer::new(self.session.clone(), name.into(), flavor.into())
+    }
+
+    /// Prepare a new volume for creation.
+    ///
+    /// This call returns a `NewVolume` object, which is a builder to populate
+    /// volume fields.
+    #[cfg(feature = "block-storage")]
+    pub fn new_volume<U>(&self, size: U) -> NewVolume
+    where
+        U: Into<u64>,
+    {
+        NewVolume::new(self.session.clone(), size.into())
     }
 
     /// Prepare a new subnet for creation.
