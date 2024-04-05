@@ -18,10 +18,7 @@
 #![allow(missing_docs)]
 
 use chrono::{DateTime, FixedOffset};
-use reqwest::Url;
 use serde::Deserialize;
-
-use super::super::common;
 
 protocol_enum! {
     #[doc = "Possible image statuses."]
@@ -102,8 +99,8 @@ pub struct Image {
     #[serde(default)]
     pub container_format: Option<ImageContainerFormat>,
     pub created_at: DateTime<FixedOffset>,
-    #[serde(deserialize_with = "common::protocol::deser_optional_url", default)]
-    pub direct_url: Option<Url>,
+    // #[serde(deserialize_with = "common::protocol::deser_optional_url", default)]
+    // pub direct_url: Option<Url>,
     #[serde(default)]
     pub disk_format: Option<ImageDiskFormat>,
     pub id: String,

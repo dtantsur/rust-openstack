@@ -230,10 +230,10 @@ pub struct Server {
     pub status: ServerStatus,
     #[serde(rename = "OS-EXT-STS:power_state", default)]
     pub power_state: ServerPowerState,
-    pub tenant_id: String,
+    // pub tenant_id: String,
     #[serde(rename = "updated")]
     pub updated_at: DateTime<FixedOffset>,
-    pub user_id: String,
+    // pub user_id: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]

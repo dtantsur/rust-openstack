@@ -76,6 +76,11 @@ impl Flavor {
         Flavor::new(session, inner).await
     }
 
+    /// Flavor description
+    pub fn description(&self) -> &Option<String> {
+        &self.inner.description
+    }
+
     /// Get ephemeral disk size in GiB.
     ///
     /// Returns `0` when ephemeral disk was not requested.
@@ -106,6 +111,11 @@ impl Flavor {
     /// Get RAM size in MiB.
     pub fn ram_size(&self) -> u64 {
         self.inner.ram
+    }
+
+    /// Get receive/transmit factor.
+    pub fn rxtx_factor(&self) -> f32 {
+        self.inner.rxtx_factor
     }
 
     /// Get root disk size in GiB.

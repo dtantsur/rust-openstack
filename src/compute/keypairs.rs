@@ -71,6 +71,11 @@ impl KeyPair {
         #[doc = "Key pair name."]
         name: ref String
     }
+
+    transparent_property! {
+        #[doc = "Public key."]
+        public_key: ref String
+    }
 }
 
 #[async_trait]
