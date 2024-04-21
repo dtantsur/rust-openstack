@@ -16,6 +16,7 @@
 
 #![allow(missing_docs)]
 
+use chrono::{DateTime, FixedOffset, NaiveDateTime};
 use serde::{de, Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 
@@ -52,73 +53,6 @@ protocol_enum! {
         Id = "id",
         Name = "name",
         UpdatedAt = "updated_at"
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DateTime {
-    WithTz(chrono::DateTime<chrono::FixedOffset>),
-    WithoutTz(chrono::NaiveDateTime),
-}
-
-impl<'de> Deserialize<'de> for DateTime {
-    fn deserialize<D>(deserializer: D) -> Result<DateTime, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        match chrono::DateTime::parse_from_rfc3339(&s) {
-            Ok(dt) => Ok(DateTime::WithTz(dt)),
-            Err(_) => match chrono::NaiveDateTime::parse_from_str(&s, "%Y-%m-%dT%H:%M:%S.%f") {
-                Ok(dt) => Ok(DateTime::WithoutTz(dt)),
-                Err(_) => Err(serde::de::Error::custom("invalid date format")),
-            },
-        }
-    }
-}
-
-impl Serialize for DateTime {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        match self {
-            DateTime::WithTz(dt) => dt.to_rfc3339().serialize(serializer),
-            DateTime::WithoutTz(dt) => dt
-                .format("%Y-%m-%dT%H:%M:%S.%f")
-                .to_string()
-                .serialize(serializer),
-        }
-    }
-}
-
-impl From<chrono::DateTime<chrono::FixedOffset>> for DateTime {
-    fn from(dt: chrono::DateTime<chrono::FixedOffset>) -> DateTime {
-        DateTime::WithTz(dt)
-    }
-}
-
-impl From<chrono::NaiveDateTime> for DateTime {
-    fn from(dt: chrono::NaiveDateTime) -> DateTime {
-        DateTime::WithoutTz(dt)
-    }
-}
-
-impl From<DateTime> for String {
-    fn from(dt: DateTime) -> String {
-        match dt {
-            DateTime::WithTz(dt) => dt.to_rfc3339(),
-            DateTime::WithoutTz(dt) => dt.format("%Y-%m-%dT%H:%M:%S.%f").to_string(),
-        }
-    }
-}
-
-impl std::fmt::Display for DateTime {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            DateTime::WithTz(dt) => write!(f, "{}", dt.to_rfc3339()),
-            DateTime::WithoutTz(dt) => write!(f, "{}", dt.format("%Y-%m-%dT%H:%M:%S.%f")),
-        }
     }
 }
 
@@ -161,6 +95,43 @@ where
     }
 }
 
+fn parse_openstack_datetime(s: &str) -> Result<DateTime<FixedOffset>, String> {
+    match DateTime::parse_from_rfc3339(s) {
+        Ok(dt) => Ok(dt),
+        Err(_) => match NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S.%f") {
+            Ok(dt) => Ok(DateTime::from_naive_utc_and_offset(
+                dt,
+                FixedOffset::east_opt(0).unwrap(),
+            )),
+            Err(_) => Err("invalid date format".to_string()),
+        },
+    }
+}
+
+fn deserialize_openstack_datetime<'de, D>(
+    deserializer: D,
+) -> Result<DateTime<FixedOffset>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    parse_openstack_datetime(&s).map_err(serde::de::Error::custom)
+}
+
+fn deserialize_optional_openstack_datetime<'de, D>(
+    deserializer: D,
+) -> Result<Option<DateTime<FixedOffset>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    match Option::<String>::deserialize(deserializer)? {
+        Some(s) => Ok(Some(
+            parse_openstack_datetime(&s).map_err(serde::de::Error::custom)?,
+        )),
+        None => Ok(None),
+    }
+}
+
 /// A volume.
 #[derive(Debug, Clone, Deserialize)]
 pub struct Volume {
@@ -177,7 +148,8 @@ pub struct Volume {
     pub host: Option<String>,
     pub encrypted: bool,
     pub encryption_key_id: Option<String>,
-    pub updated_at: Option<DateTime>,
+    #[serde(deserialize_with = "deserialize_optional_openstack_datetime")]
+    pub updated_at: Option<DateTime<FixedOffset>>,
     pub replication_status: Option<String>, // not optional in spec, also consider enum
     pub snapshot_id: Option<String>,
     pub id: String,
@@ -206,7 +178,8 @@ pub struct Volume {
     pub name: String,
     #[serde(deserialize_with = "bool_from_bootable_string")]
     pub bootable: bool,
-    pub created_at: DateTime,
+    #[serde(deserialize_with = "deserialize_openstack_datetime")]
+    pub created_at: DateTime<FixedOffset>,
     pub volumes: Option<Vec<Volume>>, // not optional in spec
     pub volume_type: String,          // consider enum
     pub volume_type_id: Option<HashMap<String, String>>, // not optional in spec

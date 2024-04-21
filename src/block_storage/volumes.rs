@@ -15,6 +15,7 @@
 //! Volume management via Block Storage API.
 
 use async_trait::async_trait;
+use chrono::{DateTime, FixedOffset};
 use futures::stream::{Stream, TryStreamExt};
 use std::collections::HashMap;
 use std::fmt::{self, Display, Formatter};
@@ -95,7 +96,7 @@ impl Volume {
 
     transparent_property! {
         #[doc = "When the volume was last updated."]
-        updated_at: Option<protocol::DateTime>
+        updated_at: Option<DateTime<FixedOffset>>
     }
 
     transparent_property! {
@@ -180,7 +181,7 @@ impl Volume {
 
     transparent_property! {
         #[doc = "When the volume was created."]
-        created_at: protocol::DateTime
+        created_at: DateTime<FixedOffset>
     }
 
     transparent_property! {
