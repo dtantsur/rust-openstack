@@ -78,3 +78,33 @@ pub fn get_required_header<'m>(headers: &'m HeaderMap, key: &HeaderName) -> Resu
         )
     })
 }
+
+/// Comma-separated list.
+#[derive(Debug, Clone)]
+pub struct CommaSeparated<T>(pub Vec<T>);
+
+impl<T> std::ops::Deref for CommaSeparated<T> {
+    type Target = Vec<T>;
+
+    fn deref(&self) -> &Vec<T> {
+        &self.0
+    }
+}
+
+impl<T> std::ops::DerefMut for CommaSeparated<T> {
+    fn deref_mut(&mut self) -> &mut Vec<T> {
+        &mut self.0
+    }
+}
+
+impl<T: ToString> std::fmt::Display for CommaSeparated<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let strings = self
+            .0
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join(",");
+        f.write_str(&strings)
+    }
+}
