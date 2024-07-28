@@ -17,6 +17,7 @@ rust-version = "1.70"
 default = ["block-storage", "compute", "image", "network", "native-tls", "object-storage"]
 block-storage = []
 compute = []
+identity = [] # reserved for future use
 image = []
 network = []
 native-tls = ["reqwest/default-tls", "osauth/native-tls"]
