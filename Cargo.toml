@@ -11,7 +11,7 @@ license = "Apache-2.0"
 keywords = ["api", "cloud", "openstack"]
 categories = ["api-bindings"]
 edition = "2021"
-rust-version = "1.65"
+rust-version = "1.70"
 
 [features]
 default = ["block-storage", "compute", "image", "network", "native-tls", "object-storage"]
