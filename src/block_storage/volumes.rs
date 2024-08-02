@@ -21,7 +21,7 @@ use std::collections::HashMap;
 use std::fmt::{self, Display, Formatter};
 use std::time::Duration;
 
-use super::super::common::{Refresh, ResourceIterator, ResourceQuery};
+use super::super::common::{Refresh, ResourceIterator, ResourceQuery, VolumeRef};
 use super::super::session::Session;
 use super::super::utils::Query;
 use super::super::waiter::DeletionWaiter;
@@ -435,5 +435,23 @@ impl NewVolume {
     creation_inner_field! {
         #[doc = "Set the consistency group ID."]
         set_consistency_group_id, with_consistency_group_id -> consistency_group_id: optional String
+    }
+}
+
+impl From<Volume> for VolumeRef {
+    fn from(value: Volume) -> VolumeRef {
+        VolumeRef::new_verified(value.inner.id)
+    }
+}
+
+#[cfg(feature = "block-storage")]
+impl VolumeRef {
+    /// Verify this reference and convert to an ID, if possible.
+    pub(crate) async fn into_verified(self, session: &Session) -> Result<VolumeRef> {
+        Ok(if self.verified {
+            self
+        } else {
+            VolumeRef::new_verified(api::get_volume(session, &self.value).await?.id)
+        })
     }
 }
