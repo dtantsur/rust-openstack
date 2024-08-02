@@ -142,7 +142,7 @@ opaque_resource_type!(#[doc = "An ID of a `Subnet`"] SubnetRef ? "network");
 
 opaque_resource_type!(#[doc = "An ID of a `User`"] UserRef ? "identity");
 
-opaque_resource_type!(#[doc = "An ID of a `Volume`"] VolumeRef ? "volume");
+opaque_resource_type!(#[doc = "An ID of a `Volume`"] VolumeRef ? "block-storage");
 
 #[cfg(test)]
 mod test {
