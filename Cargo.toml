@@ -17,6 +17,7 @@ rust-version = "1.70"
 default = ["block-storage", "compute", "image", "network", "native-tls", "object-storage"]
 block-storage = []
 compute = []
+identity = [] # reserved for future use
 image = []
 network = []
 native-tls = ["reqwest/default-tls", "osauth/native-tls"]
@@ -50,3 +51,7 @@ tokio = { version = "^1.21", features = ["macros"] }
 [lib]
 name = "openstack"
 path = "src/lib.rs"
+
+[lints.rust]
+# TODO: remove block-storage-snapshot once the snapshot API is implemented
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("block-storage-snapshot", "test"))'] }
