@@ -136,7 +136,8 @@ opaque_resource_type!(#[doc = "An ID of a `Router`"] RouterRef ? "network");
 
 opaque_resource_type!(#[doc = "An ID of a `SecurityGroup`"] SecurityGroupRef ? "network");
 
-opaque_resource_type!(#[doc = "An ID of a `Snapshot`"] SnapshotRef ? "volume");
+// TODO: change the feature to `block-storage, when the snapshot API is implemented.
+opaque_resource_type!(#[doc = "An ID of a `Snapshot`"] SnapshotRef ? "block-storage-snapshot");
 
 opaque_resource_type!(#[doc = "An ID of a `Subnet`"] SubnetRef ? "network");
 
