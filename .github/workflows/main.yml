@@ -8,7 +8,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        rust: [stable, nightly, 1.70.0]
+        rust: [stable, nightly, 1.71.0]
         flags:
           - ""
           - "--no-default-features"

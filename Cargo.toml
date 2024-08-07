@@ -11,7 +11,7 @@ license = "Apache-2.0"
 keywords = ["api", "cloud", "openstack"]
 categories = ["api-bindings"]
 edition = "2021"
-rust-version = "1.70"
+rust-version = "1.71"
 
 [features]
 default = ["block-storage", "compute", "image", "network", "native-tls", "object-storage"]
@@ -43,7 +43,7 @@ tokio-util = { version = "^0.7", features = ["codec", "compat"], optional = true
 waiter = { version = "^0.2" }
 
 [dev-dependencies]
-env_logger = "^0.9"
+env_logger = "^0.11"
 md-5 = "^0.10"
 hex = "^0.4"
 tokio = { version = "^1.21", features = ["macros"] }
