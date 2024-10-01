@@ -20,6 +20,8 @@ use futures::io::AsyncRead;
 use std::io;
 
 use super::auth::AuthType;
+#[cfg(feature = "baremetal")]
+use super::baremetal;
 #[cfg(feature = "block-storage")]
 use super::block_storage::{NewVolume, Volume, VolumeQuery};
 #[allow(unused_imports)]
@@ -193,6 +195,16 @@ impl Cloud {
         Object::create(self.session.clone(), container, name, body).await
     }
 
+    /// Build a query against node list.
+    ///
+    /// The returned object is a builder that should be used to construct
+    /// the query.
+    #[cfg(feature = "baremetal")]
+    #[inline]
+    pub fn find_baremetal_nodes(&self) -> baremetal::NodeQuery {
+        baremetal::NodeQuery::new(self.session.clone())
+    }
+
     /// Build a query against container list.
     ///
     /// The returned object is a builder that should be used to construct
@@ -319,6 +331,15 @@ impl Cloud {
     #[cfg(feature = "block-storage")]
     pub fn find_volumes(&self) -> VolumeQuery {
         VolumeQuery::new(self.session.clone())
+    }
+
+    /// Get bare metal node by its name or UUID.
+    #[cfg(feature = "baremetal")]
+    pub async fn get_baremetal_node<Id: AsRef<str>>(
+        &self,
+        id_or_name: Id,
+    ) -> Result<baremetal::Node> {
+        baremetal::Node::load(self.session.clone(), id_or_name).await
     }
 
     /// Get object container metadata by its name.
@@ -535,6 +556,27 @@ impl Cloud {
     #[cfg(feature = "block-storage")]
     pub async fn get_volume<Id: AsRef<str>>(&self, id_or_name: Id) -> Result<Volume> {
         Volume::new(self.session.clone(), id_or_name).await
+    }
+
+    /// List all baremetal nodes.
+    ///
+    /// This call can yield a lot of results, use the
+    /// [find_baremetal_nodes](#method.find_baremetal_nodes) call to limit the number of
+    /// baremetal nodes to receive.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use openstack;
+    ///
+    /// # async fn async_wrapper() {
+    /// let os = openstack::Cloud::from_env().await.expect("Unable to authenticate");
+    /// let server_list = os.list_baremetal_nodes().await.expect("Unable to fetch nodes");
+    /// # }
+    /// ```
+    #[cfg(feature = "baremetal")]
+    pub async fn list_baremetal_nodes(&self) -> Result<Vec<baremetal::NodeSummary>> {
+        self.find_baremetal_nodes().all().await
     }
 
     /// List all containers.
