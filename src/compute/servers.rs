@@ -341,7 +341,6 @@ impl Server {
 /// An action to perform on a server.
 #[derive(Clone, Debug, Serialize)]
 #[non_exhaustive]
-#[allow(missing_copy_implementations)]
 pub enum ServerAction {
     /// Adds a security group to a server.
     #[serde(rename = "addSecurityGroup")]
@@ -380,6 +379,16 @@ pub enum ServerAction {
         #[serde(skip_serializing_if = "Option::is_none")]
         metadata: Option<HashMap<String, String>>,
     },
+    /// Force-deletes a server before deferred cleanup.
+    #[serde(rename = "forceDelete", serialize_with = "unit_to_null")]
+    ForceDelete,
+    /// Shows console output for a server.
+    #[serde(rename = "os-getConsoleOutput")]
+    GetConsoleOutput {
+        /// The number of lines to fetch from the end of console log. All lines will be returned if this is not specified.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        length: Option<u64>,
+    },
     /// Pauses a server. Changes its status to PAUSED.
     #[serde(rename = "pause", serialize_with = "unit_to_null")]
     Pause,
@@ -416,12 +425,21 @@ pub enum ServerAction {
         #[serde(rename = "OS-DCF:diskConfig")]
         disk_config: String,
     },
+    /// Restores a previously soft-deleted server instance.
+    #[serde(rename = "restore", serialize_with = "unit_to_null")]
+    Restore,
     /// Resumes a suspended server and changes its status to ACTIVE.
     #[serde(rename = "resume", serialize_with = "unit_to_null")]
     Resume,
     /// Cancels and reverts a pending resize action for a server.
     #[serde(rename = "revertResize", serialize_with = "unit_to_null")]
     RevertResize,
+    /// Shelves a server.
+    #[serde(rename = "shelve", serialize_with = "unit_to_null")]
+    Shelve,
+    /// Shelf-offloads, or removes, a shelved server.
+    #[serde(rename = "shelveOffload", serialize_with = "unit_to_null")]
+    ShelveOffload,
     /// Starts a stopped server.
     #[serde(rename = "os-start", serialize_with = "unit_to_null")]
     Start,
@@ -431,6 +449,9 @@ pub enum ServerAction {
     /// Suspends a server and changes its status to SUSPENDED.
     #[serde(rename = "suspend", serialize_with = "unit_to_null")]
     Suspend,
+    /// Trigger a crash dump in a server.
+    #[serde(rename = "trigger_crash_dump", serialize_with = "unit_to_null")]
+    TriggerCrashDump,
     /// Unlocks a locked server.
     #[serde(rename = "unlock", serialize_with = "unit_to_null")]
     Unlock,
@@ -440,28 +461,6 @@ pub enum ServerAction {
     /// Unrescues a server. Changes status to ACTIVE.
     #[serde(rename = "unrescue", serialize_with = "unit_to_null")]
     Unrescue,
-    /// Force-deletes a server before deferred cleanup.
-    #[serde(rename = "forceDelete", serialize_with = "unit_to_null")]
-    ForceDelete,
-    /// Restores a previously soft-deleted server instance.
-    #[serde(rename = "restore", serialize_with = "unit_to_null")]
-    Restore,
-    /// Shows console output for a server.
-    #[serde(rename = "os-getConsoleOutput")]
-    OsGetConsoleOutput {
-        /// The number of lines to fetch from the end of console log. All lines will be returned if this is not specified.
-        #[serde(skip_serializing_if = "Option::is_none")]
-        length: Option<u64>,
-    },
-    /// Shelves a server.
-    #[serde(rename = "shelve", serialize_with = "unit_to_null")]
-    Shelve,
-    /// Shelf-offloads, or removes, a shelved server.
-    #[serde(rename = "shelveOffload", serialize_with = "unit_to_null")]
-    ShelveOffload,
-    /// Trigger a crash dump in a server.
-    #[serde(rename = "trigger_crash_dump", serialize_with = "unit_to_null")]
-    TriggerCrashDump,
 }
 
 #[async_trait]
