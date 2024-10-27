@@ -171,6 +171,12 @@ async fn test_basic_server_ops() {
         .await
         .expect("Failed to delete floating IP");
 
+    let console = server
+        .get_console_output(Some(10))
+        .await
+        .expect("Failed to get console output");
+    assert!(console.len() > 0);
+
     server
         .delete()
         .await

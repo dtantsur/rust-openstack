@@ -292,6 +292,11 @@ impl Server {
         updated_at: DateTime<FixedOffset>
     }
 
+    /// Run an action on the server.
+    pub async fn action(&mut self, action: ServerAction) -> Result<()> {
+        api::server_action(&self.session, &self.inner.id, action).await
+    }
+
     /// Delete the server.
     pub async fn delete(self) -> Result<DeletionWaiter<Server>> {
         api::delete_server(&self.session, &self.inner.id).await?;
@@ -300,6 +305,17 @@ impl Server {
             Duration::new(120, 0),
             Duration::new(1, 0),
         ))
+    }
+
+    /// Get the console output as a string.
+    ///
+    /// Length is the number of lines to fetch from the end of console log.
+    /// All lines will be returned if this is not specified.
+    pub async fn get_console_output(&self, length: Option<u64>) -> Result<String> {
+        let action = ServerAction::GetConsoleOutput { length };
+        let result: protocol::GetConsoleOutput =
+            api::server_action_with_result(&self.session, &self.inner.id, action).await?;
+        Ok(result.output)
     }
 
     /// Reboot the server.
@@ -330,11 +346,6 @@ impl Server {
             server: self,
             target: protocol::ServerStatus::ShutOff,
         })
-    }
-
-    /// Run an action on the server.
-    pub async fn action(&mut self, action: ServerAction) -> Result<Option<serde_json::Value>> {
-        api::server_action_with_args(&self.session, &self.inner.id, action).await
     }
 }
 
@@ -384,6 +395,7 @@ pub enum ServerAction {
     ForceDelete,
     /// Shows console output for a server.
     #[serde(rename = "os-getConsoleOutput")]
+    #[doc(hidden)]
     GetConsoleOutput {
         /// The number of lines to fetch from the end of console log. All lines will be returned if this is not specified.
         #[serde(skip_serializing_if = "Option::is_none")]

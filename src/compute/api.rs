@@ -19,7 +19,8 @@ use std::fmt::Debug;
 
 use osauth::common::{IdAndName, Ref};
 use osauth::services::COMPUTE;
-use osauth::{Error, ErrorKind};
+use osauth::ErrorKind;
+use serde::de::DeserializeOwned;
 use serde::Serialize;
 
 use super::super::common::ApiVersion;
@@ -315,31 +316,36 @@ pub async fn list_servers_detail<Q: Serialize + Sync + Debug>(
 }
 
 /// Run an action on a server.
-pub async fn server_action_with_args<S1, Q>(
-    session: &Session,
-    id: S1,
-    action: Q,
-) -> Result<Option<serde_json::Value>>
+pub async fn server_action<S1, Q>(session: &Session, id: S1, action: Q) -> Result<()>
 where
     S1: AsRef<str>,
     Q: Serialize + Send + Debug,
 {
     trace!("Running {:?} on server {}", action, id.as_ref(),);
-    let response = session
+    let _ = session
         .post(COMPUTE, &["servers", id.as_ref(), "action"])
         .json(&action)
         .send()
         .await?;
     debug!("Successfully ran {:?} on server {}", action, id.as_ref());
-    Ok(match response.content_length() {
-        Some(0) => None,
-        _ => Some(
-            response
-                .json::<serde_json::Value>()
-                .await
-                .map_err(|e| Error::new(ErrorKind::InvalidResponse, e.to_string()))?,
-        ),
-    })
+    Ok(())
+}
+
+/// Run an action on a server and return result.
+pub async fn server_action_with_result<S1, Q, R>(session: &Session, id: S1, action: Q) -> Result<R>
+where
+    S1: AsRef<str>,
+    Q: Serialize + Send + Debug,
+    R: DeserializeOwned + Send,
+{
+    trace!("Running {:?} on server {}", action, id.as_ref(),);
+    let response = session
+        .post(COMPUTE, &["servers", id.as_ref(), "action"])
+        .json(&action)
+        .fetch()
+        .await?;
+    debug!("Successfully ran {:?} on server {}", action, id.as_ref());
+    Ok(response)
 }
 
 /// Whether key pair pagination is supported.

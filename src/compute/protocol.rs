@@ -395,3 +395,9 @@ impl Default for ServerPowerState {
 fn default_flavor_is_public() -> bool {
     true
 }
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct GetConsoleOutput {
+    /// Output as a string.
+    pub output: String,
+}
