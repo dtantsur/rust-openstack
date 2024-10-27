@@ -307,7 +307,7 @@ impl Server {
         &mut self,
         reboot_type: protocol::RebootType,
     ) -> Result<ServerStatusWaiter<'_>> {
-        self.action(ServerAction::Reboot { reboot_type }).await?;
+        let _ = self.action(ServerAction::Reboot { reboot_type }).await?;
         Ok(ServerStatusWaiter {
             server: self,
             target: protocol::ServerStatus::Active,
@@ -316,7 +316,7 @@ impl Server {
 
     /// Start the server, optionally wait for it to be active.
     pub async fn start(&mut self) -> Result<ServerStatusWaiter<'_>> {
-        self.action(ServerAction::Start).await?;
+        let _ = self.action(ServerAction::Start).await?;
         Ok(ServerStatusWaiter {
             server: self,
             target: protocol::ServerStatus::Active,
@@ -325,7 +325,7 @@ impl Server {
 
     /// Stop the server, optionally wait for it to be powered off.
     pub async fn stop(&mut self) -> Result<ServerStatusWaiter<'_>> {
-        self.action(ServerAction::Stop).await?;
+        let _ = self.action(ServerAction::Stop).await?;
         Ok(ServerStatusWaiter {
             server: self,
             target: protocol::ServerStatus::ShutOff,
@@ -333,7 +333,7 @@ impl Server {
     }
 
     /// Run an action on the server.
-    pub async fn action(&mut self, action: ServerAction) -> Result<()> {
+    pub async fn action(&mut self, action: ServerAction) -> Result<Option<serde_json::Value>> {
         api::server_action_with_args(&self.session, &self.inner.id, action).await
     }
 }
@@ -343,6 +343,46 @@ impl Server {
 #[non_exhaustive]
 #[allow(missing_copy_implementations)]
 pub enum ServerAction {
+    /// Adds a security group to a server.
+    #[serde(rename = "addSecurityGroup")]
+    AddSecurityGroup {
+        /// The security group name.
+        name: String,
+    },
+    /// Changes the administrative password for a server.
+    #[serde(rename = "changePassword")]
+    ChangePassword {
+        /// The administrative password for the server.
+        admin_pass: String,
+    },
+    /// Confirms a pending resize action for a server.
+    #[serde(rename = "confirmResize", serialize_with = "unit_to_null")]
+    ConfirmResize,
+    /// Creates a back up of a server.
+    #[serde(rename = "createBackup")]
+    CreateBackup {
+        /// The name of the image to be backed up.
+        name: String,
+        /// The type of the backup, for example, daily.
+        backup_type: String,
+        /// The rotation of the back up image, the oldest image will be removed when image count exceed the rotation count.
+        rotation: u16,
+        /// Metadata key and value pairs for the image.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        metadata: Option<HashMap<String, String>>,
+    },
+    /// Creates an image from a server.
+    #[serde(rename = "createImage")]
+    CreateImage {
+        /// The display name of an Image.
+        name: String,
+        /// Metadata key and value pairs for the image.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        metadata: Option<HashMap<String, String>>,
+    },
+    /// Pauses a server. Changes its status to PAUSED.
+    #[serde(rename = "pause", serialize_with = "unit_to_null")]
+    Pause,
     /// Reboots a server.
     #[serde(rename = "reboot")]
     Reboot {
@@ -350,12 +390,78 @@ pub enum ServerAction {
         #[serde(rename = "type")]
         reboot_type: protocol::RebootType,
     },
+    /// Removes a security group from a server.
+    #[serde(rename = "removeSecurityGroup")]
+    RemoveSecurityGroup {
+        /// The security group name.
+        name: String,
+    },
+    /// Puts a server in rescue mode and changes its status to RESCUE.
+    #[serde(rename = "rescue")]
+    Rescue {
+        /// The password for the rescued instance.
+        #[serde(rename = "adminPass", skip_serializing_if = "Option::is_none")]
+        admin_pass: Option<String>,
+        /// The image reference to use to rescue your server instance.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        rescue_image_ref: Option<String>,
+    },
+    /// Resizes a server.
+    #[serde(rename = "resize")]
+    Resize {
+        /// The flavor ID for resizing the server.
+        #[serde(rename = "flavorRef")]
+        flavor_ref: String,
+        /// Controls how the API partitions the disk when you create, rebuild, or resize servers.
+        #[serde(rename = "OS-DCF:diskConfig")]
+        disk_config: String,
+    },
+    /// Resumes a suspended server and changes its status to ACTIVE.
+    #[serde(rename = "resume", serialize_with = "unit_to_null")]
+    Resume,
+    /// Cancels and reverts a pending resize action for a server.
+    #[serde(rename = "revertResize", serialize_with = "unit_to_null")]
+    RevertResize,
     /// Starts a stopped server.
     #[serde(rename = "os-start", serialize_with = "unit_to_null")]
     Start,
     /// Stops a running server.
     #[serde(rename = "os-stop", serialize_with = "unit_to_null")]
     Stop,
+    /// Suspends a server and changes its status to SUSPENDED.
+    #[serde(rename = "suspend", serialize_with = "unit_to_null")]
+    Suspend,
+    /// Unlocks a locked server.
+    #[serde(rename = "unlock", serialize_with = "unit_to_null")]
+    Unlock,
+    /// Unpauses a paused server and changes its status to ACTIVE.
+    #[serde(rename = "unpause", serialize_with = "unit_to_null")]
+    Unpause,
+    /// Unrescues a server. Changes status to ACTIVE.
+    #[serde(rename = "unrescue", serialize_with = "unit_to_null")]
+    Unrescue,
+    /// Force-deletes a server before deferred cleanup.
+    #[serde(rename = "forceDelete", serialize_with = "unit_to_null")]
+    ForceDelete,
+    /// Restores a previously soft-deleted server instance.
+    #[serde(rename = "restore", serialize_with = "unit_to_null")]
+    Restore,
+    /// Shows console output for a server.
+    #[serde(rename = "os-getConsoleOutput")]
+    OsGetConsoleOutput {
+        /// The number of lines to fetch from the end of console log. All lines will be returned if this is not specified.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        length: Option<u64>,
+    },
+    /// Shelves a server.
+    #[serde(rename = "shelve", serialize_with = "unit_to_null")]
+    Shelve,
+    /// Shelf-offloads, or removes, a shelved server.
+    #[serde(rename = "shelveOffload", serialize_with = "unit_to_null")]
+    ShelveOffload,
+    /// Trigger a crash dump in a server.
+    #[serde(rename = "trigger_crash_dump", serialize_with = "unit_to_null")]
+    TriggerCrashDump,
 }
 
 #[async_trait]
@@ -991,6 +1097,22 @@ mod test {
             })
             .unwrap(),
             "{\"reboot\":{\"type\":\"HARD\"}}"
+        );
+        assert_eq!(
+            serde_json::to_string(&ServerAction::CreateImage {
+                name: "new-image".to_string(),
+                metadata: None,
+            })
+            .unwrap(),
+            r#"{"createImage":{"name":"new-image"}}"#
+        );
+        assert_eq!(
+            serde_json::to_string(&ServerAction::CreateImage {
+                name: "new-image".to_string(),
+                metadata: Some(HashMap::from([("tag".into(), "foo".into())])),
+            })
+            .unwrap(),
+            r#"{"createImage":{"name":"new-image","metadata":{"tag":"foo"}}}"#
         );
     }
 }
