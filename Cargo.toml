@@ -14,7 +14,8 @@ edition = "2021"
 rust-version = "1.71"
 
 [features]
-default = ["block-storage", "compute", "image", "network", "native-tls", "object-storage"]
+default = ["baremetal", "block-storage", "compute", "image", "network", "native-tls", "object-storage"]
+baremetal = ["json-patch"]
 block-storage = []
 compute = []
 identity = [] # reserved for future use
@@ -31,6 +32,7 @@ chrono = { version = "^0.4", features = ["serde"] }
 macaddr = { version = "^1.0", features = ["serde_std"]}
 futures = "^0.3"
 ipnet = { version = "^2.0", features = ["serde"] }
+json-patch = { version = "^3.0", default-features = false, optional = true }
 log = "^0.4"
 osauth = { version = "^0.5", default-features = false, features = ["stream"] }
 pin-project = "^1.0"

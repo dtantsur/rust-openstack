@@ -108,7 +108,7 @@
 //!
 //! # Requirements
 //!
-//! This crate requires Rust 2022 edition and rustc version 1.71.0 or newer.
+//! This crate requires Rust 2022 edition and rustc version 1.76.0 or newer.
 
 #![crate_name = "openstack"]
 #![crate_type = "lib"]
@@ -209,6 +209,53 @@ macro_rules! query_filter {
         $(#[$attr])*
         pub fn $set_func<T: Into<$type>>(&mut self, value: T)  {
             self.query.push(stringify!($name), value.into());
+        }
+
+        $(#[$attr])*
+        #[inline]
+        pub fn $with_func<T: Into<$type>>(mut self, value: T) -> Self {
+            self.$set_func(value.into());
+            self
+        }
+    );
+}
+
+#[allow(unused_macros)]
+macro_rules! query_filter_ng {
+    ($(#[$attr:meta])* $func:ident -> $name:path) => (
+        $(#[$attr])*
+        pub fn $func<T: Into<String>>(mut self, value: T) -> Self {
+            self.query.push($name(value.into()));
+            self
+        }
+    );
+
+    ($(#[$attr:meta])* $set_func:ident, $with_func:ident -> $name:path) => (
+        $(#[$attr])*
+        pub fn $set_func<T: Into<String>>(&mut self, value: T)  {
+            self.query.push($name(value.into()));
+        }
+
+        $(#[$attr])*
+        #[inline]
+        pub fn $with_func<T: Into<String>>(mut self, value: T) -> Self {
+            self.$set_func(value);
+            self
+        }
+    );
+
+    ($(#[$attr:meta])* $func:ident -> $name:path: $type:ty) => (
+        $(#[$attr])*
+        pub fn $func<T: Into<$type>>(mut self, value: T) -> Self {
+            self.query.push($name(value.into()));
+            self
+        }
+    );
+
+    ($(#[$attr:meta])* $set_func:ident, $with_func:ident -> $name:path: $type:ty) => (
+        $(#[$attr])*
+        pub fn $set_func<T: Into<$type>>(&mut self, value: T)  {
+            self.query.push($name(value.into()));
         }
 
         $(#[$attr])*
@@ -633,6 +680,61 @@ macro_rules! protocol_enum {
             }
         }
     );
+
+    {$(#[$attr:meta])* enum $name:ident = $def:ident {
+        $($(#[$iattr:meta])* $item:ident = $val:expr),+
+    }} => (
+        $(#[$attr])*
+        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        #[non_exhaustive]
+        pub enum $name {
+            $($(#[$iattr])* $item),+,
+        }
+
+        impl $name {
+            fn as_ref(&self) -> &'static str {
+                match *self {
+                    $($name::$item => $val),+,
+                }
+            }
+        }
+
+        impl<'de> ::serde::de::Deserialize<'de> for $name {
+            fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+                    where D: ::serde::de::Deserializer<'de> {
+                Ok(match String::deserialize(deserializer)?.as_str() {
+                    $($val => $name::$item),+,
+                    _ => $name::$def,
+                })
+            }
+        }
+
+        impl ::std::fmt::Display for $name {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                f.write_str(self.as_ref())
+            }
+        }
+
+        impl ::serde::ser::Serialize for $name {
+            fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+                    where S: ::serde::ser::Serializer {
+                if *self == $name::$def {
+                        use ::serde::ser::Error;
+                        let err = format!("Cannot serialize default value {}::{}",
+                                          stringify!($name), stringify!($def));
+                        return Err(S::Error::custom(err));
+                }
+
+                serializer.serialize_str(self.as_ref())
+            }
+        }
+
+        impl From<$name> for String {
+            fn from(value: $name) -> String {
+                String::from(value.as_ref())
+            }
+        }
+    );
 }
 
 /// Reimports of authentication bits from `osauth`.
@@ -642,6 +744,8 @@ pub mod auth {
     pub use osauth::identity::{Password, Scope, Token};
     pub use osauth::{AuthType, NoAuth};
 }
+#[cfg(feature = "baremetal")]
+pub mod baremetal;
 #[cfg(feature = "block-storage")]
 pub mod block_storage;
 mod cloud;
@@ -673,11 +777,21 @@ pub use crate::common::Refresh;
 
 /// Sorting request.
 #[derive(Debug, Clone)]
-pub enum Sort<T: Into<String>> {
+pub enum Sort<T> {
     /// Sorting by given field in ascendant order.
     Asc(T),
     /// Sorting by given field in descendant order.
     Desc(T),
+}
+
+impl<T> Sort<T> {
+    #[allow(unused)]
+    fn unwrap(self) -> (T, utils::SortDir) {
+        match self {
+            Sort::Asc(val) => (val, utils::SortDir::Asc),
+            Sort::Desc(val) => (val, utils::SortDir::Desc),
+        }
+    }
 }
 
 impl<T: Into<String>> From<Sort<T>> for (String, String) {
