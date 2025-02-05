@@ -1,5 +1,32 @@
 # Change Log
 
+## 0.6.0 (2025-01-05)
+
+#### Breaking Changes
+
+* **compute:**  rework the server's flavor field handling (closes #146) ([febff387](https://github.com/dtantsur/rust-openstack/commit/febff3876ccdfb3280d4b8b3a1d4734fbfc35ba0))
+
+#### Features
+
+*   update to osauth 0.5.0 ([25be88d0](https://github.com/dtantsur/rust-openstack/commit/25be88d0b8dd6ae449b15032ac2ac4644d37b534))
+* **baremetal:**  support reading baremetal nodes ([6c6eb458](https://github.com/dtantsur/rust-openstack/commit/6c6eb458031c5f1858eefe23045036dcdd2c024d))
+* **block-storage:**  Add Block Storage API (#151) ([318cba3e](https://github.com/dtantsur/rust-openstack/commit/318cba3ea314c65fd4586ffc7f8184b42302cbd9))
+* **compute:**
+  *  explicit get_console_output ([e9ceafb9](https://github.com/dtantsur/rust-openstack/commit/e9ceafb9fb00f55e816c70a12dd64939352a5d8f))
+  *  add missing fields to public API ([e76c99dc](https://github.com/dtantsur/rust-openstack/commit/e76c99dc112da681531fb0bb8f2346eb42953ddf))
+  *  add all function to DetailedServerQuery ([6b614260](https://github.com/dtantsur/rust-openstack/commit/6b61426086a8f3fdd5f84f52dc96578d78f3b5aa))
+  *  add all_tenants function to ServerQuery implementation ([19417caa](https://github.com/dtantsur/rust-openstack/commit/19417caa952899fa187cd767bc865285aba48e10))
+  *  rework the server's flavor field handling (closes #146) ([febff387](https://github.com/dtantsur/rust-openstack/commit/febff3876ccdfb3280d4b8b3a1d4734fbfc35ba0))
+
+#### Bug Fixes
+
+* **cargo:**  add missing identity feature ([4269a20f](https://github.com/dtantsur/rust-openstack/commit/4269a20fe4ecfaae98e2ad7034504db905a7aa42))
+* **ci:**  change minimal rust version to test to 1.70 ([5e3b183f](https://github.com/dtantsur/rust-openstack/commit/5e3b183f42ef3eaf81d4a6d3219ebaa1e3dac89a))
+* **common:**
+  *  change SnapshotRef feature to block-storage-snapshot ([f42fe8c4](https://github.com/dtantsur/rust-openstack/commit/f42fe8c49f986a436226a76d86a08ff269c671b2))
+  *  change VolumeRef feature to block-storage ([6ef5ba83](https://github.com/dtantsur/rust-openstack/commit/6ef5ba833827ee2b5e4943b9753774f629cf4ef1))
+* **github:**  this replaces the setup-rust action with setup-rust-toolchain ([800b1711](https://github.com/dtantsur/rust-openstack/commit/800b1711ae9dfe08535294f463b64dd73e79764b))
+
 ## 0.5.0 (2023-03-10)
 
 This is a very significant release that has breaking changes everywhere in

@@ -1,7 +1,7 @@
 [package]
 name = "openstack"
 description = "OpenStack SDK for Rust"
-version = "0.5.0"  # remember to update html_root_url
+version = "0.6.0"  # remember to update html_root_url
 authors = ["Dmitry Tantsur <divius.inside@gmail.com>"]
 homepage = "https://github.com/dtantsur/rust-openstack"
 repository = "https://github.com/dtantsur/rust-openstack"
