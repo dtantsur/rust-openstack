@@ -3,7 +3,7 @@ on: [push, pull_request]
 
 jobs:
   test:
-    name: Unit tests on ${{ matrix.rust }} ${{ matrix.flags}}
+    name: Unit tests on ${{ matrix.rust }} ${{ matrix.flags }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -12,7 +12,6 @@ jobs:
         flags:
           - ""
           - "--no-default-features"
-          - "--no-default-features --features rustls"
     steps:
     - uses: actions/checkout@master
     - name: Install Rust
@@ -21,6 +20,30 @@ jobs:
         rustup default ${{ matrix.rust }}
     - name: Run unit tests
       run: cargo test --lib --verbose ${{ matrix.flags }}
+
+  features:
+    name: Unit tests for ${{ matrix.features }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        features:
+          - "rustls"
+          - "baremetal"
+          - "block-storage"
+          - "compute"
+          - "identity"
+          - "image"
+          - "network"
+          - "object-storage"
+    steps:
+    - uses: actions/checkout@master
+    - name: Install Rust
+      run: |
+        rustup update stable --no-self-update
+        rustup default stable
+    - name: Run unit tests
+      run: cargo test --lib --verbose --no-default-features --features ${{ matrix.features }}
 
   rustfmt:
     name: Formatting
