@@ -14,11 +14,11 @@ edition = "2021"
 rust-version = "1.82"
 
 [features]
-default = ["baremetal", "block-storage", "compute", "image", "network", "native-tls", "object-storage"]
+default = ["baremetal", "block-storage", "compute", "identity", "image", "network", "native-tls", "object-storage"]
 baremetal = ["json-patch"]
 block-storage = []
 compute = []
-identity = [] # reserved for future use
+identity = ["static_assertions", "tokio"]
 image = []
 network = ["macaddr", "ipnet"]
 native-tls = ["reqwest/default-tls", "osauth/native-tls"]
@@ -40,6 +40,8 @@ serde = "^1.0"
 serde_derive = "^1.0"
 serde_json = "^1.0"
 serde_yaml = "^0.9"
+static_assertions = { version = "^1.1", optional = true }
+tokio = { version = "^1.0", features = ["sync"], optional = true }
 tokio-util = { version = "^0.7", features = ["codec", "compat"], optional = true }
 waiter = { version = "^0.2" }
 
