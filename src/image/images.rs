@@ -260,6 +260,7 @@ impl From<Image> for ImageRef {
 #[cfg(feature = "image")]
 impl ImageRef {
     /// Verify this reference and convert to an ID, if possible.
+    #[allow(dead_code)]
     pub(crate) async fn into_verified(self, session: &Session) -> Result<ImageRef> {
         Ok(if self.verified {
             self

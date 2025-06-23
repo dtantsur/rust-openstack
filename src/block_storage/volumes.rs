@@ -447,6 +447,7 @@ impl From<Volume> for VolumeRef {
 #[cfg(feature = "block-storage")]
 impl VolumeRef {
     /// Verify this reference and convert to an ID, if possible.
+    #[allow(dead_code)]
     pub(crate) async fn into_verified(self, session: &Session) -> Result<VolumeRef> {
         Ok(if self.verified {
             self

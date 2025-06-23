@@ -135,6 +135,7 @@ pub struct NodesRoot {
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
+#[allow(dead_code)] // FIXME(dtantsur): remove when creating is implemented
 pub struct NodeCreate {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub automated_clean: Option<bool>,
