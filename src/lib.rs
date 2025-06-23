@@ -752,6 +752,8 @@ mod cloud;
 pub mod common;
 #[cfg(feature = "compute")]
 pub mod compute;
+#[cfg(feature = "identity")]
+pub mod identity;
 #[cfg(feature = "image")]
 pub mod image;
 #[cfg(feature = "network")]
@@ -767,7 +769,8 @@ mod utils;
 pub mod waiter;
 
 pub use osauth::common::IdOrName;
-pub use osauth::{EndpointFilters, Error, ErrorKind, InterfaceType, ValidInterfaces};
+pub use osauth::{EndpointFilters, InterfaceType, ValidInterfaces};
+pub use osauth::{Error, ErrorKind};
 
 /// A result of an OpenStack operation.
 pub type Result<T> = std::result::Result<T, Error>;
